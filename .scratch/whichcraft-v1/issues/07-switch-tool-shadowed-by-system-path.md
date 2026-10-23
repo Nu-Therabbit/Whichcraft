@@ -4,7 +4,7 @@
 
 **Blocked by:** 03, 06
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] แผนแยกรายการ User และ System และไม่มีพาธใต้ `%LOCALAPPDATA%` ถูกเขียนลง System (A-1, ADR-0004) — แผนเขียน System แค่การเอารายการที่บังออก; test ใน tool_apply และ profiles
 - [x] การเขียน HKLM ทำผ่าน process ตัวช่วยที่ elevate เฉพาะครั้งนั้น แทน `restart_as_admin` ของ Envarly ส่วน HKCU ให้ process ปกติเขียน (A-7) — Elevator port + helper รับเฉพาะ System scope (0f6b22b)

@@ -4,7 +4,7 @@
 
 **Blocked by:** 10
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Java มีให้เลือกเฉพาะ Temurin (I-3) — ls-remote กรองเฉพาะ `temurin-*`; test java_remote_versions_are_temurin_only
 - [x] ติดตั้ง Temurin 21, Python 3.13 และ Go 1.26 แล้วรันจากโฟลเดอร์ของการติดตั้งได้ (I-1) — contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly: Temurin 21.0.12+101.0.LTS, Python 3.13.17, Go 1.26.10 รันจากโฟลเดอร์ของตัวเองได้ (2026-10-23)

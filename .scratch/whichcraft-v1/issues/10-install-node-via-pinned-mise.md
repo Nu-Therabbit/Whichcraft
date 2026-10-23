@@ -4,7 +4,7 @@
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] ครั้งแรกถามที่เก็บการติดตั้ง ค่าเริ่มต้นคือ `%LOCALAPPDATA%\Whichcraft\installs` (I-5) — InstallSection ถามที่เก็บก่อนติดตั้งครั้งแรก (installStoreConfirmed) ค่าเริ่มต้น %LOCALAPPDATA%\Whichcraft\installs
 - [x] โหลด mise เวอร์ชันที่ pin ไว้ ตรวจ SHA256 กับค่าที่ฝังในแอป แล้วเก็บที่ `%LOCALAPPDATA%\Whichcraft\mise\<version>\` (I-10) ถ้า hash ไม่ตรงให้ลบทิ้งและหยุด (I-11) — ตรวจทั้ง zip และ mise.exe, แตกไฟล์แบบ partial แล้วค่อย rename; test 4 ข้อ

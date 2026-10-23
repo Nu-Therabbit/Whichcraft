@@ -4,7 +4,7 @@
 
 **Blocked by:** 03, 10
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] ถอนผ่าน mise ด้วยที่เก็บของการติดตั้งนั้น แล้วโฟลเดอร์ cache และ junction หายครบ (R-1) รวมถึงการติดตั้งในที่เก็บเก่า (S-2) — ถอนจริงแล้ว (Node, Temurin, Python, Go และจากที่เก็บเก่า): โฟลเดอร์เวอร์ชัน, junction, .mise.backend.toml และ cache ของเวอร์ชันนั้นหายครบ เหลือเฉพาะรายการเวอร์ชันของ mise (*.msgpack.z) ที่ใช้ร่วมกันทุกเวอร์ชัน
 - [x] ถ้าเป็นการเลือกหรือการติดตั้งที่มีผลจริง ต้องเลือกตัวแทนก่อน แล้ว Apply การสลับก่อนจึงถอน (R-12) — UI ให้เลือกตัวแทน แล้ว Apply การสลับ (ผ่าน UAC ถ้าต้องใช้) ก่อนถอน (test the_selected_jdk_is_switched_away_before_it_is_removed)

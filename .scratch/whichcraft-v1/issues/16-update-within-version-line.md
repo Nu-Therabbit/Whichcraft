@@ -4,7 +4,7 @@
 
 **Blocked by:** 11, 14
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] แจ้งเวอร์ชันใหม่ในสายเดียวกันจาก `ls-remote` ของการติดตั้งที่แอปติดตั้งได้ — ปุ่มตรวจอัปเดต เทียบกับ ls-remote ตามสาย (Java/Node ตาม major, Python/Go/Flutter ตาม major.minor) ข้าม pre-release และไม่เสนอถ้าตัวใหม่ติดตั้งอยู่แล้ว (services/update.rs)
 - [x] อัปเดตประกอบด้วย ติดตั้ง → แผนสลับ → เสนอถอนตัวเก่า และไม่เขียนทับการติดตั้งเดิม (P-1) — ติดตั้งข้างตัวเก่าด้วย mise แล้วแสดงแผนสลับตามปกติ Apply แล้วเปิดหน้าถอนตัวเก่าให้ (test update_installs_beside_the_old_one_and_plans_the_switch)

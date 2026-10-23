@@ -4,7 +4,7 @@
 
 **Blocked by:** 10
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] ใช้ backend `vfox:jdx/vfox-flutter` ไม่ใช้ `http:flutter` (I-2) — mise_tool ใช้ `vfox:jdx/vfox-flutter`
 - [x] ก่อนติดตั้ง Flutter ครั้งแรก แอปติดตั้งปลั๊กอินเองด้วย SHA เต็มที่ฝังไว้คู่กับเวอร์ชันของ mise (SHA แบบย่อใช้ไม่ได้) — ensure_flutter_plugin ก่อน install และ ls-remote

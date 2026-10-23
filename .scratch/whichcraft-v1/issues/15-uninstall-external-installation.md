@@ -4,7 +4,7 @@
 
 **Blocked by:** 06, 14
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] MSI ใช้ `msiexec /x {ProductCode}` เสมอ ไม่ใช้ UninstallString แบบ `/I` (R-2) — test msi_uninstalls_with_x_not_the_registered_i
 - [x] Inno Setup และ Python install manager ใช้ UninstallString ตามที่ลงทะเบียน แบบไม่ silent ส่วน pymanager ต้องแจ้งก่อนว่าไม่มีหน้าจอให้ยืนยัน (R-3, R-4) — แยก command line ตามเครื่องหมายคำพูด รันผ่าน ShellExecuteExW แบบมีหน้าต่างแล้วรอ; pymanager แสดงคำเตือน no_confirmation ก่อน

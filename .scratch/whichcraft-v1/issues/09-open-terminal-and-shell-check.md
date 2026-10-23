@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] TerminalLauncher ส่ง environment จาก EnvironmentResolver ให้ `wt.exe` หรือ shell เสมอ ไม่ปล่อยให้สืบทอดจากแอป (T-1) — CreateEnvironmentBlock ไม่สืบทอด + env_clear ก่อนใส่ environment ใหม่; test the_terminal_gets_exactly_the_fresh_environment
 - [x] ได้ค่าใหม่แม้มี Windows Terminal เปิดค้างอยู่ก่อน (T-2) — ทดสอบโดยเปิด Windows Terminal ค้างไว้ก่อน Apply แล้ว wt.exe -w new กับ environment ใหม่ได้ค่าใหม่ (อยู่ใน contract test ของ User)

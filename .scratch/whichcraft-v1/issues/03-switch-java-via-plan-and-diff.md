@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] core สร้างแผนจากการเลือก แยกเป็นรายการ User และ System พร้อมคำเตือน และบอกว่าต้องใช้ UAC หรือไม่ UI แสดงแผนเป็น diff
 - [x] JAVA_HOME และ PATH ชี้ไปโฟลเดอร์เวอร์ชันจริง ไม่ใช่ junction หรือ shims (A-5)

@@ -4,7 +4,7 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Apply โปรไฟล์ A (Java 17 + Node 20) แล้ว Apply B (Java 21 อย่างเดียว) ผลคือ Java 21 และ Node 20 (F-1) — test a_later_profile_changes_only_the_tools_it_names (JAVA_HOME เป็น 21, jdk17\bin ถูกเอาออกจาก User PATH ในแผนเดียวกัน, Node 20 อยู่ครบ)
 - [x] ถ้ามีการติดตั้งตัวใดใช้งานไม่ได้ ไม่เขียนอะไรเลยและแสดงรายการที่ต้องแก้ (F-2) — test: a_missing_version_is_unavailable_instead_of_another_one
