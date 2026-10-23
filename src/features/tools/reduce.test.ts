@@ -27,6 +27,39 @@ const withUninstall = (extra: Partial<ToolsState["uninstall"]> = {}): ToolsState
 };
 
 describe("reduce", () => {
+  it("clears error on a successful refreshed inventory load", () => {
+    const s = { ...initialToolsState(), error: "offline", loading: true };
+    const next = reduce(s, {
+      type: "refreshed",
+      tool: "java",
+      installations: [jdk17],
+      recovery: null,
+      unfinished: [],
+      settings: initialToolsState().settings,
+      pythonInfo: null,
+    });
+    expect(next.error).toBeNull();
+    expect(next.installations).toHaveLength(1);
+  });
+
+  it("keeps apply errors when inventory readback completes without a loading refresh", () => {
+    const s = {
+      ...initialToolsState(),
+      error: "Environment changed since the plan was created. Refresh and try again.",
+      loading: false,
+    };
+    const next = reduce(s, {
+      type: "refreshed",
+      tool: "java",
+      installations: [jdk17],
+      recovery: null,
+      unfinished: [],
+      settings: initialToolsState().settings,
+      pythonInfo: null,
+    });
+    expect(next.error).toContain("Environment changed");
+  });
+
   it("will not confirm an uninstall until the switch for that replacement is on screen", () => {
     const s = withUninstall();
     expect(reduce(s, { type: "confirmUninstall", replacementRoot: "C:\\jdk21", repoint: false })).toBe(s);

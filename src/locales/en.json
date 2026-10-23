@@ -691,6 +691,8 @@
     "switch_to_installation": "Switch to {{vendor}} {{version}}",
     "status_ready": "Ready",
     "status_busy": "Applying changes…",
+    "status_applying": "Applying changes…",
+    "status_building_plan": "Building plan…",
     "undo_conflicts": "Undo completed with conflicts (external values kept)",
     "undo_restored": "Undo restored {{count}} variable(s)",
     "dismiss_undo_result": "Dismiss"

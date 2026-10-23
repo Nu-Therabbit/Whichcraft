@@ -23,13 +23,20 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
       return s;
     case "selectTool":
       // The update list belongs to the tool it was checked for.
-      return { ...s, tool: msg.tool, update: { ...s.update, list: null } };
+      return {
+        ...s,
+        tool: msg.tool,
+        loading: true,
+        installations: [],
+        update: { ...s.update, list: null },
+      };
     case "refresh":
       return { ...s, loading: true };
     case "refreshed":
       return {
         ...s,
         loading: false,
+        error: s.loading ? null : s.error,
         installations: msg.installations,
         recovery: msg.recovery,
         unfinished: msg.unfinished,

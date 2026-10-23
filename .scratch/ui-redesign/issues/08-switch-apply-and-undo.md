@@ -21,3 +21,10 @@
 - **Coordinator / MVI:** `useShellToolsWrite` wires `useToolsStore` + `createToolsRuntime(..., coordination)`; invalidation triggers `refresh` (same scopes as legacy). Apply/undo use existing effects (`registerReviewedPlan`, `beginPlanApply`, tool-result bindings, `readbackToolsState`). Overview selection/effective labels stay on rescan data, not copied from plan state.
 - **Tests:** `desktopShellSwitch.test.tsx` (success, unavailable, stale rebuild, UAC via `applyToolPlanWithUac`, failed apply, late apply after tool switch, undo restored count). Minor reducer tweak: `refresh` no longer clears apply error so post-apply invalidation does not hide stale/UAC messages.
 - **Windows manual (User-only / mixed-scope):** Not run in this agent environment (no driven Tauri desktop + Registry verification here). Leave checkbox open for human QA on a real Windows machine.
+
+### Review round 1 (Grok 4.7)
+
+- **Plan id:** Tests assert `applyToolPlan` / `applyToolPlanWithUac` receive the reviewed plan object; baseline invalidation before apply completes drops the result via existing `isPlanApplyCurrent` (plan UI remains, no false success).
+- **Post-apply readback:** Success test flips Effective only after apply; detail **Effective installation** shows `17.0.2` not pre-apply `21.0.1`.
+- **Errors:** `refreshed` clears `error` only when `loading` was true (inventory refresh); apply stale/UAC messages survive readback. `refresh` intent still does not clear apply errors.
+- **NITs:** `selectTool` clears installations and sets loading; footer distinguishes **Building plan…** vs **Applying changes…**.

@@ -58,9 +58,10 @@ export function DesktopShellApp() {
   const { theme, toggle: toggleTheme } = useTheme();
   const { t } = useI18n();
   const page: ShellPage = "tools";
-  const statusLine =
-    toolsWrite.state.plan.applying || toolsWrite.state.plan.building
-      ? t("desktop_shell.status_busy")
+  const statusLine = toolsWrite.state.plan.applying
+    ? t("desktop_shell.status_applying")
+    : toolsWrite.state.plan.building
+      ? t("desktop_shell.status_building_plan")
       : toolsWrite.state.error
         ? toolsWrite.state.error
         : t("desktop_shell.status_ready");
