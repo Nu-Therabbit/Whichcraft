@@ -186,6 +186,147 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
     assert!(same_values(&WinregBackend.read_system().unwrap(), &system_before));
 }
 
+/// Newest release of `line` that mise offers, e.g. the newest Temurin 21.
+fn newest_remote(mgr: &crate::whichcraft::mise::MiseToolManager<crate::whichcraft::mise::manager::ProcessMiseRunner>, tool: ToolKind, line: &str) -> String {
+    use crate::whichcraft::ports::tool_manager::ToolManager;
+    use crate::whichcraft::services::update::release_numbers;
+    mgr.list_remote(tool)
+        .unwrap()
+        .into_iter()
+        .filter(|r| r.version.starts_with(line) && release_numbers(tool, &r.version).is_some())
+        .max_by_key(|r| release_numbers(tool, &r.version))
+        .unwrap_or_else(|| panic!("no {tool:?} {line} release"))
+        .version
+}
+
+/// Everything still under the store for one tool: its installs folder and mise's download cache.
+fn leftovers(store: &std::path::Path, tool: ToolKind) -> Vec<String> {
+    let installs = crate::whichcraft::mise::manager::mise_installs_dir(store, tool).unwrap();
+    let cache = store.join("_mise").join("cache").join(installs.file_name().unwrap());
+    [installs, cache]
+        .iter()
+        .flat_map(|dir| std::fs::read_dir(dir).into_iter().flatten().flatten().map(|e| e.path().display().to_string()))
+        .collect()
+}
+
+/// I-1, D-3, R-1 for Temurin 21, Python 3.13 and Go 1.26: each installs into a temporary store,
+/// runs from its own folder, is listed once (mise's junctions are not extra installations), and
+/// Whichcraft's uninstall leaves nothing of it in the store. Downloads a few hundred MB.
+#[test]
+#[ignore = "contract: downloads mise, Temurin 21, Python 3.13 and Go 1.26 into temporary folders"]
+fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
+    use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
+    use crate::whichcraft::mise::manager::ProcessMiseRunner;
+    use crate::whichcraft::mise::MiseToolManager;
+    use crate::whichcraft::persistence::{load_settings, save_settings};
+    use crate::whichcraft::services::elevation::WinElevator;
+    use crate::whichcraft::services::tool_inventory::list_tool_installations;
+    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallOutcome};
+
+    let data = tempfile::tempdir().unwrap();
+    use_test_data_dir(data.path());
+    let store = tempfile::tempdir().unwrap();
+    let mut settings = load_settings().unwrap();
+    settings.install_store = store.path().to_path_buf();
+    save_settings(&settings).unwrap();
+    let user_before = WinregBackend.read_user().unwrap();
+    let system_before = WinregBackend.read_system().unwrap();
+    let mgr = MiseToolManager::with_runner(ProcessMiseRunner::for_store(store.path()));
+
+    let cases: [(ToolKind, &str, &str, &[&str]); 3] = [
+        (ToolKind::Java, "21.", "bin\\java.exe", &["-version"]),
+        (ToolKind::Python, "3.13.", "python.exe", &["--version"]),
+        (ToolKind::Go, "1.26.", "bin\\go.exe", &["version"]),
+    ];
+    let mut report = Vec::new();
+    for (tool, line, exe, args) in cases {
+        let version = newest_remote(&mgr, tool, line);
+        let started = std::time::Instant::now();
+        let root = mgr.install(tool, &version).unwrap();
+        let out = std::process::Command::new(root.join(exe)).args(args).output().unwrap();
+        let said = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+        println!("{tool:?} {version} at {} in {:?}: {}", root.display(), started.elapsed(), said.lines().next().unwrap_or(""));
+        assert!(out.status.success(), "{tool:?} does not run: {said}");
+        assert!(root.starts_with(store.path()));
+
+        let views = list_tool_installations(&WinregBackend, tool, None).unwrap();
+        let ours: Vec<_> = views.iter().filter(|v| v.installation.root.starts_with(store.path())).collect();
+        println!("  listed: {:?}", ours.iter().map(|v| (&v.installation.vendor, &v.installation.version)).collect::<Vec<_>>());
+        assert_eq!(ours.len(), 1, "listed once, not once per junction");
+        if tool == ToolKind::Java {
+            assert_eq!(ours[0].installation.vendor, "Eclipse Adoptium", "vendor comes from the release file");
+        }
+        println!("  before uninstall: {:?}", leftovers(store.path(), tool));
+
+        let stores = settings.all_install_stores();
+        let plan = plan_uninstall(
+            PlanInputs { view: ours[0], all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[] },
+            &WinUsageProbe,
+        )
+        .unwrap();
+        let outcome = uninstall(&plan, None, &WinregBackend, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+        assert_eq!(outcome, UninstallOutcome::Removed, "{tool:?}");
+        let left = leftovers(store.path(), tool);
+        println!("  after uninstall: {left:?}");
+        report.push((tool, left));
+    }
+    assert!(same_values(&WinregBackend.read_user().unwrap(), &user_before));
+    assert!(same_values(&WinregBackend.read_system().unwrap(), &system_before));
+    // mise's version lists and metadata (`*.msgpack.z`) are shared by every version of the tool and
+    // stay; nothing that belongs to the removed version may (folder, junctions, download cache).
+    assert!(
+        report.iter().all(|(_, left)| left.iter().all(|p| p.ends_with(".msgpack.z"))),
+        "left in the store after uninstall: {report:?}"
+    );
+}
+
+/// S-1, S-2: install in store A, switch to store B and install there; both are listed, A's copy
+/// stays where it is and is removed with mise pointed at A, leaving B's alone.
+#[test]
+#[ignore = "contract: downloads mise and two Node versions into temporary folders"]
+fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
+    use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
+    use crate::whichcraft::mise::manager::ProcessMiseRunner;
+    use crate::whichcraft::mise::MiseToolManager;
+    use crate::whichcraft::persistence::{load_settings, save_settings};
+    use crate::whichcraft::services::elevation::WinElevator;
+    use crate::whichcraft::services::tool_inventory::list_tool_installations;
+    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallMethod, UninstallOutcome};
+
+    let data = tempfile::tempdir().unwrap();
+    use_test_data_dir(data.path());
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let mut settings = load_settings().unwrap();
+    settings.install_store = a.path().to_path_buf();
+    save_settings(&settings).unwrap();
+    let in_a = MiseToolManager::with_runner(ProcessMiseRunner::from_settings().unwrap()).install(ToolKind::Node, "22.11.0").unwrap();
+
+    let mut settings = load_settings().unwrap();
+    settings.switch_install_store(b.path().to_path_buf());
+    save_settings(&settings).unwrap();
+    let in_b = MiseToolManager::with_runner(ProcessMiseRunner::from_settings().unwrap()).install(ToolKind::Node, "22.12.0").unwrap();
+    assert!(in_a.starts_with(a.path()) && in_b.starts_with(b.path()), "{} {}", in_a.display(), in_b.display());
+
+    let views = list_tool_installations(&WinregBackend, ToolKind::Node, None).unwrap();
+    let find = |root: &std::path::Path| views.iter().find(|v| crate::whichcraft::tools::paths_equal(&v.installation.root, root));
+    let (view_a, _) = (find(&in_a).expect("store A still listed"), find(&in_b).expect("store B listed"));
+
+    let settings = load_settings().unwrap();
+    let stores = settings.all_install_stores();
+    let plan = plan_uninstall(
+        PlanInputs { view: view_a, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[] },
+        &WinUsageProbe,
+    )
+    .unwrap();
+    assert!(matches!(&plan.method, UninstallMethod::Managed { store, .. } if crate::whichcraft::tools::paths_equal(store, a.path())), "{:?}", plan.method);
+    assert_eq!(
+        uninstall(&plan, None, &WinregBackend, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
+        UninstallOutcome::Removed
+    );
+    assert!(!in_a.exists());
+    assert!(in_b.join("node.exe").is_file(), "store B is untouched");
+}
+
 /// A-2 and U-1 for System scope: the write goes through UAC to the app's elevated helper (two UAC
 /// prompts: apply, then Undo). Needs `cargo build` first so target\debug\whichcraft.exe is current.
 #[test]
