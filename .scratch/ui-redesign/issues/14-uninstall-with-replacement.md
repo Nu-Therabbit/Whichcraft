@@ -20,3 +20,9 @@
 - **Coordinator / plan binding:** `effects.ts:confirmUninstall` passes the on-screen `switchPlan` to `tools.uninstall`; `canConfirmUninstall` requires the chosen replacement to match `switchPlan.selected.root`; stale/blocked outcomes re-trigger replacement planning (see `effects.test.ts`).
 - **Tests:** `desktopShellUninstall.test.tsx` (plan/method, replacement gate, uninstall with shown switch plan, refused path); harness coverage for stale/blocked remains in `effects.test.ts`.
 - **Windows manual (disposable uninstall fixture):** Not run in this agent environment. Leave checkbox open for human QA.
+
+### Review round 1 (Grok 4.7)
+
+- **Plan-id / baseline gate:** `chooseReplacement` calls `registerReviewedPlan`; `confirmUninstall` uses `beginPlanApply` + `isPlanApplyCurrent` before `uninstall` and in `shouldCommitToolMutation`. Stale baseline rebuilds via `chooseReplacement` (`effects.test.ts`, `desktopShellUninstall.test.tsx`).
+- **Coordinator refresh:** Shell test asserts `listToolInstallations` reloads after successful confirm (fails if `readbackToolsState` / write completion path drops refresh).
+- **Branch coverage:** Shell fakes for in-use, folder lock, affected profiles/repoint, cancelled, and incomplete outcomes (`UninstallSection` paths).

@@ -289,7 +289,11 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       return;
     case "chooseReplacement":
       if (!msg.root || !state.uninstall.plan?.needsReplacement) return;
-      dispatch({ type: "switchPlanned", plan: await tools.planToolApply(tool, msg.root) });
+      {
+        const switchPlan = await tools.planToolApply(tool, msg.root);
+        coordination.registerReviewedPlan(switchPlan);
+        dispatch({ type: "switchPlanned", plan: switchPlan });
+      }
       return;
     case "confirmUninstall": {
       const plan = state.uninstall.plan;
@@ -299,8 +303,16 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         const resultBinding = coordination.beginToolResult(originTool);
         // The switch applied is exactly the one the user was shown.
         const replacement = plan.needsReplacement ? state.uninstall.switchPlan : null;
+        let planBinding: ReturnType<WriteCoordinatorFacade["beginPlanApply"]> | undefined;
+        if (replacement) {
+          planBinding = coordination.beginPlanApply(replacement.planId, replacement.tool);
+          if (!coordination.isPlanApplyCurrent(planBinding)) {
+            dispatch({ type: "chooseReplacement", root: msg.replacementRoot });
+            return "cancel";
+          }
+        }
         const outcome = await tools.uninstall(tool, plan.installation.root, replacement);
-        if (!shouldCommitToolMutation(ctx, originTool, resultBinding)) {
+        if (!shouldCommitToolMutation(ctx, originTool, resultBinding, planBinding)) {
           dropToolMutation(ctx, originTool);
           return "cancel";
         }

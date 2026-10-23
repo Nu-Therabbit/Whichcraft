@@ -90,6 +90,27 @@ describe("tools effects", () => {
     expect(api.planUninstall).toHaveBeenCalledWith("java", "C:\\jdk21");
   });
 
+  it("does not uninstall when the reviewed switch plan id or baseline no longer matches", async () => {
+    const shown = planFor(jdk21new, { planId: "reviewed-for-uninstall" });
+    const planToolApply = vi.fn(async () => shown);
+    const uninstall = vi.fn(async () => ({ status: "removed" as const }));
+    const { runtime, coordination } = fakeToolsRuntime({
+      planUninstall: vi.fn(async () => uninstallPlanFor()),
+      planToolApply,
+      uninstall,
+    });
+    const h = harness(runtime);
+    h.dispatch({ type: "planUninstall", root: "C:\\jdk21" });
+    await h.settle();
+    h.dispatch({ type: "chooseReplacement", root: jdk21new.root });
+    await h.settle();
+    coordination.invalidate(["environment-variables"]);
+    h.dispatch({ type: "confirmUninstall", replacementRoot: jdk21new.root, repoint: false });
+    await h.settle();
+    expect(uninstall).not.toHaveBeenCalled();
+    expect(planToolApply).toHaveBeenCalledTimes(2);
+  });
+
   it("uninstalls with exactly the switch that was shown, and shows it again when it went stale", async () => {
     const shown = planFor(jdk21new, { planId: "shown" });
     const planToolApply = vi.fn(async () => shown);

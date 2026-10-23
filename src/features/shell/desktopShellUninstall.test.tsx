@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
-import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
+import { createWriteCoordinator, type WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import type { UninstallPlan } from "../../types";
 import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
@@ -62,8 +62,10 @@ function uninstallPlan(extra: Partial<UninstallPlan> = {}): UninstallPlan {
   };
 }
 
-function renderShell(api: Record<string, unknown> = {}) {
-  const coordination = createWriteCoordinator();
+function renderShell(
+  api: Record<string, unknown> = {},
+  coordination: WriteCoordinatorFacade = createWriteCoordinator(),
+) {
   const { api: fake } = fakeToolsRuntime({ ...sdkMocks, ...api }, coordination);
   configureProductionServices(splitEnvarlyApi(fake));
   return {
@@ -99,6 +101,15 @@ function uninstallPlanSection() {
   return heading.closest("section") as HTMLElement;
 }
 
+async function confirmReplacementUninstall(user: ReturnType<typeof userEvent.setup>) {
+  const uninstallSection = uninstallPlanSection();
+  await user.selectOptions(within(uninstallSection).getByRole("combobox"), "C:\\jdk17");
+  await waitFor(() =>
+    expect(within(uninstallSection).getByRole("button", { name: /^uninstall$/i })).toBeEnabled(),
+  );
+  await user.click(within(uninstallSection).getByRole("button", { name: /^uninstall$/i }));
+}
+
 describe("desktop shell uninstall", () => {
   beforeEach(() => {
     configureProductionServices(null);
@@ -121,7 +132,7 @@ describe("desktop shell uninstall", () => {
     expect(within(uninstallSection).getByRole("button", { name: /^uninstall$/i })).toBeDisabled();
   });
 
-  it("uninstalls with the switch plan that was shown", async () => {
+  it("uninstalls with the switch plan that was shown and reloads tool inventory", async () => {
     const shown = planFor(replacement, { planId: "switch-for-uninstall" });
     const planUninstall = vi.fn(async () => uninstallPlan());
     const planToolApply = vi.fn(async () => shown);
@@ -137,16 +148,39 @@ describe("desktop shell uninstall", () => {
     });
     const user = userEvent.setup();
     const details = await openJavaDetail(user);
+    await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThan(0));
+    const installsBeforeConfirm = listToolInstallations.mock.calls.length;
     await planUninstallForRoot(user, details, "C:\\jdk21");
     await waitFor(() => expect(planUninstall).toHaveBeenCalled());
-    const uninstallSection = uninstallPlanSection();
-    await user.selectOptions(within(uninstallSection).getByRole("combobox"), "C:\\jdk17");
-    await waitFor(() => expect(planToolApply).toHaveBeenCalledWith("java", "C:\\jdk17"));
-    await waitFor(() =>
-      expect(within(uninstallSection).getByRole("button", { name: /^uninstall$/i })).toBeEnabled(),
-    );
-    await user.click(within(uninstallSection).getByRole("button", { name: /^uninstall$/i }));
+    await confirmReplacementUninstall(user);
     await waitFor(() => expect(uninstall).toHaveBeenCalledWith("java", "C:\\jdk21", shown));
+    await waitFor(() =>
+      expect(listToolInstallations.mock.calls.length).toBeGreaterThan(installsBeforeConfirm),
+    );
+  });
+
+  it("does not call uninstall when the reviewed switch plan baseline went stale", async () => {
+    const shown = planFor(replacement, { planId: "reviewed-switch" });
+    const planUninstall = vi.fn(async () => uninstallPlan());
+    const planToolApply = vi.fn(async () => shown);
+    const uninstall = vi.fn(async () => ({ status: "removed" as const }));
+    const { coordination } = renderShell({
+      listToolInstallations: async (tool: string) =>
+        tool === "java" ? [effective, replacement] : [],
+      planUninstall,
+      planToolApply,
+      uninstall,
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await planUninstallForRoot(user, details, "C:\\jdk21");
+    await waitFor(() => expect(planUninstall).toHaveBeenCalled());
+    await user.selectOptions(within(uninstallPlanSection()).getByRole("combobox"), "C:\\jdk17");
+    await waitFor(() => expect(planToolApply).toHaveBeenCalledTimes(1));
+    coordination.invalidate(["environment-variables"]);
+    await user.click(within(uninstallPlanSection()).getByRole("button", { name: /^uninstall$/i }));
+    await waitFor(() => expect(planToolApply).toHaveBeenCalledTimes(2));
+    expect(uninstall).not.toHaveBeenCalled();
   });
 
   it("does not call uninstall until the replacement switch plan is on screen", async () => {
@@ -185,5 +219,84 @@ describe("desktop shell uninstall", () => {
     await planUninstallForRoot(user, details, "C:\\jdk21");
     expect(await screen.findByText(/protected/i)).toBeInTheDocument();
     expect(uninstall).not.toHaveBeenCalled();
+  });
+
+  it("blocks confirm while processes are using the installation", async () => {
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [effective] : []),
+      planUninstall: async () =>
+        uninstallPlan({
+          needsReplacement: false,
+          usage: { processes: ["java.exe"], folderLocked: false },
+        }),
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await planUninstallForRoot(user, details, "C:\\jdk21");
+    expect(await screen.findByText(/in use/i)).toBeInTheDocument();
+    expect(within(uninstallPlanSection()).getByRole("button", { name: /^uninstall$/i })).toBeDisabled();
+  });
+
+  it("blocks confirm while the installation folder is open", async () => {
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [effective] : []),
+      planUninstall: async () =>
+        uninstallPlan({
+          needsReplacement: false,
+          usage: { processes: [], folderLocked: true },
+        }),
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await planUninstallForRoot(user, details, "C:\\jdk21");
+    expect(await screen.findByText(/folder open/i)).toBeInTheDocument();
+    expect(within(uninstallPlanSection()).getByRole("button", { name: /^uninstall$/i })).toBeDisabled();
+  });
+
+  it("shows affected profiles and optional repoint when profiles use the installation", async () => {
+    renderShell({
+      listToolInstallations: async (tool: string) =>
+        tool === "java" ? [effective, replacement] : [],
+      planUninstall: async () =>
+        uninstallPlan({ needsReplacement: false, affectedProfiles: ["Android work"] }),
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await planUninstallForRoot(user, details, "C:\\jdk21");
+    expect(await screen.findByText(/Android work/i)).toBeInTheDocument();
+    await user.selectOptions(within(uninstallPlanSection()).getByRole("combobox"), "C:\\jdk17");
+    expect(screen.getByText(/point those profiles at the chosen installation/i)).toBeInTheDocument();
+  });
+
+  it("shows cancelled uninstall outcome", async () => {
+    const uninstall = vi.fn(async () => ({ status: "cancelled" as const }));
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [effective] : []),
+      planUninstall: async () => uninstallPlan({ needsReplacement: false }),
+      uninstall,
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await planUninstallForRoot(user, details, "C:\\jdk21");
+    await user.click(within(uninstallPlanSection()).getByRole("button", { name: /^uninstall$/i }));
+    expect(await screen.findByText(/uninstaller was cancelled/i)).toBeInTheDocument();
+  });
+
+  it("shows incomplete uninstall outcome with open-folder action", async () => {
+    const uninstall = vi.fn(async () => ({
+      status: "incomplete" as const,
+      remaining: "C:\\jdk21",
+    }));
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [effective] : []),
+      planUninstall: async () => uninstallPlan({ needsReplacement: false }),
+      uninstall,
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await planUninstallForRoot(user, details, "C:\\jdk21");
+    await user.click(within(uninstallPlanSection()).getByRole("button", { name: /^uninstall$/i }));
+    expect(await screen.findByText(/folder is still there/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open folder/i })).toBeInTheDocument();
   });
 });
