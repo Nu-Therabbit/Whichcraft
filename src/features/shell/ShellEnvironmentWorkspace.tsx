@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { AppLoading } from "../../components/AppLoading/AppLoading";
-import { AppModals } from "../../components/AppModals/AppModals";
 import { CheckCommandPanel } from "../../components/CheckCommandPanel/CheckCommandPanel";
 import { DetailPanel } from "../../components/DetailPanel/DetailPanel";
 import { DiagnosticsPanel } from "../../components/DiagnosticsPanel/DiagnosticsPanel";
@@ -11,13 +10,11 @@ import { SnapshotPanel } from "../../components/SnapshotPanel/SnapshotPanel";
 import { useI18n } from "../../hooks/useI18n";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import type { DiagnosticAction, EnvironmentDiagnostic } from "../../lib/environmentDiagnostics";
-import { stagedToDiff } from "../../lib/stagedToDiff";
 import type { ShellEnvironmentTab } from "../../lib/shellNavigation";
 import type { EnvVar, VarScope } from "../../types";
 import { useEnvironment } from "../environment/EnvironmentContext";
 import { ShellEnvironmentToolbar } from "./ShellEnvironmentToolbar";
-
-type Dialog = "importexport" | "changes" | "staged" | "licenses" | "newvar" | "checkcommand" | null;
+import { useShellEnvironmentUi } from "./ShellEnvironmentUiContext";
 
 const TAB_IDS: { id: ShellEnvironmentTab; labelKey: string }[] = [
   { id: "variables", labelKey: "desktop_shell.env_tab_variables" },
@@ -33,9 +30,8 @@ interface Props {
 
 export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
   const env = useEnvironment();
+  const { setDialog, selected, setSelected } = useShellEnvironmentUi();
   const { t } = useI18n();
-  const [selected, setSelected] = useState<EnvVar | null>(null);
-  const [dialog, setDialog] = useState<Dialog>(null);
 
   const {
     vars,
@@ -52,28 +48,17 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
     handleStageAddToPath,
     handleDismissPathBanner,
     diffEntries,
-    handleDiffApply,
-    handleDiffDismiss,
-    applyBusy,
-    applyError,
-    handleRefresh,
     initializing,
     accounts,
     selectedAccount,
     handleSelectAccount,
     accountSwitchError,
+    handleRefresh,
     handleStage,
     handleStageDelete,
     handleUnstage,
-    handleClearStaged,
     handleStageImport,
     handleStageSnapshot,
-    handleNewVarStage,
-    handleApplyStaged,
-    stagedBusy,
-    stagedError,
-    stagedProgress,
-    stagedLog,
     undo,
     redo,
     localUndoRef,
@@ -94,10 +79,6 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
         ? "User"
         : null;
 
-  useEffect(() => {
-    if (diffEntries.length > 0) setDialog("changes");
-  }, [diffEntries.length]);
-
   useKeyboardShortcuts(undo, redo, localUndoRef);
 
   const effectiveSelected = useMemo<EnvVar | null>(() => {
@@ -106,8 +87,6 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
       effectiveVars.find((v) => v.name === selected.name && v.scope === selected.scope) ?? null
     );
   }, [selected, effectiveVars]);
-
-  const stagedDiff = useMemo(() => stagedToDiff(staged), [staged]);
 
   const handleDiagnosticAction = (diagnostic: EnvironmentDiagnostic, action: DiagnosticAction) => {
     const variable = vars.find(
@@ -278,46 +257,6 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
           </div>
         )}
       </div>
-
-      <AppModals
-        dialog={dialog}
-        setDialog={setDialog}
-        staged={staged}
-        stagedDiff={stagedDiff}
-        stagedBusy={stagedBusy}
-        stagedError={stagedError}
-        stagedProgress={stagedProgress}
-        stagedLog={stagedLog}
-        onApplyStaged={async (takeSnapshot) => {
-          const ok = await handleApplyStaged(takeSnapshot);
-          if (ok) setDialog(null);
-        }}
-        onDiscardAll={handleClearStaged}
-        diffEntries={diffEntries}
-        applyBusy={applyBusy}
-        applyError={applyError}
-        onDiffApply={async (accepted, reverted) => {
-          const ok = await handleDiffApply(accepted, reverted);
-          if (ok) setDialog(null);
-        }}
-        onDiffDismiss={() => {
-          handleDiffDismiss();
-          setDialog(null);
-        }}
-        onStageImport={(sets, deletes) => {
-          handleStageImport(sets, deletes);
-          setDialog(null);
-        }}
-        effectiveVars={effectiveVars}
-        elevated={elevated}
-        personalScope={personalScope}
-        personalScopeLabel={selectedAccount?.username}
-        onNewVarStage={(name, scope, value, valueKind) => {
-          const created = handleNewVarStage(name, scope, value, valueKind);
-          setSelected(created);
-          setDialog(null);
-        }}
-      />
     </div>
   );
 }

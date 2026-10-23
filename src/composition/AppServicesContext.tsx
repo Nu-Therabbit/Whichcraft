@@ -5,7 +5,7 @@ import { createProductionServices } from "./createProductionServices";
 import { createUnavailableEnvarlyApi, splitEnvarlyApi } from "./appServices";
 import { syncLegacyApiFacade } from "./wireAppServices";
 
-const AppServicesContext = createContext<AppServices | null>(null);
+export const AppServicesContext = createContext<AppServices | null>(null);
 
 export function AppServicesProvider({
   services: servicesOverride,

@@ -1,4 +1,5 @@
-import { api } from "../../api";
+import { useContext } from "react";
+import { AppServicesContext } from "../../composition/AppServicesContext";
 import { useI18n } from "../../hooks/useI18n";
 import type { VarScope } from "../../types";
 import { Badge } from "../ui/Badge";
@@ -32,6 +33,7 @@ export function DetailHeader({
   onDelete,
 }: Props) {
   const { t } = useI18n();
+  const services = useContext(AppServicesContext);
 
   return (
     <div className="flex items-center gap-3 px-6 h-[60px] border-b border-rim-subtle shrink-0">
@@ -45,7 +47,9 @@ export function DetailHeader({
             <Badge variant="readonly">{t("detail.readonly_badge")}</Badge>
             <button
               type="button"
-              onClick={() => api.restartAsAdmin()}
+              onClick={() => {
+                if (services) void services.platform.restartAsAdmin();
+              }}
               className="text-[10px] text-accent hover:text-accent-hi px-2 py-1 rounded hover:bg-accent/10 transition-colors shrink-0"
               title="Restart as administrator to edit system variables"
             >

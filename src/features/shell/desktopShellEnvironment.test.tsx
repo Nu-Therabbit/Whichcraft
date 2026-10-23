@@ -6,10 +6,11 @@ import { splitEnvarlyApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
-import { ENVIRONMENT_PENDING_TOOLS_MESSAGE } from "../../coordination/types";
+import { ENVIRONMENT_PENDING_TOOLS_MESSAGE, WRITE_BUSY_MESSAGE } from "../../coordination/types";
 import { EnvironmentProvider } from "../environment/EnvironmentContext";
 import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
+import { ShellEnvironmentUiProvider } from "./ShellEnvironmentUiContext";
 import { shellNavigationHref } from "../../lib/shellNavigation";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -58,7 +59,9 @@ function renderDesktopShell(services = splitEnvarlyApi(fakeToolsRuntime({ ...sdk
       <AppServicesProvider services={services}>
         <WriteCoordinatorProvider>
           <EnvironmentProvider>
-            <DesktopShellApp />
+            <ShellEnvironmentUiProvider>
+              <DesktopShellApp />
+            </ShellEnvironmentUiProvider>
           </EnvironmentProvider>
         </WriteCoordinatorProvider>
       </AppServicesProvider>
@@ -200,6 +203,60 @@ describe("desktop shell environment workspace", () => {
     await user.click(await screen.findByRole("button", { name: /apply 1 change to registry/i }));
 
     await waitFor(() => expect(onApplyProgress).toHaveBeenCalled());
-    await waitFor(() => expect(applyEnvChanges).not.toHaveBeenCalled());
+    expect(applyEnvChanges).not.toHaveBeenCalled();
+    expect(await screen.findByText(/subscribe failed/i)).toBeInTheDocument();
+
+    const applyButton = screen.getByRole("button", { name: /apply 1 change to registry/i });
+    await user.click(applyButton);
+    await waitFor(() => expect(onApplyProgress).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(WRITE_BUSY_MESSAGE)).not.toBeInTheDocument();
+    expect(applyEnvChanges).not.toHaveBeenCalled();
+  });
+
+  it("keeps staged apply error visible after leaving the Environment page", async () => {
+    const onApplyProgress = vi.fn(async () => {
+      throw new Error("subscribe failed");
+    });
+    const services = splitEnvarlyApi(
+      fakeToolsRuntime({
+        ...sdkMocks,
+        getEnvVars: async () => [
+          {
+            name: "KEEP_ERR",
+            value: "v",
+            valueKind: "String" as const,
+            scope: "User" as const,
+            listSeparator: null,
+          },
+        ],
+        onApplyProgress,
+        applyEnvChanges: vi.fn(async () => {}),
+        getRegistrySnapshot: async () => ({ user: {}, system: {} }),
+        getUnsupportedEnvValues: async () => [],
+        validatePaths: async () => [],
+        listToolInstallations: async () => [],
+      }).api,
+    );
+    window.history.replaceState(
+      null,
+      "",
+      shellNavigationHref({ page: "environment", envTab: "variables" }),
+    );
+    renderDesktopShell(services);
+
+    const user = userEvent.setup();
+    await screen.findByText("KEEP_ERR");
+    await user.click(screen.getByText("KEEP_ERR"));
+    const editor = await screen.findByLabelText(/^value$/i);
+    await user.clear(editor);
+    await user.type(editor, "next");
+    await user.click(screen.getByRole("button", { name: /^stage$/i }));
+    await user.click(screen.getByRole("button", { name: /1 staged/i }));
+    await user.click(await screen.findByRole("button", { name: /apply 1 change to registry/i }));
+    await waitFor(() => expect(screen.getByText(/subscribe failed/i)).toBeInTheDocument());
+
+    await user.click(screen.getByRole("link", { name: /^developer tools/i }));
+    expect(screen.getByText(/subscribe failed/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /apply 1 change to registry/i })).toBeInTheDocument();
   });
 });

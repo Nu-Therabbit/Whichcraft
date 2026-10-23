@@ -20,3 +20,10 @@
 - **Shell:** `?presentation=desktop-shell&page=environment&env=…` — `ShellEnvironmentWorkspace` mounts `EnvironmentProvider` / `useEnvironmentController` with tab panels for Variables (`Sidebar` + `DetailPanel`), Snapshots (`SnapshotPanel`), Import/Export (`ImportExportPanel`), Check command (`CheckCommandPanel`). Staging modals reuse `AppModals`.
 - **Coordinator:** Staged edits set environment pending; tool apply blocked while pending (`desktopShellEnvironment.test.tsx`). Apply-staged uses write admission; progress subscription failure tested.
 - **Windows manual (string/expand-string/PATH):** Not run in this agent environment (no driven desktop + Registry verification). Leave checkbox open for human QA on a real Windows machine.
+
+### Review round 1 (Grok 4.7)
+
+- **Apply-progress test:** `desktopShellEnvironment.test.tsx` now asserts visible subscribe error, no `applyEnvChanges`, retry apply without `WRITE_BUSY`, and cross-page staged-modal error retention.
+- **Modal state:** `ShellEnvironmentUiProvider` keeps `AppModals` mounted across shell pages; reopens staged dialog while `stagedBusy` / `stagedError`.
+- **DetailHeader:** `restartAsAdmin` uses injected `platform.restartAsAdmin()` via `useAppServices`.
+- **Inventory UI-03–09:** Evidence cells distinguish production wiring vs what `desktopShellEnvironment.test.tsx` actually exercises.
