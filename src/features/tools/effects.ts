@@ -1,4 +1,4 @@
-import type { EnvarlyApi } from "../../api";
+import type { ToolsRuntime } from "../../contracts";
 import type { ProfileToolPin, ToolKind, ToolProfile } from "../../types";
 import type { Operation, ToolsIntent, ToolsMsg } from "./messages";
 import { isSingleToolPlan, type ToolsState } from "./model";
@@ -11,7 +11,7 @@ export interface EffectContext {
   state: ToolsState;
   /** Dispatches a message: the reducer runs, then that message's effects. */
   dispatch: (msg: ToolsMsg) => void;
-  api: EnvarlyApi;
+  runtime: ToolsRuntime;
   newId: () => string;
 }
 
@@ -26,13 +26,14 @@ export async function runEffects(intent: ToolsIntent, ctx: EffectContext): Promi
 }
 
 async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
-  const { state, dispatch, api } = ctx;
+  const { state, dispatch, runtime } = ctx;
+  const { tools, platform } = runtime;
   const tool = state.tool;
   switch (msg.type) {
     case "started":
       // A newly pinned mise is fetched in the background after an app update (ticket 17).
       // Offline, the old one keeps working for uninstall and listing; installing retries.
-      api.prepareMise().catch(() => {});
+      tools.prepareMise().catch(() => {});
       return;
     case "selectTool":
       return reload(ctx, msg.tool);
@@ -40,12 +41,14 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       return reload(ctx, tool);
 
     case "buildPlan":
-      dispatch({ type: "planBuilt", plan: await api.planToolApply(tool, msg.root) });
+      dispatch({ type: "planBuilt", plan: await tools.planToolApply(tool, msg.root) });
       return;
     case "applyPlan": {
       const plan = state.plan.current;
       if (!plan) return;
-      const result = plan.requiresUac ? await api.applyToolPlanWithUac(plan) : await api.applyToolPlan(plan);
+      const result = plan.requiresUac
+        ? await tools.applyToolPlanWithUac(plan)
+        : await tools.applyToolPlan(plan);
       dispatch({ type: "applyFinished", result });
       if (result.stale) {
         if (isSingleToolPlan(plan)) dispatch({ type: "buildPlan", root: plan.selected.root, keepPending: true });
@@ -56,48 +59,56 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       const pending = state.update.pending;
       if (pending) {
         // The update's switch is in: move the profiles if left ticked, then offer removing the old one.
-        if (pending.repoint?.checked) await api.repointProfiles(pending.repoint.from, pending.installed);
+        if (pending.repoint?.checked) await tools.repointProfiles(pending.repoint.from, pending.installed);
         dispatch({ type: "updateSwitched" });
         dispatch({ type: "planUninstall", root: pending.replacedRoot, defaultReplacement: pending.installed.root });
       }
       return;
     }
     case "undoLast":
-      dispatch({ type: "undone", result: await api.undoLastWhichcraftApply() });
+      dispatch({ type: "undone", result: await tools.undoLastWhichcraftApply() });
       return reload(ctx, tool);
     case "resolveRecovery": {
       const recovery = state.recovery;
       if (!recovery) return;
       if (msg.action === "resume") {
-        await api.resumeApply(recovery.journalId);
+        await tools.resumeApply(recovery.journalId);
         dispatch({ type: "recoveryResolved", result: null });
       } else {
-        dispatch({ type: "recoveryResolved", result: await api.rollBackApply(recovery.journalId) });
+        dispatch({ type: "recoveryResolved", result: await tools.rollBackApply(recovery.journalId) });
       }
       return reload(ctx, tool);
     }
 
     case "saveSettings":
-      await api.saveWhichcraftSettings(msg.settings);
+      await platform.saveWhichcraftSettings(msg.settings);
       return reload(ctx, tool);
     case "checkShell":
-      dispatch({ type: "shellChecked", tool, check: await api.shellCheck(tool) });
+      dispatch({ type: "shellChecked", tool, check: await tools.shellCheck(tool) });
       return;
     case "openTerminal":
-      return api.openTerminal();
+      return platform.openTerminal();
     case "loadSdks":
-      dispatch({ type: "sdksLoaded", android: await api.getAndroidInventory(), msvc: await api.getMsvcInventory() });
+      dispatch({
+        type: "sdksLoaded",
+        android: await tools.getAndroidInventory(),
+        msvc: await tools.getMsvcInventory(),
+      });
       return;
 
     case "openInstallList": {
       // Listing may wait for mise to finish downloading, so its status is read afterwards.
-      const versions = await api.listRemoteVersions(tool);
-      dispatch({ type: "versionsLoaded", tool, miseStatus: await api.getMiseStatus(), versions });
+      const versions = await tools.listRemoteVersions(tool);
+      dispatch({ type: "versionsLoaded", tool, miseStatus: await tools.getMiseStatus(), versions });
       return;
     }
     case "chooseVersion":
       try {
-        dispatch({ type: "versionSized", tool, chosen: { version: msg.version, ...(await api.downloadSize(tool, msg.version)) } });
+        dispatch({
+          type: "versionSized",
+          tool,
+          chosen: { version: msg.version, ...(await tools.downloadSize(tool, msg.version)) },
+        });
       } catch {
         // The size is informative only; installing still works without it.
       }
@@ -105,18 +116,18 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     case "install": {
       const chosen = state.install.chosen;
       if (!chosen) return;
-      await api.installManaged(tool, chosen.version);
+      await tools.installManaged(tool, chosen.version);
       dispatch({ type: "installed" });
       return reload(ctx, tool);
     }
 
     case "checkUpdates":
-      dispatch({ type: "updatesChecked", tool, list: await api.updateCandidates(tool) });
+      dispatch({ type: "updatesChecked", tool, list: await tools.updateCandidates(tool) });
       return;
     case "update": {
       const old = state.installations.find((v) => v.root === msg.candidate.root);
-      const result = await api.updateInstallation(tool, msg.candidate.latest);
-      const names = old ? await api.profilesUsing(old) : [];
+      const result = await tools.updateInstallation(tool, msg.candidate.latest);
+      const names = old ? await tools.profilesUsing(old) : [];
       dispatch({
         type: "updateInstalled",
         candidateRoot: msg.candidate.root,
@@ -133,33 +144,33 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       return;
 
     case "planUninstall":
-      dispatch({ type: "uninstallPlanned", plan: await api.planUninstall(tool, msg.root) });
+      dispatch({ type: "uninstallPlanned", plan: await tools.planUninstall(tool, msg.root) });
       return;
     case "chooseReplacement":
       if (!msg.root || !state.uninstall.plan?.needsReplacement) return;
-      dispatch({ type: "switchPlanned", plan: await api.planToolApply(tool, msg.root) });
+      dispatch({ type: "switchPlanned", plan: await tools.planToolApply(tool, msg.root) });
       return;
     case "confirmUninstall": {
       const plan = state.uninstall.plan;
       if (!plan || !canConfirmUninstall(state, msg.replacementRoot)) return;
       // The switch applied is exactly the one the user was shown.
       const replacement = plan.needsReplacement ? state.uninstall.switchPlan : null;
-      const outcome = await api.uninstall(tool, plan.installation.root, replacement);
+      const outcome = await tools.uninstall(tool, plan.installation.root, replacement);
       dispatch({ type: "uninstallFinished", outcome });
       // A switch gone stale must be shown again before it is applied.
       if (outcome.status === "blocked") dispatch({ type: "chooseReplacement", root: msg.replacementRoot });
       const target = plan.replacements.find((r) => r.root === msg.replacementRoot);
       if (outcome.status === "removed" && msg.repoint && target) {
-        await api.repointProfiles(plan.installation, target);
+        await tools.repointProfiles(plan.installation, target);
       }
       return reload(ctx, tool);
     }
     case "closeUninstall":
       return;
     case "openFolder":
-      return api.openFolder(msg.path);
+      return platform.openFolder(msg.path);
     case "dismissUnfinished":
-      await api.dismissUnfinishedUninstall(msg.id);
+      await tools.dismissUnfinishedUninstall(msg.id);
       return reload(ctx, tool);
 
     case "loadProfiles":
@@ -169,21 +180,25 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     case "deleteProfile":
       return saveProfiles(ctx, profilesOf(state).filter((p) => p.id !== msg.id));
     case "planProfile":
-      dispatch({ type: "planBuilt", plan: await api.planProfile(msg.profile) });
+      dispatch({ type: "planBuilt", plan: await tools.planProfile(msg.profile) });
       return;
     case "checkMissing":
-      dispatch({ type: "missingChecked", profileId: msg.profile.id, items: await api.profileMissing(msg.profile) });
+      dispatch({
+        type: "missingChecked",
+        profileId: msg.profile.id,
+        items: await tools.profileMissing(msg.profile),
+      });
       return;
     case "installMissing":
       // F-3: install what is missing, then go straight on to the profile's plan.
-      await api.installMissing(msg.profile);
+      await tools.installMissing(msg.profile);
       dispatch({ type: "missingInstalled" });
       await loadProfiles(ctx);
       dispatch({ type: "planProfile", profile: msg.profile });
       return;
 
     case "planCleanup": {
-      const result = await api.planPathCleanup();
+      const result = await tools.planPathCleanup();
       dispatch({
         type: "cleanupPlanned",
         plan: result.userDiffs.length > 0 ? result : null,
@@ -199,16 +214,17 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
 }
 
 /** Reads what the panel shows for `tool` from the backend again. */
-async function reload({ api, dispatch }: EffectContext, tool: ToolKind): Promise<void> {
+async function reload({ runtime, dispatch }: EffectContext, tool: ToolKind): Promise<void> {
+  const { tools, platform } = runtime;
   try {
     dispatch({
       type: "refreshed",
       tool,
-      recovery: await api.getRecoveryStatus(),
-      unfinished: await api.unfinishedUninstalls(),
-      settings: await api.getWhichcraftSettings(),
-      installations: await api.listToolInstallations(tool),
-      pythonInfo: tool === "python" ? await api.getPythonLauncherInfo() : null,
+      recovery: await tools.getRecoveryStatus(),
+      unfinished: await tools.unfinishedUninstalls(),
+      settings: await platform.getWhichcraftSettings(),
+      installations: await tools.listToolInstallations(tool),
+      pythonInfo: tool === "python" ? await tools.getPythonLauncherInfo() : null,
     });
   } catch (e) {
     dispatch({ type: "failed", op: "inventory", error: String(e) });
@@ -216,12 +232,13 @@ async function reload({ api, dispatch }: EffectContext, tool: ToolKind): Promise
 }
 
 /** Each profile with whether it matches what is effective now; recomputed on every load (F-6). */
-async function loadProfiles({ api, dispatch }: EffectContext): Promise<void> {
-  const list = await api.listProfiles();
-  const statuses = await Promise.all(list.map((p) => api.profileStatus(p)));
+async function loadProfiles({ runtime, dispatch }: EffectContext): Promise<void> {
+  const { tools } = runtime;
+  const list = await tools.listProfiles();
+  const statuses = await Promise.all(list.map((p) => tools.profileStatus(p)));
   const current: ProfileToolPin[] = [];
   for (const kind of PROFILE_TOOLS) {
-    const effective = (await api.listToolInstallations(kind)).find((v) => v.effective);
+    const effective = (await tools.listToolInstallations(kind)).find((v) => v.effective);
     if (effective) {
       current.push({ tool: kind, vendor: effective.vendor, version: effective.version, preferredRoot: effective.root });
     }
@@ -230,7 +247,7 @@ async function loadProfiles({ api, dispatch }: EffectContext): Promise<void> {
 }
 
 async function saveProfiles(ctx: EffectContext, next: ToolProfile[]): Promise<void> {
-  await ctx.api.saveProfiles(next);
+  await ctx.runtime.tools.saveProfiles(next);
   await loadProfiles(ctx);
 }
 

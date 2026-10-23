@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { EnvarlyApi, LaunchOptions } from "../api";
+import type { EnvarlyApi } from "../contracts";
+import type { LaunchOptions } from "../platform/types";
 import { inferEnvValueKind } from "../lib/envValueKind";
 import type {
   EnvSnapshot,

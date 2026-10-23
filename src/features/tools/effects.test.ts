@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import type { UninstallPlan } from "../../types";
-import { fakeApi, harness, inst, planFor } from "./testHarness";
+import { fakeToolsRuntime, harness, inst, planFor } from "./testHarness";
 
 const jdk21 = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
 const jdk21new = inst("java", "21.0.13", "C:\\store\\jdk21.0.13", { managed: true });
 const applied = { planId: "p", stale: false, needsElevation: false };
 
-function updateApi(overrides = {}) {
-  return fakeApi({
+function updateRuntime(overrides = {}) {
+  return fakeToolsRuntime({
     listToolInstallations: vi.fn(async () => [jdk21]),
     updateInstallation: vi.fn(async () => ({ installation: jdk21new, plan: planFor(jdk21new) })),
     profilesUsing: vi.fn(async () => ["Android work"]),
@@ -34,8 +34,8 @@ function uninstallPlanFor(installation = jdk21, extra: Partial<UninstallPlan> = 
 
 describe("tools effects", () => {
   it("update, switch, move the profiles, then offer removing the old version with the new one suggested", async () => {
-    const api = updateApi();
-    const h = harness(api, { installations: [jdk21] });
+    const { api, runtime } = updateRuntime();
+    const h = harness(runtime, { installations: [jdk21] });
     h.dispatch({ type: "update", candidate: { root: "C:\\jdk21", current: "21.0.12", latest: "21.0.13" } });
     await h.settle();
     expect(h.state.plan.current?.selected.root).toBe(jdk21new.root);
@@ -52,8 +52,8 @@ describe("tools effects", () => {
   });
 
   it("does not move the profiles when the user unticks it", async () => {
-    const api = updateApi();
-    const h = harness(api, { installations: [jdk21] });
+    const { api, runtime } = updateRuntime();
+    const h = harness(runtime, { installations: [jdk21] });
     h.dispatch({ type: "update", candidate: { root: "C:\\jdk21", current: "21.0.12", latest: "21.0.13" } });
     await h.settle();
     h.dispatch({ type: "toggleRepoint", checked: false });
@@ -68,8 +68,11 @@ describe("tools effects", () => {
       .fn()
       .mockResolvedValueOnce({ planId: "p", stale: true, needsElevation: false })
       .mockResolvedValueOnce(applied);
-    const api = updateApi({ applyToolPlan, planToolApply: vi.fn(async () => planFor(jdk21new)) });
-    const h = harness(api, { installations: [jdk21] });
+    const { api, runtime } = updateRuntime({
+      applyToolPlan,
+      planToolApply: vi.fn(async () => planFor(jdk21new)),
+    });
+    const h = harness(runtime, { installations: [jdk21] });
     h.dispatch({ type: "update", candidate: { root: "C:\\jdk21", current: "21.0.12", latest: "21.0.13" } });
     await h.settle();
     h.dispatch({ type: "applyPlan" });
@@ -87,8 +90,12 @@ describe("tools effects", () => {
     const shown = planFor(jdk21new, { planId: "shown" });
     const planToolApply = vi.fn(async () => shown);
     const uninstall = vi.fn().mockResolvedValueOnce({ status: "blocked", reason: "the environment changed" });
-    const api = fakeApi({ planUninstall: vi.fn(async () => uninstallPlanFor()), planToolApply, uninstall });
-    const h = harness(api);
+    const { runtime } = fakeToolsRuntime({
+      planUninstall: vi.fn(async () => uninstallPlanFor()),
+      planToolApply,
+      uninstall,
+    });
+    const h = harness(runtime);
     h.dispatch({ type: "planUninstall", root: "C:\\jdk21" });
     await h.settle();
     h.dispatch({ type: "confirmUninstall", replacementRoot: jdk21new.root, repoint: true });
@@ -107,12 +114,12 @@ describe("tools effects", () => {
 
   it("moves profiles only once the installation is really removed", async () => {
     const repointProfiles = vi.fn(async () => []);
-    const api = fakeApi({
+    const { runtime } = fakeToolsRuntime({
       planUninstall: vi.fn(async () => uninstallPlanFor(jdk21, { needsReplacement: false })),
       uninstall: vi.fn(async () => ({ status: "cancelled" as const })),
       repointProfiles,
     });
-    const h = harness(api);
+    const h = harness(runtime);
     h.dispatch({ type: "planUninstall", root: "C:\\jdk21" });
     await h.settle();
     h.dispatch({ type: "confirmUninstall", replacementRoot: jdk21new.root, repoint: true });
@@ -123,13 +130,13 @@ describe("tools effects", () => {
 
   it("installs what a profile misses, then shows the profile's plan", async () => {
     const profile = { id: "a", name: "Android work", tools: [] };
-    const api = fakeApi({
+    const { runtime } = fakeToolsRuntime({
       installMissing: vi.fn(async () => {}),
       listProfiles: vi.fn(async () => [profile]),
       profileStatus: vi.fn(async () => ({ profile, matchesEffective: false, unavailable: [] })),
       planProfile: vi.fn(async () => planFor(jdk21new, { additionalSelections: [] })),
     });
-    const h = harness(api);
+    const h = harness(runtime);
     h.dispatch({ type: "installMissing", profile });
     await h.settle();
     expect(h.state.profiles.busy).toBe(false);
@@ -138,8 +145,10 @@ describe("tools effects", () => {
   });
 
   it("a failing call shows its error and frees its buttons", async () => {
-    const api = fakeApi({ updateCandidates: vi.fn(async () => Promise.reject(new Error("offline"))) });
-    const h = harness(api);
+    const { runtime } = fakeToolsRuntime({
+      updateCandidates: vi.fn(async () => Promise.reject(new Error("offline"))),
+    });
+    const h = harness(runtime);
     h.dispatch({ type: "checkUpdates" });
     expect(h.state.update.busy).toBe(true);
     await h.settle();
@@ -152,7 +161,7 @@ describe("tools effects", () => {
       releaseJava = resolve;
     });
     const node22 = inst("node", "22.23.4", "C:\\node22");
-    const api = fakeApi({
+    const { runtime } = fakeToolsRuntime({
       listToolInstallations: vi.fn(async (tool) => {
         if (tool === "java") {
           await javaGate;
@@ -161,7 +170,7 @@ describe("tools effects", () => {
         return [node22];
       }),
     });
-    const h = harness(api);
+    const h = harness(runtime);
     h.dispatch({ type: "refresh" });
     h.dispatch({ type: "selectTool", tool: "node" });
     await vi.waitFor(() => expect(h.state.installations).toEqual([node22]));
@@ -174,14 +183,14 @@ describe("tools effects", () => {
   it("reads the mise status after listing versions, so a finished download unlocks Install", async () => {
     let fetching = true;
     const status = (f: boolean) => ({ version: "2026.10.1", present: !f, downloadBytes: 1, oldVersions: [], fetching: f });
-    const api = fakeApi({
+    const { runtime } = fakeToolsRuntime({
       getMiseStatus: vi.fn(async () => status(fetching)),
       listRemoteVersions: vi.fn(async () => {
         fetching = false;
         return [{ version: "22.24.0", downloadBytes: null, installBytes: null }];
       }),
     });
-    const h = harness(api);
+    const h = harness(runtime);
     h.dispatch({ type: "openInstallList" });
     await h.settle();
     expect(h.state.install.miseStatus?.fetching).toBe(false);

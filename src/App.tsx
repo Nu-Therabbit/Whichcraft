@@ -23,6 +23,8 @@ import { useStaged } from "./hooks/useStaged";
 import { useStagingHandlers } from "./hooks/useStagingHandlers";
 import { useTheme } from "./hooks/useTheme";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
+import { createToolsRuntime } from "./contracts";
+import { useAppServices } from "./composition/AppServicesContext";
 import { useToolsStore } from "./features/tools/useToolsStore";
 import { ToolsPanel } from "./components/ToolsPanel/ToolsPanel";
 import type { DiagnosticAction, EnvironmentDiagnostic } from "./lib/environmentDiagnostics";
@@ -40,6 +42,8 @@ type Dialog =
   | null;
 
 export default function App() {
+  const services = useAppServices();
+  const toolsRuntime = useMemo(() => createToolsRuntime(services), [services]);
   const { t } = useI18n();
   const { theme, toggle: toggleTheme } = useTheme();
   const { vars, loading, error, refresh } = useEnvVars();
@@ -120,7 +124,7 @@ export default function App() {
   useKeyboardShortcuts(undo, redo, localUndoRef);
 
   const updateInfo = useUpdateCheck();
-  const { state: tools, dispatch: sendTools } = useToolsStore();
+  const { state: tools, dispatch: sendTools } = useToolsStore("java", toolsRuntime);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the app starts
   useEffect(() => sendTools({ type: "started" }), []);
 

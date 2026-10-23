@@ -1,7 +1,8 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, withTimeout } from "./api";
+import { api, resetLegacyApiFacadeForTests, withTimeout } from "./api";
+import { resetProductionServicesForTests } from "./composition/createProductionServices";
 import type { ApplyProgressEvent } from "./types";
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -10,6 +11,8 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 describe("api runtime detection", () => {
   beforeEach(() => {
+    resetLegacyApiFacadeForTests();
+    resetProductionServicesForTests();
     vi.mocked(isTauri).mockReturnValue(false);
   });
 
@@ -51,6 +54,8 @@ describe("withTimeout", () => {
 
 describe("api.onApplyProgress", () => {
   beforeEach(() => {
+    resetLegacyApiFacadeForTests();
+    resetProductionServicesForTests();
     vi.mocked(isTauri).mockReturnValue(true);
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {
       if (cmd === "get_launch_options") return { demo: false, demoFixture: null };

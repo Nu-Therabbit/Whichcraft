@@ -1,5 +1,6 @@
 import { vi } from "vitest";
-import type { EnvarlyApi } from "../../api";
+import type { EnvarlyApi, ToolsRuntime } from "../../contracts";
+import { createToolsRuntime, splitEnvarlyApi } from "../../contracts";
 import type { ToolApplyPlan, ToolInstallationRef, ToolInstallationView, ToolKind } from "../../types";
 import { runEffects } from "./effects";
 import { isIntent, type ToolsIntent, type ToolsMsg } from "./messages";
@@ -32,8 +33,16 @@ export function fakeApi(overrides: Partial<EnvarlyApi>): EnvarlyApi {
   });
 }
 
+export function fakeToolsRuntime(overrides: Partial<EnvarlyApi> = {}): {
+  runtime: ToolsRuntime;
+  api: EnvarlyApi;
+} {
+  const api = fakeApi(overrides);
+  return { runtime: createToolsRuntime(splitEnvarlyApi(api)), api };
+}
+
 /** Runs the reducer and effects the way useToolsStore does, and waits for all effects. */
-export function harness(api: EnvarlyApi, start: Partial<ToolsState> = {}) {
+export function harness(runtime: ToolsRuntime, start: Partial<ToolsState> = {}) {
   let state: ToolsState = { ...initialToolsState(), ...start };
   const log: ToolsMsg[] = [];
   const pending = new Set<Promise<void>>();
@@ -42,7 +51,7 @@ export function harness(api: EnvarlyApi, start: Partial<ToolsState> = {}) {
     state = reduce(before, msg);
     log.push(msg);
     if (isIntent(msg)) {
-      const p = runEffects(msg, { state: before, dispatch, api, newId: () => "new-id" });
+      const p = runEffects(msg, { state: before, dispatch, runtime, newId: () => "new-id" });
       pending.add(p);
       void p.finally(() => pending.delete(p));
     }
@@ -59,7 +68,12 @@ export function harness(api: EnvarlyApi, start: Partial<ToolsState> = {}) {
   };
 }
 
-export function inst(tool: ToolKind, version: string, root: string, extra: Partial<ToolInstallationView> = {}): ToolInstallationView {
+export function inst(
+  tool: ToolKind,
+  version: string,
+  root: string,
+  extra: Partial<ToolInstallationView> = {},
+): ToolInstallationView {
   return {
     tool,
     vendor: tool === "java" ? "Eclipse Adoptium" : "Node.js",
