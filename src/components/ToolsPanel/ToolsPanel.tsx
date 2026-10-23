@@ -1,38 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import type { ToolsDispatch } from "../../features/tools/useToolsStore";
+import type { ToolsState } from "../../features/tools/model";
 import { useI18n } from "../../hooks/useI18n";
-import type {
-  AndroidInventory,
-  MiseStatus,
-  MissingPin,
-  MsvcInventory,
-  ProfileMatchStatus,
-  ProfileToolPin,
-  PythonSupplementalView,
-  RecoveryView,
-  RemoteVersion,
-  ShellCheck,
-  ToolApplyPlan,
-  ToolInstallationView,
-  ToolKind,
-  ToolProfile,
-  UnfinishedUninstall,
-  UninstallOutcome,
-  UninstallPlan,
-  UpdateCandidate,
-  WhichcraftSettings,
-} from "../../types";
+import type { ToolKind } from "../../types";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { InstallSection } from "./InstallSection";
+import { PathCleanupSummary } from "./PathCleanupSummary";
+import { PlanDiffList } from "./PlanDiffList";
+import { ProfilesSection } from "./ProfilesSection";
 import { RecoveryBanner } from "./RecoveryBanner";
 import { ShellCheckResult } from "./ShellCheckResult";
 import { PythonLauncherInfo, SdkInventory } from "./SupplementalInfo";
 import { ToolsSettings } from "./ToolsSettings";
 import { UninstallSection } from "./UninstallSection";
-import { PathCleanupSummary } from "./PathCleanupSummary";
-import { PlanDiffList } from "./PlanDiffList";
-import { ProfilesSection } from "./ProfilesSection";
 import { UpdateList } from "./UpdateList";
 
 const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
@@ -40,183 +22,77 @@ const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"
 interface Props {
   open: boolean;
   onClose: () => void;
-  tool: ToolKind;
-  onToolChange: (tool: ToolKind) => void;
-  installations: ToolInstallationView[];
-  loading: boolean;
-  error: string | null;
-  plan: ToolApplyPlan | null;
-  planBusy: boolean;
-  applyBusy: boolean;
-  onRefresh: () => void;
-  onSelect: (root: string) => void;
-  onApplyPlan: () => void;
-  onUndo: () => void;
-  onClearPlan: () => void;
-  recovery?: RecoveryView | null;
-  onResumeRecovery?: () => void;
-  onRollBackRecovery?: () => void;
-  settings?: WhichcraftSettings | null;
-  onSaveSettings?: (settings: WhichcraftSettings) => void;
-  pythonInfo?: PythonSupplementalView | null;
-  android?: AndroidInventory | null;
-  msvc?: MsvcInventory | null;
-  onLoadSdks?: () => void;
-  shellCheck?: ShellCheck | null;
-  onShellCheck?: () => void;
-  onOpenTerminal?: () => void;
-  install?: {
-    versions: RemoteVersion[];
-    loading: boolean;
-    busy: boolean;
-    miseStatus: MiseStatus | null;
-    chosen: { version: string; downloadBytes: number | null; diskBytes?: number | null } | null;
-    onOpen: () => void;
-    onChoose: (version: string) => void;
-    onInstall: () => void;
-  };
-  pathCleanup?: {
-    result: { duplicates: string[]; missing: string[] } | null;
-    onPlan: () => void;
-  };
-  updates?: {
-    list: UpdateCandidate[] | null;
-    busy: boolean;
-    awaitingSwitch: boolean;
-    onCheck: () => void;
-    onUpdate: (candidate: UpdateCandidate) => void;
-    repoint?: { names: string[]; checked: boolean; onToggle: (checked: boolean) => void } | null;
-  };
-  profiles?: {
-    list: ProfileMatchStatus[];
-    current: ProfileToolPin[];
-    missing: { profileId: string; items: MissingPin[] } | null;
-    busy: boolean;
-    onLoad: () => void;
-    onCreate: (name: string, tools: ProfileToolPin[]) => void;
-    onDelete: (id: string) => void;
-    onApply: (profile: ToolProfile) => void;
-    onCheckMissing: (profile: ToolProfile) => void;
-    onInstallMissing: (profile: ToolProfile) => void;
-  };
-  unfinishedUninstalls?: {
-    list: UnfinishedUninstall[];
-    onRescan: (id: string) => void;
-    onOpenFolder: (path: string) => void;
-  };
-  uninstall?: {
-    plan: UninstallPlan | null;
-    outcome: UninstallOutcome | null;
-    busy: boolean;
-    defaultReplacement?: string | null;
-    switchPlan?: ToolApplyPlan | null;
-    onChooseReplacement?: (root: string | null) => void;
-    onPlan: (root: string) => void;
-    onConfirm: (replacementRoot: string | null, repointProfiles: boolean) => void;
-    onOpenFolder: (path: string) => void;
-    onClose: () => void;
-  };
+  /** The panel's whole state (MVI model); the panel only reads it. */
+  state: ToolsState;
+  /** The one way the panel changes anything: it sends intents. */
+  dispatch: ToolsDispatch;
 }
 
-export function ToolsPanel({
-  open,
-  onClose,
-  tool,
-  onToolChange,
-  installations,
-  loading,
-  error,
-  plan,
-  planBusy,
-  applyBusy,
-  onRefresh,
-  onSelect,
-  onApplyPlan,
-  onUndo,
-  onClearPlan,
-  recovery,
-  onResumeRecovery,
-  onRollBackRecovery,
-  settings,
-  onSaveSettings,
-  pythonInfo,
-  android,
-  msvc,
-  onLoadSdks,
-  shellCheck,
-  onShellCheck,
-  onOpenTerminal,
-  install,
-  updates,
-  profiles,
-  uninstall,
-  pathCleanup,
-  unfinishedUninstalls,
-}: Props) {
+/** The developer tools panel. Renders `state` and turns every user action into an intent;
+ * which tab or section is open is the only state it keeps itself. */
+export function ToolsPanel({ open, onClose, state, dispatch }: Props) {
   const { t } = useI18n();
   const [showSettings, setShowSettings] = useState(false);
   const [showSdks, setShowSdks] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
   const [showProfiles, setShowProfiles] = useState(false);
-  const loadProfiles = profiles?.onLoad;
+  const { tool, installations, loading, error, settings, plan, uninstall, update, install, profiles } = state;
+  const applyBusy = plan.applying;
+
+  // Opening the panel reads the environment.
+  useEffect(() => {
+    if (open) dispatch({ type: "refresh" });
+  }, [open, dispatch]);
+
+  // The environment can change outside the app; re-read it when the window gets focus again.
+  useEffect(() => {
+    if (!open) return;
+    const onFocus = () => dispatch({ type: "refresh" });
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [open, dispatch]);
+
+  // Opening the install list, or switching tools while it is open, lists that tool's versions.
+  useEffect(() => {
+    if (showInstall && tool !== "git") dispatch({ type: "openInstallList" });
+  }, [tool, showInstall, dispatch]);
 
   // Every refresh (focus, apply, uninstall) gives a new installations list; profile statuses
   // follow it, so a change made outside the app shows up too (F-6).
   // biome-ignore lint/correctness/useExhaustiveDependencies: installations is the refresh signal
   useEffect(() => {
-    if (open && showProfiles) loadProfiles?.();
-  }, [open, showProfiles, loadProfiles, installations]);
+    if (open && showProfiles) dispatch({ type: "loadProfiles" });
+  }, [open, showProfiles, dispatch, installations]);
+
   // Installing, updating and installing what a profile misses all ask for the store first (I-5).
+  const confirmStore = (store: string) => {
+    if (settings) dispatch({ type: "saveSettings", settings: { ...settings, installStore: store, installStoreConfirmed: true } });
+  };
   const storeGate = {
     confirmed: settings?.installStoreConfirmed ?? false,
     installStore: settings?.installStore ?? "",
-    onConfirm: (store: string) => {
-      if (settings && onSaveSettings) onSaveSettings({ ...settings, installStore: store, installStoreConfirmed: true });
-    },
+    onConfirm: confirmStore,
   };
 
   // Git is switch-only in v1 (Q14).
-  const canInstall = tool !== "git" && !!install;
-  // Held in a ref: loading must follow the tool and the list being open, not the callback's
-  // identity, or a callback recreated on each render reloads forever and clears the choice.
-  const loadInstallable = useRef(install?.onOpen);
-  loadInstallable.current = install?.onOpen;
-
-  // Opening the install list, or switching tools while it is open, lists that tool's versions.
-  useEffect(() => {
-    if (showInstall && tool !== "git") loadInstallable.current?.();
-  }, [tool, showInstall]);
-
-  // onRefresh changes identity whenever the selected tool changes, so this also refreshes on tool switch.
-  useEffect(() => {
-    if (open) onRefresh();
-  }, [open, onRefresh]);
-
-  // The environment can change outside the app; re-read it when the window gets focus again.
-  useEffect(() => {
-    if (!open) return;
-    const onFocus = () => onRefresh();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [open, onRefresh]);
+  const canInstall = tool !== "git";
+  const current = plan.current;
 
   return (
     <Modal open={open} onClose={onClose} title={t("tools.title")} size="xl">
       <div className="flex flex-col gap-4">
-        {error && (
-          <div className="text-sm text-danger border border-danger/30 rounded-md px-3 py-2">{error}</div>
-        )}
+        {error && <div className="text-sm text-danger border border-danger/30 rounded-md px-3 py-2">{error}</div>}
 
-        {recovery && onResumeRecovery && onRollBackRecovery && (
+        {state.recovery && (
           <RecoveryBanner
-            recovery={recovery}
+            recovery={state.recovery}
             busy={applyBusy}
-            onResume={onResumeRecovery}
-            onRollBack={onRollBackRecovery}
+            onResume={() => dispatch({ type: "resolveRecovery", action: "resume" })}
+            onRollBack={() => dispatch({ type: "resolveRecovery", action: "rollBack" })}
           />
         )}
 
-        {unfinishedUninstalls?.list.map((u) => (
+        {state.unfinished.map((u) => (
           <div key={u.id} className="text-sm border border-warning/40 rounded-md px-3 py-2 flex flex-col gap-2">
             <p className="text-warning">
               {t("tools.uninstall.unfinished", {
@@ -225,10 +101,14 @@ export function ToolsPanel({
               })}
             </p>
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={() => unfinishedUninstalls.onOpenFolder(u.installation.root)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => dispatch({ type: "openFolder", path: u.installation.root })}
+              >
                 {t("tools.uninstall.open_folder")}
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => unfinishedUninstalls.onRescan(u.id)}>
+              <Button variant="secondary" size="sm" onClick={() => dispatch({ type: "dismissUnfinished", id: u.id })}>
                 {t("tools.uninstall.rescan")}
               </Button>
             </div>
@@ -244,102 +124,97 @@ export function ToolsPanel({
               onClick={() => {
                 setShowSdks(false);
                 setShowProfiles(false);
-                onToolChange(kind);
+                dispatch({ type: "selectTool", tool: kind });
               }}
             >
               {t(`tools.kind.${kind}`)}
             </Button>
           ))}
-          {onLoadSdks && (
-            <Button
-              variant={showSdks ? "primary" : "secondary"}
-              size="sm"
-              onClick={() => {
-                setShowSdks(true);
-                setShowProfiles(false);
-                onLoadSdks();
-              }}
-            >
-              {t("tools.sdks_tab")}
-            </Button>
-          )}
-          {profiles && (
-            <Button
-              variant={showProfiles ? "primary" : "secondary"}
-              size="sm"
-              onClick={() => {
-                setShowProfiles(true);
-                setShowSdks(false);
-              }}
-            >
-              {t("tools.profiles_tab")}
-            </Button>
-          )}
+          <Button
+            variant={showSdks ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => {
+              setShowSdks(true);
+              setShowProfiles(false);
+              dispatch({ type: "loadSdks" });
+            }}
+          >
+            {t("tools.sdks_tab")}
+          </Button>
+          <Button
+            variant={showProfiles ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => {
+              setShowProfiles(true);
+              setShowSdks(false);
+            }}
+          >
+            {t("tools.profiles_tab")}
+          </Button>
         </div>
 
-        {showSdks && <SdkInventory android={android ?? null} msvc={msvc ?? null} />}
+        {showSdks && <SdkInventory android={state.sdks.android} msvc={state.sdks.msvc} />}
 
-        {showProfiles && profiles && (
+        {showProfiles && (
           <ProfilesSection
             profiles={profiles.list}
             current={profiles.current}
             missing={profiles.missing}
             busy={profiles.busy || applyBusy}
-            onCreate={profiles.onCreate}
-            onDelete={profiles.onDelete}
-            onApply={profiles.onApply}
-            onCheckMissing={profiles.onCheckMissing}
-            onInstallMissing={profiles.onInstallMissing}
+            onCreate={(name, pins) => dispatch({ type: "createProfile", name, tools: pins })}
+            onDelete={(id) => dispatch({ type: "deleteProfile", id })}
+            onApply={(profile) => dispatch({ type: "planProfile", profile })}
+            onCheckMissing={(profile) => dispatch({ type: "checkMissing", profile })}
+            onInstallMissing={(profile) => dispatch({ type: "installMissing", profile })}
             store={storeGate}
           />
         )}
 
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
+          <Button variant="secondary" size="sm" onClick={() => dispatch({ type: "refresh" })} disabled={loading}>
             {t("tools.refresh")}
           </Button>
-          <Button variant="ghost" size="sm" onClick={onUndo} disabled={applyBusy}>
+          <Button variant="ghost" size="sm" onClick={() => dispatch({ type: "undoLast" })} disabled={applyBusy}>
             {t("tools.undo_last")}
           </Button>
-          {onShellCheck && (
-            <Button variant="ghost" size="sm" onClick={onShellCheck} disabled={loading}>
-              {t("tools.check_in_shell")}
-            </Button>
-          )}
-          {onOpenTerminal && (
-            <Button variant="ghost" size="sm" onClick={onOpenTerminal}>
-              {t("tools.open_terminal")}
-            </Button>
-          )}
+          <Button variant="ghost" size="sm" onClick={() => dispatch({ type: "checkShell" })} disabled={loading}>
+            {t("tools.check_in_shell")}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => dispatch({ type: "openTerminal" })}>
+            {t("tools.open_terminal")}
+          </Button>
           {canInstall && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowInstall((v) => !v)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setShowInstall((v) => !v)}>
               {t("tools.install_version")}
             </Button>
           )}
-          {canInstall && updates && (
-            <Button variant="ghost" size="sm" onClick={updates.onCheck} disabled={updates.busy}>
+          {canInstall && (
+            <Button variant="ghost" size="sm" onClick={() => dispatch({ type: "checkUpdates" })} disabled={update.busy}>
               {t("tools.check_updates")}
             </Button>
           )}
-          {pathCleanup && (
-            <Button variant="ghost" size="sm" onClick={pathCleanup.onPlan} disabled={planBusy || applyBusy}>
-              {t("tools.cleanup.button")}
-            </Button>
-          )}
-          {settings && onSaveSettings && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => dispatch({ type: "planCleanup" })}
+            disabled={plan.building || applyBusy}
+          >
+            {t("tools.cleanup.button")}
+          </Button>
+          {settings && (
             <Button variant="ghost" size="sm" onClick={() => setShowSettings((v) => !v)}>
               {showSettings ? t("tools.hide_settings") : t("tools.show_settings")}
             </Button>
           )}
         </div>
 
-        {showSettings && settings && onSaveSettings && (
+        {showSettings && settings && (
           <div className="border border-rim rounded-md p-4">
-            <ToolsSettings settings={settings} busy={applyBusy || loading} onSave={onSaveSettings} />
+            <ToolsSettings
+              settings={settings}
+              busy={applyBusy || loading}
+              onSave={(next) => dispatch({ type: "saveSettings", settings: next })}
+            />
           </div>
         )}
 
@@ -356,7 +231,7 @@ export function ToolsPanel({
                 <button
                   type="button"
                   className="flex-1 text-left px-4 py-3 hover:bg-surface/60 flex flex-col gap-1 disabled:opacity-50"
-                  onClick={() => onSelect(item.root)}
+                  onClick={() => dispatch({ type: "buildPlan", root: item.root })}
                   disabled={!item.available}
                 >
                   <div className="flex items-center gap-2 flex-wrap">
@@ -369,17 +244,15 @@ export function ToolsPanel({
                     <Badge variant="muted">{t(`tools.installer.${item.installerKind}`)}</Badge>
                   </div>
                   <span className="text-xs text-muted font-mono break-all">{item.root}</span>
-                  {item.mismatchReason && (
-                    <span className="text-xs text-warning">{item.mismatchReason}</span>
-                  )}
+                  {item.mismatchReason && <span className="text-xs text-warning">{item.mismatchReason}</span>}
                 </button>
-                {uninstall && item.available && (
+                {item.available && (
                   <Button
                     variant="ghost"
                     size="xs"
                     className="m-3"
                     disabled={uninstall.busy}
-                    onClick={() => uninstall.onPlan(item.root)}
+                    onClick={() => dispatch({ type: "planUninstall", root: item.root })}
                   >
                     {t("tools.uninstall_button")}
                   </Button>
@@ -389,9 +262,9 @@ export function ToolsPanel({
           )}
         </div>
 
-        {shellCheck && shellCheck.tool === tool && <ShellCheckResult check={shellCheck} />}
+        {state.shellCheck && state.shellCheck.tool === tool && <ShellCheckResult check={state.shellCheck} />}
 
-        {showInstall && canInstall && install && settings && onSaveSettings && (
+        {showInstall && canInstall && settings && (
           <InstallSection
             tool={tool}
             versions={install.versions}
@@ -400,64 +273,72 @@ export function ToolsPanel({
             miseStatus={install.miseStatus}
             settings={settings}
             chosen={install.chosen}
-            onChoose={install.onChoose}
-            onConfirmStore={(store) => onSaveSettings({ ...settings, installStore: store, installStoreConfirmed: true })}
-            onInstall={install.onInstall}
+            onChoose={(version) => dispatch({ type: "chooseVersion", version })}
+            onConfirmStore={confirmStore}
+            onInstall={() => dispatch({ type: "install" })}
           />
         )}
 
-        {canInstall && updates?.list && (
+        {canInstall && update.list && (
           <UpdateList
-            updates={updates.list}
-            busy={updates.busy}
-            awaitingSwitch={updates.awaitingSwitch}
-            onUpdate={updates.onUpdate}
+            updates={update.list}
+            busy={update.busy}
+            awaitingSwitch={update.pending !== null}
+            onUpdate={(candidate) => dispatch({ type: "update", candidate })}
             store={storeGate}
-            repoint={updates.repoint}
+            repoint={
+              update.pending?.repoint && {
+                names: update.pending.repoint.names,
+                checked: update.pending.repoint.checked,
+                onToggle: (checked) => dispatch({ type: "toggleRepoint", checked }),
+              }
+            }
           />
         )}
 
-        {uninstall && (
-          <UninstallSection
-            key={uninstall.plan?.installation.root ?? "none"}
-            plan={uninstall.plan}
-            outcome={uninstall.outcome}
-            busy={uninstall.busy}
-            defaultReplacement={uninstall.defaultReplacement}
-            switchPlan={uninstall.switchPlan}
-            onChooseReplacement={uninstall.onChooseReplacement}
-            onConfirm={uninstall.onConfirm}
-            onOpenFolder={uninstall.onOpenFolder}
-            onClose={uninstall.onClose}
-          />
-        )}
+        <UninstallSection
+          key={uninstall.plan?.installation.root ?? "none"}
+          plan={uninstall.plan}
+          outcome={uninstall.outcome}
+          busy={uninstall.busy}
+          defaultReplacement={uninstall.defaultReplacement}
+          switchPlan={uninstall.switchPlan}
+          onChooseReplacement={(root) => dispatch({ type: "chooseReplacement", root })}
+          onConfirm={(replacementRoot, repoint) => dispatch({ type: "confirmUninstall", replacementRoot, repoint })}
+          onOpenFolder={(path) => dispatch({ type: "openFolder", path })}
+          onClose={() => dispatch({ type: "closeUninstall" })}
+        />
 
-        {tool === "python" && pythonInfo && <PythonLauncherInfo info={pythonInfo} />}
+        {tool === "python" && state.pythonInfo && <PythonLauncherInfo info={state.pythonInfo} />}
 
-        {pathCleanup?.result && (plan?.recordsSelection === false || !plan) && (
+        {plan.cleanup && (current?.recordsSelection === false || !current) && (
           <PathCleanupSummary
-            duplicates={pathCleanup.result.duplicates}
-            missing={pathCleanup.result.missing}
-            pending={plan?.recordsSelection === false}
+            duplicates={plan.cleanup.duplicates}
+            missing={plan.cleanup.missing}
+            pending={current?.recordsSelection === false}
           />
         )}
 
-        {plan && (
+        {current && (
           <div className="border border-rim rounded-md p-4 flex flex-col gap-3 bg-surface/40">
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-semibold text-sm">{t("tools.plan_title")}</h3>
-              <Button variant="ghost" size="sm" onClick={onClearPlan}>
+              <Button variant="ghost" size="sm" onClick={() => dispatch({ type: "clearPlan" })}>
                 {t("tools.dismiss_plan")}
               </Button>
             </div>
-            <PlanDiffList plan={plan} />
-            <Button variant="primary" onClick={onApplyPlan} disabled={applyBusy || planBusy}>
+            <PlanDiffList plan={current} />
+            <Button
+              variant="primary"
+              onClick={() => dispatch({ type: "applyPlan" })}
+              disabled={applyBusy || plan.building}
+            >
               {applyBusy ? t("tools.applying") : t("tools.apply_plan")}
             </Button>
           </div>
         )}
 
-        {planBusy && !plan && <p className="text-sm text-muted">{t("tools.building_plan")}</p>}
+        {plan.building && !current && <p className="text-sm text-muted">{t("tools.building_plan")}</p>}
       </div>
     </Modal>
   );

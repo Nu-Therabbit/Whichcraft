@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "./components/AppHeader/AppHeader";
 import { AppLoading } from "./components/AppLoading/AppLoading";
 import { AppModals } from "./components/AppModals/AppModals";
@@ -121,10 +121,6 @@ export default function App() {
 
   const updateInfo = useUpdateCheck();
   const { state: tools, dispatch: sendTools } = useToolsStore();
-  // Stable, because the panel loads when these change identity (on open, for the open list or tab).
-  const refreshTools = useCallback(() => sendTools({ type: "refresh" }), [sendTools]);
-  const openInstallList = useCallback(() => sendTools({ type: "openInstallList" }), [sendTools]);
-  const loadProfiles = useCallback(() => sendTools({ type: "loadProfiles" }), [sendTools]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the app starts
   useEffect(() => sendTools({ type: "started" }), []);
 
@@ -293,86 +289,8 @@ export default function App() {
             setDialog(null);
             sendTools({ type: "clearPlan" });
           }}
-          tool={tools.tool}
-          onToolChange={(tool) => sendTools({ type: "selectTool", tool })}
-          installations={tools.installations}
-          loading={tools.loading}
-          error={tools.error}
-          plan={tools.plan.current}
-          planBusy={tools.plan.building}
-          applyBusy={tools.plan.applying}
-          onRefresh={refreshTools}
-          onSelect={(root) => sendTools({ type: "buildPlan", root })}
-          onApplyPlan={() => sendTools({ type: "applyPlan" })}
-          onUndo={() => sendTools({ type: "undoLast" })}
-          onClearPlan={() => sendTools({ type: "clearPlan" })}
-          recovery={tools.recovery}
-          onResumeRecovery={() => sendTools({ type: "resolveRecovery", action: "resume" })}
-          onRollBackRecovery={() => sendTools({ type: "resolveRecovery", action: "rollBack" })}
-          settings={tools.settings}
-          onSaveSettings={(settings) => sendTools({ type: "saveSettings", settings })}
-          pythonInfo={tools.pythonInfo}
-          android={tools.sdks.android}
-          msvc={tools.sdks.msvc}
-          onLoadSdks={() => sendTools({ type: "loadSdks" })}
-          shellCheck={tools.shellCheck}
-          onShellCheck={() => sendTools({ type: "checkShell" })}
-          onOpenTerminal={() => sendTools({ type: "openTerminal" })}
-          install={{
-            versions: tools.install.versions,
-            loading: tools.install.loading,
-            busy: tools.install.busy,
-            miseStatus: tools.install.miseStatus,
-            chosen: tools.install.chosen,
-            onOpen: openInstallList,
-            onChoose: (version) => sendTools({ type: "chooseVersion", version }),
-            onInstall: () => sendTools({ type: "install" }),
-          }}
-          updates={{
-            list: tools.update.list,
-            busy: tools.update.busy,
-            awaitingSwitch: tools.update.pending !== null,
-            onCheck: () => sendTools({ type: "checkUpdates" }),
-            onUpdate: (candidate) => sendTools({ type: "update", candidate }),
-            repoint: tools.update.pending?.repoint && {
-              names: tools.update.pending.repoint.names,
-              checked: tools.update.pending.repoint.checked,
-              onToggle: (checked) => sendTools({ type: "toggleRepoint", checked }),
-            },
-          }}
-          unfinishedUninstalls={{
-            list: tools.unfinished,
-            onRescan: (id) => sendTools({ type: "dismissUnfinished", id }),
-            onOpenFolder: (path) => sendTools({ type: "openFolder", path }),
-          }}
-          pathCleanup={{
-            result: tools.plan.cleanup,
-            onPlan: () => sendTools({ type: "planCleanup" }),
-          }}
-          profiles={{
-            list: tools.profiles.list,
-            current: tools.profiles.current,
-            missing: tools.profiles.missing,
-            busy: tools.profiles.busy,
-            onLoad: loadProfiles,
-            onCreate: (name, pins) => sendTools({ type: "createProfile", name, tools: pins }),
-            onDelete: (id) => sendTools({ type: "deleteProfile", id }),
-            onApply: (profile) => sendTools({ type: "planProfile", profile }),
-            onCheckMissing: (profile) => sendTools({ type: "checkMissing", profile }),
-            onInstallMissing: (profile) => sendTools({ type: "installMissing", profile }),
-          }}
-          uninstall={{
-            plan: tools.uninstall.plan,
-            outcome: tools.uninstall.outcome,
-            busy: tools.uninstall.busy,
-            defaultReplacement: tools.uninstall.defaultReplacement,
-            switchPlan: tools.uninstall.switchPlan,
-            onChooseReplacement: (root) => sendTools({ type: "chooseReplacement", root }),
-            onPlan: (root) => sendTools({ type: "planUninstall", root }),
-            onConfirm: (replacementRoot, repoint) => sendTools({ type: "confirmUninstall", replacementRoot, repoint }),
-            onOpenFolder: (path) => sendTools({ type: "openFolder", path }),
-            onClose: () => sendTools({ type: "closeUninstall" }),
-          }}
+          state={tools}
+          dispatch={sendTools}
         />
 
         <AppModals
