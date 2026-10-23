@@ -329,6 +329,11 @@ export default function App() {
             onCheck: () => void developerTools.checkUpdates(),
             onUpdate: (candidate) => void developerTools.updateTo(candidate),
           }}
+          unfinishedUninstalls={{
+            list: developerTools.unfinished,
+            onRescan: (id) => void developerTools.dismissUnfinished(id),
+            onOpenFolder: (path) => void developerTools.openFolder(path),
+          }}
           pathCleanup={{
             result: developerTools.cleanup,
             onPlan: () => void developerTools.planCleanup(),

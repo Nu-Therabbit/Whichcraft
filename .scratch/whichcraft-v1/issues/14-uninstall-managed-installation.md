@@ -11,5 +11,5 @@
 - [x] UsageProbe ตรวจด้วย Restart Manager กับไฟล์หลัก ร่วมกับดูพาธของ exe และลองเปลี่ยนชื่อโฟลเดอร์ไปและกลับ — WinUsageProbe: Restart Manager กับ exe/dll ทั้งโฟลเดอร์ (ลึก 5 ชั้น) และ rename ไปกลับเฉพาะโฟลเดอร์ที่ผู้ใช้เขียนได้ (ไม่อยู่ใต้ Program Files)
 - [x] ถ้ามี java หรือ Gradle daemon ใช้อยู่ แสดงชื่อโปรแกรม แนะนำ `gradlew --stop` และไม่ kill เอง (R-10) — แสดงชื่อโปรแกรมกับ PID และแนะนำ gradlew --stop ไม่ kill เอง
 - [x] ถ้ามี Terminal ที่ cd ค้างอยู่ แจ้งว่ามีโปรแกรมเปิดโฟลเดอร์อยู่และไม่ให้ถอน (R-11) — folder_locked จาก rename ที่ล้มเหลว ปุ่มถอนถูกปิด และตรวจซ้ำก่อนถอนจริง
-- [ ] ขั้นตอนถอนบันทึกลง Journal — การสลับก่อนถอนลง Journal ตามปกติ แต่ตัวการถอนเองยังไม่ลง Journal
+- [x] ขั้นตอนถอนบันทึกลง Journal — บันทึก UninstallRecord ใน journal/uninstalls ก่อนเริ่มถอน (การติดตั้ง, วิธี, plan id ของการสลับ) แล้วเติมผลหรือ error เมื่อจบ แยกจาก journal ของ Apply จึงไม่ถูก Undo หยิบไป; ถ้าแอปปิดกลางทาง หน้าเครื่องมือแจ้งเตือนให้ตรวจโฟลเดอร์แล้วสแกนใหม่ (test each_uninstall_is_journaled_and_undo_still_reverts_the_switch, an_uninstall_cut_short_is_reported_until_dismissed)
 - [x] มี test ที่ core ด้วยของปลอม (รวมการ rename ที่ถูกล็อก) และมี adapter contract test ของ UsageProbe บน Windows จริงตามแบบงานพิสูจน์ข้อ 7 — test ที่ core ใช้ FakeUsageProbe และ FakeUninstaller; adapter test บน Windows จริงใช้โฟลเดอร์ชั่วคราว (โปรแกรมที่รันอยู่ และ cwd ค้างในโฟลเดอร์)

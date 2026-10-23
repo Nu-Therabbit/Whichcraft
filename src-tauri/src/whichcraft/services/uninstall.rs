@@ -8,7 +8,7 @@
 
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
@@ -21,9 +21,10 @@ use crate::whichcraft::services::profiles::ToolProfile;
 use crate::whichcraft::services::tool_apply::apply_tool_plan_elevated;
 use crate::whichcraft::services::tool_inventory::ToolInstallationView;
 use crate::whichcraft::services::tool_plan::ToolApplyPlan;
+use crate::whichcraft::ports::installation_probe::ToolInstallation;
 use crate::whichcraft::tools::probe_tool_root;
 
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum UninstallMethod {
     /// `mise uninstall` in the store that holds the installation.
@@ -55,7 +56,7 @@ pub struct UninstallPlan {
     pub no_confirmation: bool,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "status")]
 pub enum UninstallOutcome {
     Removed,
@@ -257,6 +258,30 @@ pub fn uninstall<B: EnvBackend>(
         }
     }
 
+    // Recorded before anything is removed, so an uninstall the app did not see finish leaves a trace.
+    let mut record = UninstallRecord {
+        id: format!("uninstall-{}", chrono::Utc::now().format("%Y%m%dT%H%M%S%.3fZ")),
+        started_at: chrono::Utc::now().to_rfc3339(),
+        finished_at: None,
+        installation: inst.clone(),
+        method: plan.method.clone(),
+        switch_plan_id: replacement.filter(|_| plan.needs_replacement).map(|p| p.plan_id.clone()),
+        outcome: None,
+        error: None,
+    };
+    save_uninstall_record(&record)?;
+    let result = run_method(plan, uninstaller);
+    record.finished_at = Some(chrono::Utc::now().to_rfc3339());
+    match &result {
+        Ok(outcome) => record.outcome = Some(outcome.clone()),
+        Err(e) => record.error = Some(e.to_string()),
+    }
+    save_uninstall_record(&record)?;
+    result
+}
+
+fn run_method(plan: &UninstallPlan, uninstaller: &dyn Uninstaller) -> Result<UninstallOutcome, EnvarlyError> {
+    let inst = &plan.installation.installation;
     match &plan.method {
         UninstallMethod::Managed { store, mise_version } => uninstaller.uninstall_managed(store, inst.tool, mise_version)?,
         UninstallMethod::RecycleFolder => uninstaller.recycle_folder(&inst.root)?,
@@ -265,7 +290,7 @@ pub fn uninstall<B: EnvBackend>(
             RunOutcome::Cancelled => return Ok(UninstallOutcome::Cancelled),
             RunOutcome::Failed(code) => return Ok(UninstallOutcome::Failed { code }),
         },
-        UninstallMethod::Refused { .. } => unreachable!("handled above"),
+        UninstallMethod::Refused { reason } => return Ok(UninstallOutcome::Blocked { reason: reason.clone() }),
     }
 
     // Check the result on disk rather than trusting the uninstaller (R-5).
@@ -273,6 +298,68 @@ pub fn uninstall<B: EnvBackend>(
         return Ok(UninstallOutcome::Incomplete { remaining: inst.root.clone() });
     }
     Ok(UninstallOutcome::Removed)
+}
+
+/// The journal entry of one uninstall. Kept apart from env applies (in `journal/uninstalls`), so
+/// Undo and recovery, which read every apply in `journal`, never mistake it for one.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct UninstallRecord {
+    pub id: String,
+    pub started_at: String,
+    /// `None` while the uninstaller runs; still `None` afterwards means the app did not see it end.
+    pub finished_at: Option<String>,
+    pub installation: ToolInstallation,
+    pub method: UninstallMethod,
+    /// The journal of the switch applied first, when the installation was selected or effective.
+    pub switch_plan_id: Option<String>,
+    pub outcome: Option<UninstallOutcome>,
+    pub error: Option<String>,
+}
+
+fn uninstall_dir() -> Result<PathBuf, EnvarlyError> {
+    let dir = crate::whichcraft::persistence::whichcraft_data_dir()?.join("journal").join("uninstalls");
+    std::fs::create_dir_all(&dir).map_err(|e| EnvarlyError::Snapshot(format!("create uninstall journal dir: {e}")))?;
+    Ok(dir)
+}
+
+fn save_uninstall_record(record: &UninstallRecord) -> Result<(), EnvarlyError> {
+    let text = serde_json::to_string_pretty(record)
+        .map_err(|e| EnvarlyError::Snapshot(format!("serialize uninstall record: {e}")))?;
+    std::fs::write(uninstall_dir()?.join(format!("{}.json", record.id)), text)
+        .map_err(|e| EnvarlyError::Snapshot(format!("write uninstall record: {e}")))
+}
+
+/// Uninstalls that started but were never seen to end (the app closed or crashed meanwhile);
+/// the UI asks the user to rescan, since only the disk says what happened.
+pub fn unfinished_uninstalls() -> Result<Vec<UninstallRecord>, EnvarlyError> {
+    Ok(load_uninstall_records()?.into_iter().filter(|r| r.finished_at.is_none()).collect())
+}
+
+/// Marks an unfinished uninstall as seen, with what a rescan found.
+pub fn dismiss_unfinished_uninstall(id: &str) -> Result<(), EnvarlyError> {
+    let Some(mut record) = load_uninstall_records()?.into_iter().find(|r| r.id == id) else {
+        return Ok(());
+    };
+    let root = &record.installation.root;
+    record.finished_at = Some(chrono::Utc::now().to_rfc3339());
+    record.outcome = Some(if root.exists() {
+        UninstallOutcome::Incomplete { remaining: root.clone() }
+    } else {
+        UninstallOutcome::Removed
+    });
+    save_uninstall_record(&record)
+}
+
+/// Every recorded uninstall, newest first.
+pub fn load_uninstall_records() -> Result<Vec<UninstallRecord>, EnvarlyError> {
+    let mut records: Vec<UninstallRecord> = std::fs::read_dir(uninstall_dir()?)
+        .map_err(|e| EnvarlyError::Snapshot(format!("read uninstall journal: {e}")))?
+        .flatten()
+        .filter_map(|e| serde_json::from_str(&std::fs::read_to_string(e.path()).ok()?).ok())
+        .collect();
+    records.sort_by(|a, b| b.started_at.cmp(&a.started_at));
+    Ok(records)
 }
 
 #[cfg(test)]
@@ -286,6 +373,8 @@ mod tests {
     use crate::whichcraft::services::tool_apply::{create_tool_plan, test_support::FakeElevator};
 
     fn jdk(dir: &Path, name: &str, version: &str) -> ToolInstallationView {
+        // Uninstalls write their journal record to the data dir.
+        use_test_data_dir(dir);
         let root = dir.join(name);
         std::fs::create_dir_all(root.join("bin")).unwrap();
         std::fs::write(root.join("bin").join("java.exe"), b"").unwrap();
@@ -466,6 +555,83 @@ mod tests {
     }
 
     #[test]
+    fn each_uninstall_is_journaled_and_undo_still_reverts_the_switch() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut old = jdk(dir.path(), "jdk17", "17.0.20.1");
+        old.selected = true;
+        let new = jdk(dir.path(), "jdk21", "21.0.12");
+        let all = vec![old.clone(), new.clone()];
+        let backend = MemBackend::new().with_user([("Path", "C:\\u")]);
+        let plan = plan_uninstall(inputs(&old, &all, None), &FakeUsageProbe::default()).unwrap();
+        let switch = create_tool_plan(&backend, &new.installation).unwrap();
+        let elevator = FakeElevator::new(&backend, vec![]);
+        let out = uninstall(&plan, Some(&switch), &backend, &elevator, &FakeUsageProbe::default(), &FakeUninstaller::default()).unwrap();
+        assert_eq!(out, UninstallOutcome::Removed);
+
+        let records = load_uninstall_records().unwrap();
+        assert_eq!(records.len(), 1);
+        let r = &records[0];
+        assert_eq!(r.installation.root, old.installation.root);
+        assert_eq!(r.switch_plan_id.as_deref(), Some(switch.plan_id.as_str()));
+        assert_eq!(r.outcome, Some(UninstallOutcome::Removed));
+        assert!(r.finished_at.is_some());
+
+        // The uninstall record is not an env apply: Undo goes back to the switch.
+        let undo = crate::whichcraft::services::undo::undo_last_apply(&backend, Some(&elevator)).unwrap();
+        assert!(undo.conflicts.is_empty());
+        assert!(!backend.read_user().unwrap().contains_key("JAVA_HOME"));
+    }
+
+    #[test]
+    fn an_uninstall_cut_short_is_reported_until_dismissed() {
+        let dir = tempfile::tempdir().unwrap();
+        let v = jdk(dir.path(), "jdk17", "17.0.20.1");
+        let record = UninstallRecord {
+            id: "uninstall-x".into(),
+            started_at: "2026-10-23T10:00:00Z".into(),
+            finished_at: None,
+            installation: v.installation.clone(),
+            method: UninstallMethod::RecycleFolder,
+            switch_plan_id: None,
+            outcome: None,
+            error: None,
+        };
+        save_uninstall_record(&record).unwrap();
+        assert_eq!(unfinished_uninstalls().unwrap(), vec![record]);
+        dismiss_unfinished_uninstall("uninstall-x").unwrap();
+        assert!(unfinished_uninstalls().unwrap().is_empty());
+        assert_eq!(
+            load_uninstall_records().unwrap()[0].outcome,
+            Some(UninstallOutcome::Incomplete { remaining: v.installation.root.clone() }),
+            "the folder is still there, so the rescan says incomplete"
+        );
+    }
+
+    #[test]
+    fn a_failing_uninstaller_is_journaled_with_its_error() {
+        struct Broken;
+        impl Uninstaller for Broken {
+            fn run_uninstaller(&self, _: &str, _: &[String]) -> Result<RunOutcome, EnvarlyError> {
+                Err(EnvarlyError::InvalidInput("could not start msiexec.exe".into()))
+            }
+            fn recycle_folder(&self, _: &Path) -> Result<(), EnvarlyError> {
+                unreachable!()
+            }
+            fn uninstall_managed(&self, _: &Path, _: ToolKind, _: &str) -> Result<(), EnvarlyError> {
+                unreachable!()
+            }
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let v = jdk(dir.path(), "jdk17", "17.0.20.1");
+        let plan = plan_uninstall(inputs(&v, &[v.clone()], Some(msi_entry(&v.installation.root))), &FakeUsageProbe::default()).unwrap();
+        let backend = MemBackend::new();
+        assert!(uninstall(&plan, None, &backend, &FakeElevator::new(&backend, vec![]), &FakeUsageProbe::default(), &Broken).is_err());
+        let r = &load_uninstall_records().unwrap()[0];
+        assert_eq!(r.outcome, None);
+        assert!(r.error.as_deref().unwrap().contains("msiexec"));
+    }
+
+    #[test]
     fn a_cancelled_uninstaller_keeps_the_switch_and_the_installation() {
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
@@ -497,6 +663,7 @@ mod tests {
     #[test]
     fn managed_installs_are_removed_with_mise_in_their_own_store() {
         let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
         let store_a = dir.path().join("store-a");
         let root = store_a.join("_mise").join("data").join("installs").join("java").join("temurin-21.0.12+101.0.LTS");
         std::fs::create_dir_all(root.join("bin")).unwrap();

@@ -373,6 +373,8 @@
       "cancelled": "The uninstaller was cancelled. Nothing was removed; the switch already applied stays.",
       "incomplete": "The uninstaller finished but the folder is still there: {{path}}",
       "open_folder": "Open folder",
+      "unfinished": "Whichcraft closed while removing {{name}} ({{path}}), so it does not know how that ended. Check the folder, then rescan.",
+      "rescan": "Rescan and dismiss",
       "blocked": "Not removed: {{reason}}.",
       "failed": "The uninstaller failed with exit code {{code}}."
     },

@@ -16,6 +16,7 @@ import type {
   ToolInstallationView,
   ToolKind,
   ToolProfile,
+  UnfinishedUninstall,
   UninstallOutcome,
   UninstallPlan,
   UpdateCandidate,
@@ -117,6 +118,11 @@ interface Props {
     onCheckMissing: (profile: ToolProfile) => void;
     onInstallMissing: (profile: ToolProfile) => void;
   };
+  unfinishedUninstalls?: {
+    list: UnfinishedUninstall[];
+    onRescan: (id: string) => void;
+    onOpenFolder: (path: string) => void;
+  };
   uninstall?: {
     plan: UninstallPlan | null;
     outcome: UninstallOutcome | null;
@@ -162,6 +168,7 @@ export function ToolsPanel({
   profiles,
   uninstall,
   pathCleanup,
+  unfinishedUninstalls,
 }: Props) {
   const { t } = useI18n();
   const [showSettings, setShowSettings] = useState(false);
@@ -213,6 +220,25 @@ export function ToolsPanel({
             onRollBack={onRollBackRecovery}
           />
         )}
+
+        {unfinishedUninstalls?.list.map((u) => (
+          <div key={u.id} className="text-sm border border-warning/40 rounded-md px-3 py-2 flex flex-col gap-2">
+            <p className="text-warning">
+              {t("tools.uninstall.unfinished", {
+                name: `${u.installation.vendor} ${u.installation.version}`,
+                path: u.installation.root,
+              })}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={() => unfinishedUninstalls.onOpenFolder(u.installation.root)}>
+                {t("tools.uninstall.open_folder")}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => unfinishedUninstalls.onRescan(u.id)}>
+                {t("tools.uninstall.rescan")}
+              </Button>
+            </div>
+          </div>
+        ))}
 
         <div className="flex flex-wrap items-center gap-2">
           {TOOL_KINDS.map((kind) => (

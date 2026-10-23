@@ -89,6 +89,8 @@ export interface EnvarlyApi {
     replacement: import("./types").ToolApplyPlan | null,
   ) => Promise<import("./types").UninstallOutcome>;
   openFolder: (path: string) => Promise<void>;
+  unfinishedUninstalls: () => Promise<import("./types").UnfinishedUninstall[]>;
+  dismissUnfinishedUninstall: (id: string) => Promise<void>;
   updateCandidates: (tool: import("./types").ToolKind) => Promise<import("./types").UpdateCandidate[]>;
   updateInstallation: (tool: import("./types").ToolKind, version: string) => Promise<import("./types").UpdateResult>;
   prepareMise: () => Promise<boolean>;
@@ -164,6 +166,8 @@ const normalApi: EnvarlyApi = {
   planUninstall: (tool, root) => invoke("whichcraft_plan_uninstall", { tool, root }),
   uninstall: (tool, root, replacement) => invoke("whichcraft_uninstall", { tool, root, replacement }),
   openFolder: (path) => invoke("whichcraft_open_folder", { path }),
+  unfinishedUninstalls: () => invoke("whichcraft_unfinished_uninstalls"),
+  dismissUnfinishedUninstall: (id) => invoke("whichcraft_dismiss_unfinished_uninstall", { id }),
   updateCandidates: (tool) => invoke("whichcraft_update_candidates", { tool }),
   updateInstallation: (tool, version) => invoke("whichcraft_update_installation", { tool, version }),
   prepareMise: () => invoke("whichcraft_prepare_mise"),
@@ -267,6 +271,8 @@ export const api: EnvarlyApi = {
   planUninstall: async (tool, root) => (await getApi()).planUninstall(tool, root),
   uninstall: async (tool, root, replacement) => (await getApi()).uninstall(tool, root, replacement),
   openFolder: async (path) => (await getApi()).openFolder(path),
+  unfinishedUninstalls: async () => (await getApi()).unfinishedUninstalls(),
+  dismissUnfinishedUninstall: async (id) => (await getApi()).dismissUnfinishedUninstall(id),
   updateCandidates: async (tool) => (await getApi()).updateCandidates(tool),
   updateInstallation: async (tool, version) => (await getApi()).updateInstallation(tool, version),
   prepareMise: async () => (await getApi()).prepareMise(),

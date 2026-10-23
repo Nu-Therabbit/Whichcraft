@@ -31,7 +31,8 @@ use crate::whichcraft::services::tool_plan::ToolApplyPlan;
 use crate::whichcraft::services::undo::{undo_last_apply, UndoResult};
 use crate::whichcraft::services::update::{install_and_plan, update_candidates, UpdateCandidate, UpdateResult};
 use crate::whichcraft::services::uninstall::{
-    plan_uninstall, protected_folders, uninstall, PlanInputs, UninstallOutcome, UninstallPlan,
+    dismiss_unfinished_uninstall, plan_uninstall, protected_folders, unfinished_uninstalls, uninstall, PlanInputs,
+    UninstallOutcome, UninstallPlan, UninstallRecord,
 };
 use crate::whichcraft::{CoreHealth, WhichcraftCore};
 /// Runs blocking work (UAC prompts, downloads, child processes) off the UI thread. Sync Tauri
@@ -493,6 +494,18 @@ pub fn whichcraft_repoint_profiles(from: ToolInstallation, to: ToolInstallation)
         persist_profiles(&profiles)?;
     }
     Ok(changed)
+}
+
+/// Uninstalls that started but were never seen to finish.
+#[tauri::command]
+pub fn whichcraft_unfinished_uninstalls() -> Result<Vec<UninstallRecord>, EnvarlyError> {
+    unfinished_uninstalls()
+}
+
+/// Records what the disk shows now for an uninstall that was cut short.
+#[tauri::command]
+pub fn whichcraft_dismiss_unfinished_uninstall(id: String) -> Result<(), EnvarlyError> {
+    dismiss_unfinished_uninstall(&id)
 }
 
 /// Opens a folder in Explorer, e.g. what an uninstaller left behind.

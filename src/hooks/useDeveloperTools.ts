@@ -19,6 +19,7 @@ import type {
   ProfileMatchStatus,
   ProfileToolPin,
   ToolProfile,
+  UnfinishedUninstall,
   UpdateCandidate,
   WhichcraftSettings,
 } from "../types";
@@ -39,12 +40,14 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
   const [pythonInfo, setPythonInfo] = useState<PythonSupplementalView | null>(null);
   const [android, setAndroid] = useState<AndroidInventory | null>(null);
   const [msvc, setMsvc] = useState<MsvcInventory | null>(null);
+  const [unfinished, setUnfinished] = useState<UnfinishedUninstall[]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       setRecovery(await api.getRecoveryStatus());
+      setUnfinished(await api.unfinishedUninstalls());
       setSettings(await api.getWhichcraftSettings());
       setInstallations(await api.listToolInstallations(tool));
       setPythonInfo(tool === "python" ? await api.getPythonLauncherInfo() : null);
@@ -286,6 +289,20 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     [tool, uninstallPlan, refresh],
   );
 
+  /** Records what the disk shows now for an uninstall the app did not see finish. */
+  const dismissUnfinished = useCallback(
+    async (id: string) => {
+      setError(null);
+      try {
+        await api.dismissUnfinishedUninstall(id);
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [refresh],
+  );
+
   const openFolder = useCallback(async (path: string) => {
     try {
       await api.openFolder(path);
@@ -501,6 +518,8 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     planUninstall,
     confirmUninstall,
     openFolder,
+    unfinished,
+    dismissUnfinished,
     closeUninstall: () => {
       setUninstallPlan(null);
       setUninstallOutcome(null);

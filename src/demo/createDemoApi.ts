@@ -288,6 +288,8 @@ export function createDemoApi(
       throw new Error("Uninstalling is unavailable in demo mode");
     },
     openFolder: async () => {},
+    unfinishedUninstalls: async () => [],
+    dismissUnfinishedUninstall: async () => {},
     updateCandidates: async () => [],
     updateInstallation: async () => {
       throw new Error("Updating is unavailable in demo mode");

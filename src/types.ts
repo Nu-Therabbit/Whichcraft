@@ -334,3 +334,10 @@ export interface PathCleanupPlan extends ToolApplyPlan {
   removedDuplicates: string[];
   removedMissing: string[];
 }
+
+/** An uninstall that started but was never seen to finish. */
+export interface UnfinishedUninstall {
+  id: string;
+  startedAt: string;
+  installation: ToolInstallationRef;
+}
