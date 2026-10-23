@@ -64,7 +64,7 @@
     "dark_mode": "Переключить на тёмную тему"
   },
   "path_banner": {
-    "prefix": "Envarly отсутствует в PATH ({{scope}}) — чтобы запускать",
+    "prefix": "Whichcraft отсутствует в PATH ({{scope}}) — чтобы запускать",
     "suffix": "из терминала, добавьте её туда.",
     "add": "{{scope}} PATH",
     "dismiss": "Закрыть"
@@ -74,7 +74,7 @@
     "staged_badge": "в очереди",
     "staged_delete_badge": "в очереди: удаление",
     "restart_admin": "Перезапустить от имени администратора",
-    "add_to_path": "Добавить Envarly в PATH",
+    "add_to_path": "Добавить Whichcraft в PATH",
     "stage": "В очередь",
     "discard": "Отменить",
     "delete": "Удалить",

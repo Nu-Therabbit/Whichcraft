@@ -57,7 +57,7 @@
     "dark_mode": "Switch to dark mode"
   },
   "path_banner": {
-    "prefix": "Envarly is not in your {{scope}} PATH — add it to run",
+    "prefix": "Whichcraft is not in your {{scope}} PATH — add it to run",
     "suffix": "from a terminal.",
     "add": "{{scope}} PATH",
     "dismiss": "Dismiss"
@@ -67,7 +67,7 @@
     "staged_badge": "staged",
     "staged_delete_badge": "staged: delete",
     "restart_admin": "Restart as admin",
-    "add_to_path": "Add Envarly to PATH",
+    "add_to_path": "Add Whichcraft to PATH",
     "stage": "Stage",
     "discard": "Discard",
     "delete": "Delete",

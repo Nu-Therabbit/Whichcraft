@@ -56,7 +56,7 @@
     "dark_mode": "ダークモードに切り替え"
   },
   "path_banner": {
-    "prefix": "Envarly が {{scope}} の PATH に含まれていません — ターミナルから",
+    "prefix": "Whichcraft が {{scope}} の PATH に含まれていません — ターミナルから",
     "suffix": "コマンドを使うには追加してください。",
     "add": "{{scope}} PATH",
     "dismiss": "閉じる"
@@ -66,7 +66,7 @@
     "staged_badge": "ステージ済み",
     "staged_delete_badge": "ステージ済み: 削除",
     "restart_admin": "管理者として再起動",
-    "add_to_path": "Envarly を PATH に追加",
+    "add_to_path": "Whichcraft を PATH に追加",
     "stage": "ステージ",
     "discard": "破棄",
     "delete": "削除",

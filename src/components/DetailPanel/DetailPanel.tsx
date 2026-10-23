@@ -281,7 +281,7 @@ export function DetailPanel({
                   type="button"
                   onClick={() => onStageAddToPath(variable.scope as "User" | "System")}
                   className="text-[10px] text-accent hover:text-accent-hi px-2 py-1 rounded hover:bg-accent/10 transition-colors"
-                  title="Stage adding Envarly install directory to this PATH variable"
+                  title="Stage adding the Whichcraft install directory to this PATH variable"
                 >
                   {t("detail.add_to_path")}
                 </button>

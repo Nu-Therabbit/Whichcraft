@@ -56,7 +56,7 @@
     "dark_mode": "다크 모드로 전환"
   },
   "path_banner": {
-    "prefix": "Envarly가 {{scope}} PATH에 없습니다 — 터미널에서",
+    "prefix": "Whichcraft가 {{scope}} PATH에 없습니다 — 터미널에서",
     "suffix": "명령을 실행하려면 추가하세요.",
     "add": "{{scope}} PATH",
     "dismiss": "닫기"
@@ -66,7 +66,7 @@
     "staged_badge": "스테이징됨",
     "staged_delete_badge": "스테이징됨: 삭제",
     "restart_admin": "관리자 권한으로 다시 시작",
-    "add_to_path": "Envarly를 PATH에 추가",
+    "add_to_path": "Whichcraft를 PATH에 추가",
     "stage": "스테이징",
     "discard": "되돌리기",
     "delete": "삭제",

@@ -56,7 +56,7 @@
     "dark_mode": "切换到深色模式"
   },
   "path_banner": {
-    "prefix": "Envarly 不在你的 {{scope}} PATH 中 — 如果要从终端使用",
+    "prefix": "Whichcraft 不在你的 {{scope}} PATH 中 — 如果要从终端使用",
     "suffix": "命令，请将其添加进去。",
     "add": "{{scope}} PATH",
     "dismiss": "关闭"
@@ -66,7 +66,7 @@
     "staged_badge": "已暂存",
     "staged_delete_badge": "已暂存：删除",
     "restart_admin": "以管理员身份重启",
-    "add_to_path": "将 Envarly 添加到 PATH",
+    "add_to_path": "将 Whichcraft 添加到 PATH",
     "stage": "暂存",
     "discard": "放弃",
     "delete": "删除",

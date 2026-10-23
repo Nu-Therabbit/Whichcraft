@@ -56,7 +56,7 @@
     "dark_mode": "Chuyển sang chế độ tối"
   },
   "path_banner": {
-    "prefix": "Envarly chưa có trong PATH ({{scope}}) — để chạy lệnh",
+    "prefix": "Whichcraft chưa có trong PATH ({{scope}}) — để chạy lệnh",
     "suffix": "từ terminal, hãy thêm vào.",
     "add": "PATH ({{scope}})",
     "dismiss": "Đóng"
@@ -66,7 +66,7 @@
     "staged_badge": "đang chờ",
     "staged_delete_badge": "đang chờ: xóa",
     "restart_admin": "Khởi động lại với quyền quản trị",
-    "add_to_path": "Thêm Envarly vào PATH",
+    "add_to_path": "Thêm Whichcraft vào PATH",
     "stage": "Xếp hàng",
     "discard": "Bỏ qua",
     "delete": "Xóa",
