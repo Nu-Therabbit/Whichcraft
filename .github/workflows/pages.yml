@@ -1,0 +1,123 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Build Storybook
+        run: npm run build-storybook
+
+      - name: Install LP dependencies
+        run: npm ci
+        working-directory: lp
+
+      - name: Build LP
+        run: npm run build
+        working-directory: lp
+
+      - name: Report (Vitest)
+        run: |
+          mkdir -p junit-reports
+          npx vitest run --project=unit --reporter=junit --outputFile=junit-reports/vitest.xml || true
+          node scripts/normalize-junit.mjs typescript junit-reports/vitest.xml || true
+
+      - name: Report (Biome)
+        run: npx biome check --reporter=json src 2>/dev/null | node scripts/biome-to-junit.mjs > junit-reports/biome.xml || true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - uses: taiki-e/install-action@nextest
+
+      - name: Report (cargo nextest)
+        run: cargo nextest run --profile ci || true
+        working-directory: src-tauri
+        continue-on-error: true
+
+      - name: Copy nextest JUnit
+        run: cp src-tauri/target/nextest/ci/nextest.xml junit-reports/nextest.xml || true
+
+      - name: Normalize nextest report
+        run: node scripts/normalize-junit.mjs rust junit-reports/nextest.xml || true
+
+      - name: Report (Clippy)
+        run: cargo clippy --message-format=json 2>/dev/null | node ../../scripts/clippy-to-junit.mjs > ../../junit-reports/clippy.xml || true
+        working-directory: src-tauri
+
+      - name: Arrange site structure
+        run: |
+          mkdir -p site
+          cp -r lp/dist/. site/
+          mv storybook-static site/storybook
+
+      - name: Fetch previous Allure history
+        # Feeds the last run's trend data back in so the report can show
+        # pass/fail history and regression status per test instead of just
+        # this run's isolated snapshot. First run (or a 404 from a fresh
+        # deploy) just starts a new history file — allurerc.mjs's
+        # appendHistory handles either case.
+        run: |
+          mkdir -p allure-history
+          curl -fsSL https://iray-tno.github.io/envarly/reports/history/allure-history.jsonl -o allure-history/allure-history.jsonl || rm -f allure-history/allure-history.jsonl
+
+      - name: Build HTML reports
+        # Report name and history settings come from allurerc.mjs, auto-
+        # discovered from the repo root this runs in.
+        run: npx allure generate -o site/reports junit-reports
+
+      - name: Persist Allure history
+        # Publish the history file this run just updated so the next run's
+        # "Fetch previous Allure history" step above can pick it back up.
+        run: |
+          mkdir -p site/reports/history
+          cp allure-history/allure-history.jsonl site/reports/history/allure-history.jsonl
+
+      - name: Brand Allure report and add Back to LP button
+        # Allure 3's generated page sets <title> from allurerc.mjs's `name`
+        # (padded with stray spaces by its own template — trim those) and
+        # emits no OGP/description metadata or navigation back to the LP.
+        # Run scripts/brand-allure-report.mjs to inject branding and the Back to LP button.
+        run: node scripts/brand-allure-report.mjs site/reports/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,14 @@
+use crate::error::EnvarlyError;
+use crate::whichcraft::api::ToolKind;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoteVersion {
+    pub version: String,
+    pub download_bytes: Option<u64>,
+    pub install_bytes: Option<u64>,
+}
+
+pub trait ToolManager: Send + Sync {
+    fn list_installed(&self, tool: ToolKind) -> Result<Vec<String>, EnvarlyError>;
+    fn list_remote(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError>;
+}

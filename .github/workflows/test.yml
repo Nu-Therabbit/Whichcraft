@@ -1,0 +1,159 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-js:
+    name: Test (frontend)
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check-version
+      - run: npm run test:reports
+      - name: Test (Vitest)
+        run: npx vitest run --project=unit --reporter=junit --outputFile=test-results.xml
+      - name: Normalize Vitest report
+        if: always()
+        run: node scripts/normalize-junit.mjs typescript test-results.xml
+      - name: Report Vitest results
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Vitest
+          path: test-results.xml
+          reporter: java-junit
+
+  test-a11y:
+    name: Test (accessibility)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test Storybook accessibility
+        run: npm run test:storybook -- --run
+      - name: Install LP dependencies
+        run: npm ci
+        working-directory: lp
+      - name: Check LP types
+        # Static Astro builds transpile TypeScript without checking its types.
+        run: npm run check:lp
+      - name: Build LP
+        run: npm run build
+        working-directory: lp
+      - name: Test LP navigation
+        run: npm run test:lp
+
+  test-rs:
+    name: Test (rust)
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - uses: taiki-e/install-action@nextest
+      - name: Test (cargo nextest)
+        run: cargo nextest run --profile ci
+        working-directory: src-tauri
+      - name: Normalize nextest report
+        if: always()
+        run: node scripts/normalize-junit.mjs rust src-tauri/target/nextest/ci/nextest.xml
+      - name: Report nextest results
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Cargo Nextest
+          path: src-tauri/target/nextest/ci/nextest.xml
+          reporter: java-junit
+
+  lint-js:
+    name: Lint (frontend)
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+      - name: Biome
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          RESULT=$(npx biome lint --reporter=json src 2>biome-stderr.txt)
+          STATUS=$?
+          set -e
+          COMMAND_ERRORS=0
+          if [ -z "$RESULT" ] || ! echo "$RESULT" | jq empty >/dev/null 2>&1; then
+            RESULT='{"diagnostics":[]}'
+            [ "$STATUS" -ne 0 ] && COMMAND_ERRORS=1
+          fi
+          ERRORS=$(echo "$RESULT" | jq '[.diagnostics[] | select(.severity == "error")] | length')
+          WARNINGS=$(echo "$RESULT" | jq '[.diagnostics[] | select(.severity == "warning")] | length')
+          printf "## Biome\n| | Count |\n|---|---:|\n| Errors | %s |\n| Warnings | %s |\n| Command errors | %s |\n" "$ERRORS" "$WARNINGS" "$COMMAND_ERRORS" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$COMMAND_ERRORS" -gt 0 ]; then
+            printf "\nBiome did not produce JSON output. Command stderr:\n\n\`\`\`\n" >> "$GITHUB_STEP_SUMMARY"
+            cat biome-stderr.txt >> "$GITHUB_STEP_SUMMARY"
+            printf "\n\`\`\`\n" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "$RESULT" | jq -rc '.diagnostics[] | select(.location.path.file != null) | {message:.description,severity:(if .severity=="error" then "ERROR" elif .severity=="warning" then "WARNING" else "INFO" end),location:{path:{name:.location.path.file},range:{start:{line:(.location.span.start.line//1),column:(.location.span.start.column//0)}}}}' | reviewdog -f=rdjsonl -name=biome -reporter=github-pr-review -fail-on-error=false || true
+
+  lint-rs:
+    name: Lint (rust)
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Rustfmt
+        run: cargo fmt --all -- --check
+        working-directory: src-tauri
+      - uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+      - name: Clippy
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RESULT=$(cargo clippy --message-format=json 2>/dev/null || true)
+          ERRORS=$(echo "$RESULT" | jq -s '[.[] | select(.reason=="compiler-message") | select(.message.code != null and (.message.code.code | startswith("clippy"))) | select(.message.level=="error")] | length')
+          WARNINGS=$(echo "$RESULT" | jq -s '[.[] | select(.reason=="compiler-message") | select(.message.code != null and (.message.code.code | startswith("clippy"))) | select(.message.level=="warning")] | length')
+          printf "## Clippy\n| | Count |\n|---|---:|\n| Errors | %s |\n| Warnings | %s |\n" "$ERRORS" "$WARNINGS" >> "$GITHUB_STEP_SUMMARY"
+          echo "$RESULT" | jq -rc 'select(.reason=="compiler-message") | select(.message.code != null and (.message.code.code | startswith("clippy"))) | select(.message.spans | length > 0) | {message:.message.message,severity:(if .message.level=="error" then "ERROR" elif .message.level=="warning" then "WARNING" else "INFO" end),location:{path:{name:.message.spans[0].file_name},range:{start:{line:.message.spans[0].line_start,column:.message.spans[0].column_start}}},code:{value:.message.code.code}}' | reviewdog -f=rdjsonl -name=clippy -reporter=github-pr-review -fail-on-error=false || true
+        working-directory: src-tauri

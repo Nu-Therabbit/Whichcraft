@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] โค้ดของ Envarly อยู่ใน repo นี้ โดยบันทึก commit ต้นทางและไลเซนส์ MIT ของ Envarly ไว้
-- [ ] ชื่อแอป, bundle identifier และชื่อหน้าต่างเปลี่ยนเป็น Whichcraft และ installer ที่ build ได้ใช้ชื่อ Whichcraft
-- [ ] `npm run tauri build` ผ่าน และ test เดิมของ Envarly ผ่านทั้งฝั่ง Rust (`cargo test`) และ vitest
-- [ ] มีโมดูล Whichcraft core ที่ Tauri command เรียกได้ และไม่พึ่ง Windows โดยตรง
-- [ ] มี port ตามที่ spec กำหนด (EnvBackend เดิม และตัวใหม่ เช่น EnvironmentResolver, InstallationProbe, InstallerCatalog, ToolManager, UsageProbe, Uninstaller, Journal, TerminalLauncher, ShellProbe) แต่ละตัวมีของปลอมในหน่วยความจำ และมี test ตัวอย่างหนึ่งข้อที่เรียก core ผ่านของปลอม
-- [ ] มีโครงสำหรับ adapter contract tests แบบเปิดใช้เองที่ไม่รันใน CI ปกติ
+- [x] โค้ดของ Envarly อยู่ใน repo นี้ โดยบันทึก commit ต้นทางและไลเซนส์ MIT ของ Envarly ไว้
+- [x] ชื่อแอป, bundle identifier และชื่อหน้าต่างเปลี่ยนเป็น Whichcraft และ installer ที่ build ได้ใช้ชื่อ Whichcraft
+- [x] `npm run tauri build` ผ่าน และ test เดิมของ Envarly ผ่านทั้งฝั่ง Rust (`cargo test`) และ vitest
+- [x] มีโมดูล Whichcraft core ที่ Tauri command เรียกได้ และไม่พึ่ง Windows โดยตรง
+- [x] มี port ตามที่ spec กำหนด (EnvBackend เดิม และตัวใหม่ เช่น EnvironmentResolver, InstallationProbe, InstallerCatalog, ToolManager, UsageProbe, Uninstaller, Journal, TerminalLauncher, ShellProbe) แต่ละตัวมีของปลอมในหน่วยความจำ และมี test ตัวอย่างหนึ่งข้อที่เรียก core ผ่านของปลอม
+- [x] มีโครงสำหรับ adapter contract tests แบบเปิดใช้เองที่ไม่รันใน CI ปกติ

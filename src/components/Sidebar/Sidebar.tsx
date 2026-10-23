@@ -1,0 +1,259 @@
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useI18n } from "../../hooks/useI18n";
+import { useResizableWidth } from "../../hooks/useResizableWidth";
+import type { StagedChange } from "../../hooks/useStaged";
+import { stagedKey } from "../../hooks/useStaged";
+import { cn } from "../../lib/cn";
+import { resolveSecret } from "../../lib/secrets";
+import type { EnvVar, VarScope } from "../../types";
+import { Icon } from "../ui/Icon";
+import { ResizeHandle } from "../ui/ResizeHandle";
+import { SegmentedControl } from "../ui/SegmentedControl";
+import { Select } from "../ui/Select";
+import { TextInput } from "../ui/TextInput";
+import { SidebarRow } from "./SidebarRow";
+
+const SIDEBAR_WIDTH = {
+  storageKey: "envarly-sidebar-width",
+  defaultWidth: 300,
+  min: 260,
+  max: 480,
+} as const;
+
+interface Props {
+  vars: EnvVar[];
+  selected: EnvVar | null;
+  onSelect: (v: EnvVar) => void;
+  onCreateNew: () => void;
+  loading: boolean;
+  staged: Map<string, StagedChange>;
+  /** "User" normally; "OtherUser" while another account is selected — the
+   * personal-scope tab swaps to show that account's variables instead of
+   * the current user's (switch mode, never both at once). */
+  personalScope: "User" | "OtherUser";
+  /** Display label for the personal-scope tab when it's "OtherUser" (e.g.
+   * the selected account's username). Ignored when personalScope is "User". */
+  personalScopeLabel?: string;
+}
+
+type ScopeFilter = "All" | VarScope;
+type SortOrder = "name-asc" | "name-desc" | "scope" | "staged";
+
+export function Sidebar({
+  vars,
+  selected,
+  onSelect,
+  onCreateNew,
+  loading,
+  staged,
+  personalScope,
+  personalScopeLabel,
+}: Props) {
+  const { t } = useI18n();
+  const scopeTabs = useMemo(() => ["All", personalScope, "System"] as const, [personalScope]);
+  const { width, isDragging, handleProps } = useResizableWidth({ ...SIDEBAR_WIDTH, side: "left" });
+  const [search, setSearch] = useState("");
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("All");
+  const [secretsOnly, setSecretsOnly] = useState(false);
+  const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCopy = (value: string, rowKey: string) => {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopiedKey(rowKey);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopiedKey(null), 1500);
+    });
+  };
+
+  const [sortBy, setSortBy] = useState<SortOrder>("name-asc");
+
+  const filtered = useMemo(
+    () =>
+      vars.filter((v) => {
+        if (secretsOnly && !resolveSecret(v.name, v.value)) return false;
+        if (scopeFilter !== "All" && v.scope !== scopeFilter) return false;
+        const q = search.toLowerCase();
+        return !q || v.name.toLowerCase().includes(q) || v.value.toLowerCase().includes(q);
+      }),
+    [vars, search, scopeFilter, secretsOnly],
+  );
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    const byName = (a: EnvVar, b: EnvVar) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    switch (sortBy) {
+      case "name-asc":
+        return arr.sort(byName);
+      case "name-desc":
+        return arr.sort((a, b) => byName(b, a));
+      case "scope":
+        return arr.sort((a, b) => a.scope.localeCompare(b.scope) || byName(a, b));
+      case "staged":
+        return arr.sort((a, b) => {
+          const aS = staged.has(stagedKey(a.name, a.scope)) ? 0 : 1;
+          const bS = staged.has(stagedKey(b.name, b.scope)) ? 0 : 1;
+          return aS - bS || byName(a, b);
+        });
+    }
+  }, [filtered, sortBy, staged]);
+
+  const countFor = (scope: VarScope) => vars.filter((v) => v.scope === scope).length;
+  const secretCount = vars.filter((v) => resolveSecret(v.name, v.value) !== null).length;
+
+  const scopeOptions = scopeTabs.map((s) => ({
+    value: s,
+    label: s === "OtherUser" ? (personalScopeLabel ?? s) : s,
+    count: s === "All" ? vars.length : countFor(s),
+  }));
+  const sortOptions = [
+    { value: "name-asc", label: t("sidebar.sort_name_asc") },
+    { value: "name-desc", label: t("sidebar.sort_name_desc") },
+    { value: "scope", label: t("sidebar.sort_scope") },
+    { value: "staged", label: t("sidebar.sort_staged") },
+  ] satisfies Array<{ value: SortOrder; label: string }>;
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+      e.preventDefault();
+
+      const currentIdx = selected
+        ? sorted.findIndex((v) => v.name === selected.name && v.scope === selected.scope)
+        : -1;
+
+      let nextIdx: number;
+      if (e.key === "ArrowDown") nextIdx = currentIdx < sorted.length - 1 ? currentIdx + 1 : 0;
+      else if (e.key === "ArrowUp") nextIdx = currentIdx > 0 ? currentIdx - 1 : sorted.length - 1;
+      else if (e.key === "Home") nextIdx = 0;
+      else nextIdx = sorted.length - 1;
+
+      const next = sorted[nextIdx];
+      if (!next) return;
+      onSelect(next);
+      const btn = itemRefs.current.get(`${next.scope}:${next.name}`);
+      btn?.focus();
+      btn?.scrollIntoView({ block: "nearest" });
+    },
+    [sorted, selected, onSelect],
+  );
+
+  return (
+    <aside
+      style={{ width }}
+      className="relative shrink-0 flex flex-col bg-panel border-r border-rim overflow-hidden"
+    >
+      <div className="px-3 pt-3 pb-2">
+        <TextInput
+          label="Search"
+          labelHidden
+          type="text"
+          placeholder={t("sidebar.search_placeholder")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full"
+        />
+      </div>
+
+      <div className="px-3 pb-2">
+        <SegmentedControl
+          aria-label="Filter by scope"
+          options={scopeOptions}
+          value={scopeFilter}
+          onChange={setScopeFilter}
+          stretch
+          className="w-full"
+        />
+      </div>
+
+      <div className="px-3 pb-2 flex items-center justify-between">
+        {secretCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => setSecretsOnly((v) => !v)}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-colors",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+              secretsOnly
+                ? "bg-warn/20 text-warn border border-warn/40"
+                : "bg-warn/10 text-warn border border-warn/40 hover:bg-warn/15 hover:text-warn",
+            )}
+          >
+            <Icon name="warning" size={12} />
+            <span>{t("sidebar.secret", { count: secretCount })}</span>
+            {secretsOnly && <Icon name="x" size={12} className="opacity-60" />}
+          </button>
+        ) : (
+          <span />
+        )}
+        <Select
+          aria-label="Sort order"
+          value={sortBy}
+          onValueChange={setSortBy}
+          options={sortOptions}
+          density="compact"
+          className="text-[10px]"
+        />
+      </div>
+
+      {/* mr-2 keeps the scrollbar clear of the resize handle's hit area at the right edge */}
+      <div className="flex-1 overflow-y-auto py-1 mr-2">
+        {loading && <p className="text-center text-dim text-sm py-8">{t("sidebar.loading")}</p>}
+        {!loading && sorted.length === 0 && (
+          <p className="text-center text-dim text-sm py-8">{t("sidebar.empty")}</p>
+        )}
+        {sorted.length > 0 && (
+          <ul aria-label="Environment variables">
+            {sorted.map((v) => {
+              const key = stagedKey(v.name, v.scope);
+              const isSelected = selected?.name === v.name && selected?.scope === v.scope;
+              return (
+                <SidebarRow
+                  key={key}
+                  entryKey={key}
+                  v={v}
+                  isSelected={isSelected}
+                  isFirstWhenNoneSelected={!selected && sorted[0] === v}
+                  secret={resolveSecret(v.name, v.value)}
+                  stagedChange={staged.get(key)}
+                  copiedKey={copiedKey}
+                  onSelect={() => onSelect(v)}
+                  onKeyDown={handleKeyDown}
+                  onCopy={() => handleCopy(v.value, key)}
+                  registerRef={(el) => {
+                    if (el) itemRefs.current.set(key, el);
+                    else itemRefs.current.delete(key);
+                  }}
+                />
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* Footer: new variable */}
+      <div className="px-3 py-2 border-t border-rim shrink-0">
+        <button
+          type="button"
+          onClick={onCreateNew}
+          className="w-full inline-flex items-center gap-1 text-left text-xs text-dim hover:text-muted px-2 py-2 rounded hover:bg-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <Icon name="plus" size={12} />
+          {t("sidebar.new_var")}
+        </button>
+      </div>
+
+      <ResizeHandle
+        edge="right"
+        isDragging={isDragging}
+        width={width}
+        min={SIDEBAR_WIDTH.min}
+        max={SIDEBAR_WIDTH.max}
+        aria-label={t("sidebar.resize")}
+        handleProps={handleProps}
+      />
+    </aside>
+  );
+}

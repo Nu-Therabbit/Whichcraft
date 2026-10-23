@@ -1,0 +1,104 @@
+---
+import '../styles/global.css';
+import { LANGUAGES, VERSION, type LandingLang } from '../lib/lpContent';
+
+interface Props {
+  title: string;
+  description: string;
+  ogDescription: string;
+  ogImage?: string;
+  lang: LandingLang;
+  canonicalPath: string;
+}
+
+const {
+  title,
+  description,
+  ogDescription,
+  ogImage = '/envarly/og-image.png',
+  lang,
+  canonicalPath,
+} = Astro.props;
+
+const canonicalURL = new URL(canonicalPath ?? Astro.url.pathname, Astro.site);
+const englishURL = new URL('/envarly/', Astro.site);
+const alternateURLs = LANGUAGES.map((l) => ({ code: l.code, url: new URL(l.path, Astro.site) }));
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Envarly',
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Windows 10, Windows 11',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  description,
+  url: canonicalURL.toString(),
+  downloadUrl: 'https://github.com/iray-tno/envarly/releases/latest',
+  softwareVersion: VERSION,
+  license: 'https://opensource.org/licenses/MIT',
+  author: { '@type': 'Person', name: 'iray-tno' },
+  inLanguage: lang,
+};
+
+const GA_ID = 'G-SEWBF5H9Y0';
+const CLARITY_ID = 'xeh50yh8uq';
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalURL} />
+    {alternateURLs.map(({ code, url }) => <link rel="alternate" hreflang={code} href={url} />)}
+    <link rel="alternate" hreflang="x-default" href={englishURL} />
+
+    <!-- OGP -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Envarly" />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={ogDescription} />
+    <meta property="og:image" content={new URL(ogImage, Astro.site)} />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={ogDescription} />
+    <meta name="twitter:image" content={new URL(ogImage, Astro.site)} />
+
+    <!-- JSON-LD structured data -->
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+    <!-- Google Search Console -->
+    <meta name="google-site-verification" content="Bi3E2hIYlL4dUq-rWPnj6Qklwt7RR4_kLA4KZCpN3xI" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/envarly/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/envarly/icon-32.png" />
+    <link rel="apple-touch-icon" sizes="128x128" href="/envarly/icon-128.png" />
+    <link rel="icon" type="image/x-icon" href="/envarly/favicon.ico" />
+
+    <!-- Google Analytics -->
+    <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}></script>
+    <script define:vars={{ GA_ID }}>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      gtag('js', new Date());
+      gtag('config', GA_ID);
+    </script>
+
+    <!-- Microsoft Clarity -->
+    <script define:vars={{ CLARITY_ID }}>
+      (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+      })(window,document,"clarity","script",CLARITY_ID);
+    </script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

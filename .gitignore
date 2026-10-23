@@ -1,11 +1,62 @@
-# Local Claude Code settings
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+*.hozo.css
+storybook-static/
+target/
+src-tauri/target/
+src-tauri/gen/
+
+# Environment / local config
+.env
+.env.local
+.env.*.local
+
+# Claude Code local settings (may contain local file paths)
 .claude/settings.local.json
 
-# Spike artifacts that are large or reproducible (see each spike's RESULT.md)
-spikes/03-mise/bin-extract/
+# Local scratch/drafts (submission drafts, notes, anything not meant to be committed)
+temp/
+_envarly_src/
+
+# Spike run artifacts (keep RESULT.md and scripts only)
+spikes/**/backup/
+spikes/**/out/
+spikes/**/envarly/
+spikes/**/bin-extract/
 spikes/03-mise/stores/
 spikes/04-envarly/envarly/
-spikes/02-terminal/out/
 
-# Full dumps of this machine's User/System environment taken before registry tests
-spikes/*/backup/
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temp
+*.tmp
+*.temp
+*.local
+
+# Windows proc-macro DLLs that git picks up via %USERPROFILE% path expansion
+%USERPROFILE%/
+%USERP~1/

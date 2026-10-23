@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #080b14;
+  --color-surface: #0f1525;
+  --color-border: #1e2a45;
+  --color-text: #e8eaf0;
+  --color-muted: #8892a4;
+  --color-accent: #6d9cf8;
+  --color-accent-dim: #3b6fd4;
+}
+
+@layer base {
+  :where(button, select):not(:disabled, [aria-disabled="true"], [data-hozo-disabled]) {
+    cursor: pointer;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Site is dark-only (no light variant). Without this, native form
+     controls — notably the language <select>'s option list and its
+     hover highlight — default to light UI chrome, which clashes with
+     our custom text color and becomes unreadable on hover. */
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* #lang-select's trigger uses a hover:text-* utility for its own closed-state
+   affordance. `color` is inherited, and browsers keep the <select>'s :hover
+   state active while its native popup is open, so without this the option
+   list's text color flips with the trigger's hover state and clashes with
+   the OS-drawn per-row highlight. Pin it so options always use a fixed,
+   readable color regardless of the trigger's hover state. */
+#lang-select option {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}

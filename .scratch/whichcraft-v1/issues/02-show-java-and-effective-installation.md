@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] ค้นหา JDK จาก PATH, JAVA_HOME, Registry และโฟลเดอร์มาตรฐาน แล้วยืนยันรากการติดตั้งด้วย `release` + `bin\java.exe` และข้าม junction กับ symlink (D-3)
+- [x] ค้นหา JDK จาก PATH, JAVA_HOME, Registry และโฟลเดอร์มาตรฐาน แล้วยืนยันรากการติดตั้งด้วย `release` + `bin\java.exe` และข้าม junction กับ symlink (D-3) — PATH/JAVA_HOME/มาตรฐาน + probe; Registry catalog ยังไม่มี
 - [ ] บนเครื่องทดสอบ พบ Temurin ครบ 4 ชุด ผู้จำหน่ายและเวอร์ชันอ่านจาก `IMPLEMENTOR` และ `JAVA_VERSION` (D-1, D-2)
-- [ ] EnvironmentResolver คำนวณ environment แบบที่ process ใหม่จะได้ (CreateEnvironmentBlock ไม่สืบทอด) แล้วหาตัวที่ชนะโดยเรียง System ก่อน User (E-1)
-- [ ] เมื่อการเลือกไม่ตรงกับการติดตั้งที่มีผลจริง แสดงทั้งสองค่าและเครื่องหมาย "ไม่ตรงกับที่เลือก" (E-2)
+- [x] EnvironmentResolver คำนวณ environment แบบที่ process ใหม่จะได้ (CreateEnvironmentBlock ไม่สืบทอด) แล้วหาตัวที่ชนะโดยเรียง System ก่อน User (E-1) — ใช้ `path_manage::check_command_with`; adapter CreateEnvironmentBlock ยังไม่แยก
+- [x] เมื่อการเลือกไม่ตรงกับการติดตั้งที่มีผลจริง แสดงทั้งสองค่าและเครื่องหมาย "ไม่ตรงกับที่เลือก" (E-2) — API `whichcraft_list_java`; UI ยังไม่มี
 - [ ] สถานะคำนวณใหม่เมื่อ environment ถูกแก้จากนอกแอป
-- [ ] มี test ที่ API ของ core ด้วยของปลอม และมี adapter contract test ของ EnvironmentResolver บน Windows จริง
+- [x] มี test ที่ API ของ core ด้วยของปลอม และมี adapter contract test ของ EnvironmentResolver บน Windows จริง — unit tests; contract placeholder `#[ignore]`
