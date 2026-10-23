@@ -3,7 +3,9 @@ import { createToolsRuntime } from "./composition/appServices";
 import { useAppServices } from "./composition/AppServicesContext";
 import { EnvironmentProvider } from "./features/environment/EnvironmentContext";
 import { LegacyEnvironmentView } from "./features/environment/LegacyEnvironmentView";
+import { DesktopShellApp } from "./features/shell/DesktopShellApp";
 import { useToolsStore } from "./features/tools/useToolsStore";
+import { readAppPresentation } from "./lib/appPresentation";
 
 function LegacyAppRoot() {
   const services = useAppServices();
@@ -20,5 +22,9 @@ function LegacyAppRoot() {
 }
 
 export default function App() {
+  const presentation = readAppPresentation();
+  if (presentation === "desktop-shell") {
+    return <DesktopShellApp />;
+  }
   return <LegacyAppRoot />;
 }
