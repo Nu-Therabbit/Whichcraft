@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
+import { pathEntryChanges } from "../../lib/pathEntryChanges";
 import type {
   AndroidInventory,
   MiseStatus,
@@ -34,6 +35,26 @@ import { ProfilesSection } from "./ProfilesSection";
 import { UpdateList } from "./UpdateList";
 
 const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
+
+/** A PATH change as the entries it adds and removes; the whole value is too long to compare by eye. */
+function PathEntryDiff({ before, after }: { before: string | null; after: string }) {
+  const { added, removed } = pathEntryChanges(before, after);
+  return (
+    <ul className="text-xs break-all">
+      {added.map((e) => (
+        <li key={`+${e}`} className="text-success">
+          + {e}
+        </li>
+      ))}
+      {removed.map((e, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: a removed entry can repeat
+        <li key={`-${e}-${i}`} className="text-danger line-through">
+          − {e}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 interface Props {
   open: boolean;
@@ -418,8 +439,14 @@ export function ToolsPanel({
                   <span className="text-muted">
                     {d.scope} {d.name}
                   </span>
-                  <div className="text-xs text-danger line-through truncate">{d.before ?? "(empty)"}</div>
-                  <div className="text-xs text-success truncate">{d.after}</div>
+                  {d.name.toLowerCase() === "path" ? (
+                    <PathEntryDiff before={d.before} after={d.after} />
+                  ) : (
+                    <>
+                      <div className="text-xs text-danger line-through truncate">{d.before ?? "(empty)"}</div>
+                      <div className="text-xs text-success truncate">{d.after}</div>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>

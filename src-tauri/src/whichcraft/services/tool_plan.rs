@@ -110,6 +110,19 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
             path_after = next;
         }
     }
+    // The same switch takes the other installations of this tool off User PATH, so the diff shows
+    // them and Undo puts them back. `%JAVA_HOME%\bin` is judged with the JAVA_HOME written here.
+    let mut planned_user = user.clone();
+    if installation.tool == ToolKind::Java {
+        planned_user.insert(
+            "JAVA_HOME".into(),
+            crate::model::EnvValue::typed(installation.root.to_string_lossy().into_owned(), EnvValueKind::String),
+        );
+    }
+    let expand_planned = crate::whichcraft::services::registry_expander(&planned_user, &system);
+    for entry in other_installation_entries(&path_after, installation, &expand_planned) {
+        path_after = remove_path_entry(&path_after, &entry);
+    }
 
     let mut user_diffs = Vec::new();
     if installation.tool == ToolKind::Java {
@@ -262,6 +275,29 @@ fn find_system_shadow(
     None
 }
 
+/// User PATH entries that run `installation`'s tool from another installation: the folder holds
+/// the tool's executable and its root is recognised as an installation of that tool.
+fn other_installation_entries(
+    path: &str,
+    installation: &ToolInstallation,
+    expand: &dyn Fn(&str) -> String,
+) -> Vec<String> {
+    let tool = installation.tool;
+    let exe = format!("{}.exe", crate::whichcraft::tools::command_name(tool));
+    path_entries(path)
+        .into_iter()
+        .filter(|entry| {
+            let dir = std::path::PathBuf::from(expand(entry).trim_end_matches(['\\', '/']));
+            if !dir.join(&exe).is_file() {
+                return false;
+            }
+            crate::whichcraft::tools::probes::infer_root_from_command_dir(tool, &dir)
+                .and_then(|root| crate::whichcraft::tools::probe_tool_root(tool, &root, false))
+                .is_some_and(|other| !crate::whichcraft::tools::paths_equal(&other.root, &installation.root))
+        })
+        .collect()
+}
+
 fn would_shadow(system_dir: &str, selected_dir: &str, tool: ToolKind) -> bool {
     let cmd = crate::whichcraft::tools::command_name(tool);
     let hit = path_manage::check_command_with(
@@ -322,6 +358,69 @@ mod tests {
 
     fn leak(s: String) -> &'static str {
         Box::leak(s.into_boxed_str())
+    }
+
+    fn jdk(dir: &std::path::Path, name: &str, version: &str) -> ToolInstallation {
+        let root = dir.join(name);
+        std::fs::create_dir_all(root.join("bin")).unwrap();
+        std::fs::write(root.join("bin").join("java.exe"), b"").unwrap();
+        std::fs::write(root.join("release"), format!("IMPLEMENTOR=\"Eclipse Adoptium\"\nJAVA_VERSION=\"{version}\"\n")).unwrap();
+        ToolInstallation { tool: ToolKind::Java, vendor: "Eclipse Adoptium".into(), version: version.into(), root, managed: false }
+    }
+
+    #[test]
+    fn switching_takes_the_old_installation_off_user_path_in_the_same_plan() {
+        let dir = tempfile::tempdir().unwrap();
+        let old = jdk(dir.path(), "jdk17", "17.0.20");
+        let new = jdk(dir.path(), "jdk21", "21.0.12");
+        let other = dir.path().join("tools");
+        std::fs::create_dir_all(&other).unwrap();
+        let user_path = leak(format!(
+            "{};{};%JAVA_HOME%\\bin",
+            old.root.join("bin").display(),
+            other.display()
+        ));
+        let old_home = leak(old.root.to_string_lossy().into_owned());
+        let backend = MemBackend::new()
+            .with_user([("Path", user_path), ("JAVA_HOME", old_home)])
+            .with_system([("PATHEXT", ".EXE;.CMD;.BAT")]);
+
+        let plan = build_tool_apply_plan(&backend, &new, "p".into()).unwrap();
+        let path = &plan.user_diffs.iter().find(|d| d.name == "Path").unwrap().after;
+        let expected = format!("{};{};%JAVA_HOME%\\bin", new.root.join("bin").display(), other.display());
+        // The old JDK goes; an unrelated folder stays; %JAVA_HOME%\bin follows the new JAVA_HOME and stays.
+        assert_eq!(path, &expected);
+    }
+
+    #[test]
+    fn undo_puts_the_removed_old_installation_back() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        let old = jdk(dir.path(), "jdk17", "17.0.20");
+        let new = jdk(dir.path(), "jdk21", "21.0.12");
+        let before = leak(format!("{};C:\\u", old.root.join("bin").display()));
+        let backend = MemBackend::new().with_user([("Path", before)]).with_system([("PATHEXT", ".EXE")]);
+
+        let plan = crate::whichcraft::services::tool_apply::create_tool_plan(&backend, &new).unwrap();
+        crate::whichcraft::services::tool_apply::apply_tool_plan(&backend, &plan).unwrap();
+        assert!(!backend.read_user().unwrap()["Path"].value.contains("jdk17"));
+
+        let undo = crate::whichcraft::services::undo::undo_last_apply(&backend, None).unwrap();
+        assert!(undo.conflicts.is_empty());
+        assert_eq!(backend.read_user().unwrap()["Path"].value, before);
+    }
+
+    #[test]
+    fn a_new_folder_already_behind_the_old_one_becomes_first_by_removing_the_old() {
+        let dir = tempfile::tempdir().unwrap();
+        let old = jdk(dir.path(), "jdk17", "17.0.20");
+        let new = jdk(dir.path(), "jdk21", "21.0.12");
+        let user_path = leak(format!("{};{}", old.root.join("bin").display(), new.root.join("bin").display()));
+        let backend = MemBackend::new().with_user([("Path", user_path)]).with_system([("PATHEXT", ".EXE")]);
+        let plan = build_tool_apply_plan(&backend, &new, "p".into()).unwrap();
+        let path = &plan.user_diffs.iter().find(|d| d.name == "Path").unwrap().after;
+        assert_eq!(path, &new.root.join("bin").to_string_lossy());
+        assert!(plan.effective_after_user_only);
     }
 
     #[test]

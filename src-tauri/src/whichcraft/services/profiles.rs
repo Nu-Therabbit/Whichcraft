@@ -331,6 +331,9 @@ mod tests {
         std::fs::create_dir_all(&exe_dir).unwrap();
         let exe = if tool == ToolKind::Java { "java.exe" } else { "node.exe" };
         std::fs::write(exe_dir.join(exe), b"").unwrap();
+        if tool == ToolKind::Java {
+            std::fs::write(root.join("release"), format!("IMPLEMENTOR=\"{vendor}\"\nJAVA_VERSION=\"{version}\"\n")).unwrap();
+        }
         ToolInstallationView {
             installation: ToolInstallation {
                 tool,
@@ -439,9 +442,8 @@ mod tests {
         let user = backend.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, jdk21.installation.root.to_string_lossy());
         let path = &user["Path"].value;
-        // Switching prepends; the older JDK's entry stays behind the new one (ticket 20 cleans up).
-        let at = |root: &PathBuf| path.find(&*root.join("bin").to_string_lossy()).unwrap();
-        assert!(at(&jdk21.installation.root) < at(&jdk17.installation.root), "{path}");
+        assert!(path.contains(&*jdk21.installation.root.join("bin").to_string_lossy()));
+        assert!(!path.contains(&*jdk17.installation.root.join("bin").to_string_lossy()), "{path}");
         assert!(path.contains(&*node20.installation.root.to_string_lossy()));
         assert_eq!(load_tool_selection(ToolKind::Node).unwrap().unwrap().root, node20.installation.root);
     }
