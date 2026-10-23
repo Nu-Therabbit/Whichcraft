@@ -3,7 +3,7 @@
 
 use crate::error::EnvarlyError;
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator};
-use crate::whichcraft::services::elevation::{encode_request, run_elevated_request, EXIT_APPLIED, EXIT_FAILED, EXIT_STALE};
+use crate::whichcraft::application::elevation::{encode_request, run_elevated_request, EXIT_APPLIED, EXIT_FAILED, EXIT_STALE};
 
 /// Entry point of `whichcraft-elevated-apply <payload> <sha256>`; returns the process exit code.
 pub fn elevated_helper_main(payload: &std::path::Path, sha256: &str) -> i32 {

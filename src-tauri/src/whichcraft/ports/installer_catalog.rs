@@ -12,6 +12,11 @@ pub struct CatalogEntry {
     pub uninstall_command: Option<String>,
 }
 
+/// Reads the uninstall entries once; the catalog it returns answers from that snapshot.
+pub trait InstallerCatalogSource: Send + Sync {
+    fn load(&self) -> Result<Box<dyn InstallerCatalog>, EnvarlyError>;
+}
+
 pub trait InstallerCatalog: Send + Sync {
     fn entries_for_root(&self, root: &std::path::Path)
         -> Result<Vec<CatalogEntry>, EnvarlyError>;

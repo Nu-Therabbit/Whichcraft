@@ -67,6 +67,15 @@ impl WinInstallerCatalog {
     }
 }
 
+/// The `InstallerCatalogSource` port: a fresh read of the uninstall keys each time.
+pub struct WinInstallerCatalogs;
+
+impl crate::whichcraft::ports::installer_catalog::InstallerCatalogSource for WinInstallerCatalogs {
+    fn load(&self) -> Result<Box<dyn InstallerCatalog>, EnvarlyError> {
+        Ok(Box::new(WinInstallerCatalog::load()?))
+    }
+}
+
 impl InstallerCatalog for WinInstallerCatalog {
     fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, EnvarlyError> {
         Ok(self.match_root(root))

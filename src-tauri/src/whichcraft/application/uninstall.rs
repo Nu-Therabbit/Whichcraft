@@ -21,7 +21,7 @@ use crate::whichcraft::domain::{InstallerKind};
 use crate::whichcraft::ports::uninstaller::{RunOutcome, Uninstaller};
 use crate::whichcraft::ports::usage_probe::{UsageProbe, UsageReport};
 use crate::whichcraft::domain::profiles::ToolProfile;
-use crate::whichcraft::services::tool_apply::apply_tool_plan_elevated;
+use crate::whichcraft::application::tool_apply::apply_tool_plan_elevated;
 use crate::whichcraft::domain::ToolInstallationView;
 use crate::whichcraft::domain::ToolApplyPlan;
 use crate::whichcraft::ports::machine::Machine;
@@ -279,7 +279,7 @@ mod tests {
     use crate::whichcraft::persistence::use_test_data_dir;
     use crate::whichcraft::domain::ToolInstallation;
     use crate::whichcraft::domain::profiles::ProfileToolPin;
-    use crate::whichcraft::services::tool_apply::{create_tool_plan, test_support::FakeElevator};
+    use crate::whichcraft::application::tool_apply::{create_tool_plan, test_support::FakeElevator};
 
     fn jdk(dir: &Path, name: &str, version: &str) -> ToolInstallationView {
         // Uninstalls write their journal record to the data dir.
@@ -497,7 +497,7 @@ mod tests {
         assert!(r.finished_at.is_some());
 
         // The uninstall record is not an env apply: Undo goes back to the switch.
-        let undo = crate::whichcraft::services::undo::undo_last_apply(&backend, &store, Some(&elevator)).unwrap();
+        let undo = crate::whichcraft::application::undo::undo_last_apply(&backend, &store, Some(&elevator)).unwrap();
         assert!(undo.conflicts.is_empty());
         assert!(!backend.read_user().unwrap().contains_key("JAVA_HOME"));
     }

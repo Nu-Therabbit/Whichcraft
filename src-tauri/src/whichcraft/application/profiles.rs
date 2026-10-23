@@ -10,8 +10,8 @@ use crate::whichcraft::ports::machine::Machine;
 use crate::whichcraft::ports::installer_catalog::InstallerCatalog;
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::domain::PlanVariableDiff;
-use crate::whichcraft::services::tool_apply::create_tool_plan;
-use crate::whichcraft::services::tool_inventory::{list_tool_installations};
+use crate::whichcraft::application::tool_apply::create_tool_plan;
+use crate::whichcraft::application::tool_inventory::{list_tool_installations};
 use crate::whichcraft::domain::ToolInstallationView;
 use crate::whichcraft::domain::ToolApplyPlan;
 use crate::whichcraft::domain::profiles::{resolve_pin, ProfileMatchStatus, ToolProfile};
@@ -159,13 +159,13 @@ mod tests {
     use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
     use std::path::PathBuf;
-    use crate::whichcraft::services::tool_apply::apply_tool_plan;
+    use crate::whichcraft::application::tool_apply::apply_tool_plan;
     use crate::whichcraft::persistence::FileStore;
     use crate::whichcraft::persistence::{load_last_completed_apply, load_tool_selection, use_test_data_dir};
     use crate::whichcraft::domain::profiles::ProfileToolPin;
     use crate::whichcraft::domain::{InstallerKind, ToolInstallation};
-    use crate::whichcraft::services::tool_apply::test_support::FakeElevator;
-    use crate::whichcraft::services::tool_apply::apply_tool_plan_elevated;
+    use crate::whichcraft::application::tool_apply::test_support::FakeElevator;
+    use crate::whichcraft::application::tool_apply::apply_tool_plan_elevated;
 
     fn leak(s: String) -> &'static str {
         Box::leak(s.into_boxed_str())

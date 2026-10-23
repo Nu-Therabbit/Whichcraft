@@ -78,6 +78,15 @@ pub fn update_candidates(tool: ToolKind, views: &[ToolInstallationView], remote:
         .collect()
 }
 
+/// Space an installation takes once unpacked, estimated from its download (I-9). Only Flutter's
+/// is known: 3.32.8 measured 3.18 GB on disk from a 1.75 GB archive. Others return `None`.
+pub fn estimated_disk_bytes(tool: ToolKind, download_bytes: u64) -> Option<u64> {
+    match tool {
+        ToolKind::Flutter => Some(download_bytes / 10 * 18),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,5 +140,12 @@ mod tests {
         let c = update_candidates(ToolKind::Node, &views, &r);
         assert_eq!(c.len(), 2);
         assert!(c.iter().all(|c| c.latest == "22.24.0"));
+    }
+
+    #[test]
+    fn flutter_disk_space_is_estimated_from_its_download() {
+        let disk = estimated_disk_bytes(ToolKind::Flutter, 1_749_058_829).unwrap();
+        assert!((3_100_000_000..3_300_000_000).contains(&disk), "{disk}");
+        assert_eq!(estimated_disk_bytes(ToolKind::Node, 30_000_000), None);
     }
 }

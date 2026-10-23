@@ -10,7 +10,7 @@ use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::domain::ToolInstallation;
-use crate::whichcraft::services::tool_apply::create_tool_plan;
+use crate::whichcraft::application::tool_apply::create_tool_plan;
 use crate::whichcraft::domain::ToolApplyPlan;
 use crate::whichcraft::ports::machine::Machine;
 

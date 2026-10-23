@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::whichcraft::ports::machine::Machine;
+pub use crate::whichcraft::ports::process::{ProcessRunner, ProcessSpec};
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage;
@@ -18,23 +19,6 @@ use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::domain::settings::TerminalKind;
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::tools::command_name;
-
-/// A process to start: program, arguments, the complete environment it gets, and its folder.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ProcessSpec {
-    pub program: String,
-    pub args: Vec<String>,
-    /// The whole environment; nothing is inherited from this app.
-    pub env: HashMap<String, String>,
-    pub cwd: PathBuf,
-}
-
-pub trait ProcessRunner {
-    /// Starts a visible process and returns without waiting.
-    fn spawn(&self, spec: &ProcessSpec) -> Result<(), EnvarlyError>;
-    /// Runs a hidden process to completion and returns its stdout.
-    fn output(&self, spec: &ProcessSpec) -> Result<String, EnvarlyError>;
-}
 
 /// `wt.exe` treats `;` as a command separator, so it must be escaped in anything passed to it (T-3).
 pub fn escape_wt(arg: &str) -> String {
@@ -93,7 +77,7 @@ pub fn effective_executable<B: EnvBackend>(backend: &B, machine: &dyn Machine, t
     let system = backend.read_system()?;
     let path = |m: &HashMap<String, crate::model::EnvValue>, n: &str| get_var(m, n).map(|v| v.value.clone()).unwrap_or_default();
     let pathext = get_var(&user, "PATHEXT").or_else(|| get_var(&system, "PATHEXT")).map(|v| v.value.clone());
-    let expand = crate::whichcraft::services::registry_expander(&user, &system, machine);
+    let expand = crate::whichcraft::application::registry_expander(&user, &system, machine);
     let result = path_manage::check_command_with(
         command_name(tool),
         &path(&user, "Path"),
@@ -193,6 +177,12 @@ mod tests {
     impl ProcessRunner for FakeRunner {
         fn spawn(&self, spec: &ProcessSpec) -> Result<(), EnvarlyError> {
             self.spawned.lock().unwrap().push(spec.clone());
+            Ok(())
+        }
+        fn fresh_environment(&self) -> Result<HashMap<String, String>, EnvarlyError> {
+            Ok(HashMap::new())
+        }
+        fn open_folder(&self, _folder: &Path) -> Result<(), EnvarlyError> {
             Ok(())
         }
         fn output(&self, spec: &ProcessSpec) -> Result<String, EnvarlyError> {

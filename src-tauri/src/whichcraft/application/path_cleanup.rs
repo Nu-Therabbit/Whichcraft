@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::whichcraft::ports::machine::Machine;
-use crate::whichcraft::services::registry_expander;
+use crate::whichcraft::application::registry_expander;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::model::VarScope;

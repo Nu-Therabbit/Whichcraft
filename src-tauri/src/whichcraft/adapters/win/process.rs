@@ -5,7 +5,7 @@ use std::os::windows::process::CommandExt;
 use std::process::Command;
 
 use crate::error::EnvarlyError;
-use crate::whichcraft::services::terminal::{ProcessRunner, ProcessSpec};
+use crate::whichcraft::ports::process::{ProcessRunner, ProcessSpec};
 
 const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -71,6 +71,22 @@ impl ProcessRunner for WinProcessRunner {
             .map_err(|e| EnvarlyError::InvalidInput(format!("start {}: {e}", spec.program)))
     }
 
+    fn fresh_environment(&self) -> Result<HashMap<String, String>, EnvarlyError> {
+        fresh_environment()
+    }
+
+    fn open_folder(&self, folder: &std::path::Path) -> Result<(), EnvarlyError> {
+        // Explorer opens (runs) a file it is given, so only folders are accepted.
+        if !folder.is_dir() {
+            return Err(EnvarlyError::InvalidInput(format!("not a folder: {}", folder.display())));
+        }
+        Command::new("explorer.exe")
+            .arg(folder)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| EnvarlyError::InvalidInput(format!("open {}: {e}", folder.display())))
+    }
+
     fn output(&self, spec: &ProcessSpec) -> Result<String, EnvarlyError> {
         let out = command(spec)
             .creation_flags(CREATE_NO_WINDOW)
@@ -86,7 +102,7 @@ mod tests {
     use super::*;
     use crate::whichcraft::domain::ToolKind;
     use crate::whichcraft::domain::settings::TerminalKind;
-    use crate::whichcraft::services::terminal::shell_check;
+    use crate::whichcraft::application::terminal::shell_check;
 
     /// Reads the registry and runs hidden shells (no writes). `cargo test contract_shell -- --ignored --nocapture`
     #[test]

@@ -60,7 +60,7 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
         .unwrap_or("");
 
     let cmd = command_name(tool);
-    let expand = crate::whichcraft::services::registry_expander(&user, &system, machine);
+    let expand = crate::whichcraft::application::registry_expander(&user, &system, machine);
     let effective = path_manage::check_command_with(
         cmd,
         user_path,
@@ -89,7 +89,7 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
     }
 
     if tool == ToolKind::Java {
-        roots.extend(crate::whichcraft::services::java_inventory::discover_java_roots(
+        roots.extend(crate::whichcraft::application::java_inventory::discover_java_roots(
             machine,
             user_path,
             system_path,

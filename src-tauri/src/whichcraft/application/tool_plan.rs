@@ -48,7 +48,7 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
             crate::model::EnvValue::typed(installation.root.to_string_lossy().into_owned(), EnvValueKind::String),
         );
     }
-    let expand_planned = crate::whichcraft::services::registry_expander(&planned_user, &system, machine);
+    let expand_planned = crate::whichcraft::application::registry_expander(&planned_user, &system, machine);
     for entry in other_installation_entries(machine, &path_after, installation, &expand_planned) {
         path_after = remove_path_entry(&path_after, &entry);
     }
@@ -101,7 +101,7 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     for diff in &user_diffs {
         user_after.insert(diff.name.clone(), crate::model::EnvValue::typed(diff.after.clone(), diff.value_kind));
     }
-    let expand = crate::whichcraft::services::registry_expander(&user_after, &system, machine);
+    let expand = crate::whichcraft::application::registry_expander(&user_after, &system, machine);
     let check_user = path_manage::check_command_with(
         cmd,
         &path_after,
@@ -334,11 +334,11 @@ mod tests {
         let before = leak(format!("{};C:\\u", old.root.join("bin").display()));
         let backend = MemBackend::new().with_user([("Path", before)]).with_system([("PATHEXT", ".EXE")]);
 
-        let plan = crate::whichcraft::services::tool_apply::create_tool_plan(&backend, &LocalMachine, &new).unwrap();
-        crate::whichcraft::services::tool_apply::apply_tool_plan(&backend, &FileStore, &plan).unwrap();
+        let plan = crate::whichcraft::application::tool_apply::create_tool_plan(&backend, &LocalMachine, &new).unwrap();
+        crate::whichcraft::application::tool_apply::apply_tool_plan(&backend, &FileStore, &plan).unwrap();
         assert!(!backend.read_user().unwrap()["Path"].value.contains("jdk17"));
 
-        let undo = crate::whichcraft::services::undo::undo_last_apply(&backend, &FileStore, None).unwrap();
+        let undo = crate::whichcraft::application::undo::undo_last_apply(&backend, &FileStore, None).unwrap();
         assert!(undo.conflicts.is_empty());
         assert_eq!(backend.read_user().unwrap()["Path"].value, before);
     }

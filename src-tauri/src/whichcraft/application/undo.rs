@@ -233,7 +233,7 @@ mod tests {
     use crate::whichcraft::persistence::{use_test_data_dir};
     use crate::whichcraft::domain::journal::{MutationRecord, WhichcraftJournal};
     use crate::whichcraft::domain::path::{compute_prepend, path_entry_diff};
-    use crate::whichcraft::services::tool_apply::test_support::FakeElevator;
+    use crate::whichcraft::application::tool_apply::test_support::FakeElevator;
 
     fn leak(s: String) -> &'static str {
         Box::leak(s.into_boxed_str())

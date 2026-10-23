@@ -1,3 +1,4 @@
+pub mod app;
 pub mod elevation;
 pub mod java_inventory;
 pub mod path_cleanup;

@@ -16,9 +16,9 @@ use crate::whichcraft::adapters::win::process::fresh_environment;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::persistence::{new_journal_id, use_test_data_dir};
 use crate::whichcraft::domain::ToolInstallation;
-use crate::whichcraft::services::tool_apply::{apply_tool_plan, apply_tool_plan_elevated};
+use crate::whichcraft::application::tool_apply::{apply_tool_plan, apply_tool_plan_elevated};
 use crate::whichcraft::domain::plan::{PlanVariableDiff, ToolApplyPlan};
-use crate::whichcraft::services::undo::undo_last_apply;
+use crate::whichcraft::application::undo::undo_last_apply;
 use crate::whichcraft::persistence::FileStore;
 use crate::whichcraft::adapters::local::LocalMachine;
 use crate::whichcraft::fake::FakeInstallerCatalog;
@@ -124,12 +124,12 @@ fn contract_user_apply_reaches_new_processes_and_undo_restores_the_key() {
 fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_it() {
     use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
     use crate::whichcraft::mise::manager::ProcessMiseRunner;
-    use crate::whichcraft::mise::MiseToolManager;
+    use crate::whichcraft::mise::manager::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::domain::InstallerKind;
     use crate::whichcraft::adapters::win::elevation::WinElevator;
-    use crate::whichcraft::services::tool_inventory::list_tool_installations;
-    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::application::tool_inventory::list_tool_installations;
+    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs};
     use crate::whichcraft::domain::uninstall::{UninstallMethod, UninstallOutcome};
 
     const VERSION: &str = "22.12.0";
@@ -191,7 +191,7 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
 }
 
 /// Newest release of `line` that mise offers, e.g. the newest Temurin 21.
-fn newest_remote(mgr: &crate::whichcraft::mise::MiseToolManager<crate::whichcraft::mise::manager::ProcessMiseRunner>, tool: ToolKind, line: &str) -> String {
+fn newest_remote(mgr: &crate::whichcraft::mise::manager::MiseToolManager<crate::whichcraft::mise::manager::ProcessMiseRunner>, tool: ToolKind, line: &str) -> String {
     use crate::whichcraft::ports::tool_manager::ToolManager;
     use crate::whichcraft::domain::versions::release_numbers;
     mgr.list_remote(tool)
@@ -221,11 +221,11 @@ fn leftovers(store: &std::path::Path, tool: ToolKind) -> Vec<String> {
 fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
     use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
     use crate::whichcraft::mise::manager::ProcessMiseRunner;
-    use crate::whichcraft::mise::MiseToolManager;
+    use crate::whichcraft::mise::manager::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::adapters::win::elevation::WinElevator;
-    use crate::whichcraft::services::tool_inventory::list_tool_installations;
-    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::application::tool_inventory::list_tool_installations;
+    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs};
     use crate::whichcraft::domain::uninstall::{UninstallOutcome};
 
     let data = tempfile::tempdir().unwrap();
@@ -292,11 +292,11 @@ fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
 fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
     use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
     use crate::whichcraft::mise::manager::ProcessMiseRunner;
-    use crate::whichcraft::mise::MiseToolManager;
+    use crate::whichcraft::mise::manager::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::adapters::win::elevation::WinElevator;
-    use crate::whichcraft::services::tool_inventory::list_tool_installations;
-    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::application::tool_inventory::list_tool_installations;
+    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs};
     use crate::whichcraft::domain::uninstall::{UninstallMethod, UninstallOutcome};
 
     let data = tempfile::tempdir().unwrap();
@@ -305,12 +305,12 @@ fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
     let mut settings = load_settings().unwrap();
     settings.install_store = a.path().to_path_buf();
     save_settings(&settings).unwrap();
-    let in_a = MiseToolManager::with_runner(ProcessMiseRunner::from_settings().unwrap()).install(ToolKind::Node, "22.11.0").unwrap();
+    let in_a = MiseToolManager::with_runner(ProcessMiseRunner::for_store(a.path())).install(ToolKind::Node, "22.11.0").unwrap();
 
     let mut settings = load_settings().unwrap();
     settings.switch_install_store(b.path().to_path_buf());
     save_settings(&settings).unwrap();
-    let in_b = MiseToolManager::with_runner(ProcessMiseRunner::from_settings().unwrap()).install(ToolKind::Node, "22.12.0").unwrap();
+    let in_b = MiseToolManager::with_runner(ProcessMiseRunner::for_store(b.path())).install(ToolKind::Node, "22.12.0").unwrap();
     assert!(in_a.starts_with(a.path()) && in_b.starts_with(b.path()), "{} {}", in_a.display(), in_b.display());
 
     let views = list_tool_installations(&WinregBackend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Node, None).unwrap();
@@ -355,11 +355,11 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
     use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
     use crate::whichcraft::mise::manager::ProcessMiseRunner;
     use crate::whichcraft::mise::pins::VFOX_FLUTTER_PLUGIN_SHA;
-    use crate::whichcraft::mise::MiseToolManager;
+    use crate::whichcraft::mise::manager::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::adapters::win::elevation::WinElevator;
-    use crate::whichcraft::services::tool_inventory::list_tool_installations;
-    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::application::tool_inventory::list_tool_installations;
+    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs};
     use crate::whichcraft::domain::uninstall::{UninstallOutcome};
 
     let data = tempfile::tempdir().unwrap();
@@ -429,7 +429,7 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
 fn contract_flutter_plugin_stays_on_the_pin_over_time() {
     use crate::whichcraft::mise::manager::{MiseRunner, ProcessMiseRunner};
     use crate::whichcraft::mise::pins::VFOX_FLUTTER_PLUGIN_SHA;
-    use crate::whichcraft::mise::MiseToolManager;
+    use crate::whichcraft::mise::manager::MiseToolManager;
 
     let data = tempfile::tempdir().unwrap();
     use_test_data_dir(data.path());
@@ -480,11 +480,11 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
     use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
     use crate::whichcraft::mise::manager::{mise_status, prepare_mise, ProcessMiseRunner};
     use crate::whichcraft::mise::pins::MISE_VERSION;
-    use crate::whichcraft::mise::MiseToolManager;
+    use crate::whichcraft::mise::manager::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings, whichcraft_data_dir};
     use crate::whichcraft::adapters::win::elevation::WinElevator;
-    use crate::whichcraft::services::tool_inventory::list_tool_installations;
-    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::application::tool_inventory::list_tool_installations;
+    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs};
     use crate::whichcraft::domain::uninstall::{UninstallOutcome};
     use sha2::{Digest, Sha256};
 

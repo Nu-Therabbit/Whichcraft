@@ -134,7 +134,7 @@ pub fn android_inventory<B: EnvBackend>(
 ) -> Result<AndroidInventory, EnvarlyError> {
     let user = backend.read_user()?;
     let system = backend.read_system()?;
-    let expand = crate::whichcraft::services::registry_expander(&user, &system, machine);
+    let expand = crate::whichcraft::application::registry_expander(&user, &system, machine);
     for name in ["ANDROID_HOME", "ANDROID_SDK_ROOT"] {
         if let Some(v) = get_var(&user, name).or_else(|| get_var(&system, name)) {
             let root = PathBuf::from(expand(&v.value));

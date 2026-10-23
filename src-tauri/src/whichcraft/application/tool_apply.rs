@@ -10,7 +10,7 @@ use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Eleva
 use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::domain::PlanVariableDiff;
-use crate::whichcraft::services::tool_plan::{build_tool_apply_plan, diff_to_env_value, plan_to_mutations, tool_plan_is_stale};
+use crate::whichcraft::application::tool_plan::{build_tool_apply_plan, diff_to_env_value, plan_to_mutations, tool_plan_is_stale};
 use crate::whichcraft::domain::plan::{ToolApplyPlan};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -229,7 +229,7 @@ pub(crate) mod test_support {
     use crate::error::EnvarlyError;
     use crate::model::EnvValue;
     use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator};
-    use crate::whichcraft::services::elevation::{encode_request, run_elevated_request};
+    use crate::whichcraft::application::elevation::{encode_request, run_elevated_request};
 
     /// The System hive as the elevated helper sees it: same maps, but allowed to write.
     struct ElevatedView<'a>(&'a MemBackend);
@@ -398,7 +398,7 @@ mod tests {
         let path = leak_str(format!("{0};C:\\gone-for-good;{0}", keep.display()));
         let b = MemBackend::new().with_user([("Path", path)]);
 
-        let cleanup = crate::whichcraft::services::path_cleanup::build_path_cleanup_plan(&b, &LocalMachine).unwrap();
+        let cleanup = crate::whichcraft::application::path_cleanup::build_path_cleanup_plan(&b, &LocalMachine).unwrap();
         apply_tool_plan(&b, &FileStore, &cleanup.inner).unwrap();
 
         assert_eq!(b.read_user().unwrap()["Path"].value, keep.to_string_lossy());

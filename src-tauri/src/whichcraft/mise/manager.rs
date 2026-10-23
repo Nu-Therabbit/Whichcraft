@@ -6,7 +6,6 @@ use sha2::{Digest, Sha256};
 use crate::error::EnvarlyError;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::mise::pins::{self, MISE_VERSION};
-use crate::whichcraft::persistence::load_settings;
 use crate::whichcraft::ports::tool_manager::{ToolManager};
 use crate::whichcraft::domain::versions::{RemoteVersion};
 
@@ -34,11 +33,6 @@ pub struct ProcessMiseRunner {
 }
 
 impl ProcessMiseRunner {
-    /// Runs against the store new installations go to.
-    pub fn from_settings() -> Result<Self, EnvarlyError> {
-        Ok(Self::for_store(&load_settings()?.install_store))
-    }
-
     /// Runs against a given install store, current or earlier.
     pub fn for_store(install_store: &Path) -> Self {
         Self {
@@ -93,9 +87,12 @@ pub struct MiseToolManager<R: MiseRunner> {
     runner: R,
 }
 
-impl MiseToolManager<ProcessMiseRunner> {
-    pub fn new() -> Result<Self, EnvarlyError> {
-        Ok(Self::with_runner(ProcessMiseRunner::from_settings()?))
+/// The `ToolManagers` port: the pinned mise pointed at a given install store.
+pub struct MiseToolManagers;
+
+impl crate::whichcraft::ports::tool_manager::ToolManagers for MiseToolManagers {
+    fn for_store(&self, install_store: &Path) -> Box<dyn ToolManager> {
+        Box::new(MiseToolManager::with_runner(ProcessMiseRunner::for_store(install_store)))
     }
 }
 
@@ -174,6 +171,10 @@ impl<R: MiseRunner + Send + Sync> ToolManager for MiseToolManager<R> {
 
     fn uninstall(&self, tool: ToolKind, version: &str) -> Result<(), EnvarlyError> {
         MiseToolManager::uninstall(self, tool, version)
+    }
+
+    fn download_size(&self, tool: ToolKind, version: &str) -> Result<Option<u64>, EnvarlyError> {
+        crate::whichcraft::mise::sizes::download_size(tool, version, crate::whichcraft::mise::sizes::http_content_length)
     }
 
     fn list_remote(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError> {
