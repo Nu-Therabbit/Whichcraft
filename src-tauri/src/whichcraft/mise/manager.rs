@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use crate::error::EnvarlyError;
 use crate::whichcraft::api::ToolKind;
 use crate::whichcraft::mise::pins::{self, MISE_VERSION};
-use crate::whichcraft::persistence::{load_settings, save_settings};
+use crate::whichcraft::persistence::load_settings;
 use crate::whichcraft::ports::tool_manager::{RemoteVersion, ToolManager};
 
 const FLUTTER_PLUGIN_NAME: &str = "vfox-jdx-vfox-flutter";
@@ -31,11 +31,31 @@ pub struct ProcessMiseRunner {
 }
 
 impl ProcessMiseRunner {
+    /// Runs against the store new installations go to.
     pub fn from_settings() -> Result<Self, EnvarlyError> {
-        Ok(Self {
-            store: load_settings()?.install_store.join("_mise"),
-        })
+        Ok(Self::for_store(&load_settings()?.install_store))
     }
+
+    /// Runs against a given install store, current or earlier.
+    pub fn for_store(install_store: &Path) -> Self {
+        Self {
+            store: install_store.join("_mise"),
+        }
+    }
+}
+
+/// Where mise puts one tool's versions inside an install store, e.g. `<store>\_mise\data\installs\node`.
+pub fn mise_installs_dir(install_store: &Path, tool: ToolKind) -> Option<PathBuf> {
+    let name = match tool {
+        ToolKind::Java => "java",
+        ToolKind::Node => "node",
+        ToolKind::Python => "python",
+        ToolKind::Go => "go",
+        // mise turns the `vfox:jdx/vfox-flutter` backend into this directory name.
+        ToolKind::Flutter => "vfox-jdx-vfox-flutter",
+        ToolKind::Git => return None,
+    };
+    Some(install_store.join("_mise").join("data").join("installs").join(name))
 }
 
 impl MiseRunner for ProcessMiseRunner {
@@ -227,14 +247,25 @@ fn plugin_ref(listing: &str, name: &str) -> Option<String> {
     })
 }
 
+/// The pinned hashes a mise.exe must match before it is run.
+struct MisePins<'a> {
+    zip_sha256: &'a str,
+    exe_sha256: &'a str,
+}
+
+const PINNED: MisePins<'static> = MisePins {
+    zip_sha256: pins::MISE_WINDOWS_X64_SHA256,
+    exe_sha256: pins::MISE_WINDOWS_X64_EXE_SHA256,
+};
+
 fn ensure_mise() -> Result<PathBuf, EnvarlyError> {
-    let dir = mise_store_dir()?;
-    let exe = dir.join("mise.exe");
-    if exe.is_file() {
-        return Ok(exe);
+    // Hashing 230 MB costs about a second, so check once per process.
+    static VERIFIED: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    if let Some(exe) = VERIFIED.get() {
+        return Ok(exe.clone());
     }
-    download_and_verify_mise(&dir)?;
-    Ok(exe)
+    let exe = verified_mise(&mise_store_dir()?, &PINNED, download_mise_zip)?;
+    Ok(VERIFIED.get_or_init(|| exe).clone())
 }
 
 fn mise_store_dir() -> Result<PathBuf, EnvarlyError> {
@@ -243,45 +274,69 @@ fn mise_store_dir() -> Result<PathBuf, EnvarlyError> {
         .join(MISE_VERSION.trim_start_matches('v')))
 }
 
-fn download_and_verify_mise(dir: &Path) -> Result<(), EnvarlyError> {
-    std::fs::create_dir_all(dir)
-        .map_err(|e| EnvarlyError::InvalidInput(format!("create mise dir: {e}")))?;
-    let url = pins::mise_download_url();
-    let bytes = reqwest::blocking::get(&url)
+fn download_mise_zip() -> Result<Vec<u8>, EnvarlyError> {
+    Ok(reqwest::blocking::get(pins::mise_download_url())
         .map_err(|e| EnvarlyError::InvalidInput(format!("download mise: {e}")))?
         .bytes()
-        .map_err(|e| EnvarlyError::InvalidInput(format!("read mise body: {e}")))?;
-    let mut hasher = Sha256::new();
-    hasher.update(&bytes);
-    let digest = format!("{:x}", hasher.finalize());
-    if digest != pins::MISE_WINDOWS_X64_SHA256 {
-        return Err(EnvarlyError::InvalidInput(
-            "mise download SHA256 mismatch".into(),
-        ));
+        .map_err(|e| EnvarlyError::InvalidInput(format!("read mise body: {e}")))?
+        .to_vec())
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+/// Returns `dir\mise.exe` only once it matches the pinned hash. A missing or damaged copy is
+/// fetched again; the new copy is written under a temporary name and renamed into place only
+/// after its hash checks out, so an interrupted extraction never leaves a `mise.exe` behind.
+fn verified_mise(
+    dir: &Path,
+    pins: &MisePins,
+    fetch_zip: impl FnOnce() -> Result<Vec<u8>, EnvarlyError>,
+) -> Result<PathBuf, EnvarlyError> {
+    let exe = dir.join("mise.exe");
+    if let Ok(bytes) = std::fs::read(&exe) {
+        if sha256_hex(&bytes) == pins.exe_sha256 {
+            return Ok(exe);
+        }
+        std::fs::remove_file(&exe)
+            .map_err(|e| EnvarlyError::InvalidInput(format!("remove damaged mise.exe: {e}")))?;
     }
-    let cursor = std::io::Cursor::new(bytes);
-    let mut archive =
-        zip::ZipArchive::new(cursor).map_err(|e| EnvarlyError::InvalidInput(format!("zip: {e}")))?;
+
+    let zip_bytes = fetch_zip()?;
+    if sha256_hex(&zip_bytes) != pins.zip_sha256 {
+        return Err(EnvarlyError::InvalidInput("mise download SHA256 mismatch".into()));
+    }
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(zip_bytes))
+        .map_err(|e| EnvarlyError::InvalidInput(format!("zip: {e}")))?;
+    let mut exe_bytes = Vec::new();
+    let mut found = false;
     for i in 0..archive.len() {
         let mut file = archive
             .by_index(i)
             .map_err(|e| EnvarlyError::InvalidInput(format!("zip entry: {e}")))?;
-        if file.name().ends_with("mise.exe") {
-            let out_path = dir.join("mise.exe");
-            let mut out = std::fs::File::create(&out_path)
-                .map_err(|e| EnvarlyError::InvalidInput(format!("write mise: {e}")))?;
-            std::io::copy(&mut file, &mut out)
+        if file.name().ends_with("/mise.exe") || file.name() == "mise.exe" {
+            std::io::Read::read_to_end(&mut file, &mut exe_bytes)
                 .map_err(|e| EnvarlyError::InvalidInput(format!("extract mise: {e}")))?;
-            return Ok(());
+            found = true;
+            break;
         }
     }
-    Err(EnvarlyError::InvalidInput("mise.exe not found in zip".into()))
-}
+    if !found {
+        return Err(EnvarlyError::InvalidInput("mise.exe not found in zip".into()));
+    }
+    if sha256_hex(&exe_bytes) != pins.exe_sha256 {
+        return Err(EnvarlyError::InvalidInput("extracted mise.exe SHA256 mismatch".into()));
+    }
 
-pub fn set_install_store(path: PathBuf) -> Result<(), EnvarlyError> {
-    let mut settings = load_settings()?;
-    settings.install_store = path;
-    save_settings(&settings)
+    std::fs::create_dir_all(dir)
+        .map_err(|e| EnvarlyError::InvalidInput(format!("create mise dir: {e}")))?;
+    let partial = dir.join("mise.exe.partial");
+    std::fs::write(&partial, &exe_bytes)
+        .map_err(|e| EnvarlyError::InvalidInput(format!("write mise: {e}")))?;
+    std::fs::rename(&partial, &exe)
+        .map_err(|e| EnvarlyError::InvalidInput(format!("move mise into place: {e}")))?;
+    Ok(exe)
 }
 
 #[cfg(test)]
@@ -393,6 +448,61 @@ mod tests {
         let mgr = MiseToolManager::with_runner(FakeRunner::default().reply("plugins ls --urls --refs", &listing));
         mgr.ensure_flutter_plugin().unwrap();
         assert_eq!(*mgr.runner.calls.lock().unwrap(), vec!["plugins ls --urls --refs".to_string()]);
+    }
+
+    fn zip_with_exe(exe: &[u8]) -> Vec<u8> {
+        let mut buf = std::io::Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(&mut buf);
+        zip.start_file("mise/bin/mise.exe", zip::write::SimpleFileOptions::default()).unwrap();
+        std::io::Write::write_all(&mut zip, exe).unwrap();
+        zip.finish().unwrap();
+        buf.into_inner()
+    }
+
+    fn pins_for(zip: &[u8], exe: &[u8]) -> (String, String) {
+        (sha256_hex(zip), sha256_hex(exe))
+    }
+
+    #[test]
+    fn a_good_existing_mise_is_used_without_downloading() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("mise.exe"), b"real-mise").unwrap();
+        let (z, e) = pins_for(b"unused", b"real-mise");
+        let pins = MisePins { zip_sha256: &z, exe_sha256: &e };
+        let exe = verified_mise(dir.path(), &pins, || panic!("should not download")).unwrap();
+        assert_eq!(std::fs::read(exe).unwrap(), b"real-mise");
+    }
+
+    #[test]
+    fn a_damaged_existing_mise_is_replaced() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("mise.exe"), b"half-writ").unwrap();
+        let zip = zip_with_exe(b"real-mise");
+        let (z, e) = pins_for(&zip, b"real-mise");
+        let pins = MisePins { zip_sha256: &z, exe_sha256: &e };
+        let exe = verified_mise(dir.path(), &pins, || Ok(zip.clone())).unwrap();
+        assert_eq!(std::fs::read(exe).unwrap(), b"real-mise");
+        assert!(!dir.path().join("mise.exe.partial").exists());
+    }
+
+    #[test]
+    fn a_download_with_the_wrong_hash_leaves_no_mise_behind() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip = zip_with_exe(b"tampered");
+        let (_, e) = pins_for(&zip, b"real-mise");
+        let pins = MisePins { zip_sha256: "0000", exe_sha256: &e };
+        assert!(verified_mise(dir.path(), &pins, || Ok(zip.clone())).is_err());
+        assert!(!dir.path().join("mise.exe").exists());
+    }
+
+    #[test]
+    fn an_exe_that_does_not_match_its_pin_is_not_installed() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip = zip_with_exe(b"other-build");
+        let (z, e) = pins_for(&zip, b"real-mise");
+        let pins = MisePins { zip_sha256: &z, exe_sha256: &e };
+        assert!(verified_mise(dir.path(), &pins, || Ok(zip.clone())).is_err());
+        assert!(!dir.path().join("mise.exe").exists());
     }
 
     #[test]

@@ -58,6 +58,8 @@ pub struct MemBackend {
     pub elevated: bool,
 }
 
+// Outside tests only `new` is used (profile planning works on a scratch copy).
+#[cfg_attr(not(test), allow(dead_code))]
 impl MemBackend {
     pub fn new() -> Self {
         Self {

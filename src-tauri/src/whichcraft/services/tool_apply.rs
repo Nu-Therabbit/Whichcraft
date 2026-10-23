@@ -8,7 +8,7 @@ use crate::whichcraft::persistence::{
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
 use crate::whichcraft::ports::installation_probe::ToolInstallation;
 use crate::whichcraft::services::get_var;
-use crate::whichcraft::services::java_plan::PlanVariableDiff;
+use crate::whichcraft::services::tool_plan::PlanVariableDiff;
 use crate::whichcraft::services::tool_plan::{
     build_tool_apply_plan, diff_to_env_value, plan_to_mutations, tool_plan_is_stale, ToolApplyPlan,
 };
@@ -90,13 +90,17 @@ fn apply_tool_plan_with<B: EnvBackend>(
     let mut journal = WhichcraftJournal {
         id: plan.plan_id.clone(),
         status: JournalStatus::Pending,
-        kind: format!("{}_apply", tool_slug(plan.selected.tool)),
+        kind: if plan.records_selection {
+            format!("{}_apply", tool_slug(plan.selected.tool))
+        } else {
+            "path_cleanup".into()
+        },
         created_at: chrono::Utc::now().to_rfc3339(),
         baseline: plan.baseline.clone(),
         mutations,
     };
     save_journal(&journal)?;
-    let mut fail = |journal: &mut WhichcraftJournal| {
+    let fail = |journal: &mut WhichcraftJournal| {
         journal.status = JournalStatus::Failed;
         let _ = save_journal(journal);
     };
@@ -155,7 +159,10 @@ fn apply_tool_plan_with<B: EnvBackend>(
         return Err(EnvarlyError::InvalidInput(message));
     }
 
-    for installation in std::iter::once(&plan.selected).chain(&plan.additional_selections) {
+    let selections = std::iter::once(&plan.selected)
+        .chain(&plan.additional_selections)
+        .filter(|_| plan.records_selection);
+    for installation in selections {
         save_tool_selection(&ToolSelection {
             tool: installation.tool,
             root: installation.root.clone(),
@@ -332,8 +339,71 @@ mod tests {
                 managed: true,
             },
             additional_selections: vec![],
+            records_selection: true,
             effective_after_user_only: false,
         }
+    }
+
+    #[test]
+    fn java_plan_sets_java_home_and_prepends_bin_and_remembers_the_jdk() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let jdk = dir.path().join("jdk");
+        std::fs::create_dir_all(jdk.join("bin")).unwrap();
+        std::fs::write(jdk.join("release"), "IMPLEMENTOR=\"V\"\nJAVA_VERSION=\"21.0.1\"\n").unwrap();
+        std::fs::write(jdk.join("bin").join("java.exe"), b"").unwrap();
+        let installation = ToolInstallation {
+            tool: ToolKind::Java,
+            vendor: "V".into(),
+            version: "21.0.1".into(),
+            root: jdk.clone(),
+            managed: false,
+        };
+        let b = MemBackend::new().with_user([("Path", "C:\\old")]);
+
+        let plan = create_tool_plan(&b, &installation).unwrap();
+        assert!(!apply_tool_plan(&b, &plan).unwrap().stale);
+
+        let user = b.read_user().unwrap();
+        assert_eq!(user["JAVA_HOME"].value, jdk.to_string_lossy());
+        assert!(user["Path"].value.starts_with(&*jdk.join("bin").to_string_lossy()));
+        let selected = crate::whichcraft::persistence::load_java_selection().unwrap().unwrap();
+        assert_eq!(selected.root, jdk);
+    }
+
+    #[test]
+    fn java_selection_is_none_when_only_other_tools_were_selected() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        save_tool_selection(&ToolSelection {
+            tool: ToolKind::Node,
+            root: "C:\\node22".into(),
+            vendor: "Node.js".into(),
+            version: "22.23.4".into(),
+        })
+        .unwrap();
+        assert!(crate::whichcraft::persistence::load_java_selection().unwrap().is_none());
+    }
+
+    #[test]
+    fn applying_a_path_cleanup_leaves_selections_alone() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let keep = dir.path().join("keep");
+        std::fs::create_dir_all(&keep).unwrap();
+        let path = leak_str(format!("{0};C:\\gone-for-good;{0}", keep.display()));
+        let b = MemBackend::new().with_user([("Path", path)]);
+
+        let cleanup = crate::whichcraft::services::path_cleanup::build_path_cleanup_plan(&b).unwrap();
+        apply_tool_plan(&b, &cleanup.inner).unwrap();
+
+        assert_eq!(b.read_user().unwrap()["Path"].value, keep.to_string_lossy());
+        assert!(crate::whichcraft::persistence::load_tool_selection(ToolKind::Node).unwrap().is_none());
+        assert_eq!(load_last_completed_apply().unwrap().unwrap().kind, "path_cleanup");
+    }
+
+    fn leak_str(s: String) -> &'static str {
+        Box::leak(s.into_boxed_str())
     }
 
     fn backend() -> MemBackend {

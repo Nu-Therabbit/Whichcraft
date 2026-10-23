@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] ใช้ backend `vfox:jdx/vfox-flutter` ไม่ใช้ `http:flutter` (I-2)
-- [ ] ก่อนติดตั้ง Flutter ครั้งแรก แอปติดตั้งปลั๊กอินเองด้วย SHA เต็มที่ฝังไว้คู่กับเวอร์ชันของ mise (SHA แบบย่อใช้ไม่ได้)
-- [ ] ปลั๊กอินอยู่ที่ SHA ที่ pin ไว้ แม้ upstream จะมี commit ใหม่ (I-16)
+- [x] ใช้ backend `vfox:jdx/vfox-flutter` ไม่ใช้ `http:flutter` (I-2) — mise_tool ใช้ `vfox:jdx/vfox-flutter`
+- [x] ก่อนติดตั้ง Flutter ครั้งแรก แอปติดตั้งปลั๊กอินเองด้วย SHA เต็มที่ฝังไว้คู่กับเวอร์ชันของ mise (SHA แบบย่อใช้ไม่ได้) — ensure_flutter_plugin ก่อน install และ ls-remote
+- [x] ปลั๊กอินอยู่ที่ SHA ที่ pin ไว้ แม้ upstream จะมี commit ใหม่ (I-16) — test ที่ core ด้วย runner ปลอม; ยังไม่ได้ทดสอบกับ upstream จริง
 - [ ] ปิดการอัปเดตปลั๊กอินอัตโนมัติ และการติดตั้งครั้งถัดไปหลังผ่านระยะที่ mise จะอัปเดตเอง ยังได้ SHA เดิม (I-17)
 - [ ] แสดงขนาดดาวน์โหลดราว 1.9 GB และพื้นที่ที่จะใช้ราว 3.3 GB ก่อนติดตั้ง (I-9)
 - [ ] มี adapter contract test กับ mise จริงที่ติดตั้ง Flutter และตรวจ SHA ของปลั๊กอิน

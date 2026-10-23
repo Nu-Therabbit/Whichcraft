@@ -10,7 +10,7 @@ use crate::whichcraft::api::ToolKind;
 use crate::whichcraft::persistence::{new_journal_id, whichcraft_data_dir};
 use crate::whichcraft::ports::elevator::Elevator;
 use crate::whichcraft::services::get_var;
-use crate::whichcraft::services::java_plan::PlanVariableDiff;
+use crate::whichcraft::services::tool_plan::PlanVariableDiff;
 use crate::whichcraft::services::tool_apply::{
     apply_tool_plan, apply_tool_plan_elevated, create_tool_plan, ApplyToolResult,
 };
@@ -193,6 +193,7 @@ fn plan_profile_apply_with<B: EnvBackend>(
         baseline,
         selected: first.clone(),
         additional_selections: rest.to_vec(),
+        records_selection: true,
         effective_after_user_only,
     })
 }
@@ -225,17 +226,6 @@ fn resolve_pin(installs: &[ToolInstallationView], pin: &ProfileToolPin) -> Optio
         .and_then(|root| matching.iter().find(|v| &v.installation.root == root))
         .or_else(|| matching.first())
         .map(|v| (*v).clone())
-}
-
-pub fn merge_profile_pins(
-    existing: &HashMap<ToolKind, ProfileToolPin>,
-    profile: &ToolProfile,
-) -> HashMap<ToolKind, ProfileToolPin> {
-    let mut out = existing.clone();
-    for pin in &profile.tools {
-        out.insert(pin.tool, pin.clone());
-    }
-    out
 }
 
 #[cfg(test)]

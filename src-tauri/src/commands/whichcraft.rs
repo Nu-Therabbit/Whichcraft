@@ -9,11 +9,7 @@ use crate::whichcraft::persistence::{
 };
 use crate::whichcraft::ports::tool_manager::ToolManager;
 use crate::whichcraft::services::elevation::WinElevator;
-use crate::whichcraft::services::java_apply::{
-    apply_java_plan, create_java_plan, incomplete_apply_journal, ApplyJavaResult,
-};
 use crate::whichcraft::services::java_inventory::{list_java_installations, JavaInstallationView};
-use crate::whichcraft::services::java_plan::JavaApplyPlan;
 use crate::whichcraft::services::path_cleanup::{build_path_cleanup_plan, PathCleanupPlan};
 use crate::whichcraft::services::profiles::{
     apply_profile, load_profiles, profile_status, save_profiles as persist_profiles, plan_profile_apply,
@@ -24,7 +20,8 @@ use crate::whichcraft::services::supplemental_inventory::{
     ReadOnlyInventorySection,
 };
 use crate::whichcraft::services::tool_apply::{
-    apply_tool_plan, apply_tool_plan_elevated, create_tool_plan, ApplyToolResult,
+    apply_tool_plan, apply_tool_plan_elevated, create_tool_plan, incomplete_apply_journal,
+    ApplyToolResult,
 };
 use crate::whichcraft::services::tool_inventory::{list_tool_installations, ToolInstallationView};
 use crate::whichcraft::services::tool_plan::ToolApplyPlan;
@@ -57,19 +54,60 @@ pub fn whichcraft_get_settings() -> Result<WhichcraftSettings, EnvarlyError> {
 
 #[tauri::command]
 pub fn whichcraft_save_settings(settings: WhichcraftSettings) -> Result<(), EnvarlyError> {
-    save_settings(&settings)
+    save_settings(&merge_settings(load_settings()?, settings))
 }
 
+/// Takes the caller's settings but keeps the store history on disk: a changed store is
+/// switched to (the old one stays listed), and a missing history is not taken as "forget it".
+fn merge_settings(current: WhichcraftSettings, incoming: WhichcraftSettings) -> WhichcraftSettings {
+    let mut merged = current;
+    merged.switch_install_store(incoming.install_store);
+    merged.scan_roots = incoming.scan_roots;
+    merged.terminal = incoming.terminal;
+    merged
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn saving_settings_without_store_history_keeps_it() {
+        let mut current = WhichcraftSettings { install_store: "C:\\a".into(), ..Default::default() };
+        current.switch_install_store("C:\\b".into());
+        let incoming = WhichcraftSettings { install_store: "C:\\b".into(), ..Default::default() };
+        let merged = merge_settings(current, incoming);
+        assert_eq!(merged.all_install_stores(), vec![PathBuf::from("C:\\b"), PathBuf::from("C:\\a")]);
+    }
+
+    #[test]
+    fn saving_a_new_store_keeps_the_old_one_listed() {
+        let current = WhichcraftSettings { install_store: "C:\\a".into(), ..Default::default() };
+        let incoming = WhichcraftSettings { install_store: "D:\\tools".into(), ..Default::default() };
+        let merged = merge_settings(current, incoming);
+        assert_eq!(merged.install_store, PathBuf::from("D:\\tools"));
+        assert_eq!(merged.previous_install_stores, vec![PathBuf::from("C:\\a")]);
+    }
+}
+
+/// Java goes through the same plan as every other tool (JAVA_HOME + PATH, System shadowing).
 #[tauri::command]
-pub fn whichcraft_plan_java(root: String) -> Result<JavaApplyPlan, EnvarlyError> {
+pub fn whichcraft_plan_java(root: String) -> Result<ToolApplyPlan, EnvarlyError> {
     let backend = WinregBackend;
     let views = list_java_installations(&backend, None)?;
-    let installation = views
+    let java = views
         .into_iter()
         .find(|v| v.installation.root == PathBuf::from(&root))
         .map(|v| v.installation)
         .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown java root: {root}")))?;
-    create_java_plan(&backend, &installation)
+    let installation = crate::whichcraft::ports::installation_probe::ToolInstallation {
+        tool: ToolKind::Java,
+        vendor: java.vendor,
+        version: java.version,
+        root: java.root,
+        managed: java.managed,
+    };
+    create_tool_plan(&backend, &installation)
 }
 
 #[tauri::command]
@@ -85,8 +123,8 @@ pub fn whichcraft_plan_tool(root: String, tool: ToolKind) -> Result<ToolApplyPla
 }
 
 #[tauri::command]
-pub fn whichcraft_apply_java_plan(plan: JavaApplyPlan) -> Result<ApplyJavaResult, EnvarlyError> {
-    apply_java_plan(&WinregBackend, &plan)
+pub fn whichcraft_apply_java_plan(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
+    apply_tool_plan_elevated(&WinregBackend, &WinElevator, &plan)
 }
 
 #[tauri::command]
@@ -127,6 +165,16 @@ pub fn whichcraft_list_remote_versions(
 ) -> Result<Vec<crate::whichcraft::ports::tool_manager::RemoteVersion>, EnvarlyError> {
     let mgr = MiseToolManager::new()?;
     mgr.list_remote(tool)
+}
+
+/// Download size in bytes for one version, or `None` when it cannot be known before installing.
+#[tauri::command]
+pub fn whichcraft_download_size(tool: ToolKind, version: String) -> Result<Option<u64>, EnvarlyError> {
+    crate::whichcraft::mise::sizes::download_size(
+        tool,
+        &version,
+        crate::whichcraft::mise::sizes::http_content_length,
+    )
 }
 
 #[tauri::command]

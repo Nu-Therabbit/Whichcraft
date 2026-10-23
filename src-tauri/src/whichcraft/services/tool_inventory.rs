@@ -107,11 +107,14 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
         append_standard_roots(tool, &mut roots);
     }
 
-    append_managed_roots(tool, &settings.install_store, &mut roots);
+    let stores = settings.all_install_stores();
+    for store in &stores {
+        append_managed_roots(tool, store, &mut roots);
+    }
 
     let mut by_root: HashMap<PathBuf, ToolInstallation> = HashMap::new();
     for root in roots {
-        let managed = root.starts_with(&settings.install_store);
+        let managed = stores.iter().any(|s| root.starts_with(s));
         if let Some(inst) = probe_tool_root(tool, &root, managed) {
             by_root.entry(inst.root.clone()).or_insert(inst);
         }
@@ -225,8 +228,12 @@ fn append_standard_roots(tool: ToolKind, out: &mut HashSet<PathBuf>) {
     let _ = pf86;
 }
 
+/// Version folders mise installed in `store`. Its alias junctions (`latest`, `22`, …) are
+/// left to `probe_tool_root`, which rejects reparse points.
 fn append_managed_roots(tool: ToolKind, store: &Path, out: &mut HashSet<PathBuf>) {
-    let tool_dir = store.join(tool_slug(tool));
+    let Some(tool_dir) = crate::whichcraft::mise::manager::mise_installs_dir(store, tool) else {
+        return;
+    };
     if !tool_dir.is_dir() {
         return;
     }
@@ -238,17 +245,6 @@ fn append_managed_roots(tool: ToolKind, store: &Path, out: &mut HashSet<PathBuf>
         if path.is_dir() {
             out.insert(path);
         }
-    }
-}
-
-fn tool_slug(tool: ToolKind) -> &'static str {
-    match tool {
-        ToolKind::Java => "java",
-        ToolKind::Node => "node",
-        ToolKind::Python => "python",
-        ToolKind::Go => "go",
-        ToolKind::Flutter => "flutter",
-        ToolKind::Git => "git",
     }
 }
 
@@ -282,5 +278,51 @@ mod tests {
         .unwrap();
         assert_eq!(views.len(), 1);
         assert!(views[0].available);
+    }
+
+    /// A Node version laid out the way mise installs it inside an install store.
+    fn mise_node(store: &Path, version: &str) -> PathBuf {
+        let root = store.join("_mise").join("data").join("installs").join("node").join(version);
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("node.exe"), b"").unwrap();
+        root
+    }
+
+    #[test]
+    fn managed_installs_in_current_and_earlier_stores_are_listed() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        let store_a = dir.path().join("store-a");
+        let store_b = dir.path().join("store-b");
+        let in_a = mise_node(&store_a, "22.23.4");
+
+        let mut settings = crate::whichcraft::persistence::load_settings().unwrap();
+        settings.install_store = store_a.clone();
+        settings.switch_install_store(store_b.clone());
+        crate::whichcraft::persistence::save_settings(&settings).unwrap();
+        let in_b = mise_node(&store_b, "24.11.0");
+
+        let views = list_tool_installations_with_options(
+            &MemBackend::new(),
+            ToolKind::Node,
+            None,
+            ToolDiscoveryOptions { include_standard_locations: false },
+        )
+        .unwrap();
+        let roots: Vec<&PathBuf> = views.iter().map(|v| &v.installation.root).collect();
+        assert!(roots.contains(&&in_a) && roots.contains(&&in_b));
+        assert!(views.iter().all(|v| v.installation.managed));
+    }
+
+    #[test]
+    fn switching_back_and_forth_keeps_each_store_once() {
+        let mut settings = crate::whichcraft::persistence::WhichcraftSettings {
+            install_store: "C:\\a".into(),
+            ..Default::default()
+        };
+        settings.switch_install_store("C:\\b".into());
+        settings.switch_install_store("C:\\a".into());
+        assert_eq!(settings.install_store, PathBuf::from("C:\\a"));
+        assert_eq!(settings.all_install_stores(), vec![PathBuf::from("C:\\a"), PathBuf::from("C:\\b")]);
     }
 }

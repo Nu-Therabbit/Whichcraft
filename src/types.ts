@@ -129,26 +129,18 @@ export interface PlanVariableDiff {
   valueKind: EnvValueKind;
 }
 
-/** Java plan omits `tool` on the wire; the UI normalizes to ToolApplyPlan. */
-export interface JavaApplyPlan {
-  planId: string;
-  requiresUac: boolean;
-  warnings: string[];
-  limitationNotice: string;
-  userDiffs: PlanVariableDiff[];
-  systemDiffs: PlanVariableDiff[];
-  effectiveAfterUserOnly: boolean;
-  selected: {
-    vendor: string;
-    version: string;
-    root: string;
-    managed: boolean;
-  };
-}
+/** @deprecated Java uses the same plan as every other tool. */
+export type JavaApplyPlan = ToolApplyPlan;
 
-export interface ApplyJavaResult {
-  planId: string;
-  stale: boolean;
+/** @deprecated Java uses the same apply result as every other tool. */
+export type ApplyJavaResult = ApplyToolResult;
+
+export interface ToolInstallationRef {
+  tool: ToolKind;
+  vendor: string;
+  version: string;
+  root: string;
+  managed: boolean;
 }
 
 export interface ToolApplyPlan {
@@ -160,13 +152,11 @@ export interface ToolApplyPlan {
   userDiffs: PlanVariableDiff[];
   systemDiffs: PlanVariableDiff[];
   effectiveAfterUserOnly: boolean;
-  selected: {
-    tool: ToolKind;
-    vendor: string;
-    version: string;
-    root: string;
-    managed: boolean;
-  };
+  selected: ToolInstallationRef;
+  /** Other tools a profile plan selects alongside `selected`. */
+  additionalSelections?: ToolInstallationRef[];
+  /** False for plans that are not a tool choice, such as PATH cleanup. */
+  recordsSelection?: boolean;
 }
 
 export interface ApplyToolResult {

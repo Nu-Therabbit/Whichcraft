@@ -7,8 +7,18 @@ use crate::model::{EnvSnapshot, EnvValue, EnvValueKind, VarScope};
 use crate::path_manage;
 use crate::whichcraft::api::ToolKind;
 use crate::whichcraft::ports::installation_probe::ToolInstallation;
-use crate::whichcraft::services::java_plan::{plan_is_stale, PlanVariableDiff};
-use crate::whichcraft::services::path_plan::{compute_prepend, path_entries};
+use crate::whichcraft::services::get_var;
+use crate::whichcraft::services::path_plan::{compute_prepend, path_entries, path_entry_diff};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanVariableDiff {
+    pub name: String,
+    pub scope: VarScope,
+    pub before: Option<String>,
+    pub after: String,
+    pub value_kind: EnvValueKind,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -25,7 +35,15 @@ pub struct ToolApplyPlan {
     /// Other tools this plan also selects (a profile applies several tools as one plan).
     #[serde(default)]
     pub additional_selections: Vec<ToolInstallation>,
+    /// False for plans that are not a tool choice (PATH cleanup); applying them leaves the
+    /// remembered selections alone.
+    #[serde(default = "records_selection_default")]
+    pub records_selection: bool,
     pub effective_after_user_only: bool,
+}
+
+fn records_selection_default() -> bool {
+    true
 }
 
 pub fn path_dirs_for_tool(installation: &ToolInstallation) -> Vec<String> {
@@ -193,30 +211,25 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
         baseline,
         selected: installation.clone(),
         additional_selections: Vec::new(),
+        records_selection: true,
         effective_after_user_only: effective_after_user,
     })
 }
 
+/// True when any variable the plan touches no longer has the value the plan was built from.
 pub fn tool_plan_is_stale(plan: &ToolApplyPlan, backend: &dyn EnvBackend) -> Result<bool, EnvarlyError> {
-    plan_is_stale(
-        &crate::whichcraft::services::java_plan::JavaApplyPlan {
-            plan_id: plan.plan_id.clone(),
-            requires_uac: plan.requires_uac,
-            warnings: plan.warnings.clone(),
-            limitation_notice: plan.limitation_notice.clone(),
-            user_diffs: plan.user_diffs.clone(),
-            system_diffs: plan.system_diffs.clone(),
-            baseline: plan.baseline.clone(),
-            selected: crate::whichcraft::java::JavaInstallation {
-                vendor: plan.selected.vendor.clone(),
-                version: plan.selected.version.clone(),
-                root: plan.selected.root.clone(),
-                managed: plan.selected.managed,
-            },
-            effective_after_user_only: plan.effective_after_user_only,
-        },
-        backend,
-    )
+    let current = crate::env_store::read_snapshot_with(backend)?;
+    for diff in plan.user_diffs.iter().chain(plan.system_diffs.iter()) {
+        let map = match diff.scope {
+            VarScope::User => &current.user,
+            VarScope::System => &current.system,
+            VarScope::OtherUser => current.other_user.as_ref().unwrap_or(&current.user),
+        };
+        if get_var(map, &diff.name).map(|v| v.value.as_str()) != diff.before.as_deref() {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn find_system_shadow(system_path: &str, installation: &ToolInstallation) -> Option<String> {
@@ -272,25 +285,20 @@ pub fn diff_to_env_value(diff: &PlanVariableDiff) -> EnvValue {
     EnvValue::typed(diff.after.clone(), diff.value_kind)
 }
 
+/// Each diff with the PATH entries it adds and removes (empty for other variables).
 pub fn plan_to_mutations(
     plan: &ToolApplyPlan,
 ) -> Vec<(PlanVariableDiff, (Vec<String>, Vec<String>))> {
-    use crate::whichcraft::services::java_plan::plan_to_mutations;
-    let shim = crate::whichcraft::services::java_plan::JavaApplyPlan {
-        plan_id: plan.plan_id.clone(),
-        requires_uac: plan.requires_uac,
-        warnings: plan.warnings.clone(),
-        limitation_notice: plan.limitation_notice.clone(),
-        user_diffs: plan.user_diffs.clone(),
-        system_diffs: plan.system_diffs.clone(),
-        baseline: plan.baseline.clone(),
-        selected: crate::whichcraft::java::JavaInstallation {
-            vendor: plan.selected.vendor.clone(),
-            version: plan.selected.version.clone(),
-            root: plan.selected.root.clone(),
-            managed: plan.selected.managed,
-        },
-        effective_after_user_only: plan.effective_after_user_only,
-    };
-    plan_to_mutations(&shim)
+    plan.user_diffs
+        .iter()
+        .chain(plan.system_diffs.iter())
+        .map(|diff| {
+            let entries = if diff.name.eq_ignore_ascii_case("path") {
+                path_entry_diff(diff.before.as_deref().unwrap_or(""), &diff.after)
+            } else {
+                (Vec::new(), Vec::new())
+            };
+            (diff.clone(), entries)
+        })
+        .collect()
 }

@@ -2,15 +2,13 @@ mod config_store;
 mod journal_store;
 mod selection_store;
 
-pub use config_store::{
-    load_settings, save_settings, TerminalKind, WhichcraftSettings,
-};
+pub use config_store::{load_settings, save_settings, WhichcraftSettings};
 pub use journal_store::{
     load_incomplete_journal, load_last_completed_apply, new_journal_id, save_journal,
     JournalStatus, MutationRecord, WhichcraftJournal,
 };
 pub use selection_store::{
-    load_java_selection, load_tool_selection, save_java_selection, save_tool_selection,
+    load_java_selection, load_tool_selection, save_tool_selection,
     JavaSelection, ToolSelection,
 };
 

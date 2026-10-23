@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** resolved
+**Status:** ready-for-agent
 
 - [x] core สร้างแผนจากการเลือก แยกเป็นรายการ User และ System พร้อมคำเตือน และบอกว่าต้องใช้ UAC หรือไม่ UI แสดงแผนเป็น diff
 - [x] JAVA_HOME และ PATH ชี้ไปโฟลเดอร์เวอร์ชันจริง ไม่ใช่ junction หรือ shims (A-5)
@@ -13,4 +13,4 @@
 - [x] ถ้าเขียนสำเร็จบางรายการแล้วล้มเหลว ย้อนรายการที่เขียนไปแล้ว ถ้าย้อนไม่ได้ให้รายงานทีละรายการ (A-4) — ใช้ rollback ของ Envarly
 - [x] ก่อนเขียน เทียบค่าปัจจุบันกับค่าที่บันทึกตอนสร้างแผน ถ้าเปลี่ยนไปแล้ว ไม่เขียนอะไรเลย แล้วแสดงแผนและ diff ใหม่ให้ยืนยันอีกครั้ง (A-9)
 - [x] แสดงข้อจำกัดว่าโปรแกรมที่เปิดอยู่และ IDE ที่ตั้ง SDK เองจะไม่เปลี่ยนตาม
-- [x] มี test ที่ core ด้วยของปลอม และมี adapter contract test ที่ Apply กับ registry จริง แล้วเทียบกับไฟล์สำรองหลังจบ — unit tests; contract test ยังเป็น placeholder
+- [ ] มี test ที่ core ด้วยของปลอม และมี adapter contract test ที่ Apply กับ registry จริง แล้วเทียบกับไฟล์สำรองหลังจบ — unit tests มีแล้ว; contract test ยังเป็น placeholder

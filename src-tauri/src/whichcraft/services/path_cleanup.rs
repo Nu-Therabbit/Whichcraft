@@ -5,7 +5,7 @@ use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::model::VarScope;
 use crate::whichcraft::persistence::new_journal_id;
-use crate::whichcraft::services::java_plan::PlanVariableDiff;
+use crate::whichcraft::services::tool_plan::PlanVariableDiff;
 use crate::whichcraft::services::path_plan::path_entries;
 use crate::whichcraft::services::tool_plan::ToolApplyPlan;
 use crate::whichcraft::ToolKind;
@@ -63,6 +63,7 @@ pub fn build_path_cleanup_plan<B: EnvBackend>(
                 managed: true,
             },
             additional_selections: Vec::new(),
+            records_selection: false,
             effective_after_user_only: true,
         },
         removed_duplicates,

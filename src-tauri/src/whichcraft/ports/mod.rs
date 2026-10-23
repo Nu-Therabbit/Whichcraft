@@ -9,7 +9,6 @@ pub mod tool_manager;
 pub mod uninstaller;
 pub mod usage_probe;
 
-pub use elevator::Elevator;
 pub use environment_resolver::EnvironmentResolver;
 pub use installation_probe::InstallationProbe;
 pub use installer_catalog::InstallerCatalog;

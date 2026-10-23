@@ -1,4 +1,5 @@
 pub mod manager;
 pub mod pins;
+pub mod sizes;
 
-pub use manager::{MiseToolManager, set_install_store};
+pub use manager::MiseToolManager;

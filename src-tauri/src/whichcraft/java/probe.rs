@@ -1,7 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use crate::whichcraft::api::ToolKind;
-
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JavaInstallation {
@@ -31,12 +29,6 @@ pub fn probe_java_root(root: &Path, managed: bool) -> Option<JavaInstallation> {
         root: root.to_path_buf(),
         managed,
     })
-}
-
-impl JavaInstallation {
-    pub fn tool(&self) -> ToolKind {
-        ToolKind::Java
-    }
 }
 
 fn is_reparse_point(path: &Path) -> bool {
