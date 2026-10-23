@@ -41,6 +41,20 @@ impl FakeInstallerLifecycle {
             prepare: Mutex::new(Err(EnvarlyError::InvalidInput("offline".into()))),
         }
     }
+
+    /// Status is readable, but preparation fails (for example a bad download or checksum).
+    pub fn prepare_fails(version: &str) -> Self {
+        Self {
+            status: Mutex::new(Ok(MiseStatus {
+                version: version.into(),
+                present: false,
+                download_bytes: 230_000_000,
+                old_versions: vec!["2025.2.0".into()],
+                fetching: false,
+            })),
+            prepare: Mutex::new(Err(EnvarlyError::InvalidInput("checksum mismatch".into()))),
+        }
+    }
 }
 
 impl InstallerLifecycle for FakeInstallerLifecycle {

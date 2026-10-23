@@ -17,3 +17,4 @@
 ## Comments
 
 - 2026-10-24: Added `OperationIds` port, `SystemOperationIds` adapter, and `FakeOperationIds`; wired through `App`, plan/apply/profile/PATH/uninstall use cases, and a production-only dependency scan in `application/mod.rs` tests.
+- Review round 1: Profile seam test asserts `plan_id` uses injected IDs; removed dead `new_journal_id` from persistence; dependency scan strips `pub(crate) mod` test blocks and lives in `layer_tests.rs`.
