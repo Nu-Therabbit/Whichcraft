@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { api } from "../api";
+import type { EnvironmentApi } from "../features/environment/api";
 import type { VarScope } from "../types";
 import type { StagedChange } from "./useStaged";
 import { stagedKey } from "./useStaged";
@@ -18,6 +18,7 @@ interface UsePathStatusResult {
 }
 
 export function usePathStatus(
+  environment: EnvironmentApi,
   staged: Map<string, StagedChange>,
   stageSet: (name: string, scope: VarScope, value: string) => void,
 ): UsePathStatusResult {
@@ -37,24 +38,24 @@ export function usePathStatus(
 
   const refreshPathStatus = useCallback(async () => {
     try {
-      const ps = await api.getPathStatus();
+      const ps = await environment.getPathStatus();
       setActualUserPathInEnv(ps.userHasEntry);
       setActualSystemPathInEnv(ps.systemHasEntry);
       setActualOtherUserPathInEnv(ps.otherUserHasEntry);
     } catch {}
-  }, []);
+  }, [environment]);
 
   const handleStageAddToPath = useCallback(
     async (scope: VarScope) => {
       try {
-        const proposed = await api.getPathProposal(scope);
+        const proposed = await environment.getPathProposal(scope);
         if (proposed === null) return;
         stageSet("Path", scope, proposed);
       } catch (err) {
         console.error("Failed to get PATH proposal", err);
       }
     },
-    [stageSet],
+    [environment, stageSet],
   );
 
   const handleDismissPathBanner = useCallback(() => {

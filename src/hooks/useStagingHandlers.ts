@@ -4,8 +4,6 @@ import type { EnvSnapshot, EnvValueKind, EnvValueKindSelection, EnvVar, VarScope
 import type { StagedChange } from "./useStaged";
 import type { Command } from "./useUndoStack";
 
-type Dialog = "importexport" | "changes" | "staged" | "licenses" | "newvar" | null;
-
 interface Params {
   staged: Map<string, StagedChange>;
   stageSet: (
@@ -29,9 +27,6 @@ interface Params {
   clearStaged: () => void;
   restoreStaged: (map: Map<string, StagedChange>) => void;
   push: (command: Command) => void;
-  setDialog: (d: Dialog) => void;
-  setSelected: (v: EnvVar | null) => void;
-  setSnapshotsOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
 }
 
 export function useStagingHandlers({
@@ -44,9 +39,6 @@ export function useStagingHandlers({
   clearStaged,
   restoreStaged,
   push,
-  setDialog,
-  setSelected,
-  setSnapshotsOpen,
 }: Params) {
   const handleStage = useCallback(
     (name: string, scope: VarScope, value: string, valueKind: EnvValueKindSelection = "Auto") => {
@@ -129,28 +121,26 @@ export function useStagingHandlers({
     ) => {
       const snapshot = new Map(staged);
       stageImport(sets, deletes);
-      setDialog(null);
       push({
         label: "Import",
         undo: () => restoreStaged(snapshot),
         redo: () => stageImport(sets, deletes),
       });
     },
-    [staged, stageImport, restoreStaged, push, setDialog],
+    [staged, stageImport, restoreStaged, push],
   );
 
   const handleStageSnapshot = useCallback(
     (snap: EnvSnapshot) => {
       const snapshot = new Map(staged);
       stageSnapshot(snap);
-      setSnapshotsOpen(false);
       push({
         label: "Stage snapshot restore",
         undo: () => restoreStaged(snapshot),
         redo: () => stageSnapshot(snap),
       });
     },
-    [staged, stageSnapshot, restoreStaged, push, setSnapshotsOpen],
+    [staged, stageSnapshot, restoreStaged, push],
   );
 
   const handleNewVarStage = useCallback(
@@ -158,8 +148,6 @@ export function useStagingHandlers({
       const resolvedKind = resolveEnvValueKind(valueKind, value);
       if (valueKind === "Auto") stageSet(name, scope, value);
       else stageSet(name, scope, value, valueKind);
-      setSelected({ name, scope, value, valueKind: resolvedKind, listSeparator: null });
-      setDialog(null);
       push({
         label: `New variable ${name}`,
         undo: () => unstage(name, scope),
@@ -168,8 +156,9 @@ export function useStagingHandlers({
           else stageSet(name, scope, value, valueKind);
         },
       });
+      return { name, scope, value, valueKind: resolvedKind, listSeparator: null } satisfies EnvVar;
     },
-    [stageSet, unstage, push, setSelected, setDialog],
+    [stageSet, unstage, push],
   );
 
   return {

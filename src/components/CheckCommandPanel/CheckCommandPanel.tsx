@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../../api";
+import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
 import { useI18n } from "../../hooks/useI18n";
 import type { CheckCommandResult, CommandHit } from "../../types";
 import { Badge } from "../ui/Badge";
@@ -8,6 +8,7 @@ import { Icon } from "../ui/Icon";
 import { TextInput } from "../ui/TextInput";
 
 export function CheckCommandPanel() {
+  const environment = useEnvironmentApi();
   const { t } = useI18n();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ export function CheckCommandPanel() {
     setLoading(true);
     setError(null);
     try {
-      setResult(await api.checkCommand(trimmed));
+      setResult(await environment.checkCommand(trimmed));
     } catch (e) {
       setError(String(e));
       setResult(null);

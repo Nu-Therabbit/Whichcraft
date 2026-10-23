@@ -1,17 +1,39 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../api";
+import type { EnvironmentApi } from "../features/environment/api";
 import { useAppInit } from "./useAppInit";
 
-vi.mock("../api", () => ({
-  api: {
+function makeEnvironment(): EnvironmentApi {
+  return {
+    getEnvVars: vi.fn(),
+    getUnsupportedEnvValues: vi.fn(),
+    setEnvVar: vi.fn(),
+    deleteEnvVar: vi.fn(),
+    applyEnvChanges: vi.fn(),
+    createSnapshot: vi.fn(),
+    listSnapshots: vi.fn(),
+    renameSnapshot: vi.fn(),
+    deleteSnapshot: vi.fn(),
+    validatePaths: vi.fn(),
     getRegistrySnapshot: vi.fn(),
-    isElevated: vi.fn(),
-  },
-}));
+    exportVars: vi.fn(),
+    exportCustomVars: vi.fn(),
+    parseImport: vi.fn(),
+    getPathStatus: vi.fn(),
+    getPathProposal: vi.fn(),
+    checkCommand: vi.fn(),
+    listLocalAccounts: vi.fn(),
+    selectAccount: vi.fn(),
+    getSelectedAccount: vi.fn(),
+    onApplyProgress: vi.fn(),
+  };
+}
 
 function makeParams(overrides: Partial<Parameters<typeof useAppInit>[0]> = {}) {
+  const environment = makeEnvironment();
   return {
+    environment,
+    platform: { isElevated: vi.fn().mockResolvedValue(false) },
     baselineRef: { current: null },
     setElevated: vi.fn(),
     refreshPathStatus: vi.fn().mockResolvedValue(undefined),
@@ -23,22 +45,22 @@ function makeParams(overrides: Partial<Parameters<typeof useAppInit>[0]> = {}) {
 
 describe("useAppInit", () => {
   beforeEach(() => {
-    vi.mocked(api.getRegistrySnapshot).mockResolvedValue({ user: {}, system: {} });
-    vi.mocked(api.isElevated).mockResolvedValue(false);
+    vi.clearAllMocks();
   });
 
   it("calls getRegistrySnapshot and stores result in baselineRef on mount", async () => {
-    const snapshot = { user: { FOO: "bar" }, system: {} };
-    vi.mocked(api.getRegistrySnapshot).mockResolvedValue(snapshot);
+    const snapshot = { user: { FOO: { value: "bar", kind: "String" as const } }, system: {} };
     const params = makeParams();
+    vi.mocked(params.environment.getRegistrySnapshot).mockResolvedValue(snapshot);
     renderHook(() => useAppInit(params));
-    await waitFor(() => expect(api.getRegistrySnapshot).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(params.environment.getRegistrySnapshot).toHaveBeenCalledTimes(1));
     expect(params.baselineRef.current).toEqual(snapshot);
   });
 
   it("calls isElevated and passes result to setElevated on mount", async () => {
-    vi.mocked(api.isElevated).mockResolvedValue(true);
-    const params = makeParams();
+    const params = makeParams({
+      platform: { isElevated: vi.fn().mockResolvedValue(true) },
+    });
     renderHook(() => useAppInit(params));
     await waitFor(() => expect(params.setElevated).toHaveBeenCalledWith(true));
   });
@@ -61,8 +83,8 @@ describe("useAppInit", () => {
   });
 
   it("continues mount sequence even if getRegistrySnapshot throws", async () => {
-    vi.mocked(api.getRegistrySnapshot).mockRejectedValue(new Error("fail"));
     const params = makeParams();
+    vi.mocked(params.environment.getRegistrySnapshot).mockRejectedValue(new Error("fail"));
     renderHook(() => useAppInit(params));
     await waitFor(() => expect(params.refresh).toHaveBeenCalled());
     expect(params.setElevated).toHaveBeenCalled();

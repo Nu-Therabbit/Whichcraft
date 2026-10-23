@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { api } from "../../api";
+import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
 import { useI18n } from "../../hooks/useI18n";
 import type { DiffEntry } from "../../lib/diff";
 import { computeDiff } from "../../lib/diff";
@@ -17,6 +17,7 @@ interface Status {
 }
 
 export function useSnapshotPanel(onStageSnapshot: (snap: EnvSnapshot) => void) {
+  const environment = useEnvironmentApi();
   const { t } = useI18n();
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);
   const [label, setLabel] = useState("");
@@ -34,11 +35,11 @@ export function useSnapshotPanel(onStageSnapshot: (snap: EnvSnapshot) => void) {
 
   const load = useCallback(async () => {
     try {
-      setSnapshots(await api.listSnapshots());
+      setSnapshots(await environment.listSnapshots());
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [environment]);
 
   useEffect(() => {
     void load();
@@ -49,7 +50,7 @@ export function useSnapshotPanel(onStageSnapshot: (snap: EnvSnapshot) => void) {
     setBusy(true);
     setStatus(null);
     try {
-      await api.createSnapshot(snapshotLabel);
+      await environment.createSnapshot(snapshotLabel);
       setLabel("");
       setStatus({ kind: "success", message: t("snapshot.saved") });
       await load();
@@ -69,7 +70,7 @@ export function useSnapshotPanel(onStageSnapshot: (snap: EnvSnapshot) => void) {
     setLoadingPreview(true);
     setStatus(null);
     try {
-      const current = await api.getRegistrySnapshot();
+      const current = await environment.getRegistrySnapshot();
       setPreviewDiff(computeDiff(current, snap.snapshot));
       setPreviewing(snap);
     } catch (e) {
@@ -98,7 +99,7 @@ export function useSnapshotPanel(onStageSnapshot: (snap: EnvSnapshot) => void) {
 
   const handleDelete = async (id: string) => {
     try {
-      await api.deleteSnapshot(id);
+      await environment.deleteSnapshot(id);
       if (previewing?.id === id) closePreview();
       if (comparingFrom?.id === id) setComparingFrom(null);
       if (compareResult?.from.id === id || compareResult?.to.id === id) setCompareResult(null);
@@ -129,7 +130,7 @@ export function useSnapshotPanel(onStageSnapshot: (snap: EnvSnapshot) => void) {
     setRenamingId(id);
     setStatus(null);
     try {
-      const renamed = await api.renameSnapshot(id, nextLabel);
+      const renamed = await environment.renameSnapshot(id, nextLabel);
       setSnapshots((current) => current.map((snap) => (snap.id === id ? renamed : snap)));
       handleCancelRename();
       setStatus({ kind: "success", message: t("snapshot.renamed") });

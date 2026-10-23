@@ -1,9 +1,15 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import type { EnvironmentApi } from "../../features/environment/api";
+import { renderWithEnvironmentApi } from "../../features/environment/renderWithEnvironmentApi";
 import type { CheckCommandResult } from "../../types";
 import { CheckCommandPanel } from "./CheckCommandPanel";
+
+function renderPanel() {
+  return renderWithEnvironmentApi(<CheckCommandPanel />, api as unknown as EnvironmentApi);
+}
 
 vi.mock("../../api");
 
@@ -47,7 +53,7 @@ function notFoundResult(): CheckCommandResult {
 describe("CheckCommandPanel", () => {
   it("does not call api.checkCommand while typing", async () => {
     const user = userEvent.setup();
-    render(<CheckCommandPanel />);
+    renderPanel();
     await user.type(screen.getByPlaceholderText(/e.g. node/i), "node");
     expect(api.checkCommand).not.toHaveBeenCalled();
   });
@@ -55,7 +61,7 @@ describe("CheckCommandPanel", () => {
   it("calls api.checkCommand with the trimmed input on button click", async () => {
     vi.mocked(api.checkCommand).mockResolvedValue(activeResult());
     const user = userEvent.setup();
-    render(<CheckCommandPanel />);
+    renderPanel();
     await user.type(screen.getByPlaceholderText(/e.g. node/i), "  node  ");
     await user.click(screen.getByRole("button", { name: "Check" }));
     expect(api.checkCommand).toHaveBeenCalledWith("node");
@@ -64,7 +70,7 @@ describe("CheckCommandPanel", () => {
   it("calls api.checkCommand on Enter", async () => {
     vi.mocked(api.checkCommand).mockResolvedValue(activeResult());
     const user = userEvent.setup();
-    render(<CheckCommandPanel />);
+    renderPanel();
     await user.type(screen.getByPlaceholderText(/e.g. node/i), "node{Enter}");
     expect(api.checkCommand).toHaveBeenCalledWith("node");
   });
@@ -72,7 +78,7 @@ describe("CheckCommandPanel", () => {
   it("renders the active hit and no shadowed row for a single hit", async () => {
     vi.mocked(api.checkCommand).mockResolvedValue(activeResult());
     const user = userEvent.setup();
-    render(<CheckCommandPanel />);
+    renderPanel();
     await user.type(screen.getByPlaceholderText(/e.g. node/i), "node{Enter}");
     await waitFor(() => expect(screen.getByText("Active — runs")).toBeInTheDocument());
     expect(screen.queryByText("Shadowed")).not.toBeInTheDocument();
@@ -81,7 +87,7 @@ describe("CheckCommandPanel", () => {
   it("renders one active row and one shadowed row when there are two hits", async () => {
     vi.mocked(api.checkCommand).mockResolvedValue(shadowedResult());
     const user = userEvent.setup();
-    render(<CheckCommandPanel />);
+    renderPanel();
     await user.type(screen.getByPlaceholderText(/e.g. node/i), "node{Enter}");
     await waitFor(() => expect(screen.getByText("Active — runs")).toBeInTheDocument());
     expect(screen.getByText("Shadowed")).toBeInTheDocument();
@@ -90,7 +96,7 @@ describe("CheckCommandPanel", () => {
   it("renders a not-found message distinct from the shadowed/active states", async () => {
     vi.mocked(api.checkCommand).mockResolvedValue(notFoundResult());
     const user = userEvent.setup();
-    render(<CheckCommandPanel />);
+    renderPanel();
     await user.type(screen.getByPlaceholderText(/e.g. node/i), "ghost{Enter}");
     await waitFor(() =>
       expect(screen.getByText("Not found anywhere on PATH.")).toBeInTheDocument(),
@@ -104,7 +110,7 @@ describe("CheckCommandPanel", () => {
       fullPathStatus: { status: "active" },
     });
     const user = userEvent.setup();
-    render(<CheckCommandPanel />);
+    renderPanel();
     await user.type(screen.getByPlaceholderText(/e.g. node/i), "C:\\Tools\\node.exe{Enter}");
     await waitFor(() =>
       expect(screen.getByText("This exact file is the one that runs.")).toBeInTheDocument(),
@@ -120,7 +126,7 @@ describe("CheckCommandPanel", () => {
       },
     });
     const user = userEvent.setup();
-    render(<CheckCommandPanel />);
+    renderPanel();
     await user.type(screen.getByPlaceholderText(/e.g. node/i), "C:\\User\\node.exe{Enter}");
     await waitFor(() =>
       expect(
@@ -135,7 +141,7 @@ describe("CheckCommandPanel", () => {
       fullPathStatus: { status: "notOnEffectivePath" },
     });
     const user = userEvent.setup();
-    render(<CheckCommandPanel />);
+    renderPanel();
     await user.type(screen.getByPlaceholderText(/e.g. node/i), "C:\\Elsewhere\\node.exe{Enter}");
     await waitFor(() =>
       expect(screen.getByText(/isn't on the effective PATH/)).toBeInTheDocument(),
@@ -147,7 +153,7 @@ describe("CheckCommandPanel", () => {
   it("surfaces an error when the check rejects", async () => {
     vi.mocked(api.checkCommand).mockRejectedValue(new Error("boom"));
     const user = userEvent.setup();
-    render(<CheckCommandPanel />);
+    renderPanel();
     await user.type(screen.getByPlaceholderText(/e.g. node/i), "node{Enter}");
     await waitFor(() => expect(screen.getByText(/boom/)).toBeInTheDocument());
   });

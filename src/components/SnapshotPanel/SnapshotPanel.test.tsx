@@ -1,9 +1,18 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import type { EnvironmentApi } from "../../features/environment/api";
+import { renderWithEnvironmentApi } from "../../features/environment/renderWithEnvironmentApi";
 import type { EnvSnapshot, SnapshotMeta } from "../../types";
 import { SnapshotPanel } from "./SnapshotPanel";
+
+function renderSnapshot(onStageSnapshot: (snap: EnvSnapshot) => void) {
+  return renderWithEnvironmentApi(
+    <SnapshotPanel onStageSnapshot={onStageSnapshot} />,
+    api as unknown as EnvironmentApi,
+  );
+}
 
 vi.mock("../../api", () => ({
   api: {
@@ -64,7 +73,7 @@ describe("SnapshotPanel", () => {
   });
 
   it("loads and renders snapshots on mount", async () => {
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await waitFor(() => {
       expect(screen.getByText("Before Node update")).toBeInTheDocument();
     });
@@ -73,7 +82,7 @@ describe("SnapshotPanel", () => {
 
   it("creates a snapshot with label", async () => {
     const user = userEvent.setup();
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await user.type(screen.getByPlaceholderText(/label/i), "My snapshot");
     await user.click(screen.getByRole("button", { name: /save snapshot/i }));
     await waitFor(() => {
@@ -83,7 +92,7 @@ describe("SnapshotPanel", () => {
 
   it("shows success message after creating snapshot", async () => {
     const user = userEvent.setup();
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await user.click(screen.getByRole("button", { name: /save snapshot/i }));
     await waitFor(() => {
       expect(screen.getByText("Snapshot saved.")).toBeInTheDocument();
@@ -92,7 +101,7 @@ describe("SnapshotPanel", () => {
 
   it("Preview button shows diff against current state", async () => {
     const user = userEvent.setup();
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await screen.findByText("Before Node update");
     await user.click(screen.getByRole("button", { name: /preview/i }));
     await waitFor(() => {
@@ -103,7 +112,7 @@ describe("SnapshotPanel", () => {
 
   it("stages snapshot changes and calls onStageSnapshot after preview → stage restore", async () => {
     const user = userEvent.setup();
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await screen.findByText("Before Node update");
     await user.click(screen.getByRole("button", { name: /preview/i }));
     await waitFor(() => screen.getByRole("button", { name: /stage restore/i }));
@@ -113,7 +122,7 @@ describe("SnapshotPanel", () => {
 
   it("calls deleteSnapshot after confirming delete", async () => {
     const user = userEvent.setup();
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await screen.findByText("Before Node update");
     await user.click(screen.getByRole("button", { name: "Delete snapshot" }));
     await waitFor(() => screen.getByRole("button", { name: /^delete$/i }));
@@ -125,7 +134,7 @@ describe("SnapshotPanel", () => {
 
   it("renames a snapshot inline and updates the displayed label", async () => {
     const user = userEvent.setup();
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await screen.findByText("Before Node update");
 
     await user.click(screen.getByRole("button", { name: "Rename snapshot" }));
@@ -143,7 +152,7 @@ describe("SnapshotPanel", () => {
 
   it("cancels renaming with Escape", async () => {
     const user = userEvent.setup();
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await screen.findByText("Before Node update");
 
     await user.click(screen.getByRole("button", { name: "Rename snapshot" }));
@@ -158,7 +167,7 @@ describe("SnapshotPanel", () => {
 
   it("shows empty state when no snapshots", async () => {
     vi.mocked(api.listSnapshots).mockResolvedValueOnce([]);
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await waitFor(() => {
       expect(screen.getByText(/no snapshots yet/i)).toBeInTheDocument();
     });
@@ -166,7 +175,7 @@ describe("SnapshotPanel", () => {
 
   it("opens preview in a modal and returns to the list when closed", async () => {
     const user = userEvent.setup();
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await screen.findByText("Before Node update");
     await user.click(screen.getByRole("button", { name: /preview/i }));
 
@@ -180,7 +189,7 @@ describe("SnapshotPanel", () => {
   it("opens snapshot comparison in a modal", async () => {
     vi.mocked(api.listSnapshots).mockResolvedValueOnce([MOCK_SNAPSHOT, SECOND_SNAPSHOT]);
     const user = userEvent.setup();
-    render(<SnapshotPanel onStageSnapshot={onStageSnapshot} />);
+    renderSnapshot(onStageSnapshot);
     await screen.findByText("Before Node update");
 
     const compareButtons = screen.getAllByRole("button", { name: "Compare" });

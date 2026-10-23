@@ -1,6 +1,6 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api } from "../../api";
+import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
 import { lintPathValue } from "../../lib/lint";
 import type { EnvVar } from "../../types";
 import type { ListEntry } from "../ListEditor/SortableListEditor";
@@ -31,6 +31,7 @@ export function PathEditor({
   allowFolderBrowse = true,
   onBeforeReorder,
 }: Props) {
+  const environment = useEnvironmentApi();
   const [entries, setEntries] = useState<ListEntry[]>([]);
   // Linting operates on `lintedValue`, updated on blur or when external changes occur while unfocused.
   const [lintedValue, setLintedValue] = useState(rawValue);
@@ -70,7 +71,7 @@ export function PathEditor({
     if (skipPathValidation || entries.length === 0) return;
     if (entries.every((e) => e.exists !== null && e.exists !== undefined)) return;
     let cancelled = false;
-    api
+    environment
       .validatePaths(entries.map((e) => e.value))
       .then((results) => {
         if (!cancelled) {
@@ -81,7 +82,7 @@ export function PathEditor({
     return () => {
       cancelled = true;
     };
-  }, [skipPathValidation, entries]);
+  }, [environment, skipPathValidation, entries]);
 
   const handleEntriesChange = (next: ListEntry[]) => {
     setEntries(next);

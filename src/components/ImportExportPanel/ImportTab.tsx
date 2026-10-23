@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { api } from "../../api";
+import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
 import { useI18n } from "../../hooks/useI18n";
 import { validateEnvInput } from "../../lib/envValidation";
 import { resolveSecret } from "../../lib/secrets";
@@ -33,6 +33,7 @@ interface ImportTabProps {
 }
 
 export function ImportTab({ onStage, onStatus }: ImportTabProps) {
+  const environment = useEnvironmentApi();
   const { t } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
   const [format, setFormat] = useState<ExportFormat>("json");
@@ -64,7 +65,7 @@ export function ImportTab({ onStage, onStatus }: ImportTabProps) {
     setParsing(true);
     onStatus(null);
     try {
-      const snap = await api.parseImport(content, format);
+      const snap = await environment.parseImport(content, format);
       const vars = flattenSnapshot(snap);
       if (vars.length === 0) {
         onStatus(t("import.no_vars"));
@@ -108,7 +109,7 @@ export function ImportTab({ onStage, onStatus }: ImportTabProps) {
 
       if (strategy === "replace") {
         const affectedScopes = new Set(selected.map((v) => v.scope));
-        const current = await api.getRegistrySnapshot();
+        const current = await environment.getRegistrySnapshot();
         const selectedKeys = new Set(selected.map((v) => `${v.scope}:${v.name}`));
         if (affectedScopes.has("User")) {
           for (const name of Object.keys(current.user)) {

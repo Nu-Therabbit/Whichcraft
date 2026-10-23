@@ -1,29 +1,27 @@
 import type { RefObject } from "react";
 import { useCallback, useState } from "react";
-import { api } from "../api";
+import type { EnvironmentApi } from "../features/environment/api";
 import { validateEnvInput } from "../lib/envValidation";
 import type { ApplyProgressEvent, EnvChange, EnvSnapshot } from "../types";
 import { useI18n } from "./useI18n";
 import type { StagedChange } from "./useStaged";
 
-type SetDialog = (d: "importexport" | "changes" | "staged" | "licenses" | "newvar" | null) => void;
-
 interface Params {
+  environment: EnvironmentApi;
   staged: Map<string, StagedChange>;
   clearStaged: () => void;
   refresh: () => Promise<void>;
   refreshPathStatus: () => Promise<void>;
   baselineRef: RefObject<EnvSnapshot | null>;
-  setDialog: SetDialog;
 }
 
 export function useApplyStaged({
+  environment,
   staged,
   clearStaged,
   refresh,
   refreshPathStatus,
   baselineRef,
-  setDialog,
 }: Params) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
@@ -32,17 +30,23 @@ export function useApplyStaged({
   const [log, setLog] = useState<ApplyProgressEvent[]>([]);
 
   const handleApplyStaged = useCallback(
-    async (_takeSnapshot: boolean) => {
+    async (_takeSnapshot: boolean): Promise<boolean> => {
       setBusy(true);
       setError(null);
       setProgress(null);
       setLog([]);
-      // Must resolve before applyEnvChanges is called, or a fast apply can
-      // emit all its progress events before this subscription exists to hear them.
-      const unsubscribe = await api.onApplyProgress((event) => {
-        setProgress({ index: event.index, total: event.total });
-        setLog((prev) => [...prev, event]);
-      });
+      let unsubscribe: (() => void) | null = null;
+      try {
+        unsubscribe = await environment.onApplyProgress((event) => {
+          setProgress({ index: event.index, total: event.total });
+          setLog((prev) => [...prev, event]);
+        });
+      } catch (err) {
+        console.error("Failed to subscribe to apply progress", err);
+        setError(String(err));
+        setBusy(false);
+        return false;
+      }
       try {
         const changes: EnvChange[] = Array.from(staged.values(), (change) =>
           change.kind === "delete"
@@ -72,23 +76,24 @@ export function useApplyStaged({
               }),
             );
         }
-        await api.applyEnvChanges(changes);
+        await environment.applyEnvChanges(changes);
         clearStaged();
         await refresh();
         try {
-          baselineRef.current = await api.getRegistrySnapshot();
+          baselineRef.current = await environment.getRegistrySnapshot();
         } catch {}
         await refreshPathStatus();
-        setDialog(null);
+        return true;
       } catch (err) {
         console.error("Failed to apply staged changes", err);
         setError(String(err));
+        return false;
       } finally {
-        unsubscribe();
+        unsubscribe?.();
         setBusy(false);
       }
     },
-    [staged, clearStaged, refresh, refreshPathStatus, baselineRef, setDialog, t],
+    [environment, staged, clearStaged, refresh, refreshPathStatus, baselineRef, t],
   );
 
   return { handleApplyStaged, busy, error, progress, log };

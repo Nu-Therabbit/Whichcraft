@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
-import { api } from "../api";
+import type { EnvironmentApi } from "../features/environment/api";
 import type { EnvVar } from "../types";
 
-export function useEnvVars() {
+export function useEnvVars(environment: EnvironmentApi) {
   const [vars, setVars] = useState<EnvVar[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -11,14 +11,14 @@ export function useEnvVars() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getEnvVars();
+      const data = await environment.getEnvVars();
       setVars(data);
     } catch (e) {
       setError(String(e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [environment]);
 
   return { vars, loading, error, refresh };
 }

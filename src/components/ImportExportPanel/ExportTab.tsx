@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../../api";
+import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
 import { useI18n } from "../../hooks/useI18n";
 import { resolveSecret, type SecretInfo } from "../../lib/secrets";
 import type { EnvVar } from "../../types";
@@ -23,6 +23,7 @@ interface ExportTabProps {
 }
 
 export function ExportTab({ onStatus }: ExportTabProps) {
+  const environment = useEnvironmentApi();
   const { t } = useI18n();
   const [scope, setScope] = useState<ExportScope>("All");
   const [format, setFormat] = useState<AnyFormat>("json");
@@ -38,7 +39,7 @@ export function ExportTab({ onStatus }: ExportTabProps) {
     if (scope !== "Custom") return;
     if (allVars !== null) return;
     setLoadingVars(true);
-    api
+    environment
       .getEnvVars()
       .then((vars: EnvVar[]) => {
         const flat: FlatVar[] = vars.map((v) => ({
@@ -52,7 +53,7 @@ export function ExportTab({ onStatus }: ExportTabProps) {
       })
       .catch(() => onStatus(t("export.failed_load")))
       .finally(() => setLoadingVars(false));
-  }, [scope, allVars, onStatus, t]);
+  }, [scope, allVars, onStatus, t, environment]);
 
   const handleScopeChange = (s: ExportScope) => {
     setScope(s);
@@ -75,14 +76,14 @@ export function ExportTab({ onStatus }: ExportTabProps) {
     try {
       let savedPath: string | null;
       if (scope === "Custom") {
-        savedPath = await api.exportCustomVars(
+        savedPath = await environment.exportCustomVars(
           selectedCustomVars.flatMap((variable) =>
             variable.valueKind ? [{ ...variable, valueKind: variable.valueKind }] : [],
           ),
           format,
         );
       } else {
-        savedPath = await api.exportVars(scope, format);
+        savedPath = await environment.exportVars(scope, format);
       }
       onStatus(savedPath ? `Saved to ${savedPath}` : null);
     } catch (e) {
@@ -113,7 +114,7 @@ export function ExportTab({ onStatus }: ExportTabProps) {
 
     setCheckingSecrets(true);
     try {
-      const vars: EnvVar[] = await api.getEnvVars();
+      const vars: EnvVar[] = await environment.getEnvVars();
       const flat = vars.filter((v) => scope === "All" || v.scope === scope);
       const services = [
         ...new Set(

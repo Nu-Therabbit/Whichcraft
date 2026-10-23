@@ -1,8 +1,10 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import type { EnvironmentApi } from "../../features/environment/api";
+import { renderWithEnvironmentApi } from "../../features/environment/renderWithEnvironmentApi";
 import type { StagedChange } from "../../hooks/useStaged";
 import type { EnvVar } from "../../types";
 import { DetailPanel } from "./DetailPanel";
@@ -50,7 +52,7 @@ describe("DetailPanel", () => {
   });
 
   const render_ = (variable: EnvVar | null, elevated = true, staged = noStaged) =>
-    render(
+    renderWithEnvironmentApi(
       <DetailPanel
         variable={variable}
         elevated={elevated}
@@ -61,6 +63,7 @@ describe("DetailPanel", () => {
         onStageDelete={onStageDelete}
         onUnstage={onUnstage}
       />,
+      api as unknown as EnvironmentApi,
     );
 
   it("shows empty state when no variable selected", () => {

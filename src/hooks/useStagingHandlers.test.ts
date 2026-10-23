@@ -18,9 +18,6 @@ function makeParams(overrides: Partial<Parameters<typeof useStagingHandlers>[0]>
     clearStaged: vi.fn(),
     restoreStaged: vi.fn(),
     push: vi.fn(),
-    setDialog: vi.fn(),
-    setSelected: vi.fn(),
-    setSnapshotsOpen: vi.fn(),
     ...overrides,
   };
 }
@@ -174,7 +171,7 @@ describe("useStagingHandlers", () => {
   });
 
   describe("handleStageImport", () => {
-    it("calls stageImport, closes dialog, and pushes undo", () => {
+    it("calls stageImport and pushes undo", () => {
       const params = makeParams();
       const { result } = renderHook(() => useStagingHandlers(params));
       act(() => {
@@ -184,27 +181,26 @@ describe("useStagingHandlers", () => {
         [{ name: "A", scope: "User", value: "1" }],
         [],
       );
-      expect(params.setDialog).toHaveBeenCalledWith(null);
       expect(params.push).toHaveBeenCalledTimes(1);
     });
   });
 
   describe("handleNewVarStage", () => {
-    it("stages the new var, selects it, closes dialog, and pushes undo", () => {
+    it("stages the new var, returns the created variable, and pushes undo", () => {
       const params = makeParams();
       const { result } = renderHook(() => useStagingHandlers(params));
+      let created: unknown;
       act(() => {
-        result.current.handleNewVarStage("NEW_VAR", "User", "value");
+        created = result.current.handleNewVarStage("NEW_VAR", "User", "value");
       });
       expect(params.stageSet).toHaveBeenCalledWith("NEW_VAR", "User", "value");
-      expect(params.setSelected).toHaveBeenCalledWith({
+      expect(created).toEqual({
         name: "NEW_VAR",
         scope: "User",
         value: "value",
         valueKind: "String",
         listSeparator: null,
       });
-      expect(params.setDialog).toHaveBeenCalledWith(null);
       expect(params.push).toHaveBeenCalledTimes(1);
     });
 

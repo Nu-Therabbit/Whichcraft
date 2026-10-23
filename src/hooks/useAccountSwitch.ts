@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../api";
+import type { EnvironmentApi } from "../features/environment/api";
 import type { LocalAccount } from "../types";
 
 interface Params {
@@ -12,7 +12,10 @@ interface Params {
   refresh: () => Promise<void>;
 }
 
-export function useAccountSwitch({ elevated, hasStagedChanges, refresh }: Params) {
+export function useAccountSwitch(
+  environment: EnvironmentApi,
+  { elevated, hasStagedChanges, refresh }: Params,
+) {
   const [accounts, setAccounts] = useState<LocalAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<LocalAccount | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +26,7 @@ export function useAccountSwitch({ elevated, hasStagedChanges, refresh }: Params
       return;
     }
     let cancelled = false;
-    api
+    environment
       .listLocalAccounts()
       .then((list) => {
         if (!cancelled) setAccounts(list);
@@ -34,21 +37,21 @@ export function useAccountSwitch({ elevated, hasStagedChanges, refresh }: Params
     return () => {
       cancelled = true;
     };
-  }, [elevated]);
+  }, [elevated, environment]);
 
   const handleSelectAccount = useCallback(
     async (sid: string | null) => {
       if (hasStagedChanges) return;
       setError(null);
       try {
-        const account = await api.selectAccount(sid);
+        const account = await environment.selectAccount(sid);
         setSelectedAccount(account);
         await refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
     },
-    [hasStagedChanges, refresh],
+    [environment, hasStagedChanges, refresh],
   );
 
   return { accounts, selectedAccount, handleSelectAccount, accountSwitchError: error };

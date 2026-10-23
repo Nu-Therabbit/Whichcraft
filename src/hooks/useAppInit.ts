@@ -1,9 +1,12 @@
 import type { RefObject } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../api";
+import type { EnvironmentApi } from "../features/environment/api";
+import type { PlatformApi } from "../platform/api";
 import type { EnvSnapshot } from "../types";
 
 interface Params {
+  environment: EnvironmentApi;
+  platform: Pick<PlatformApi, "isElevated">;
   baselineRef: RefObject<EnvSnapshot | null>;
   setElevated: (v: boolean) => void;
   refreshPathStatus: () => Promise<void>;
@@ -12,6 +15,8 @@ interface Params {
 }
 
 export function useAppInit({
+  environment,
+  platform,
   baselineRef,
   setElevated,
   refreshPathStatus,
@@ -21,21 +26,19 @@ export function useAppInit({
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    // Each task is independent — run them concurrently so a stuck call doesn't
-    // block the others, especially `refresh()` which populates the main view.
     void (async () => {
       try {
-        baselineRef.current = await api.getRegistrySnapshot();
+        baselineRef.current = await environment.getRegistrySnapshot();
       } catch {}
     })();
     void (async () => {
       try {
-        setElevated(await api.isElevated());
+        setElevated(await platform.isElevated());
       } catch {}
     })();
     void refreshPathStatus();
     void refresh().finally(() => setInitializing(false));
-  }, [baselineRef, setElevated, refreshPathStatus, refresh]);
+  }, [baselineRef, environment, platform, setElevated, refreshPathStatus, refresh]);
 
   const handleRefresh = useCallback(async () => {
     await refresh();
