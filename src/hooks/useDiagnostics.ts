@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import type { EnvironmentApi } from "../features/environment/api";
 import { diagnoseEnvironment, type EnvironmentDiagnostic } from "../lib/environmentDiagnostics";
 import type { EnvVar } from "../types";
 
-export function useDiagnostics(vars: EnvVar[]) {
+export function useDiagnostics(vars: EnvVar[], environment: EnvironmentApi) {
   const [diagnostics, setDiagnostics] = useState<EnvironmentDiagnostic[]>([]);
 
   useEffect(() => {
     let cancelled = false;
 
-    void api
+    void environment
       .getUnsupportedEnvValues()
-      .then((unsupported) => diagnoseEnvironment(vars, unsupported, api.validatePaths))
+      .then((unsupported) =>
+        diagnoseEnvironment(vars, unsupported, environment.validatePaths.bind(environment)),
+      )
       .then((result) => {
         if (!cancelled) setDiagnostics(result);
       })
@@ -22,7 +24,7 @@ export function useDiagnostics(vars: EnvVar[]) {
     return () => {
       cancelled = true;
     };
-  }, [vars]);
+  }, [vars, environment]);
 
   return diagnostics;
 }

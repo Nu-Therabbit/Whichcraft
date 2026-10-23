@@ -22,3 +22,8 @@
 - Apply/diff/staging orchestration no longer closes dialogs or changes selection; `LegacyEnvironmentView` reacts to boolean outcomes and external-change diff state.
 - Fixed staged apply `error` clobbering registry `error` on the controller return object (`stagedError` vs `error`).
 - Tests: hook updates, panel wrappers via `renderWithEnvironmentApi`, `environment.behavior.test.tsx` (vars + check command + error banner).
+
+### Review round 1
+
+- Extended `environment.behavior.test.tsx` to mount Snapshots, Import/Export, and staged apply through the injected API.
+- Routed `useDiagnostics` through `EnvironmentApi` (`getUnsupportedEnvValues`, `validatePaths`) instead of the legacy facade.

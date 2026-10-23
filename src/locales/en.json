@@ -660,6 +660,8 @@
     "installed_tools": "Installed tools",
     "effective_subtitle": "Windows effective installation",
     "tool_card_label": "{{name}}, Windows uses {{effective}}, {{count}} installations",
+    "tool_card_scanning_label": "{{name}}, scanning installations",
+    "scanning_installations": "Scanning installations…",
     "loading": "Loading…",
     "load_error": "Could not load",
     "installation_count": "{{count}} installation(s)",

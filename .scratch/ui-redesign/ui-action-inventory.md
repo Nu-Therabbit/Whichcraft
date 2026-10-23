@@ -14,7 +14,7 @@ Ticket 02 re-checked every row against current production source before contract
 
 | ID | Existing entry / capability observed in source | New home | Implementation owner | Evidence to attach |
 | --- | --- | --- | --- | --- |
-| UI-01 | AppHeader Refresh; ToolsPanel Refresh and focus refresh | Developer tools command bar; scoped refresh | 07, 04 | 03/07: legacy `LegacyEnvironmentView` + `useEnvironment`; shell `DesktopShellApp` Rescan via `useToolsOverview` (`desktopShell.test.tsx`); acceptance: Rescan reads real state; external results do not replace another account/tool |
+| UI-01 | AppHeader Refresh; ToolsPanel Refresh and focus refresh | Developer tools command bar; scoped refresh | 07, 04 | 03/07: legacy `LegacyEnvironmentView` + `useEnvironment`; shell Rescan button in `desktopShell.test.tsx` (clicks Rescan, asserts `listToolInstallations`); `useToolsOverview.test.ts` race binding; acceptance: Rescan reads real state; external results do not replace another account/tool |
 | UI-02 | AppHeader Tools entry opens the tool modal | Developer tools overview and inspector | 07 | 03/07: legacy modal unchanged (`AppHeader.tsx:onTools`); read-only overview at `?presentation=desktop-shell` (`DesktopShellApp.tsx`); acceptance: Six Tool Kinds, roots/ownership/counts, unavailable and mismatch states |
 | UI-03 | Sidebar search, scope, sorting, secrets filter, variable selection | Environment / Variables | 09 | 02 audit: `Sidebar.tsx` filter/selection; acceptance: Equivalent filtering/selection and supported account context |
 | UI-04 | Sidebar copy and secret-value display treatment | Environment / Variables | 09 | 02 audit: `SidebarRow.tsx` copy/secret display; acceptance: Correct value copied and existing secret-display behaviour preserved |

@@ -83,7 +83,7 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
     checkForExternalChanges,
   });
 
-  const diagnostics = useDiagnostics(vars);
+  const diagnostics = useDiagnostics(vars, environment);
 
   const stagingHandlers = useStagingHandlers({
     staged,

@@ -161,6 +161,12 @@ export function DesktopShellApp() {
             </label>
           </div>
 
+          {overview.accountError && (
+            <div className="px-5 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0">
+              {overview.accountError}
+            </div>
+          )}
+
           <div className="flex flex-1 min-h-0">
             <main className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
               <div>
@@ -184,11 +190,15 @@ export function DesktopShellApp() {
                           : "border-rim-subtle bg-panel hover:bg-hover"
                       }`}
                       aria-pressed={overview.selectedTool === tool}
-                      aria-label={t("desktop_shell.tool_card_label", {
-                        name: meta.title,
-                        effective: formatInstallationLabel(effective),
-                        count: slice.installations.length,
-                      })}
+                      aria-label={
+                        slice.loading
+                          ? t("desktop_shell.tool_card_scanning_label", { name: meta.title })
+                          : t("desktop_shell.tool_card_label", {
+                              name: meta.title,
+                              effective: formatInstallationLabel(effective),
+                              count: slice.installations.length,
+                            })
+                      }
                       onClick={() => overview.selectTool(tool)}
                     >
                       <ToolMark tool={tool} small />
@@ -202,11 +212,13 @@ export function DesktopShellApp() {
                           {slice.loading ? t("desktop_shell.loading") : formatInstallationLabel(effective)}
                         </span>
                         <small className="text-[11px] text-dim">
-                          {slice.error
-                            ? t("desktop_shell.load_error")
-                            : t("desktop_shell.installation_count", {
-                                count: slice.installations.length,
-                              })}
+                          {slice.loading
+                            ? t("desktop_shell.scanning_installations")
+                            : slice.error
+                              ? t("desktop_shell.load_error")
+                              : t("desktop_shell.installation_count", {
+                                  count: slice.installations.length,
+                                })}
                           {meta.switchOnly ? ` · ${t("desktop_shell.switch_only")}` : ""}
                           {unavailableCount(slice.installations) > 0
                             ? ` · ${t("desktop_shell.unavailable_count", {

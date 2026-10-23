@@ -49,8 +49,14 @@ describe("desktop shell read journey", () => {
       </AppServicesProvider>,
     );
 
-    await waitFor(() => expect(listToolInstallations).toHaveBeenCalled());
+    await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThanOrEqual(6));
     const user = userEvent.setup();
+    const callsBeforeRescan = listToolInstallations.mock.calls.length;
+    await user.click(screen.getByRole("button", { name: /^rescan$/i }));
+    await waitFor(() =>
+      expect(listToolInstallations.mock.calls.length).toBeGreaterThan(callsBeforeRescan),
+    );
+
     await user.click(await screen.findByRole("button", { name: /Java/i }));
 
     const details = await screen.findByRole("complementary", { name: /installation details/i });

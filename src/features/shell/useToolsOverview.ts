@@ -16,6 +16,7 @@ export type ToolOverviewSlice = {
   installations: ToolInstallationView[];
   boundRequestId: number;
   boundAccountToken: string;
+  inFlightRequestId: number;
 };
 
 export type ToolsOverviewState = {
@@ -27,6 +28,7 @@ export type ToolsOverviewState = {
   closeDetail: () => void;
   rescan: () => Promise<void>;
   rescanning: boolean;
+  accountError: string | null;
   byTool: Record<ToolKind, ToolOverviewSlice>;
   pythonInfo: PythonSupplementalView | null;
   sdks: { android: AndroidInventory | null; msvc: MsvcInventory | null };
@@ -41,6 +43,7 @@ function emptySlice(): ToolOverviewSlice {
     installations: [],
     boundRequestId: 0,
     boundAccountToken: "",
+    inFlightRequestId: 0,
   };
 }
 
@@ -49,6 +52,21 @@ function initialByTool(): Record<ToolKind, ToolOverviewSlice> {
     ToolKind,
     ToolOverviewSlice
   >;
+}
+
+type ActiveScan = { generation: number; accountToken: string };
+
+function applyStaleDiscard(
+  prev: Record<ToolKind, ToolOverviewSlice>,
+  tool: ToolKind,
+  generation: number,
+): Record<ToolKind, ToolOverviewSlice> {
+  const slice = prev[tool];
+  if (slice.inFlightRequestId !== generation) return prev;
+  return {
+    ...prev,
+    [tool]: { ...slice, loading: false, inFlightRequestId: 0 },
+  };
 }
 
 export function useToolsOverview(
@@ -60,6 +78,7 @@ export function useToolsOverview(
   const [detailOpen, setDetailOpen] = useState(false);
   const [byTool, setByTool] = useState(initialByTool);
   const [rescanning, setRescanning] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
   const [pythonInfo, setPythonInfo] = useState<PythonSupplementalView | null>(null);
   const [sdks, setSdks] = useState<{ android: AndroidInventory | null; msvc: MsvcInventory | null }>({
     android: null,
@@ -69,18 +88,21 @@ export function useToolsOverview(
   const [sdkError, setSdkError] = useState<string | null>(null);
 
   const requestId = useRef(0);
-  const accountToken = useRef("local");
+  const activeScan = useRef<ActiveScan>({ generation: 0, accountToken: "" });
 
   const loadTool = useCallback(
-    async (tool: ToolKind, generation: number, account: string) => {
+    async (tool: ToolKind, generation: number, accountToken: string) => {
       setByTool((prev) => ({
         ...prev,
-        [tool]: { ...prev[tool], loading: true, error: null },
+        [tool]: { ...prev[tool], loading: true, error: null, inFlightRequestId: generation },
       }));
       try {
         const installations = await tools.listToolInstallations(tool);
         setByTool((prev) => {
-          if (generation !== requestId.current || account !== accountToken.current) return prev;
+          const scan = activeScan.current;
+          if (generation !== scan.generation || accountToken !== scan.accountToken) {
+            return applyStaleDiscard(prev, tool, generation);
+          }
           return {
             ...prev,
             [tool]: {
@@ -88,13 +110,17 @@ export function useToolsOverview(
               error: null,
               installations,
               boundRequestId: generation,
-              boundAccountToken: account,
+              boundAccountToken: accountToken,
+              inFlightRequestId: 0,
             },
           };
         });
       } catch (err) {
         setByTool((prev) => {
-          if (generation !== requestId.current || account !== accountToken.current) return prev;
+          const scan = activeScan.current;
+          if (generation !== scan.generation || accountToken !== scan.accountToken) {
+            return applyStaleDiscard(prev, tool, generation);
+          }
           return {
             ...prev,
             [tool]: {
@@ -103,7 +129,8 @@ export function useToolsOverview(
               error: String(err),
               installations: [],
               boundRequestId: generation,
-              boundAccountToken: account,
+              boundAccountToken: accountToken,
+              inFlightRequestId: 0,
             },
           };
         });
@@ -113,15 +140,38 @@ export function useToolsOverview(
   );
 
   const rescan = useCallback(async () => {
+    const generation = ++requestId.current;
     setRescanning(true);
-    requestId.current += 1;
-    const generation = requestId.current;
-    let account = "local";
+    setAccountError(null);
+
+    let accountToken: string;
     try {
       const selected = await environment.getSelectedAccount();
-      account = selected?.sid ?? "local";
-    } catch {}
-    accountToken.current = account;
+      if (generation !== requestId.current) return;
+      accountToken = selected?.sid ?? "local";
+    } catch (err) {
+      if (generation !== requestId.current) return;
+      const message = String(err);
+      setAccountError(message);
+      setByTool((prev) => {
+        const next = { ...prev };
+        for (const tool of OVERVIEW_TOOL_KINDS) {
+          next[tool] = {
+            ...next[tool],
+            loading: false,
+            inFlightRequestId: 0,
+            error: message,
+          };
+        }
+        return next;
+      });
+      setRescanning(false);
+      return;
+    }
+
+    if (generation !== requestId.current) return;
+
+    activeScan.current = { generation, accountToken };
 
     setSdkLoading(true);
     setSdkError(null);
@@ -130,19 +180,18 @@ export function useToolsOverview(
       tools.getAndroidInventory(),
       tools.getMsvcInventory(),
     ]);
-    if (generation === requestId.current) {
-      setPythonInfo(sdkResults[0].status === "fulfilled" ? sdkResults[0].value : null);
-      setSdks({
-        android: sdkResults[1].status === "fulfilled" ? sdkResults[1].value : null,
-        msvc: sdkResults[2].status === "fulfilled" ? sdkResults[2].value : null,
-      });
-      if (sdkResults.some((result) => result.status === "rejected")) {
-        setSdkError("Some supplemental inventory could not be loaded.");
-      }
-      setSdkLoading(false);
+    if (generation !== requestId.current) return;
+    setPythonInfo(sdkResults[0].status === "fulfilled" ? sdkResults[0].value : null);
+    setSdks({
+      android: sdkResults[1].status === "fulfilled" ? sdkResults[1].value : null,
+      msvc: sdkResults[2].status === "fulfilled" ? sdkResults[2].value : null,
+    });
+    if (sdkResults.some((result) => result.status === "rejected")) {
+      setSdkError("Some supplemental inventory could not be loaded.");
     }
+    setSdkLoading(false);
 
-    await Promise.all(OVERVIEW_TOOL_KINDS.map((tool) => loadTool(tool, generation, account)));
+    await Promise.all(OVERVIEW_TOOL_KINDS.map((tool) => loadTool(tool, generation, accountToken)));
     if (generation === requestId.current) setRescanning(false);
   }, [environment, loadTool, tools]);
 
@@ -169,6 +218,7 @@ export function useToolsOverview(
     closeDetail,
     rescan,
     rescanning,
+    accountError,
     byTool,
     pythonInfo,
     sdks,

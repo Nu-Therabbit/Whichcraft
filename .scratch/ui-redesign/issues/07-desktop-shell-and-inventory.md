@@ -23,3 +23,9 @@
 - Non-tool nav items and Install tool route to legacy UI; read-only status bar documents preview mode.
 - Automated evidence: `src/features/shell/desktopShell.test.tsx` (fake API read journey, selection vs effective in docked inspector).
 - **Windows screenshots (1200×760, 900×600):** not captured in this agent environment (desktop app not launched here); checkbox left open.
+
+### Review round 1
+
+- `useToolsOverview`: account token bound to scan generation; stale results clear in-flight loading; account read errors surfaced (not `"local"`). Tests in `useToolsOverview.test.ts`.
+- Overview cards show “Scanning installations…” instead of `0` while loading; `desktopShell.test.tsx` clicks Rescan and asserts API calls.
+- `desktop_shell` i18n keys copied to ja/ko/vi/zh-CN/ru (English strings until translated).
