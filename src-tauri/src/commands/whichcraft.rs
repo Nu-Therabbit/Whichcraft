@@ -112,6 +112,16 @@ mod tests {
     }
 
     #[test]
+    fn nothing_installs_until_the_install_folder_is_confirmed() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        let err = installing_manager().err().expect("refused before confirming");
+        assert!(err.to_string().contains("Choose where"));
+        save_settings(&WhichcraftSettings { install_store_confirmed: true, ..load_settings().unwrap() }).unwrap();
+        assert!(installing_manager().is_ok());
+    }
+
+    #[test]
     fn a_confirmed_install_folder_stays_confirmed() {
         let current = WhichcraftSettings { install_store_confirmed: true, ..Default::default() };
         let incoming = WhichcraftSettings::default();
@@ -294,13 +304,24 @@ pub async fn whichcraft_download_size(tool: ToolKind, version: String) -> Result
     .await
 }
 
+/// The mise manager for anything that downloads into the install store. Every install path goes
+/// through here, so none can skip asking where installed tools go (I-5).
+fn installing_manager() -> Result<MiseToolManager<crate::whichcraft::mise::manager::ProcessMiseRunner>, EnvarlyError> {
+    if !load_settings()?.install_store_confirmed {
+        return Err(EnvarlyError::InvalidInput(
+            "Choose where Whichcraft keeps the tools it installs before installing".into(),
+        ));
+    }
+    MiseToolManager::new()
+}
+
 #[tauri::command]
 pub async fn whichcraft_install_managed(
     tool: ToolKind,
     version: String,
 ) -> Result<String, EnvarlyError> {
     off_main(move || {
-        let mgr = MiseToolManager::new()?;
+        let mgr = installing_manager()?;
         let path = mgr.install(tool, &version)?;
         Ok(path.to_string_lossy().into_owned())
     })
@@ -380,6 +401,15 @@ fn build_uninstall_plan(tool: ToolKind, root: &str) -> Result<UninstallPlan, Env
         .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown {tool:?} root: {}", root.display())))?;
     let catalog = WinInstallerCatalog::load()?.entries_for_root(&root)?.into_iter().next();
     let settings = load_settings()?;
+    // Only a plain folder (no registered uninstaller) needs every other tool's roots for Q26.
+    let mut other_tool_roots = Vec::new();
+    if catalog.is_none() {
+        for other in [ToolKind::Java, ToolKind::Node, ToolKind::Python, ToolKind::Go, ToolKind::Flutter, ToolKind::Git] {
+            if other != tool {
+                other_tool_roots.extend(list_tool_installations(&backend, other, None)?.into_iter().map(|v| v.installation.root));
+            }
+        }
+    }
     plan_uninstall(
         PlanInputs {
             view,
@@ -389,6 +419,7 @@ fn build_uninstall_plan(tool: ToolKind, root: &str) -> Result<UninstallPlan, Env
             scan_roots: &settings.scan_roots,
             protected: &protected_folders(),
             profiles: &load_profiles()?,
+            other_tool_roots: &other_tool_roots,
         },
         &WinUsageProbe,
     )
@@ -431,7 +462,7 @@ pub async fn whichcraft_update_candidates(tool: ToolKind) -> Result<Vec<UpdateCa
 #[tauri::command]
 pub async fn whichcraft_update_installation(tool: ToolKind, version: String) -> Result<UpdateResult, EnvarlyError> {
     off_main(move || {
-        let mgr = MiseToolManager::new()?;
+        let mgr = installing_manager()?;
         install_and_plan(&WinregBackend, tool, &version, |tool, version| mgr.install(tool, version))
     })
     .await
@@ -483,13 +514,19 @@ pub async fn whichcraft_install_missing(profile: ToolProfile) -> Result<(), Enva
                 not_installable.join(", ")
             )));
         }
-        let mgr = MiseToolManager::new()?;
+        let mgr = installing_manager()?;
         for m in &missing {
             mgr.install(m.pin.tool, m.install_version.as_deref().unwrap_or_default())?;
         }
         Ok(())
     })
     .await
+}
+
+/// Names of the profiles that use this installation, offered for repointing when it is updated (F-5).
+#[tauri::command]
+pub fn whichcraft_profiles_using(installation: ToolInstallation) -> Result<Vec<String>, EnvarlyError> {
+    Ok(crate::whichcraft::services::profiles::profiles_using(&load_profiles()?, &installation))
 }
 
 /// Points the profiles that use `from` at `to` (F-5); returns the names that changed.

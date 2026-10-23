@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
-import { pathEntryChanges } from "../../lib/pathEntryChanges";
 import type {
   AndroidInventory,
   MiseStatus,
@@ -32,30 +31,11 @@ import { PythonLauncherInfo, SdkInventory } from "./SupplementalInfo";
 import { ToolsSettings } from "./ToolsSettings";
 import { UninstallSection } from "./UninstallSection";
 import { PathCleanupSummary } from "./PathCleanupSummary";
+import { PlanDiffList } from "./PlanDiffList";
 import { ProfilesSection } from "./ProfilesSection";
 import { UpdateList } from "./UpdateList";
 
 const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
-
-/** A PATH change as the entries it adds and removes; the whole value is too long to compare by eye. */
-function PathEntryDiff({ before, after }: { before: string | null; after: string }) {
-  const { added, removed } = pathEntryChanges(before, after);
-  return (
-    <ul className="text-xs break-all">
-      {added.map((e) => (
-        <li key={`+${e}`} className="text-success">
-          + {e}
-        </li>
-      ))}
-      {removed.map((e, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: a removed entry can repeat
-        <li key={`-${e}-${i}`} className="text-danger line-through">
-          − {e}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 interface Props {
   open: boolean;
@@ -105,6 +85,7 @@ interface Props {
     awaitingSwitch: boolean;
     onCheck: () => void;
     onUpdate: (candidate: UpdateCandidate) => void;
+    repoint?: { names: string[]; checked: boolean; onToggle: (checked: boolean) => void } | null;
   };
   profiles?: {
     list: ProfileMatchStatus[];
@@ -128,6 +109,8 @@ interface Props {
     outcome: UninstallOutcome | null;
     busy: boolean;
     defaultReplacement?: string | null;
+    switchPlan?: ToolApplyPlan | null;
+    onChooseReplacement?: (root: string | null) => void;
     onPlan: (root: string) => void;
     onConfirm: (replacementRoot: string | null, repointProfiles: boolean) => void;
     onOpenFolder: (path: string) => void;
@@ -183,14 +166,26 @@ export function ToolsPanel({
   useEffect(() => {
     if (open && showProfiles) loadProfiles?.();
   }, [open, showProfiles, loadProfiles, installations]);
+  // Installing, updating and installing what a profile misses all ask for the store first (I-5).
+  const storeGate = {
+    confirmed: settings?.installStoreConfirmed ?? false,
+    installStore: settings?.installStore ?? "",
+    onConfirm: (store: string) => {
+      if (settings && onSaveSettings) onSaveSettings({ ...settings, installStore: store, installStoreConfirmed: true });
+    },
+  };
+
   // Git is switch-only in v1 (Q14).
   const canInstall = tool !== "git" && !!install;
-  const loadInstallable = install?.onOpen;
+  // Held in a ref: loading must follow the tool and the list being open, not the callback's
+  // identity, or a callback recreated on each render reloads forever and clears the choice.
+  const loadInstallable = useRef(install?.onOpen);
+  loadInstallable.current = install?.onOpen;
 
-  // Switching tools while the install list is open lists the new tool's versions.
+  // Opening the install list, or switching tools while it is open, lists that tool's versions.
   useEffect(() => {
-    if (showInstall && tool !== "git") loadInstallable?.();
-  }, [tool, showInstall, loadInstallable]);
+    if (showInstall && tool !== "git") loadInstallable.current?.();
+  }, [tool, showInstall]);
 
   // onRefresh changes identity whenever the selected tool changes, so this also refreshes on tool switch.
   useEffect(() => {
@@ -295,6 +290,7 @@ export function ToolsPanel({
             onApply={profiles.onApply}
             onCheckMissing={profiles.onCheckMissing}
             onInstallMissing={profiles.onInstallMissing}
+            store={storeGate}
           />
         )}
 
@@ -416,6 +412,8 @@ export function ToolsPanel({
             busy={updates.busy}
             awaitingSwitch={updates.awaitingSwitch}
             onUpdate={updates.onUpdate}
+            store={storeGate}
+            repoint={updates.repoint}
           />
         )}
 
@@ -426,6 +424,8 @@ export function ToolsPanel({
             outcome={uninstall.outcome}
             busy={uninstall.busy}
             defaultReplacement={uninstall.defaultReplacement}
+            switchPlan={uninstall.switchPlan}
+            onChooseReplacement={uninstall.onChooseReplacement}
             onConfirm={uninstall.onConfirm}
             onOpenFolder={uninstall.onOpenFolder}
             onClose={uninstall.onClose}
@@ -450,32 +450,7 @@ export function ToolsPanel({
                 {t("tools.dismiss_plan")}
               </Button>
             </div>
-            {plan.requiresUac && (
-              <p className="text-xs text-warning">{t("tools.uac_required")}</p>
-            )}
-            {plan.warnings.map((w) => (
-              <p key={w} className="text-xs text-warning">
-                {w}
-              </p>
-            ))}
-            <p className="text-xs text-muted">{plan.limitationNotice}</p>
-            <ul className="text-sm font-mono space-y-2">
-              {[...plan.userDiffs, ...plan.systemDiffs].map((d) => (
-                <li key={`${d.scope}-${d.name}`}>
-                  <span className="text-muted">
-                    {d.scope} {d.name}
-                  </span>
-                  {d.name.toLowerCase() === "path" ? (
-                    <PathEntryDiff before={d.before} after={d.after} />
-                  ) : (
-                    <>
-                      <div className="text-xs text-danger line-through truncate">{d.before ?? "(empty)"}</div>
-                      <div className="text-xs text-success truncate">{d.after}</div>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <PlanDiffList plan={plan} />
             <Button variant="primary" onClick={onApplyPlan} disabled={applyBusy || planBusy}>
               {applyBusy ? t("tools.applying") : t("tools.apply_plan")}
             </Button>

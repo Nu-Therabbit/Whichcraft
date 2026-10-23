@@ -309,6 +309,7 @@ export function createDemoApi(
       throw new Error("Installing is unavailable in demo mode");
     },
     repointProfiles: async () => [],
+    profilesUsing: async () => [],
     openTerminal: async () => {
       throw new Error("Opening a terminal is unavailable in demo mode");
     },

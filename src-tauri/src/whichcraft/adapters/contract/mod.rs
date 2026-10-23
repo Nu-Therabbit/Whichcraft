@@ -170,7 +170,7 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
 
     let stores = settings.all_install_stores();
     let plan = plan_uninstall(
-        PlanInputs { view, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[] },
+        PlanInputs { view, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
         &WinUsageProbe,
     )
     .unwrap();
@@ -260,7 +260,7 @@ fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
 
         let stores = settings.all_install_stores();
         let plan = plan_uninstall(
-            PlanInputs { view: ours[0], all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[] },
+            PlanInputs { view: ours[0], all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
             &WinUsageProbe,
         )
         .unwrap();
@@ -314,7 +314,7 @@ fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
     let settings = load_settings().unwrap();
     let stores = settings.all_install_stores();
     let plan = plan_uninstall(
-        PlanInputs { view: view_a, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[] },
+        PlanInputs { view: view_a, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
         &WinUsageProbe,
     )
     .unwrap();
@@ -401,7 +401,7 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
 
     let stores = settings.all_install_stores();
     let plan = plan_uninstall(
-        PlanInputs { view: ours[0], all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[] },
+        PlanInputs { view: ours[0], all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
         &WinUsageProbe,
     )
     .unwrap();
@@ -523,7 +523,7 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
     let view = views.iter().find(|v| v.installation.root == root).expect("still listed after the update");
     let stores = settings.all_install_stores();
     let plan = plan_uninstall(
-        PlanInputs { view, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[] },
+        PlanInputs { view, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
         &WinUsageProbe,
     )
     .unwrap();

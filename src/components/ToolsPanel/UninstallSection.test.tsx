@@ -75,15 +75,45 @@ describe("UninstallSection", () => {
     expect(screen.getByText(/without asking again/)).toBeInTheDocument();
   });
 
-  it("asks for a replacement when the installation is selected", async () => {
+  it("shows the switch to the chosen replacement before it can uninstall", async () => {
     const h = handlers();
+    const onChooseReplacement = vi.fn();
     const p = plan({ needsReplacement: true, replacements: [jdk("21.0.12", "C:\\jdk21")], affectedProfiles: ["Android work"] });
-    render(<UninstallSection plan={p} outcome={null} busy={false} {...h} />);
+    const { rerender } = render(
+      <UninstallSection plan={p} outcome={null} busy={false} onChooseReplacement={onChooseReplacement} {...h} />,
+    );
     expect(screen.getByText(/Android work/)).toBeInTheDocument();
     const confirm = screen.getByRole("button", { name: "Uninstall" });
     expect(confirm).toBeDisabled();
     await userEvent.selectOptions(screen.getByRole("combobox"), "C:\\jdk21");
-    await userEvent.click(confirm);
+    expect(onChooseReplacement).toHaveBeenCalledWith("C:\\jdk21");
+    expect(confirm).toBeDisabled();
+
+    const switchPlan = {
+      planId: "p",
+      tool: "java" as const,
+      requiresUac: true,
+      warnings: [],
+      limitationNotice: "",
+      userDiffs: [{ name: "JAVA_HOME", scope: "user" as const, before: "C:\\previous-java-home", after: "C:\\jdk21", valueKind: "string" as const }],
+      systemDiffs: [],
+      effectiveAfterUserOnly: false,
+      selected: { tool: "java" as const, vendor: "Eclipse Adoptium", version: "21.0.12", root: "C:\\jdk21", managed: false },
+    };
+    rerender(
+      <UninstallSection
+        plan={p}
+        outcome={null}
+        busy={false}
+        switchPlan={switchPlan}
+        onChooseReplacement={onChooseReplacement}
+        {...h}
+      />,
+    );
+    expect(screen.getByText(/Applied first/)).toBeInTheDocument();
+    expect(screen.getByText("C:\\previous-java-home")).toBeInTheDocument();
+    expect(screen.getByText(/UAC/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Uninstall" }));
     expect(h.onConfirm).toHaveBeenCalledWith("C:\\jdk21", true);
   });
 

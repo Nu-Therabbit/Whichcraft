@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
-import type { UninstallMethod, UninstallOutcome, UninstallPlan } from "../../types";
+import type { ToolApplyPlan, UninstallMethod, UninstallOutcome, UninstallPlan } from "../../types";
 import { Button } from "../ui/Button";
+import { PlanDiffList } from "./PlanDiffList";
 
 interface Props {
   plan: UninstallPlan | null;
@@ -9,6 +10,10 @@ interface Props {
   busy: boolean;
   /** Preselected replacement, e.g. the version an update just installed. */
   defaultReplacement?: string | null;
+  /** The switch to the chosen replacement, applied before removing; shown so it is reviewed first. */
+  switchPlan?: ToolApplyPlan | null;
+  /** Builds `switchPlan` for a newly chosen replacement. */
+  onChooseReplacement?: (root: string | null) => void;
   onConfirm: (replacementRoot: string | null, repointProfiles: boolean) => void;
   onOpenFolder: (path: string) => void;
   onClose: () => void;
@@ -57,17 +62,38 @@ function OutcomeLine({ outcome, onOpenFolder }: { outcome: UninstallOutcome; onO
 }
 
 /** Shows how an installation would be removed and what blocks it, then removes it on confirm. */
-export function UninstallSection({ plan, outcome, busy, defaultReplacement, onConfirm, onOpenFolder, onClose }: Props) {
+export function UninstallSection({
+  plan,
+  outcome,
+  busy,
+  defaultReplacement,
+  switchPlan,
+  onChooseReplacement,
+  onConfirm,
+  onOpenFolder,
+  onClose,
+}: Props) {
   const { t } = useI18n();
   const [replacement, setReplacement] = useState(
     plan?.replacements.some((r) => r.root === defaultReplacement) ? (defaultReplacement ?? "") : "",
   );
   const [repoint, setRepoint] = useState(true);
+  const choose = useRef(onChooseReplacement);
+  choose.current = onChooseReplacement;
+  const needsSwitch = !!plan?.needsReplacement;
+
+  // A preselected replacement needs its switch plan too, built once when the dialog opens.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only the replacement shown on open
+  useEffect(() => {
+    if (needsSwitch && replacement) choose.current?.(replacement);
+  }, [needsSwitch]);
   if (!plan && !outcome) return busy ? <p className="text-sm text-muted">{t("app.loading")}</p> : null;
 
   const inUse = plan ? plan.usage.processes.length > 0 || plan.usage.folderLocked : false;
   const refused = plan?.method.kind === "refused";
-  const missingReplacement = !!plan?.needsReplacement && !replacement;
+  // The switch must be on screen, for exactly the chosen replacement, before removing.
+  const switchShown = !!switchPlan && switchPlan.selected.root === replacement;
+  const missingReplacement = needsSwitch && (!replacement || !switchShown);
 
   return (
     <section className="border border-danger/40 rounded-md p-4 flex flex-col gap-3 text-sm">
@@ -123,7 +149,10 @@ export function UninstallSection({ plan, outcome, busy, defaultReplacement, onCo
               <select
                 className="bg-surface border border-rim rounded-md px-2 py-1"
                 value={replacement}
-                onChange={(e) => setReplacement(e.target.value)}
+                onChange={(e) => {
+                  setReplacement(e.target.value);
+                  if (needsSwitch) onChooseReplacement?.(e.target.value || null);
+                }}
               >
                 <option value="">—</option>
                 {plan.replacements.map((r) => (
@@ -136,6 +165,13 @@ export function UninstallSection({ plan, outcome, busy, defaultReplacement, onCo
                 <span className="text-xs text-warning">{t("tools.uninstall.no_replacement")}</span>
               )}
             </label>
+          )}
+
+          {needsSwitch && switchShown && switchPlan && (
+            <div className="border border-rim rounded-md p-3 flex flex-col gap-2 bg-surface/40">
+              <p className="font-medium">{t("tools.uninstall.switch_first")}</p>
+              <PlanDiffList plan={switchPlan} />
+            </div>
           )}
 
           {plan.affectedProfiles.length > 0 && replacement && (

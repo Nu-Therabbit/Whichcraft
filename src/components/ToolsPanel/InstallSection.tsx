@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
 import type { MiseStatus, RemoteVersion, ToolKind, WhichcraftSettings } from "../../types";
 import { Button } from "../ui/Button";
+import { StoreConfirm } from "./StoreConfirm";
 
 interface Props {
   tool: ToolKind;
@@ -38,7 +39,6 @@ export function InstallSection({
 }: Props) {
   const { t } = useI18n();
   const [filter, setFilter] = useState("");
-  const [store, setStore] = useState(settings.installStore);
   const newestFirst = useMemo(() => {
     const matching = versions.filter((v) => v.version.includes(filter.trim()));
     return [...matching].reverse().slice(0, SHOWN);
@@ -88,20 +88,7 @@ export function InstallSection({
             </p>
           )}
           {!storeConfirmed ? (
-            <div className="flex flex-col gap-2 border border-warning/40 rounded-md p-3">
-              <p className="text-xs">{t("tools.install.confirm_store")}</p>
-              <div className="flex gap-2">
-                <input
-                  className="flex-1 bg-surface border border-rim rounded-md px-2 py-1 font-mono"
-                  aria-label={t("tools.settings.install_store")}
-                  value={store}
-                  onChange={(e) => setStore(e.target.value)}
-                />
-                <Button variant="secondary" size="sm" disabled={busy || !store.trim()} onClick={() => onConfirmStore(store.trim())}>
-                  {t("tools.install.use_folder")}
-                </Button>
-              </div>
-            </div>
+            <StoreConfirm installStore={settings.installStore} busy={busy} onConfirmStore={onConfirmStore} />
           ) : (
             <p className="text-xs text-muted">{t("tools.install.into", { store: settings.installStore })}</p>
           )}

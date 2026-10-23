@@ -147,6 +147,9 @@ pub struct PlanInputs<'a> {
     pub scan_roots: &'a [PathBuf],
     pub protected: &'a [PathBuf],
     pub profiles: &'a [ToolProfile],
+    /// Roots of every other tool's installations: a folder holding one of them, such as a Python
+    /// that sits inside a JDK folder, must not go to the Recycle Bin with it (Q26).
+    pub other_tool_roots: &'a [PathBuf],
 }
 
 pub fn plan_uninstall(inputs: PlanInputs, usage: &dyn UsageProbe) -> Result<UninstallPlan, EnvarlyError> {
@@ -179,7 +182,12 @@ pub fn plan_uninstall(inputs: PlanInputs, usage: &dyn UsageProbe) -> Result<Unin
                 },
             },
             None => {
-                let others: Vec<PathBuf> = inputs.all.iter().map(|v| v.installation.root.clone()).collect();
+                let others: Vec<PathBuf> = inputs
+                    .all
+                    .iter()
+                    .map(|v| v.installation.root.clone())
+                    .chain(inputs.other_tool_roots.iter().cloned())
+                    .collect();
                 match folder_refusal(inst.tool, &inst.root, inputs.scan_roots, &others, inputs.protected) {
                     Some(reason) => UninstallMethod::Refused { reason },
                     None => UninstallMethod::RecycleFolder,
@@ -194,19 +202,7 @@ pub fn plan_uninstall(inputs: PlanInputs, usage: &dyn UsageProbe) -> Result<Unin
         .filter(|v| v.available && v.installation.root != inst.root)
         .cloned()
         .collect();
-    let affected_profiles = inputs
-        .profiles
-        .iter()
-        .filter(|p| {
-            p.tools.iter().any(|pin| {
-                pin.tool == inst.tool
-                    && pin.vendor.eq_ignore_ascii_case(&inst.vendor)
-                    && pin.version == inst.version
-                    && pin.preferred_root.as_ref().map_or(true, |r| *r == inst.root)
-            })
-        })
-        .map(|p| p.name.clone())
-        .collect();
+    let affected_profiles = crate::whichcraft::services::profiles::profiles_using(inputs.profiles, inst);
 
     Ok(UninstallPlan {
         gradle_hint: inst.tool == ToolKind::Java && !report.processes.is_empty(),
@@ -390,7 +386,7 @@ mod tests {
     }
 
     fn inputs<'a>(view: &'a ToolInstallationView, all: &'a [ToolInstallationView], catalog: Option<CatalogEntry>) -> PlanInputs<'a> {
-        PlanInputs { view, all, catalog, stores: &[], scan_roots: &[], protected: &[], profiles: &[] }
+        PlanInputs { view, all, catalog, stores: &[], scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] }
     }
 
     fn msi_entry(root: &Path) -> CatalogEntry {
@@ -502,6 +498,24 @@ mod tests {
         assert!(folder_refusal(ToolKind::Java, Path::new("C:\\"), &[], &[], &[]).is_some());
         // All rules pass.
         assert!(folder_refusal(ToolKind::Java, &outer.installation.root, &[], &[], &[]).is_none());
+    }
+
+    #[test]
+    fn a_jdk_folder_holding_another_tools_installation_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let v = jdk(dir.path(), "jdk-zip", "21.0.1");
+        let python_inside = v.installation.root.join("tools").join("python");
+        let other_tool_roots = vec![python_inside.clone()];
+        let plan = plan_uninstall(
+            PlanInputs { other_tool_roots: &other_tool_roots, ..inputs(&v, &[v.clone()], None) },
+            &FakeUsageProbe::default(),
+        )
+        .unwrap();
+        assert!(
+            matches!(&plan.method, UninstallMethod::Refused { reason } if reason.contains("python")),
+            "{:?}",
+            plan.method
+        );
     }
 
     #[test]

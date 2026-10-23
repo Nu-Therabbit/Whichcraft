@@ -108,6 +108,7 @@ pub fn run() {
             commands::whichcraft::whichcraft_profile_missing,
             commands::whichcraft::whichcraft_install_missing,
             commands::whichcraft::whichcraft_repoint_profiles,
+            commands::whichcraft::whichcraft_profiles_using,
         ])
         .build(tauri::generate_context!())
         .expect("error while running whichcraft")

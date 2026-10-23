@@ -14,6 +14,7 @@ const handlers = () => ({
   onApply: vi.fn(),
   onCheckMissing: vi.fn(),
   onInstallMissing: vi.fn(),
+  store: { confirmed: true, installStore: "C:\\store", onConfirm: vi.fn() },
 });
 
 describe("ProfilesSection", () => {
@@ -48,6 +49,21 @@ describe("ProfilesSection", () => {
     expect(screen.queryByRole("button", { name: "Apply" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Install the missing ones (30 MB), then apply" }));
     expect(h.onInstallMissing).toHaveBeenCalledWith(android);
+  });
+
+  it("asks where installs go before installing what is missing", () => {
+    const h = { ...handlers(), store: { confirmed: false, installStore: "C:\\default", onConfirm: vi.fn() } };
+    render(
+      <ProfilesSection
+        profiles={[{ profile: android, matchesEffective: false, unavailable: [node20] }]}
+        current={[]}
+        missing={{ profileId: "a", items: [{ pin: node20, installVersion: "20.19.0", downloadBytes: null }] }}
+        busy={false}
+        {...h}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Install the missing/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Use this folder" })).toBeInTheDocument();
   });
 
   it("does not offer installing when something cannot be installed", () => {

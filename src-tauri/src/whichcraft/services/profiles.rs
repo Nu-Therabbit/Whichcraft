@@ -266,6 +266,24 @@ pub fn missing_pins(
         .collect()
 }
 
+/// Whether a pin refers to this installation: same tool, vendor and full version, and either no
+/// remembered root or that one.
+pub fn pin_means(pin: &ProfileToolPin, inst: &ToolInstallation) -> bool {
+    pin.tool == inst.tool
+        && pin.vendor.eq_ignore_ascii_case(&inst.vendor)
+        && pin.version == inst.version
+        && pin.preferred_root.as_ref().is_none_or(|r| *r == inst.root)
+}
+
+/// Names of the profiles with a pin that means `inst` (F-5).
+pub fn profiles_using(profiles: &[ToolProfile], inst: &ToolInstallation) -> Vec<String> {
+    profiles
+        .iter()
+        .filter(|p| p.tools.iter().any(|pin| pin_means(pin, inst)))
+        .map(|p| p.name.clone())
+        .collect()
+}
+
 /// Points every pin that means `from` at `to` instead (F-5). Returns the names of the profiles
 /// that changed.
 pub fn repoint_profiles(profiles: &mut [ToolProfile], from: &ToolInstallation, to: &ToolInstallation) -> Vec<String> {
@@ -273,11 +291,7 @@ pub fn repoint_profiles(profiles: &mut [ToolProfile], from: &ToolInstallation, t
     for profile in profiles.iter_mut() {
         let mut touched = false;
         for pin in profile.tools.iter_mut() {
-            let means_from = pin.tool == from.tool
-                && pin.vendor.eq_ignore_ascii_case(&from.vendor)
-                && pin.version == from.version
-                && pin.preferred_root.as_ref().is_none_or(|r| *r == from.root);
-            if means_from {
+            if pin_means(pin, from) {
                 *pin = ProfileToolPin {
                     tool: to.tool,
                     vendor: to.vendor.clone(),
@@ -478,6 +492,7 @@ mod tests {
             ToolProfile { id: "b".into(), name: "Other copy".into(), tools: vec![pin(ToolKind::Java, "Eclipse Adoptium", "21.0.12", Some("C:\\elsewhere".into()))] },
             ToolProfile { id: "c".into(), name: "Web".into(), tools: vec![pin(ToolKind::Node, "Node.js", "22.23.4", None)] },
         ];
+        assert_eq!(profiles_using(&profiles, &old), vec!["Android"], "a pin at another root means another copy");
         let changed = repoint_profiles(&mut profiles, &old, &new);
         assert_eq!(changed, vec!["Android"]);
         assert_eq!(profiles[0].tools[0], pin(ToolKind::Java, "Eclipse Adoptium", "21.0.13", Some("C:\\new".into())));

@@ -10,6 +10,7 @@ import type {
   RemoteVersion,
   ShellCheck,
   ToolApplyPlan,
+  ToolInstallationRef,
   ToolInstallationView,
   ToolKind,
   UndoResult,
@@ -246,12 +247,15 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
   const [uninstallPlan, setUninstallPlan] = useState<UninstallPlan | null>(null);
   const [uninstallOutcome, setUninstallOutcome] = useState<UninstallOutcome | null>(null);
   const [uninstallBusy, setUninstallBusy] = useState(false);
+  /** The switch to the chosen replacement, shown as a diff before anything is applied (Q9). */
+  const [replacementPlan, setReplacementPlan] = useState<ToolApplyPlan | null>(null);
 
   const planUninstall = useCallback(
     async (root: string) => {
       setError(null);
       setUninstallOutcome(null);
       setUninstallPlan(null);
+      setReplacementPlan(null);
       setUninstallBusy(true);
       try {
         setUninstallPlan(await api.planUninstall(tool, root));
@@ -266,16 +270,33 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
 
   /** Switches to `replacementRoot` first when the installation is selected or effective (Q9), and
    * afterwards points the profiles that used it at the replacement when `repoint` is set (F-5). */
+  const chooseReplacement = useCallback(
+    async (root: string | null) => {
+      setReplacementPlan(null);
+      if (!root || !uninstallPlan?.needsReplacement) return;
+      setError(null);
+      try {
+        setReplacementPlan(await api.planToolApply(tool, root));
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [tool, uninstallPlan],
+  );
+
   const confirmUninstall = useCallback(
     async (replacementRoot: string | null, repoint: boolean) => {
       if (!uninstallPlan) return;
+      // The switch applied is exactly the one the user was shown.
+      const replacement = uninstallPlan.needsReplacement ? replacementPlan : null;
+      if (uninstallPlan.needsReplacement && replacement?.selected.root !== replacementRoot) return;
       setError(null);
       setUninstallBusy(true);
       try {
-        const replacement =
-          uninstallPlan.needsReplacement && replacementRoot ? await api.planToolApply(tool, replacementRoot) : null;
         const outcome = await api.uninstall(tool, uninstallPlan.installation.root, replacement);
         setUninstallOutcome(outcome);
+        // A switch gone stale must be shown again before it is applied.
+        if (outcome.status === "blocked") await chooseReplacement(replacementRoot);
         const target = uninstallPlan.replacements.find((r) => r.root === replacementRoot);
         if (outcome.status === "removed" && repoint && target) {
           await api.repointProfiles(uninstallPlan.installation, target);
@@ -288,7 +309,7 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
         setUninstallBusy(false);
       }
     },
-    [tool, uninstallPlan, refresh],
+    [tool, uninstallPlan, replacementPlan, chooseReplacement, refresh],
   );
 
   /** Records what the disk shows now for an uninstall the app did not see finish. */
@@ -319,6 +340,13 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
   const [replacedRoot, setReplacedRoot] = useState<string | null>(null);
   /** The installation an update brought in; suggested as the replacement for the old one. */
   const [updatedRoot, setUpdatedRoot] = useState<string | null>(null);
+  /** Profiles that use the version being replaced, moved to the new one with the switch (F-5). */
+  const [repointOffer, setRepointOffer] = useState<{
+    from: ToolInstallationRef;
+    to: ToolInstallationRef;
+    names: string[];
+    checked: boolean;
+  } | null>(null);
 
   const checkUpdates = useCallback(async () => {
     setError(null);
@@ -337,11 +365,16 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
       setError(null);
       setUpdateBusy(true);
       try {
+        const old = installations.find((v) => v.root === candidate.root);
         const result = await api.updateInstallation(tool, candidate.latest);
         setUpdates((list) => list?.filter((u) => u.root !== candidate.root) ?? null);
         setReplacedRoot(candidate.root);
         setUpdatedRoot(result.installation.root);
         setPlan(result.plan);
+        const names = old ? await api.profilesUsing(old) : [];
+        setRepointOffer(
+          old && names.length > 0 ? { from: old, to: result.installation, names, checked: true } : null,
+        );
         await refresh();
       } catch (e) {
         setError(String(e));
@@ -349,19 +382,28 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
         setUpdateBusy(false);
       }
     },
-    [tool, refresh],
+    [tool, installations, refresh],
   );
 
-  /** Applies the plan; after an update's switch, goes on to offer uninstalling the old one. */
+  /** Applies the plan; after an update's switch, moves the profiles over if the user left that
+   * ticked, then offers uninstalling the old one. */
   const applyPlanThenOffer = useCallback(async () => {
     const result = await applyPlan();
     if (result && !result.stale && !result.needsElevation && replacedRoot) {
+      if (repointOffer?.checked) {
+        try {
+          await api.repointProfiles(repointOffer.from, repointOffer.to);
+        } catch (e) {
+          setError(String(e));
+        }
+      }
+      setRepointOffer(null);
       const old = replacedRoot;
       setReplacedRoot(null);
       await planUninstall(old);
     }
     return result;
-  }, [applyPlan, replacedRoot, planUninstall]);
+  }, [applyPlan, replacedRoot, repointOffer, planUninstall]);
 
   const [profiles, setProfiles] = useState<ProfileMatchStatus[]>([]);
   const [currentPins, setCurrentPins] = useState<ProfileToolPin[]>([]);
@@ -522,9 +564,12 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     openFolder,
     unfinished,
     dismissUnfinished,
+    replacementPlan,
+    chooseReplacement,
     closeUninstall: () => {
       setUninstallPlan(null);
       setUninstallOutcome(null);
+      setReplacementPlan(null);
     },
     shellCheck,
     runShellCheck,
@@ -557,6 +602,8 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     updateBusy,
     replacedRoot,
     updatedRoot,
+    repointOffer,
+    toggleRepoint: (checked: boolean) => setRepointOffer((o) => (o ? { ...o, checked } : o)),
     checkUpdates,
     updateTo,
     undoLast,
@@ -565,6 +612,7 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     clearPlan: () => {
       setPlan(null);
       setReplacedRoot(null);
+      setRepointOffer(null);
       setCleanup(null);
     },
     clearUndoResult: () => setUndoResult(null),

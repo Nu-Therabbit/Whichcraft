@@ -318,7 +318,7 @@ export default function App() {
             busy: developerTools.installBusy,
             miseStatus: developerTools.miseStatus,
             chosen: developerTools.chosenVersion,
-            onOpen: () => void developerTools.loadRemoteVersions(),
+            onOpen: developerTools.loadRemoteVersions,
             onChoose: (version) => void developerTools.chooseVersion(version),
             onInstall: () => void developerTools.installChosen(),
           }}
@@ -328,6 +328,11 @@ export default function App() {
             awaitingSwitch: developerTools.replacedRoot !== null,
             onCheck: () => void developerTools.checkUpdates(),
             onUpdate: (candidate) => void developerTools.updateTo(candidate),
+            repoint: developerTools.repointOffer && {
+              names: developerTools.repointOffer.names,
+              checked: developerTools.repointOffer.checked,
+              onToggle: developerTools.toggleRepoint,
+            },
           }}
           unfinishedUninstalls={{
             list: developerTools.unfinished,
@@ -355,6 +360,8 @@ export default function App() {
             outcome: developerTools.uninstallOutcome,
             busy: developerTools.uninstallBusy,
             defaultReplacement: developerTools.updatedRoot,
+            switchPlan: developerTools.replacementPlan,
+            onChooseReplacement: (root) => void developerTools.chooseReplacement(root),
             onPlan: (root) => void developerTools.planUninstall(root),
             onConfirm: (replacement, repoint) => void developerTools.confirmUninstall(replacement, repoint),
             onOpenFolder: (path) => void developerTools.openFolder(path),

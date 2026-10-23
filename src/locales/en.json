@@ -349,7 +349,8 @@
       "row": "{{current}} → {{latest}}",
       "update": "Update",
       "updating": "Installing…",
-      "next": "Installed next to the old one. Apply the switch below; Whichcraft then offers to uninstall the old one."
+      "next": "Installed next to the old one. Apply the switch below; Whichcraft then offers to uninstall the old one.",
+      "repoint": "Also point these profiles at the new version when the switch is applied: {{names}}"
     },
     "uninstall_button": "Uninstall",
     "uninstall": {
@@ -368,6 +369,7 @@
       "no_replacement": "No other installation of this tool was found. Install one first.",
       "choose_profile_replacement": "Profiles use this installation. Choose what they should use instead (optional):",
       "repoint": "Point those profiles at the chosen installation",
+      "switch_first": "Applied first, before anything is removed:",
       "confirm": "Uninstall",
       "removing": "Removing…",
       "removed": "Removed.",

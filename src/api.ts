@@ -108,6 +108,7 @@ export interface EnvarlyApi {
     from: import("./types").ToolInstallationRef,
     to: import("./types").ToolInstallationRef,
   ) => Promise<string[]>;
+  profilesUsing: (installation: import("./types").ToolInstallationRef) => Promise<string[]>;
   openTerminal: () => Promise<void>;
   shellCheck: (tool: import("./types").ToolKind) => Promise<import("./types").ShellCheck>;
   getPythonLauncherInfo: () => Promise<import("./types").PythonSupplementalView>;
@@ -182,6 +183,7 @@ const normalApi: EnvarlyApi = {
   profileMissing: (profile) => invoke("whichcraft_profile_missing", { profile }),
   installMissing: (profile) => invoke("whichcraft_install_missing", { profile }),
   repointProfiles: (from, to) => invoke("whichcraft_repoint_profiles", { from, to }),
+  profilesUsing: (installation) => invoke("whichcraft_profiles_using", { installation }),
   openTerminal: () => invoke("whichcraft_open_terminal"),
   shellCheck: (tool) => invoke("whichcraft_shell_check", { tool }),
   getPythonLauncherInfo: () => invoke("whichcraft_python_supplemental"),
@@ -287,6 +289,7 @@ export const api: EnvarlyApi = {
   profileMissing: async (profile) => (await getApi()).profileMissing(profile),
   installMissing: async (profile) => (await getApi()).installMissing(profile),
   repointProfiles: async (from, to) => (await getApi()).repointProfiles(from, to),
+  profilesUsing: async (installation) => (await getApi()).profilesUsing(installation),
   openTerminal: async () => (await getApi()).openTerminal(),
   shellCheck: async (tool) => (await getApi()).shellCheck(tool),
   getPythonLauncherInfo: async () => (await getApi()).getPythonLauncherInfo(),

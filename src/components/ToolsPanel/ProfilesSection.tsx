@@ -4,6 +4,7 @@ import type { MissingPin, ProfileMatchStatus, ProfileToolPin, ToolProfile } from
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { formatBytes } from "./InstallSection";
+import { StoreConfirm } from "./StoreConfirm";
 
 interface Props {
   profiles: ProfileMatchStatus[];
@@ -16,6 +17,8 @@ interface Props {
   onApply: (profile: ToolProfile) => void;
   onCheckMissing: (profile: ToolProfile) => void;
   onInstallMissing: (profile: ToolProfile) => void;
+  /** Where installs go; until it is confirmed nothing is downloaded (I-5). */
+  store: { confirmed: boolean; installStore: string; onConfirm: (store: string) => void };
 }
 
 const pinKey = (p: ProfileToolPin) => `${p.tool}|${p.vendor}|${p.version}`;
@@ -33,10 +36,12 @@ function MissingList({
   items,
   busy,
   onInstall,
+  store,
 }: {
   items: MissingPin[];
   busy: boolean;
   onInstall: () => void;
+  store: Props["store"];
 }) {
   const { t } = useI18n();
   const installable = items.every((m) => m.installVersion);
@@ -58,8 +63,11 @@ function MissingList({
           </li>
         ))}
       </ul>
+      {installable && !store.confirmed && (
+        <StoreConfirm installStore={store.installStore} busy={busy} onConfirmStore={store.onConfirm} />
+      )}
       {installable ? (
-        <Button variant="primary" size="sm" disabled={busy} onClick={onInstall}>
+        <Button variant="primary" size="sm" disabled={busy || !store.confirmed} onClick={onInstall}>
           {allSizesKnown
             ? t("tools.profiles.install_missing_sized", { size: formatBytes(knownBytes) })
             : t("tools.profiles.install_missing")}
@@ -82,6 +90,7 @@ export function ProfilesSection({
   onApply,
   onCheckMissing,
   onInstallMissing,
+  store,
 }: Props) {
   const { t } = useI18n();
   const [name, setName] = useState("");
@@ -135,7 +144,7 @@ export function ProfilesSection({
                 ))}
               </ul>
               {missing?.profileId === profile.id && (
-                <MissingList items={missing.items} busy={busy} onInstall={() => onInstallMissing(profile)} />
+                <MissingList items={missing.items} busy={busy} onInstall={() => onInstallMissing(profile)} store={store} />
               )}
             </li>
           ))}
