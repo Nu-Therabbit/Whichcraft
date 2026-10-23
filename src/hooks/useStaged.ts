@@ -70,8 +70,18 @@ export function useStaged(registryVars: EnvVar[], onPendingChange?: (pending: bo
 
   /** Stage all changes needed to make the registry match a snapshot. */
   const stageSnapshot = useCallback(
-    (snap: EnvSnapshot) => {
-      setStaged((prev) => publishPending(computeStageSnapshot(registryByKey, registryVars, prev, snap)));
+    (snap: EnvSnapshot, options?: { replacePendingStaged?: boolean }) => {
+      setStaged((prev) =>
+        publishPending(
+          computeStageSnapshot(
+            registryByKey,
+            registryVars,
+            prev,
+            snap,
+            options?.replacePendingStaged ?? false,
+          ),
+        ),
+      );
     },
     [registryByKey, registryVars, publishPending],
   );

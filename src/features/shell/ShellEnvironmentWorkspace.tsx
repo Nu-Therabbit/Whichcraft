@@ -225,8 +225,8 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
           >
             <SnapshotPanel
               pendingStagedCount={staged.size}
-              onStageSnapshot={(snap) => {
-                handleStageSnapshot(snap);
+              onStageSnapshot={(snap, options) => {
+                handleStageSnapshot(snap, options);
               }}
             />
           </div>

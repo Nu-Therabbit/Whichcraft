@@ -117,7 +117,9 @@ describe("SnapshotPanel", () => {
     await user.click(screen.getByRole("button", { name: /preview/i }));
     await waitFor(() => screen.getByRole("button", { name: /stage restore/i }));
     await user.click(screen.getByRole("button", { name: /stage restore/i }));
-    expect(onStageSnapshot).toHaveBeenCalledWith(MOCK_SNAPSHOT.snapshot);
+    expect(onStageSnapshot).toHaveBeenCalledWith(MOCK_SNAPSHOT.snapshot, {
+      replacePendingStaged: false,
+    });
   });
 
   it("calls deleteSnapshot after confirming delete", async () => {
@@ -171,6 +173,23 @@ describe("SnapshotPanel", () => {
     await waitFor(() => {
       expect(screen.getByText(/no snapshots yet/i)).toBeInTheDocument();
     });
+  });
+
+  it("shows list failure instead of an empty-state message", async () => {
+    vi.mocked(api.listSnapshots).mockRejectedValueOnce(new Error("disk offline"));
+    renderSnapshot(onStageSnapshot);
+    expect(await screen.findByText(/could not load snapshots/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no snapshots yet/i)).not.toBeInTheDocument();
+  });
+
+  it("shows delete failure as error status", async () => {
+    vi.mocked(api.deleteSnapshot).mockRejectedValueOnce(new Error("locked"));
+    const user = userEvent.setup();
+    renderSnapshot(onStageSnapshot);
+    await screen.findByText("Before Node update");
+    await user.click(screen.getByRole("button", { name: "Delete snapshot" }));
+    await user.click(await screen.findByRole("button", { name: /^delete$/i }));
+    expect(await screen.findByText(/could not delete snapshot/i)).toBeInTheDocument();
   });
 
   it("opens preview in a modal and returns to the list when closed", async () => {

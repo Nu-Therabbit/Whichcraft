@@ -234,6 +234,8 @@
     "saving": "…",
     "saved": "Snapshot saved.",
     "error_save": "Error: {{error}}",
+    "error_list": "Could not load snapshots: {{error}}",
+    "error_delete": "Could not delete snapshot: {{error}}",
     "error_preview": "Error loading preview: {{error}}",
     "no_snapshots": "No snapshots yet. Create one before making changes!",
     "preview": "Preview",

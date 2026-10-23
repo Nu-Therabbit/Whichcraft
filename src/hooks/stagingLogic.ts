@@ -166,8 +166,9 @@ export function computeStageSnapshot(
   registryVars: EnvVar[],
   prev: StagedMap,
   snap: EnvSnapshot,
+  replacePendingStaged = false,
 ): StagedMap {
-  const next = new Map(prev);
+  const next = replacePendingStaged ? new Map<StagedKey, StagedChange>() : new Map(prev);
 
   const stageValue = (name: string, scope: VarScope, value: SnapshotValue) => {
     const k = stagedKey(name, scope);

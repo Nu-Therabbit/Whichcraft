@@ -22,7 +22,7 @@ interface Params {
     }>,
     deletes: Array<{ name: string; scope: VarScope }>,
   ) => void;
-  stageSnapshot: (snap: EnvSnapshot) => void;
+  stageSnapshot: (snap: EnvSnapshot, options?: { replacePendingStaged?: boolean }) => void;
   unstage: (name: string, scope: VarScope) => void;
   clearStaged: () => void;
   restoreStaged: (map: Map<string, StagedChange>) => void;
@@ -131,13 +131,13 @@ export function useStagingHandlers({
   );
 
   const handleStageSnapshot = useCallback(
-    (snap: EnvSnapshot) => {
+    (snap: EnvSnapshot, options?: { replacePendingStaged?: boolean }) => {
       const snapshot = new Map(staged);
-      stageSnapshot(snap);
+      stageSnapshot(snap, options);
       push({
         label: "Stage snapshot restore",
         undo: () => restoreStaged(snapshot),
-        redo: () => stageSnapshot(snap),
+        redo: () => stageSnapshot(snap, options),
       });
     },
     [staged, stageSnapshot, restoreStaged, push],

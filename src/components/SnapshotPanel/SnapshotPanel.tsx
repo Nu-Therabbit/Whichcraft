@@ -7,10 +7,13 @@ import { TextInput } from "../ui/TextInput";
 import { SnapshotCard } from "./SnapshotCard";
 import { SnapshotCompare } from "./SnapshotCompare";
 import { SnapshotPreview } from "./SnapshotPreview";
-import { useSnapshotPanel } from "./useSnapshotPanel";
+
+import { useSnapshotPanel, type StageSnapshotOptions } from "./useSnapshotPanel";
+
+export type { StageSnapshotOptions };
 
 interface Props {
-  onStageSnapshot: (snap: EnvSnapshot) => void;
+  onStageSnapshot: (snap: EnvSnapshot, options?: StageSnapshotOptions) => void;
   /** Pending staged edits in the environment controller (for replace confirmation). */
   pendingStagedCount?: number;
 }
@@ -54,6 +57,7 @@ export function SnapshotPanel({ onStageSnapshot, pendingStagedCount = 0 }: Props
     handleStartCompare,
     handlePickCompareTarget,
     handleCancelCompare,
+    listReady,
   } = useSnapshotPanel(onStageSnapshot, pendingStagedCount);
 
   return (
@@ -108,7 +112,7 @@ export function SnapshotPanel({ onStageSnapshot, pendingStagedCount = 0 }: Props
               </Button>
             </div>
           )}
-          {snapshots.length === 0 && (
+          {listReady && snapshots.length === 0 && status?.kind !== "error" && (
             <p className="text-center text-dim text-xs py-6">{t("snapshot.no_snapshots")}</p>
           )}
           {snapshots.map((s) => (

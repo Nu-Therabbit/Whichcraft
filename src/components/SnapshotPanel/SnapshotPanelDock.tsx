@@ -7,10 +7,13 @@ import { IconButton } from "../ui/IconButton";
 import { ResizeHandle } from "../ui/ResizeHandle";
 import { SnapshotPanel } from "./SnapshotPanel";
 
+import type { StageSnapshotOptions } from "./SnapshotPanel";
+
 interface Props {
   open: boolean;
   onClose: () => void;
-  onStageSnapshot: (snap: EnvSnapshot) => void;
+  onStageSnapshot: (snap: EnvSnapshot, options?: StageSnapshotOptions) => void;
+  pendingStagedCount?: number;
 }
 
 const DOCK_WIDTH = {
@@ -20,7 +23,7 @@ const DOCK_WIDTH = {
   max: 640,
 } as const;
 
-export function SnapshotPanelDock({ open, onClose, onStageSnapshot }: Props) {
+export function SnapshotPanelDock({ open, onClose, onStageSnapshot, pendingStagedCount = 0 }: Props) {
   const { t } = useI18n();
   const presence = usePresence(open);
   const { width, isDragging, handleProps } = useResizableWidth({ ...DOCK_WIDTH, side: "right" });
@@ -54,7 +57,10 @@ export function SnapshotPanelDock({ open, onClose, onStageSnapshot }: Props) {
           <IconButton aria-label="Close snapshots" icon="x" onClick={onClose} />
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
-          <SnapshotPanel onStageSnapshot={onStageSnapshot} />
+          <SnapshotPanel
+            onStageSnapshot={onStageSnapshot}
+            pendingStagedCount={pendingStagedCount}
+          />
         </div>
       </div>
     </aside>

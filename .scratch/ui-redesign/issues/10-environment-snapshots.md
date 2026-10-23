@@ -21,3 +21,11 @@
 - **Coordinator:** Environment apply still invalidates tool read models through ticket 04/09 paths; snapshot save does not add a second backend pre-apply snapshot on top of apply-staged.
 - **Tests:** `desktopShellSnapshots.test.tsx` (list/save preview, stage restore without `applyEnvChanges`, replace-staged confirm).
 - **Windows manual (save/compare/restore + restart):** Not run in this agent environment. Leave checkbox open for human QA.
+
+### Review round 1 (Grok 4.7)
+
+- **Coordinator apply readback:** `desktopShellSnapshots.test.tsx` applies staged edits and asserts `subscribeInvalidation` receives `tools-profiles`, `tools-installations`, and `shell-overview`, plus a follow-up tool inventory rescan (test fails if `endEnvironmentWrite` stops invalidating those scopes).
+- **Replace staged map:** `computeStageSnapshot(..., replacePendingStaged)` rebuilds from an empty staged map when the user confirmed replace; `stagingLogic.test.ts` covers orphan pending drops vs merge.
+- **Legacy dock:** `SnapshotPanelDock` passes `pendingStagedCount={staged.size}` from `LegacyEnvironmentView`.
+- **List/delete errors:** `useSnapshotPanel` surfaces `snapshot.error_list` / `snapshot.error_delete` instead of silent `console.error` + empty list (`SnapshotPanel.test.tsx`).
+- **Restore fixture:** Shell test registry includes removal + value-kind delta; `stagingLogic.test.ts` asserts staged delete and `ExpandString` kind change.

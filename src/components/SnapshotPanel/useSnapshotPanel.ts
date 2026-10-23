@@ -16,8 +16,10 @@ interface Status {
   message: string;
 }
 
+export type StageSnapshotOptions = { replacePendingStaged?: boolean };
+
 export function useSnapshotPanel(
-  onStageSnapshot: (snap: EnvSnapshot) => void,
+  onStageSnapshot: (snap: EnvSnapshot, options?: StageSnapshotOptions) => void,
   pendingStagedCount = 0,
 ) {
   const environment = useEnvironmentApi();
@@ -35,14 +37,17 @@ export function useSnapshotPanel(
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [comparingFrom, setComparingFrom] = useState<SnapshotMeta | null>(null);
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null);
+  const [listReady, setListReady] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setSnapshots(await environment.listSnapshots());
+      setListReady(true);
     } catch (e) {
-      console.error(e);
+      setStatus({ kind: "error", message: t("snapshot.error_list", { error: e }) });
+      setListReady(true);
     }
-  }, [environment]);
+  }, [environment, t]);
 
   useEffect(() => {
     void load();
@@ -91,7 +96,9 @@ export function useSnapshotPanel(
     if (pendingStagedCount > 0 && !confirm(t("snapshot.confirm_replace_staged"))) {
       return;
     }
-    onStageSnapshot(previewing.snapshot);
+    onStageSnapshot(previewing.snapshot, {
+      replacePendingStaged: pendingStagedCount > 0,
+    });
     const count = previewDiff.length;
     setStatus({
       kind: "success",
@@ -112,7 +119,7 @@ export function useSnapshotPanel(
       setConfirmDeleteId(null);
       await load();
     } catch (e) {
-      console.error(e);
+      setStatus({ kind: "error", message: t("snapshot.error_delete", { error: e }) });
     }
   };
 
@@ -183,6 +190,7 @@ export function useSnapshotPanel(
     renamingId,
     comparingFrom,
     compareResult,
+    listReady,
     handleCreate,
     handlePreview,
     closePreview,

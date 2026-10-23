@@ -225,8 +225,9 @@ export function LegacyEnvironmentView({ tools, sendTools }: LegacyEnvironmentVie
           <SnapshotPanelDock
             open={snapshotsOpen}
             onClose={() => setSnapshotsOpen(false)}
-            onStageSnapshot={(snap) => {
-              handleStageSnapshot(snap);
+            pendingStagedCount={staged.size}
+            onStageSnapshot={(snap, options) => {
+              handleStageSnapshot(snap, options);
               setSnapshotsOpen(false);
             }}
           />
