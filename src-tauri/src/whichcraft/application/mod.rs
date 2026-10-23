@@ -1,4 +1,6 @@
 pub mod app;
+#[cfg(test)]
+mod app_tests;
 pub mod elevation;
 pub mod java_inventory;
 pub mod path_cleanup;
