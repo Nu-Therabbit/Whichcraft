@@ -43,6 +43,34 @@ mod tests {
     use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
 
+    /// Production application code must reach the outside world only through ports (ADR-0005).
+    #[test]
+    fn production_application_avoids_concrete_adapters_and_io() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/whichcraft/application");
+        // `env_store`, `model`, `path_manage`, and registry/PATH helpers in `whichcraft::tools`
+        // are the inherited adapter/type exception (ADR-0005).
+        let forbidden = [
+            "whichcraft::persistence",
+            "whichcraft::mise",
+            "whichcraft::adapters",
+            "crate::commands",
+            "chrono::",
+            "reqwest",
+            "winreg",
+            "windows_sys",
+        ];
+        for entry in std::fs::read_dir(&dir).unwrap().flatten() {
+            if entry.path().extension().and_then(|e| e.to_str()) != Some("rs") {
+                continue;
+            }
+            let text = std::fs::read_to_string(entry.path()).unwrap();
+            let code = text.split("#[cfg(test)]").next().unwrap();
+            for word in forbidden {
+                assert!(!code.contains(word), "{} uses {word}", entry.path().display());
+            }
+        }
+    }
+
     fn vars(pairs: &[(&str, &str)]) -> HashMap<String, EnvValue> {
         pairs.iter().map(|(k, v)| ((*k).to_string(), EnvValue::typed((*v).to_string(), crate::model::EnvValueKind::ExpandString))).collect()
     }

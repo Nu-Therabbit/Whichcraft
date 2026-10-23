@@ -3,7 +3,7 @@ use crate::error::EnvarlyError;
 use crate::model::{EnvChange, VarScope};
 use crate::whichcraft::domain::journal::{JournalStatus, MutationRecord, WhichcraftJournal};
 use crate::whichcraft::domain::selection::ToolSelection;
-use crate::whichcraft::persistence::new_journal_id;
+use crate::whichcraft::ports::operation_ids::OperationIds;
 use crate::whichcraft::ports::store::Store;
 use crate::whichcraft::ports::machine::Machine;
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
@@ -25,32 +25,36 @@ pub fn create_tool_plan<B: EnvBackend>(
     backend: &B,
     machine: &dyn Machine,
     installation: &ToolInstallation,
+    ids: &dyn OperationIds,
 ) -> Result<ToolApplyPlan, EnvarlyError> {
-    build_tool_apply_plan(backend, machine, installation, new_journal_id())
+    build_tool_apply_plan(backend, machine, installation, ids.new_apply_id())
 }
 
 /// Applies a plan in this process. A plan that touches System needs this process to be elevated.
 pub fn apply_tool_plan<B: EnvBackend>(
     backend: &B,
     store: &dyn Store,
+    ids: &dyn OperationIds,
     plan: &ToolApplyPlan,
 ) -> Result<ApplyToolResult, EnvarlyError> {
-    apply_tool_plan_with(backend, store, None, plan)
+    apply_tool_plan_with(backend, store, ids, None, plan)
 }
 
 /// Applies a plan, writing the System part through a UAC-elevated helper when needed.
 pub fn apply_tool_plan_elevated<B: EnvBackend>(
     backend: &B,
     store: &dyn Store,
+    ids: &dyn OperationIds,
     elevator: &dyn Elevator,
     plan: &ToolApplyPlan,
 ) -> Result<ApplyToolResult, EnvarlyError> {
-    apply_tool_plan_with(backend, store, Some(elevator), plan)
+    apply_tool_plan_with(backend, store, ids, Some(elevator), plan)
 }
 
 fn apply_tool_plan_with<B: EnvBackend>(
     backend: &B,
     store: &dyn Store,
+    ids: &dyn OperationIds,
     elevator: Option<&dyn Elevator>,
     plan: &ToolApplyPlan,
 ) -> Result<ApplyToolResult, EnvarlyError> {
@@ -99,7 +103,7 @@ fn apply_tool_plan_with<B: EnvBackend>(
         } else {
             "path_cleanup".into()
         },
-        created_at: chrono::Utc::now().to_rfc3339(),
+        created_at: ids.now_rfc3339(),
         baseline: plan.baseline.clone(),
         mutations,
         selections: std::iter::once(&plan.selected)
@@ -303,6 +307,8 @@ pub(crate) mod test_support {
 #[cfg(test)]
 mod tests {
     use crate::whichcraft::adapters::local::LocalMachine;
+    use crate::whichcraft::adapters::operation_ids::SystemOperationIds;
+    use crate::whichcraft::ports::operation_ids::OperationIds;
     use super::test_support::{FakeElevator, Script};
     use crate::whichcraft::persistence::{save_tool_selection, FileStore};
     use super::*;
@@ -315,7 +321,7 @@ mod tests {
     fn shadowed_node_plan(backend: &MemBackend) -> ToolApplyPlan {
         let snapshot = env_store::read_snapshot_with(backend).unwrap();
         ToolApplyPlan {
-            plan_id: new_journal_id(),
+            plan_id: SystemOperationIds.new_apply_id(),
             tool: ToolKind::Node,
             requires_uac: true,
             warnings: vec![],
@@ -365,8 +371,8 @@ mod tests {
         };
         let b = MemBackend::new().with_user([("Path", "C:\\old")]);
 
-        let plan = create_tool_plan(&b, &LocalMachine, &installation).unwrap();
-        assert!(!apply_tool_plan(&b, &FileStore, &plan).unwrap().stale);
+        let plan = create_tool_plan(&b, &LocalMachine, &installation, &SystemOperationIds).unwrap();
+        assert!(!apply_tool_plan(&b, &FileStore, &SystemOperationIds, &plan).unwrap().stale);
 
         let user = b.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, jdk.to_string_lossy());
@@ -398,8 +404,10 @@ mod tests {
         let path = leak_str(format!("{0};C:\\gone-for-good;{0}", keep.display()));
         let b = MemBackend::new().with_user([("Path", path)]);
 
-        let cleanup = crate::whichcraft::application::path_cleanup::build_path_cleanup_plan(&b, &LocalMachine).unwrap();
-        apply_tool_plan(&b, &FileStore, &cleanup.inner).unwrap();
+        let cleanup =
+            crate::whichcraft::application::path_cleanup::build_path_cleanup_plan(&b, &LocalMachine, &SystemOperationIds)
+                .unwrap();
+        apply_tool_plan(&b, &FileStore, &SystemOperationIds, &cleanup.inner).unwrap();
 
         assert_eq!(b.read_user().unwrap()["Path"].value, keep.to_string_lossy());
         assert!(crate::whichcraft::persistence::load_tool_selection(ToolKind::Node).unwrap().is_none());
@@ -427,7 +435,7 @@ mod tests {
         use_test_data_dir(dir.path());
         let b = backend();
         let elevator = FakeElevator::new(&b, vec![]);
-        let result = apply_tool_plan_elevated(&b, &FileStore, &elevator, &shadowed_node_plan(&b)).unwrap();
+        let result = apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &shadowed_node_plan(&b)).unwrap();
         assert!(!result.stale && !result.needs_elevation);
         assert_eq!(path(&b.read_system().unwrap()), "C:\\Windows");
         assert_eq!(path(&b.read_user().unwrap()), "C:\\node22;C:\\u");
@@ -442,7 +450,7 @@ mod tests {
         use_test_data_dir(dir.path());
         let b = backend();
         let elevator = FakeElevator::new(&b, vec![Script::Cancel]);
-        assert!(apply_tool_plan_elevated(&b, &FileStore, &elevator, &shadowed_node_plan(&b)).is_err());
+        assert!(apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &shadowed_node_plan(&b)).is_err());
         assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
         assert_eq!(path(&b.read_system().unwrap()), "C:\\Windows;C:\\Program Files\\nodejs\\");
         assert!(load_last_completed_apply().unwrap().is_none());
@@ -456,7 +464,7 @@ mod tests {
         let plan = shadowed_node_plan(&b);
         let moved = "C:\\Windows;C:\\Program Files\\nodejs\\;C:\\new";
         let elevator = FakeElevator::new(&b, vec![Script::ChangeSystemPathFirst(moved)]);
-        let result = apply_tool_plan_elevated(&b, &FileStore, &elevator, &plan).unwrap();
+        let result = apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &plan).unwrap();
         assert!(result.stale);
         assert_eq!(path(&b.read_system().unwrap()), moved);
         assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
@@ -468,7 +476,7 @@ mod tests {
         use_test_data_dir(dir.path());
         let b = backend();
         let elevator = FakeElevator::new(&b, vec![]);
-        apply_tool_plan_elevated(&b, &FileStore, &elevator, &shadowed_node_plan(&b)).unwrap();
+        apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &shadowed_node_plan(&b)).unwrap();
         let requests = elevator.requests.lock().unwrap();
         assert_eq!(requests.len(), 1);
         assert!(requests[0].changes.iter().all(|c| matches!(
@@ -511,7 +519,7 @@ mod tests {
         let inner = backend();
         let b = UserWritesFail(&inner);
         let elevator = FakeElevator::new(&inner, vec![]);
-        assert!(apply_tool_plan_elevated(&b, &FileStore, &elevator, &shadowed_node_plan(&inner)).is_err());
+        assert!(apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &shadowed_node_plan(&inner)).is_err());
         assert_eq!(path(&inner.read_system().unwrap()), "C:\\Windows;C:\\Program Files\\nodejs\\");
         assert_eq!(path(&inner.read_user().unwrap()), "C:\\u");
         // One request to apply, one to revert.
@@ -524,7 +532,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
         let b = backend();
-        let result = apply_tool_plan(&b, &FileStore, &shadowed_node_plan(&b)).unwrap();
+        let result = apply_tool_plan(&b, &FileStore, &SystemOperationIds, &shadowed_node_plan(&b)).unwrap();
         assert!(result.needs_elevation);
         assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
     }

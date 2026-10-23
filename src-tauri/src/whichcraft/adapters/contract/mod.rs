@@ -14,8 +14,10 @@ use crate::env_store::{read_snapshot_with, EnvBackend};
 use crate::model::{EnvValue, EnvValueKind, VarScope};
 use crate::whichcraft::adapters::win::process::fresh_environment;
 use crate::whichcraft::domain::ToolKind;
-use crate::whichcraft::persistence::{new_journal_id, use_test_data_dir};
+use crate::whichcraft::persistence::use_test_data_dir;
 use crate::whichcraft::domain::ToolInstallation;
+use crate::whichcraft::adapters::operation_ids::SystemOperationIds;
+use crate::whichcraft::ports::operation_ids::OperationIds;
 use crate::whichcraft::application::tool_apply::{apply_tool_plan, apply_tool_plan_elevated};
 use crate::whichcraft::domain::plan::{PlanVariableDiff, ToolApplyPlan};
 use crate::whichcraft::application::undo::undo_last_apply;
@@ -37,7 +39,7 @@ fn set_variable_plan(scope: VarScope, name: &str, value: &str) -> ToolApplyPlan 
     };
     let system = scope == VarScope::System;
     ToolApplyPlan {
-        plan_id: new_journal_id(),
+        plan_id: SystemOperationIds.new_apply_id(),
         tool: ToolKind::Node,
         requires_uac: system,
         warnings: Vec::new(),
@@ -77,7 +79,9 @@ fn contract_user_apply_reaches_new_processes_and_undo_restores_the_key() {
     let before = WinregBackend.read_user().unwrap();
     let (name, value) = unique("USER");
 
-    let result = apply_tool_plan(&WinregBackend, &FileStore, &set_variable_plan(VarScope::User, &name, &value)).unwrap();
+    let result =
+        apply_tool_plan(&WinregBackend, &FileStore, &SystemOperationIds, &set_variable_plan(VarScope::User, &name, &value))
+            .unwrap();
     assert!(!result.stale && !result.needs_elevation);
     assert_eq!(WinregBackend.read_user().unwrap()[&name].value, value);
     let fresh = fresh_environment().unwrap();
@@ -179,7 +183,7 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
     )
     .unwrap();
     assert!(matches!(&plan.method, UninstallMethod::Managed { mise_version, .. } if mise_version == VERSION), "{:?}", plan.method);
-    let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+    let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &SystemOperationIds, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
     assert_eq!(outcome, UninstallOutcome::Removed);
     assert!(!root.exists());
     assert!(
@@ -269,7 +273,7 @@ fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
             &WinUsageProbe,
         )
         .unwrap();
-        let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+        let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &SystemOperationIds, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
         assert_eq!(outcome, UninstallOutcome::Removed, "{tool:?}");
         let left = leftovers(store.path(), tool);
         println!("  after uninstall: {left:?}");
@@ -326,7 +330,7 @@ fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
     .unwrap();
     assert!(matches!(&plan.method, UninstallMethod::Managed { store, .. } if crate::whichcraft::tools::paths_equal(store, a.path())), "{:?}", plan.method);
     assert_eq!(
-        uninstall(&plan, None, &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
+        uninstall(&plan, None, &WinregBackend, &FileStore, &SystemOperationIds, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
         UninstallOutcome::Removed
     );
     assert!(!in_a.exists());
@@ -412,7 +416,7 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
         &WinUsageProbe,
     )
     .unwrap();
-    let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+    let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &SystemOperationIds, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
     let left = leftovers(store.path(), ToolKind::Flutter);
     println!("after uninstall: {outcome:?} {left:?}");
     assert_eq!(outcome, UninstallOutcome::Removed);
@@ -536,7 +540,7 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
     )
     .unwrap();
     assert_eq!(
-        uninstall(&plan, None, &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
+        uninstall(&plan, None, &WinregBackend, &FileStore, &SystemOperationIds, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
         UninstallOutcome::Removed
     );
     assert!(!root.exists());
@@ -557,7 +561,7 @@ fn contract_system_apply_through_uac_and_undo_restores_the_key() {
     let (name, value) = unique("SYSTEM");
 
     let plan = set_variable_plan(VarScope::System, &name, &value);
-    let result = apply_tool_plan_elevated(&WinregBackend, &FileStore, &elevator, &plan).unwrap();
+    let result = apply_tool_plan_elevated(&WinregBackend, &FileStore, &SystemOperationIds, &elevator, &plan).unwrap();
     assert!(!result.stale && !result.needs_elevation, "{result:?}");
     assert_eq!(WinregBackend.read_system().unwrap()[&name].value, value);
     assert_eq!(fresh_environment().unwrap().get(&name), Some(&value), "a process started now gets it");

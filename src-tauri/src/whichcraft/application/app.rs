@@ -35,6 +35,7 @@ use crate::whichcraft::ports::sdk::SdkProbe;
 use crate::whichcraft::ports::store::Store;
 use crate::whichcraft::ports::tool_manager::{ToolManager, ToolManagers};
 use crate::whichcraft::ports::uninstaller::Uninstaller;
+use crate::whichcraft::ports::operation_ids::OperationIds;
 use crate::whichcraft::ports::usage_probe::UsageProbe;
 
 const ALL_TOOLS: [ToolKind; 6] = [ToolKind::Java, ToolKind::Node, ToolKind::Python, ToolKind::Go, ToolKind::Flutter, ToolKind::Git];
@@ -50,6 +51,7 @@ pub struct App<B: EnvBackend> {
     pub uninstaller: Box<dyn Uninstaller>,
     pub sdk: Box<dyn SdkProbe>,
     pub processes: Box<dyn ProcessRunner>,
+    pub ids: Box<dyn OperationIds>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -107,15 +109,15 @@ impl<B: EnvBackend> App<B> {
             .find(|v| v.installation.root == root)
             .map(|v| v.installation)
             .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown {tool:?} root: {}", root.display())))?;
-        create_tool_plan(&self.env, &*self.machine, &installation)
+        create_tool_plan(&self.env, &*self.machine, &installation, &*self.ids)
     }
 
     /// Applies a plan; with `elevate`, the System part goes through UAC.
     pub fn apply(&self, plan: &ToolApplyPlan, elevate: bool) -> Result<ApplyToolResult, EnvarlyError> {
         if elevate {
-            apply_tool_plan_elevated(&self.env, &*self.store, &*self.elevator, plan)
+            apply_tool_plan_elevated(&self.env, &*self.store, &*self.ids, &*self.elevator, plan)
         } else {
-            apply_tool_plan(&self.env, &*self.store, plan)
+            apply_tool_plan(&self.env, &*self.store, &*self.ids, plan)
         }
     }
 
@@ -136,7 +138,7 @@ impl<B: EnvBackend> App<B> {
     }
 
     pub fn plan_path_cleanup(&self) -> Result<PathCleanupPlan, EnvarlyError> {
-        build_path_cleanup_plan(&self.env, &*self.machine)
+        build_path_cleanup_plan(&self.env, &*self.machine, &*self.ids)
     }
 
     // --- terminal ---
@@ -203,7 +205,9 @@ impl<B: EnvBackend> App<B> {
     /// Installs the newer release beside the old one and returns the plan to switch to it.
     pub fn update(&self, tool: ToolKind, version: &str) -> Result<UpdateResult, EnvarlyError> {
         let manager = self.installing_manager()?;
-        install_and_plan(&self.env, &*self.machine, tool, version, |tool, version| manager.install(tool, version))
+        install_and_plan(&self.env, &*self.machine, &*self.ids, tool, version, |tool, version| {
+            manager.install(tool, version)
+        })
     }
 
     // --- profiles ---
@@ -223,7 +227,7 @@ impl<B: EnvBackend> App<B> {
 
     pub fn plan_profile(&self, profile: &ToolProfile) -> Result<ToolApplyPlan, EnvarlyError> {
         let catalog = self.catalogs.load()?;
-        plan_profile_apply(&self.env, &*self.store, &*self.machine, &*catalog, profile)
+        plan_profile_apply(&self.env, &*self.store, &*self.machine, &*catalog, profile, &*self.ids)
     }
 
     /// The unavailable pins of a profile and what Whichcraft would install for each (F-3).
@@ -327,7 +331,17 @@ impl<B: EnvBackend> App<B> {
     /// removes it.
     pub fn uninstall(&self, tool: ToolKind, root: &Path, replacement: Option<&ToolApplyPlan>) -> Result<UninstallOutcome, EnvarlyError> {
         let plan = self.plan_uninstall(tool, root)?;
-        uninstall(&plan, replacement, &self.env, &*self.store, &*self.machine, &*self.elevator, &*self.usage, &*self.uninstaller)
+        uninstall(
+            &plan,
+            replacement,
+            &self.env,
+            &*self.store,
+            &*self.ids,
+            &*self.machine,
+            &*self.elevator,
+            &*self.usage,
+            &*self.uninstaller,
+        )
     }
 
     pub fn unfinished_uninstalls(&self) -> Result<Vec<UninstallRecord>, EnvarlyError> {
@@ -335,7 +349,7 @@ impl<B: EnvBackend> App<B> {
     }
 
     pub fn dismiss_unfinished_uninstall(&self, id: &str) -> Result<(), EnvarlyError> {
-        dismiss_unfinished_uninstall(&*self.store, &*self.machine, id)
+        dismiss_unfinished_uninstall(&*self.store, &*self.machine, &*self.ids, id)
     }
 }
 

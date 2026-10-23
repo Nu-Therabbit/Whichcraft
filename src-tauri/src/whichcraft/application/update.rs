@@ -13,6 +13,7 @@ use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::application::tool_apply::create_tool_plan;
 use crate::whichcraft::domain::ToolApplyPlan;
 use crate::whichcraft::ports::machine::Machine;
+use crate::whichcraft::ports::operation_ids::OperationIds;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,6 +27,7 @@ pub struct UpdateResult {
 pub fn install_and_plan<B: EnvBackend>(
     backend: &B,
     machine: &dyn Machine,
+    ids: &dyn OperationIds,
     tool: ToolKind,
     version: &str,
     install: impl FnOnce(ToolKind, &str) -> Result<PathBuf, EnvarlyError>,
@@ -34,7 +36,7 @@ pub fn install_and_plan<B: EnvBackend>(
     let installation = machine.probe(tool, &root, true).ok_or_else(|| {
         EnvarlyError::InvalidInput(format!("the new installation at {} was not recognised", root.display()))
     })?;
-    let plan = create_tool_plan(backend, machine, &installation)?;
+    let plan = create_tool_plan(backend, machine, &installation, ids)?;
     Ok(UpdateResult { installation, plan })
 }
 
@@ -42,6 +44,7 @@ pub fn install_and_plan<B: EnvBackend>(
 mod tests {
     use super::*;
     use crate::whichcraft::adapters::local::LocalMachine;
+    use crate::whichcraft::adapters::operation_ids::SystemOperationIds;
     use crate::env_store::MemBackend;
 
     #[test]
@@ -54,7 +57,7 @@ mod tests {
         let backend = MemBackend::new().with_user([("Path", "C:\\old-node")]);
 
         let new_root = dir.path().join("store").join("node").join("22.24.0");
-        let result = install_and_plan(&backend, &LocalMachine, ToolKind::Node, "22.24.0", |tool, version| {
+        let result = install_and_plan(&backend, &LocalMachine, &SystemOperationIds, ToolKind::Node, "22.24.0", |tool, version| {
             assert_eq!((tool, version), (ToolKind::Node, "22.24.0"));
             std::fs::create_dir_all(&new_root).unwrap();
             std::fs::write(new_root.join("node.exe"), b"").unwrap();
@@ -72,7 +75,10 @@ mod tests {
     #[test]
     fn a_failed_install_plans_nothing() {
         let backend = MemBackend::new();
-        let err = install_and_plan(&backend, &LocalMachine, ToolKind::Go, "1.27.1", |_, _| Err(EnvarlyError::InvalidInput("offline".into())));
+        let err =
+            install_and_plan(&backend, &LocalMachine, &SystemOperationIds, ToolKind::Go, "1.27.1", |_, _| {
+                Err(EnvarlyError::InvalidInput("offline".into()))
+            });
         assert!(err.is_err());
     }
 }

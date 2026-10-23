@@ -37,8 +37,10 @@ pub(crate) fn read_path_str(key: &RegKey) -> String {
         .map(|rv| {
             let words: Vec<u16> = rv
                 .bytes
-                .chunks_exact(2)
-                .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|c| u16::from_le_bytes(*c))
                 .take_while(|&w| w != 0)
                 .collect();
             String::from_utf16_lossy(&words).to_string()

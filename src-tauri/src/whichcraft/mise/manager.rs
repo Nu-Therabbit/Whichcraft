@@ -306,7 +306,7 @@ fn older_mise(root: &Path, pinned: &str) -> Vec<(String, PathBuf)> {
             (name != pinned && exe.is_file()).then_some((name, exe))
         })
         .collect();
-    found.sort_by(|a, b| version_key(&b.0).cmp(&version_key(&a.0)));
+    found.sort_by_key(|a| std::cmp::Reverse(version_key(&a.0)));
     found
 }
 

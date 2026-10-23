@@ -2,6 +2,7 @@
 
 use crate::env_backend::WinregBackend;
 use crate::whichcraft::adapters::local::LocalMachine;
+use crate::whichcraft::adapters::operation_ids::SystemOperationIds;
 use crate::whichcraft::adapters::win::elevation::WinElevator;
 use crate::whichcraft::adapters::win::installer_catalog::WinInstallerCatalogs;
 use crate::whichcraft::adapters::win::process::WinProcessRunner;
@@ -24,5 +25,6 @@ pub fn windows_app() -> App<WinregBackend> {
         uninstaller: Box::new(WinUninstaller),
         sdk: Box::new(WinSdkProbe),
         processes: Box::new(WinProcessRunner),
+        ids: Box::new(SystemOperationIds),
     }
 }

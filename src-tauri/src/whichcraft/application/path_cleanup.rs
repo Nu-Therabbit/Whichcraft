@@ -5,7 +5,7 @@ use crate::whichcraft::application::registry_expander;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::model::VarScope;
-use crate::whichcraft::persistence::new_journal_id;
+use crate::whichcraft::ports::operation_ids::OperationIds;
 use crate::whichcraft::domain::PlanVariableDiff;
 use crate::whichcraft::domain::path::path_entries;
 use crate::whichcraft::domain::ToolApplyPlan;
@@ -24,6 +24,7 @@ pub struct PathCleanupPlan {
 pub fn build_path_cleanup_plan<B: EnvBackend>(
     backend: &B,
     machine: &dyn Machine,
+    ids: &dyn OperationIds,
 ) -> Result<PathCleanupPlan, EnvarlyError> {
     let user = backend.read_user()?;
     let system = backend.read_system()?;
@@ -50,7 +51,7 @@ pub fn build_path_cleanup_plan<B: EnvBackend>(
 
     Ok(PathCleanupPlan {
         inner: ToolApplyPlan {
-            plan_id: new_journal_id(),
+            plan_id: ids.new_apply_id(),
             tool: ToolKind::Node,
             requires_uac: false,
             warnings: Vec::new(),
@@ -104,6 +105,7 @@ fn cleanup_path(raw: &str, expand: impl Fn(&str) -> String, machine: &dyn Machin
 #[cfg(test)]
 mod tests {
     use crate::whichcraft::adapters::local::LocalMachine;
+    use crate::whichcraft::adapters::operation_ids::SystemOperationIds;
     use super::*;
 
     #[test]
@@ -141,7 +143,7 @@ mod tests {
         backend.user.lock().unwrap().extend(vars(&[("Path", raw.clone())]));
         backend.user.lock().unwrap().extend(user_vars);
 
-        let plan = build_path_cleanup_plan(&backend, &LocalMachine).unwrap();
+        let plan = build_path_cleanup_plan(&backend, &LocalMachine, &SystemOperationIds).unwrap();
         assert_eq!(plan.removed_duplicates.len(), 2);
         assert_eq!(plan.removed_missing, vec![ollama.to_string_lossy().into_owned()]);
         assert_eq!(plan.inner.user_diffs[0].after, go_bin.to_string_lossy());
@@ -152,7 +154,8 @@ mod tests {
     #[test]
     #[ignore = "contract: reads the real registry"]
     fn contract_path_cleanup_on_this_machine() {
-        let plan = build_path_cleanup_plan(&crate::env_backend::WinregBackend, &LocalMachine).unwrap();
+        let plan =
+            build_path_cleanup_plan(&crate::env_backend::WinregBackend, &LocalMachine, &SystemOperationIds).unwrap();
         println!("duplicates: {:?}\nmissing: {:?}", plan.removed_duplicates, plan.removed_missing);
         assert!(
             plan.removed_duplicates.iter().any(|d| d.to_ascii_lowercase().ends_with("go\\bin")),
