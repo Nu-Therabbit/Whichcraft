@@ -1,6 +1,8 @@
 import { vi } from "vitest";
 import type { EnvarlyApi } from "../../contracts";
 import { createToolsRuntime, splitEnvarlyApi } from "../../composition/appServices";
+import { createIsolatedWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
+import type { WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
 import type { ToolsRuntime } from "./runtime";
 import type { ToolApplyPlan, ToolInstallationRef, ToolInstallationView, ToolKind } from "../../types";
 import { runEffects } from "./effects";
@@ -35,12 +37,16 @@ export function fakeApi(overrides: Partial<EnvarlyApi>): EnvarlyApi {
   });
 }
 
-export function fakeToolsRuntime(overrides: Partial<EnvarlyApi> = {}): {
+export function fakeToolsRuntime(
+  overrides: Partial<EnvarlyApi> = {},
+  coordination: WriteCoordinatorFacade = createIsolatedWriteCoordinator(),
+): {
   runtime: ToolsRuntime;
   api: EnvarlyApi;
+  coordination: WriteCoordinatorFacade;
 } {
   const api = fakeApi(overrides);
-  return { runtime: createToolsRuntime(splitEnvarlyApi(api)), api };
+  return { runtime: createToolsRuntime(splitEnvarlyApi(api), coordination), api, coordination };
 }
 
 /** Runs the reducer and effects the way useToolsStore does, and waits for all effects. */

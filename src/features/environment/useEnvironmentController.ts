@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
+import type { InvalidationScope } from "../../coordination/types";
 import { useUndo } from "../../contexts/UndoContext";
 import { useAccountSwitch } from "../../hooks/useAccountSwitch";
 import { useAppInit } from "../../hooks/useAppInit";
@@ -15,9 +17,22 @@ import type { EnvironmentRuntime } from "./runtime";
 
 type PlatformInitSlice = Pick<PlatformApi, "isElevated">;
 
+function scopesNeedEnvironmentRefresh(scopes: InvalidationScope[]): boolean {
+  return scopes.some(
+    (scope) =>
+      scope === "environment-variables" ||
+      scope === "environment-diagnostics" ||
+      scope === "environment-external-diff" ||
+      scope === "account-context" ||
+      scope.startsWith("tools-") ||
+      scope === "shell-overview",
+  );
+}
+
 export function useEnvironmentController(runtime: EnvironmentRuntime, platform: PlatformInitSlice) {
+  const coordination = useWriteCoordinator();
   const { environment } = runtime;
-  const { vars, loading, error, refresh } = useEnvVars(environment);
+  const { vars, loading, error, refresh } = useEnvVars(environment, coordination);
   const {
     staged,
     effectiveVars,
@@ -47,7 +62,7 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
     diffEntries,
     baselineRef,
     checkForExternalChanges,
-    handleDiffApply,
+    handleDiffApply: handleDiffApplyRaw,
     handleDiffDismiss,
     applyBusy,
     applyError,
@@ -57,12 +72,31 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
 
   const accountRefresh = useMemo(
     () => async () => {
+      try {
+        const selected = await environment.getSelectedAccount();
+        coordination.notifyAccountContextChanged(selected?.sid ?? null);
+      } catch {
+        coordination.notifyAccountContextChanged(null);
+      }
       await refresh();
       await checkForExternalChanges();
       await refreshPathStatus();
     },
-    [refresh, checkForExternalChanges, refreshPathStatus],
+    [coordination, environment, refresh, checkForExternalChanges, refreshPathStatus],
   );
+
+  useEffect(() => {
+    coordination.setEnvironmentPending(staged.size > 0);
+  }, [coordination, staged.size]);
+
+  useEffect(() => {
+    return coordination.subscribeInvalidation((scopes) => {
+      if (!scopesNeedEnvironmentRefresh(scopes)) return;
+      void refresh();
+      void checkForExternalChanges();
+      void refreshPathStatus();
+    });
+  }, [coordination, refresh, checkForExternalChanges, refreshPathStatus]);
 
   const { accounts, selectedAccount, handleSelectAccount, accountSwitchError } = useAccountSwitch(
     environment,
@@ -98,11 +132,12 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
   });
 
   const {
-    handleApplyStaged,
+    handleApplyStaged: applyStagedCore,
     busy: stagedBusy,
     error: stagedError,
     progress: stagedProgress,
     log: stagedLog,
+    setError: setStagedError,
   } = useApplyStaged({
     environment,
     staged,
@@ -111,6 +146,41 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
     refreshPathStatus,
     baselineRef,
   });
+
+  const handleApplyStaged = useCallback(
+    async (takeSnapshot: boolean) => {
+      const gate = coordination.tryBeginEnvironmentWrite("apply-staged");
+      if (!gate.ok) {
+        setStagedError(gate.reason);
+        return false;
+      }
+      try {
+        const ok = await applyStagedCore(takeSnapshot);
+        coordination.endEnvironmentWrite(gate.admission, ok ? "success" : "failure");
+        return ok;
+      } catch (err) {
+        coordination.endEnvironmentWrite(gate.admission, "failure");
+        throw err;
+      }
+    },
+    [applyStagedCore, coordination, setStagedError],
+  );
+
+  const handleDiffApply = useCallback(
+    async (...args: Parameters<typeof handleDiffApplyRaw>) => {
+      const gate = coordination.tryBeginEnvironmentWrite("apply-external-diff");
+      if (!gate.ok) return false;
+      try {
+        const ok = await handleDiffApplyRaw(...args);
+        coordination.endEnvironmentWrite(gate.admission, ok ? "success" : "failure");
+        return ok;
+      } catch (err) {
+        coordination.endEnvironmentWrite(gate.admission, "failure");
+        throw err;
+      }
+    },
+    [coordination, handleDiffApplyRaw],
+  );
 
   return {
     environment,

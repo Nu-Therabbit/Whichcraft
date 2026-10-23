@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UndoProvider } from "../../contexts/UndoContext";
 import { createToolsRuntime, splitEnvarlyApi } from "../../composition/appServices";
+import { WriteCoordinatorProvider, useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import { AppServicesProvider, useAppServices } from "../../composition/AppServicesContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { fakeToolsRuntime } from "../tools/testHarness";
@@ -17,7 +18,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 function LegacyHarness() {
   const services = useAppServices();
-  const toolsRuntime = useMemo(() => createToolsRuntime(services), [services]);
+  const coordination = useWriteCoordinator();
+  const toolsRuntime = useMemo(() => createToolsRuntime(services, coordination), [services, coordination]);
   const { state, dispatch } = useToolsStore("java", toolsRuntime);
   return <LegacyEnvironmentView tools={state} sendTools={dispatch} />;
 }
@@ -28,9 +30,11 @@ function renderEnvironmentApp(overrides: Parameters<typeof fakeToolsRuntime>[0] 
   return { fake, ...render(
     <UndoProvider>
       <AppServicesProvider>
-        <EnvironmentProvider>
-          <LegacyHarness />
-        </EnvironmentProvider>
+        <WriteCoordinatorProvider>
+          <EnvironmentProvider>
+            <LegacyHarness />
+          </EnvironmentProvider>
+        </WriteCoordinatorProvider>
       </AppServicesProvider>
     </UndoProvider>,
   ) };

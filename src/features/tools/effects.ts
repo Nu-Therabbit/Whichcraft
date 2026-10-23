@@ -1,5 +1,6 @@
-import type { ToolsRuntime } from "./runtime";
+import type { ToolsWriteKind, WriteAdmission, WriteOutcome } from "../../coordination/types";
 import type { ProfileToolPin, ToolKind, ToolProfile } from "../../types";
+import type { ToolsRuntime } from "./runtime";
 import type { Operation, ToolsIntent, ToolsMsg } from "./messages";
 import { isSingleToolPlan, type ToolsState } from "./model";
 import { canConfirmUninstall } from "./reduce";
@@ -13,6 +14,32 @@ export interface EffectContext {
   dispatch: (msg: ToolsMsg) => void;
   runtime: ToolsRuntime;
   newId: () => string;
+}
+
+function releaseToolsWrite(ctx: EffectContext, admission: WriteAdmission | null, outcome: "success" | "failure" | "cancel") {
+  if (admission) ctx.runtime.coordination.endToolsWrite(admission, outcome);
+}
+
+async function withToolsWrite(
+  ctx: EffectContext,
+  kind: ToolsWriteKind,
+  op: Operation,
+  fn: () => Promise<WriteOutcome | undefined>,
+): Promise<void> {
+  const gate = ctx.runtime.coordination.tryBeginToolsWrite(kind);
+  if (!gate.ok) {
+    ctx.dispatch({ type: "failed", op, error: gate.reason });
+    return;
+  }
+  let outcome: WriteOutcome = "success";
+  try {
+    const explicit = await fn();
+    if (explicit) outcome = explicit;
+  } catch (e) {
+    releaseToolsWrite(ctx, gate.admission, "failure");
+    throw e;
+  }
+  releaseToolsWrite(ctx, gate.admission, outcome);
 }
 
 /** The backend calls an intent needs, reported back as events. Never touches state itself. */
@@ -46,38 +73,45 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     case "applyPlan": {
       const plan = state.plan.current;
       if (!plan) return;
-      const result = plan.requiresUac
-        ? await tools.applyToolPlanWithUac(plan)
-        : await tools.applyToolPlan(plan);
-      dispatch({ type: "applyFinished", result });
-      if (result.stale) {
-        if (isSingleToolPlan(plan)) dispatch({ type: "buildPlan", root: plan.selected.root, keepPending: true });
-        return;
-      }
-      if (result.needsElevation) return;
-      await reload(ctx, tool);
-      const pending = state.update.pending;
-      if (pending) {
-        // The update's switch is in: move the profiles if left ticked, then offer removing the old one.
-        if (pending.repoint?.checked) await tools.repointProfiles(pending.repoint.from, pending.installed);
-        dispatch({ type: "updateSwitched" });
-        dispatch({ type: "planUninstall", root: pending.replacedRoot, defaultReplacement: pending.installed.root });
-      }
-      return;
+      return withToolsWrite(ctx, "apply-plan", "apply", async () => {
+        const planBinding = ctx.runtime.coordination.beginPlanApply(plan.planId);
+        const result = plan.requiresUac
+          ? await tools.applyToolPlanWithUac(plan)
+          : await tools.applyToolPlan(plan);
+        if (!ctx.runtime.coordination.isPlanApplyCurrent(planBinding)) return "cancel";
+        dispatch({ type: "applyFinished", result });
+        if (result.stale) {
+          if (isSingleToolPlan(plan)) dispatch({ type: "buildPlan", root: plan.selected.root, keepPending: true });
+          return "failure";
+        }
+        if (result.needsElevation) return "cancel";
+        await reload(ctx, tool);
+        const pending = state.update.pending;
+        if (pending) {
+          // The update's switch is in: move the profiles if left ticked, then offer removing the old one.
+          if (pending.repoint?.checked) await tools.repointProfiles(pending.repoint.from, pending.installed);
+          dispatch({ type: "updateSwitched" });
+          dispatch({ type: "planUninstall", root: pending.replacedRoot, defaultReplacement: pending.installed.root });
+        }
+      });
     }
     case "undoLast":
-      dispatch({ type: "undone", result: await tools.undoLastWhichcraftApply() });
-      return reload(ctx, tool);
+      return withToolsWrite(ctx, "undo", "apply", async () => {
+        dispatch({ type: "undone", result: await tools.undoLastWhichcraftApply() });
+        await reload(ctx, tool);
+      });
     case "resolveRecovery": {
       const recovery = state.recovery;
       if (!recovery) return;
-      if (msg.action === "resume") {
-        await tools.resumeApply(recovery.journalId);
-        dispatch({ type: "recoveryResolved", result: null });
-      } else {
-        dispatch({ type: "recoveryResolved", result: await tools.rollBackApply(recovery.journalId) });
-      }
-      return reload(ctx, tool);
+      return withToolsWrite(ctx, "recovery", "apply", async () => {
+        if (msg.action === "resume") {
+          await tools.resumeApply(recovery.journalId);
+          dispatch({ type: "recoveryResolved", result: null });
+        } else {
+          dispatch({ type: "recoveryResolved", result: await tools.rollBackApply(recovery.journalId) });
+        }
+        await reload(ctx, tool);
+      });
     }
 
     case "saveSettings":
@@ -153,17 +187,19 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     case "confirmUninstall": {
       const plan = state.uninstall.plan;
       if (!plan || !canConfirmUninstall(state, msg.replacementRoot)) return;
-      // The switch applied is exactly the one the user was shown.
-      const replacement = plan.needsReplacement ? state.uninstall.switchPlan : null;
-      const outcome = await tools.uninstall(tool, plan.installation.root, replacement);
-      dispatch({ type: "uninstallFinished", outcome });
-      // A switch gone stale must be shown again before it is applied.
-      if (outcome.status === "blocked") dispatch({ type: "chooseReplacement", root: msg.replacementRoot });
-      const target = plan.replacements.find((r) => r.root === msg.replacementRoot);
-      if (outcome.status === "removed" && msg.repoint && target) {
-        await tools.repointProfiles(plan.installation, target);
-      }
-      return reload(ctx, tool);
+      return withToolsWrite(ctx, "uninstall", "uninstall", async () => {
+        // The switch applied is exactly the one the user was shown.
+        const replacement = plan.needsReplacement ? state.uninstall.switchPlan : null;
+        const outcome = await tools.uninstall(tool, plan.installation.root, replacement);
+        dispatch({ type: "uninstallFinished", outcome });
+        // A switch gone stale must be shown again before it is applied.
+        if (outcome.status === "blocked") dispatch({ type: "chooseReplacement", root: msg.replacementRoot });
+        const target = plan.replacements.find((r) => r.root === msg.replacementRoot);
+        if (outcome.status === "removed" && msg.repoint && target) {
+          await tools.repointProfiles(plan.installation, target);
+        }
+        await reload(ctx, tool);
+      });
     }
     case "closeUninstall":
       return;
@@ -191,6 +227,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       return;
     case "installMissing":
       // F-3: install what is missing, then go straight on to the profile's plan.
+      // Installing without switching does not require resolving staged environment edits.
       await tools.installMissing(msg.profile);
       dispatch({ type: "missingInstalled" });
       await loadProfiles(ctx);
@@ -214,36 +251,54 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
 }
 
 /** Reads what the panel shows for `tool` from the backend again. */
-async function reload({ runtime, dispatch }: EffectContext, tool: ToolKind): Promise<void> {
-  const { tools, platform } = runtime;
+async function reload(ctx: EffectContext, tool: ToolKind): Promise<void> {
+  const { runtime, dispatch } = ctx;
+  const { tools, platform, coordination } = runtime;
+  const binding = coordination.beginToolsRead(tool);
   try {
+    const recovery = await tools.getRecoveryStatus();
+    if (!coordination.isToolsReadCurrent(binding)) return;
+    const unfinished = await tools.unfinishedUninstalls();
+    if (!coordination.isToolsReadCurrent(binding)) return;
+    const settings = await platform.getWhichcraftSettings();
+    if (!coordination.isToolsReadCurrent(binding)) return;
+    const installations = await tools.listToolInstallations(tool);
+    if (!coordination.isToolsReadCurrent(binding)) return;
+    const pythonInfo = tool === "python" ? await tools.getPythonLauncherInfo() : null;
+    if (!coordination.isToolsReadCurrent(binding)) return;
     dispatch({
       type: "refreshed",
       tool,
-      recovery: await tools.getRecoveryStatus(),
-      unfinished: await tools.unfinishedUninstalls(),
-      settings: await platform.getWhichcraftSettings(),
-      installations: await tools.listToolInstallations(tool),
-      pythonInfo: tool === "python" ? await tools.getPythonLauncherInfo() : null,
+      recovery,
+      unfinished,
+      settings,
+      installations,
+      pythonInfo,
     });
   } catch (e) {
+    if (!coordination.isToolsReadCurrent(binding)) return;
     dispatch({ type: "failed", op: "inventory", error: String(e) });
   }
 }
 
 /** Each profile with whether it matches what is effective now; recomputed on every load (F-6). */
-async function loadProfiles({ runtime, dispatch }: EffectContext): Promise<void> {
-  const { tools } = runtime;
+async function loadProfiles(ctx: EffectContext): Promise<void> {
+  const { tools, coordination } = ctx.runtime;
+  const binding = coordination.beginToolsRead("java");
   const list = await tools.listProfiles();
+  if (!coordination.isToolsReadCurrent(binding)) return;
   const statuses = await Promise.all(list.map((p) => tools.profileStatus(p)));
+  if (!coordination.isToolsReadCurrent(binding)) return;
   const current: ProfileToolPin[] = [];
   for (const kind of PROFILE_TOOLS) {
     const effective = (await tools.listToolInstallations(kind)).find((v) => v.effective);
+    if (!coordination.isToolsReadCurrent(binding)) return;
     if (effective) {
       current.push({ tool: kind, vendor: effective.vendor, version: effective.version, preferredRoot: effective.root });
     }
   }
-  dispatch({ type: "profilesLoaded", list: statuses, current });
+  if (!coordination.isToolsReadCurrent(binding)) return;
+  ctx.dispatch({ type: "profilesLoaded", list: statuses, current });
 }
 
 async function saveProfiles(ctx: EffectContext, next: ToolProfile[]): Promise<void> {

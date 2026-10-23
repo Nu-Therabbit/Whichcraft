@@ -1,4 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
+import type { InvalidationScope } from "../../coordination/types";
 import { ThemeContext } from "../../context/ThemeContext";
 import { useAppServices } from "../../composition/AppServicesContext";
 import { useI18n } from "../../hooks/useI18n";
@@ -57,12 +59,30 @@ function InstallationRow({ item }: { item: ToolInstallationView }) {
   );
 }
 
+function scopesNeedShellRescan(scopes: InvalidationScope[]): boolean {
+  return scopes.some(
+    (scope) =>
+      scope === "shell-overview" ||
+      scope === "tools-installations" ||
+      scope === "tools-profiles" ||
+      scope === "account-context" ||
+      scope.startsWith("environment-"),
+  );
+}
+
 export function DesktopShellApp() {
   const services = useAppServices();
-  const overview = useToolsOverview(services.tools, services.environment);
+  const coordination = useWriteCoordinator();
+  const overview = useToolsOverview(services.tools, services.environment, coordination);
   const { theme, toggle: toggleTheme } = useTheme();
   const { t } = useI18n();
   const page: ShellPage = "tools";
+
+  useEffect(() => {
+    return coordination.subscribeInvalidation((scopes) => {
+      if (scopesNeedShellRescan(scopes)) void overview.rescan();
+    });
+  }, [coordination, overview.rescan]);
 
   const visibleTools = useMemo(
     () =>

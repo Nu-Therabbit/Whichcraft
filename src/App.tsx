@@ -1,18 +1,43 @@
 import { useEffect, useMemo } from "react";
 import { createToolsRuntime } from "./composition/appServices";
 import { useAppServices } from "./composition/AppServicesContext";
+import { useWriteCoordinator } from "./coordination/WriteCoordinatorContext";
+import type { InvalidationScope } from "./coordination/types";
 import { EnvironmentProvider } from "./features/environment/EnvironmentContext";
 import { LegacyEnvironmentView } from "./features/environment/LegacyEnvironmentView";
 import { DesktopShellApp } from "./features/shell/DesktopShellApp";
 import { useToolsStore } from "./features/tools/useToolsStore";
 import { readAppPresentation } from "./lib/appPresentation";
 
+function scopesNeedToolsRefresh(scopes: InvalidationScope[]): boolean {
+  return scopes.some(
+    (scope) =>
+      scope === "tools-installations" ||
+      scope === "tools-profiles" ||
+      scope === "tools-shell-check" ||
+      scope === "account-context" ||
+      scope.startsWith("environment-") ||
+      scope === "shell-overview",
+  );
+}
+
 function LegacyAppRoot() {
   const services = useAppServices();
-  const toolsRuntime = useMemo(() => createToolsRuntime(services), [services]);
+  const coordination = useWriteCoordinator();
+  const toolsRuntime = useMemo(() => createToolsRuntime(services, coordination), [services, coordination]);
   const { state: tools, dispatch: sendTools } = useToolsStore("java", toolsRuntime);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the legacy app starts
   useEffect(() => sendTools({ type: "started" }), []);
+
+  useEffect(() => {
+    return coordination.subscribeInvalidation((scopes) => {
+      if (!scopesNeedToolsRefresh(scopes)) return;
+      sendTools({ type: "refresh" });
+      if (scopes.includes("tools-shell-check") && tools.shellCheck) {
+        sendTools({ type: "checkShell" });
+      }
+    });
+  }, [coordination, sendTools, tools.shellCheck]);
 
   return (
     <EnvironmentProvider>

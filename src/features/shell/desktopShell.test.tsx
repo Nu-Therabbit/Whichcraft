@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { inst, fakeToolsRuntime } from "../tools/testHarness";
@@ -45,7 +46,9 @@ describe("desktop shell read journey", () => {
 
     render(
       <AppServicesProvider>
-        <DesktopShellApp />
+        <WriteCoordinatorProvider>
+          <DesktopShellApp />
+        </WriteCoordinatorProvider>
       </AppServicesProvider>,
     );
 

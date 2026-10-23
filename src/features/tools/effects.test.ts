@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { ENVIRONMENT_PENDING_TOOLS_MESSAGE } from "../../coordination/types";
 import type { UninstallPlan } from "../../types";
+import { initialToolsState } from "./model";
 import { fakeToolsRuntime, harness, inst, planFor } from "./testHarness";
 
 const jdk21 = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
@@ -178,6 +180,24 @@ describe("tools effects", () => {
     await h.settle();
     expect(h.state.tool).toBe("node");
     expect(h.state.installations).toEqual([node22]);
+  });
+
+  it("blocks tool apply while staged environment edits are pending", async () => {
+    const applyToolPlan = vi.fn(async () => ({ planId: "p", stale: false, needsElevation: false }));
+    const { runtime, coordination } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async () => [jdk21]),
+      planToolApply: vi.fn(async () => planFor(jdk21)),
+      applyToolPlan,
+    });
+    coordination.setEnvironmentPending(true);
+    const h = harness(runtime, {
+      installations: [jdk21],
+      plan: { ...initialToolsState().plan, current: planFor(jdk21) },
+    });
+    h.dispatch({ type: "applyPlan" });
+    await h.settle();
+    expect(applyToolPlan).not.toHaveBeenCalled();
+    expect(h.state.error).toBe(ENVIRONMENT_PENDING_TOOLS_MESSAGE);
   });
 
   it("reads the mise status after listing versions, so a finished download unlocks Install", async () => {

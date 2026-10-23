@@ -1,3 +1,5 @@
+import { createWriteCoordinator } from "../coordination/createWriteCoordinator";
+import type { WriteCoordinatorFacade } from "../coordination/createWriteCoordinator";
 import type { ToolsRuntime } from "../features/tools/runtime";
 import type { AppServices, EnvarlyApi } from "../contracts";
 import {
@@ -32,10 +34,14 @@ export function splitEnvarlyApi(full: EnvarlyApi): AppServices {
   };
 }
 
-export function createToolsRuntime(services: AppServices): ToolsRuntime {
+export function createToolsRuntime(
+  services: AppServices,
+  coordination: WriteCoordinatorFacade = createWriteCoordinator(),
+): ToolsRuntime {
   return {
     tools: services.tools,
     platform: pickMethods(services.platform, TOOLS_PLATFORM_SLICE_KEYS),
+    coordination,
   };
 }
 

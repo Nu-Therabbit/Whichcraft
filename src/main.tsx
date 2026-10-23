@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { AppServicesProvider } from "./composition/AppServicesContext";
+import { WriteCoordinatorProvider } from "./coordination/WriteCoordinatorContext";
 import { ErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { UndoProvider } from "./contexts/UndoContext";
 import { applyThemeToDocument, getInitialTheme } from "./lib/themeDocument";
@@ -15,7 +16,9 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <ErrorBoundary>
       <UndoProvider>
         <AppServicesProvider>
-          <App />
+          <WriteCoordinatorProvider>
+            <App />
+          </WriteCoordinatorProvider>
         </AppServicesProvider>
       </UndoProvider>
     </ErrorBoundary>

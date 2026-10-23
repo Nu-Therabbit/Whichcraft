@@ -96,5 +96,5 @@ export function useApplyStaged({
     [environment, staged, clearStaged, refresh, refreshPathStatus, baselineRef, t],
   );
 
-  return { handleApplyStaged, busy, error, progress, log };
+  return { handleApplyStaged, busy, error, progress, log, setError };
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
 import type { EnvironmentApi } from "../environment/api";
 import type { ToolsApi } from "../tools/api";
 import type {
@@ -85,6 +86,7 @@ function resultStillValid(
 export function useToolsOverview(
   tools: ToolsApi,
   environment: EnvironmentApi,
+  coordination?: WriteCoordinatorFacade,
 ): ToolsOverviewState {
   const [query, setQuery] = useState("");
   const [selectedTool, setSelectedTool] = useState<ToolKind | null>(null);
@@ -109,9 +111,13 @@ export function useToolsOverview(
         ...prev,
         [tool]: { ...prev[tool], loading: true, error: null, inFlightRequestId: generation },
       }));
+      const coordBinding = coordination?.beginToolsRead(tool);
       try {
         const installations = await tools.listToolInstallations(tool);
         setByTool((prev) => {
+          if (coordBinding && coordination && !coordination.isToolsReadCurrent(coordBinding)) {
+            return applyStaleDiscard(prev, tool, generation);
+          }
           if (!resultStillValid(generation, accountToken, requestId.current, activeScan.current)) {
             return applyStaleDiscard(prev, tool, generation);
           }
@@ -129,6 +135,9 @@ export function useToolsOverview(
         });
       } catch (err) {
         setByTool((prev) => {
+          if (coordBinding && coordination && !coordination.isToolsReadCurrent(coordBinding)) {
+            return applyStaleDiscard(prev, tool, generation);
+          }
           if (!resultStillValid(generation, accountToken, requestId.current, activeScan.current)) {
             return applyStaleDiscard(prev, tool, generation);
           }
@@ -147,7 +156,7 @@ export function useToolsOverview(
         });
       }
     },
-    [tools],
+    [coordination, tools],
   );
 
   const rescan = useCallback(async () => {

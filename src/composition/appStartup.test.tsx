@@ -7,6 +7,7 @@ import en from "../locales/en.json";
 import { UndoProvider } from "../contexts/UndoContext";
 import { api, resetLegacyApiFacadeForTests } from "../api";
 import { splitEnvarlyApi } from "./appServices";
+import { WriteCoordinatorProvider } from "../coordination/WriteCoordinatorContext";
 import { AppServicesProvider } from "./AppServicesContext";
 import { configureProductionServices } from "./createProductionServices";
 import { fakeToolsRuntime } from "../features/tools/testHarness";
@@ -17,7 +18,9 @@ function renderProductionApp() {
   return render(
     <UndoProvider>
       <AppServicesProvider>
-        <App />
+        <WriteCoordinatorProvider>
+          <App />
+        </WriteCoordinatorProvider>
       </AppServicesProvider>
     </UndoProvider>,
   );
