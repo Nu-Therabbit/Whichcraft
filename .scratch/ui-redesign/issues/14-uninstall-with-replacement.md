@@ -4,7 +4,7 @@
 
 **Blocked by:** 08: สลับการติดตั้งผ่านแผนจริงและ Undo.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / removal journey
 
@@ -30,3 +30,7 @@
 ### Review round 2 (Grok 4.7)
 
 - **Coordinator invalidate lock:** Success shell test subscribes to `subscribeInvalidation` and asserts `tools-installations` or `shell-overview` is published after confirm — fails if `endToolsWrite` drops tools-scope invalidation while `readbackToolsState` still lists installations directly.
+
+### Review round 2 approval
+
+- Approved. The success test fails unless a post-confirm invalidation batch includes `tools-installations` or `shell-overview`. That batch comes from `endToolsWrite`, so a `listToolInstallations` bump from `readbackToolsState` cannot satisfy it. The Windows disposable-uninstall checkbox stays open and is not a pass.
