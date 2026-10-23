@@ -36,7 +36,8 @@ fn probe_node(root: &Path, managed: bool) -> Option<ToolInstallation> {
     Some(ToolInstallation {
         tool: ToolKind::Node,
         vendor: "Node.js".into(),
-        version: version.trim_matches('\"').to_string(),
+        // `process.version` is "v24.20.0"; profiles and mise use "24.20.0".
+        version: version.trim_matches('\"').trim_start_matches('v').to_string(),
         root: root.to_path_buf(),
         managed,
     })
@@ -169,20 +170,40 @@ pub fn command_name(tool: ToolKind) -> &'static str {
     }
 }
 
+/// The installation root for a folder that holds the tool's command, e.g. `Go\bin` -> `Go`.
 pub fn infer_root_from_command_dir(tool: ToolKind, dir: &Path) -> Option<PathBuf> {
+    let dir = Path::new(dir.to_str()?.trim_end_matches(['\\', '/']));
+    let parent = || dir.parent().map(Path::to_path_buf);
     match tool {
-        ToolKind::Java => dir.parent().map(|p| p.to_path_buf()),
         ToolKind::Node | ToolKind::Python => Some(dir.to_path_buf()),
-        ToolKind::Go => dir.parent().and_then(|p| p.parent()).map(|p| p.to_path_buf()),
-        ToolKind::Flutter => dir.parent().and_then(|p| p.parent()).map(|p| p.to_path_buf()),
+        ToolKind::Java | ToolKind::Go | ToolKind::Flutter => parent(),
+        // Git puts git.exe in `cmd` and `bin`, and its tools in `mingw64\bin`.
         ToolKind::Git => {
-            if dir.file_name().is_some_and(|n| n.eq_ignore_ascii_case("cmd")) {
-                dir.parent().map(|p| p.to_path_buf())
+            let up = dir.parent()?;
+            if up.file_name().is_some_and(|n| n.eq_ignore_ascii_case("mingw64")) {
+                up.parent().map(Path::to_path_buf)
             } else {
-                dir.parent().and_then(|p| p.parent()).map(|p| p.to_path_buf())
+                Some(up.to_path_buf())
             }
         }
     }
+}
+
+/// Interpreters installed by the Python install manager: `%LOCALAPPDATA%\Python\pythoncore-*`.
+/// Its `Python\bin` folder on PATH only holds hard links, so PATH alone never finds them.
+pub fn python_manager_roots(local_app_data: &Path) -> Vec<PathBuf> {
+    let Ok(read) = std::fs::read_dir(local_app_data.join("Python")) else {
+        return Vec::new();
+    };
+    read.flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.is_dir()
+                && p.file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| n.starts_with("pythoncore-"))
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -199,6 +220,30 @@ mod tests {
         fs::write(root.join("bin").join("go.exe"), b"").unwrap();
         let inst = probe_go(root, false).unwrap();
         assert_eq!(inst.version, "1.27.0");
+    }
+
+    #[test]
+    fn command_folders_map_to_their_installation_root() {
+        let root = |tool, dir: &str| infer_root_from_command_dir(tool, Path::new(dir)).unwrap();
+        assert_eq!(root(ToolKind::Go, "C:\\Program Files\\Go\\bin"), PathBuf::from("C:\\Program Files\\Go"));
+        assert_eq!(root(ToolKind::Flutter, "E:\\Dev\\flutter\\bin"), PathBuf::from("E:\\Dev\\flutter"));
+        assert_eq!(root(ToolKind::Java, "C:\\jdk\\bin"), PathBuf::from("C:\\jdk"));
+        assert_eq!(root(ToolKind::Node, "C:\\Program Files\\nodejs\\"), PathBuf::from("C:\\Program Files\\nodejs"));
+        assert_eq!(root(ToolKind::Git, "C:\\Program Files\\Git\\cmd"), PathBuf::from("C:\\Program Files\\Git"));
+        assert_eq!(root(ToolKind::Git, "C:\\Program Files\\Git\\bin"), PathBuf::from("C:\\Program Files\\Git"));
+        assert_eq!(
+            root(ToolKind::Git, "C:\\Program Files\\Git\\mingw64\\bin"),
+            PathBuf::from("C:\\Program Files\\Git")
+        );
+    }
+
+    #[test]
+    fn python_manager_interpreters_are_found_under_local_app_data() {
+        let dir = tempfile::tempdir().unwrap();
+        let core = dir.path().join("Python").join("pythoncore-3.14-64");
+        fs::create_dir_all(core.join("Lib")).unwrap();
+        fs::create_dir_all(dir.path().join("Python").join("bin")).unwrap();
+        assert_eq!(python_manager_roots(dir.path()), vec![core]);
     }
 
     #[test]

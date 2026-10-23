@@ -1,10 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
-import type { RecoveryView, ToolApplyPlan, ToolInstallationView, ToolKind } from "../../types";
+import type {
+  RecoveryView,
+  ToolApplyPlan,
+  ToolInstallationView,
+  ToolKind,
+  WhichcraftSettings,
+} from "../../types";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { RecoveryBanner } from "./RecoveryBanner";
+import { ToolsSettings } from "./ToolsSettings";
 
 const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
 
@@ -27,6 +34,8 @@ interface Props {
   recovery?: RecoveryView | null;
   onResumeRecovery?: () => void;
   onRollBackRecovery?: () => void;
+  settings?: WhichcraftSettings | null;
+  onSaveSettings?: (settings: WhichcraftSettings) => void;
 }
 
 export function ToolsPanel({
@@ -48,12 +57,23 @@ export function ToolsPanel({
   recovery,
   onResumeRecovery,
   onRollBackRecovery,
+  settings,
+  onSaveSettings,
 }: Props) {
   const { t } = useI18n();
+  const [showSettings, setShowSettings] = useState(false);
 
   // onRefresh changes identity whenever the selected tool changes, so this also refreshes on tool switch.
   useEffect(() => {
     if (open) onRefresh();
+  }, [open, onRefresh]);
+
+  // The environment can change outside the app; re-read it when the window gets focus again.
+  useEffect(() => {
+    if (!open) return;
+    const onFocus = () => onRefresh();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [open, onRefresh]);
 
   return (
@@ -92,7 +112,18 @@ export function ToolsPanel({
           <Button variant="ghost" size="sm" onClick={onUndo} disabled={applyBusy}>
             {t("tools.undo_last")}
           </Button>
+          {settings && onSaveSettings && (
+            <Button variant="ghost" size="sm" onClick={() => setShowSettings((v) => !v)}>
+              {showSettings ? t("tools.hide_settings") : t("tools.show_settings")}
+            </Button>
+          )}
         </div>
+
+        {showSettings && settings && onSaveSettings && (
+          <div className="border border-rim rounded-md p-4">
+            <ToolsSettings settings={settings} busy={applyBusy || loading} onSave={onSaveSettings} />
+          </div>
+        )}
 
         <p className="text-sm text-muted">{t("tools.discovery_hint")}</p>
 
@@ -117,7 +148,7 @@ export function ToolsPanel({
                   {item.effective && <Badge variant="user">{t("tools.effective")}</Badge>}
                   {item.selected && <Badge variant="muted">{t("tools.selected")}</Badge>}
                   {!item.available && <Badge variant="warn">{t("tools.unavailable")}</Badge>}
-                  <Badge variant="muted">{item.installerKind}</Badge>
+                  <Badge variant="muted">{t(`tools.installer.${item.installerKind}`)}</Badge>
                 </div>
                 <span className="text-xs text-muted font-mono break-all">{item.root}</span>
                 {item.mismatchReason && (

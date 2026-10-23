@@ -45,8 +45,9 @@ pub fn whichcraft_list_java() -> Result<Vec<JavaInstallationView>, EnvarlyError>
 #[tauri::command]
 pub fn whichcraft_list_tools(tool: ToolKind) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
     let backend = WinregBackend;
-    let selected = load_tool_selection(tool)?.map(|s| s.root);
-    list_tool_installations(&backend, tool, selected.as_deref())
+    let selection = load_tool_selection(tool)?;
+    let views = list_tool_installations(&backend, tool, selection.as_ref().map(|s| s.root.as_path()))?;
+    Ok(crate::whichcraft::services::tool_inventory::with_missing_selection(views, selection.as_ref()))
 }
 
 #[tauri::command]

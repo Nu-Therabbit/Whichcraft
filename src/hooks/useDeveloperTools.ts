@@ -7,6 +7,7 @@ import type {
   ToolInstallationView,
   ToolKind,
   UndoResult,
+  WhichcraftSettings,
 } from "../types";
 
 export function useDeveloperTools(initialTool: ToolKind = "java") {
@@ -19,12 +20,14 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
   const [applyBusy, setApplyBusy] = useState(false);
   const [undoResult, setUndoResult] = useState<UndoResult | null>(null);
   const [recovery, setRecovery] = useState<RecoveryView | null>(null);
+  const [settings, setSettings] = useState<WhichcraftSettings | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       setRecovery(await api.getRecoveryStatus());
+      setSettings(await api.getWhichcraftSettings());
       setInstallations(await api.listToolInstallations(tool));
     } catch (e) {
       setError(String(e));
@@ -129,8 +132,23 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     [recovery, refresh],
   );
 
+  const saveSettings = useCallback(
+    async (next: WhichcraftSettings) => {
+      setError(null);
+      try {
+        await api.saveWhichcraftSettings(next);
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [refresh],
+  );
+
   return {
     tool,
+    settings,
+    saveSettings,
     setTool,
     installations,
     loading,

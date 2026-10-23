@@ -303,6 +303,8 @@ export default function App() {
           recovery={developerTools.recovery}
           onResumeRecovery={() => void developerTools.resumeRecovery()}
           onRollBackRecovery={() => void developerTools.rollBackRecovery()}
+          settings={developerTools.settings}
+          onSaveSettings={(next) => void developerTools.saveSettings(next)}
         />
 
         <AppModals

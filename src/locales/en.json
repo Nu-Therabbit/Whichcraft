@@ -289,6 +289,33 @@
     "apply_plan": "Apply plan",
     "applying": "Applying…",
     "building_plan": "Building plan…",
+    "installer": {
+      "msi": "MSI",
+      "inno_setup": "Inno Setup",
+      "python_install_manager": "Python install manager",
+      "managed_by_other_tool": "Managed by another tool",
+      "folder_only": "Folder only",
+      "managed_by_whichcraft": "Installed by Whichcraft"
+    },
+    "show_settings": "Settings",
+    "hide_settings": "Hide settings",
+    "settings": {
+      "scan_roots": "Scan folders",
+      "scan_roots_hint": "Extra folders searched for installations, such as E:\\Dev. Other drives are never scanned on their own.",
+      "scan_root_input": "Folder to scan",
+      "add": "Add",
+      "remove": "Remove",
+      "install_store": "Install folder",
+      "install_store_hint": "Where Whichcraft installs tools. Changing it only affects new installs; earlier ones stay where they are.",
+      "previous_stores": "Earlier install folders still in use:",
+      "save": "Save",
+      "terminal": "Terminal",
+      "terminal_kind": {
+        "windows_terminal": "Windows Terminal",
+        "power_shell": "PowerShell",
+        "cmd": "Command Prompt"
+      }
+    },
     "recovery": {
       "title": "An apply did not finish",
       "body": "Whichcraft stopped while applying changes started at {{createdAt}}. Each change below shows what the registry holds now.",

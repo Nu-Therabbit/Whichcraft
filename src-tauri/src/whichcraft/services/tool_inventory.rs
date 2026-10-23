@@ -94,7 +94,13 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
     }
 
     if tool == ToolKind::Java {
-        let _ = options;
+        roots.extend(crate::whichcraft::services::java_inventory::discover_java_roots(
+            user_path,
+            system_path,
+            &user,
+            &system,
+            options.include_standard_locations,
+        ));
     }
 
     for scan in &settings.scan_roots {
@@ -120,6 +126,8 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
         }
     }
 
+    // Read the uninstall entries once per listing, not once per installation.
+    let installer_kind_for = installer_kinds();
     let mut views: Vec<ToolInstallationView> = by_root
         .into_values()
         .map(|installation| {
@@ -131,7 +139,11 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
                 .is_some_and(|r| paths_equal(r, &installation.root));
             let selected =
                 selected_root.is_some_and(|sel| paths_equal(sel, &installation.root));
-            let installer_kind = installer_kind_for(&installation.root);
+            let installer_kind = if installation.managed {
+                InstallerKind::ManagedByWhichcraft
+            } else {
+                installer_kind_for(&installation.root)
+            };
             let mismatch_reason = if selected && !effective_match {
                 Some(format!(
                     "system_path_may_shadow: effective {cmd} is not this installation"
@@ -159,24 +171,51 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
     Ok(views)
 }
 
-fn installer_kind_for(root: &Path) -> InstallerKind {
-    #[cfg(windows)]
-    {
-        crate::whichcraft::adapters::win::installer_kind_for_root(root)
-            .unwrap_or(InstallerKind::FolderOnly)
+/// A lookup from installation root to how it was installed, backed by one catalog read.
+/// Tests skip the registry and treat every external install as a plain folder.
+pub(crate) fn installer_kinds() -> Box<dyn Fn(&Path) -> InstallerKind> {
+    #[cfg(all(windows, not(test)))]
+    if let Ok(catalog) = crate::whichcraft::adapters::win::installer_catalog::WinInstallerCatalog::load() {
+        return Box::new(move |root| catalog.kind_for_root(root));
     }
-    #[cfg(not(windows))]
-    {
-        let _ = root;
-        InstallerKind::FolderOnly
-    }
+    Box::new(|_| InstallerKind::FolderOnly)
 }
 
+/// Keeps a remembered selection visible after its folder disappeared, marked unavailable (D-5)
+/// rather than silently dropped as if it had been uninstalled.
+pub fn with_missing_selection(
+    mut views: Vec<ToolInstallationView>,
+    selection: Option<&crate::whichcraft::persistence::ToolSelection>,
+) -> Vec<ToolInstallationView> {
+    let Some(sel) = selection else {
+        return views;
+    };
+    if views.iter().any(|v| paths_equal(&v.installation.root, &sel.root)) {
+        return views;
+    }
+    views.push(ToolInstallationView {
+        installation: ToolInstallation {
+            tool: sel.tool,
+            vendor: sel.vendor.clone(),
+            version: sel.version.clone(),
+            root: sel.root.clone(),
+            managed: false,
+        },
+        effective: false,
+        selected: true,
+        available: false,
+        installer_kind: InstallerKind::FolderOnly,
+        mismatch_reason: Some("unavailable: the selected installation's folder is missing".into()),
+    });
+    views
+}
+
+/// PATH entries as folders: variables expanded, trailing separators dropped (`nodejs\` = `nodejs`).
 fn path_dirs(path: &str) -> impl Iterator<Item = PathBuf> + '_ {
     path.split(';')
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
-        .map(PathBuf::from)
+        .map(|s| PathBuf::from(expand_env_vars(s).trim_end_matches(['\\', '/'])))
 }
 
 fn walk_scan_root(tool: ToolKind, dir: &Path, depth: u8, out: &mut HashSet<PathBuf>) {
@@ -200,7 +239,6 @@ fn walk_scan_root(tool: ToolKind, dir: &Path, depth: u8, out: &mut HashSet<PathB
 
 fn append_standard_roots(tool: ToolKind, out: &mut HashSet<PathBuf>) {
     let pf = std::env::var("ProgramFiles").ok().map(PathBuf::from);
-    let pf86 = std::env::var("ProgramFiles(x86)").ok().map(PathBuf::from);
     let local = std::env::var("LOCALAPPDATA").ok().map(PathBuf::from);
     match tool {
         ToolKind::Node => {
@@ -219,13 +257,16 @@ fn append_standard_roots(tool: ToolKind, out: &mut HashSet<PathBuf>) {
             }
         }
         ToolKind::Python => {
-            if let Some(p) = local {
-                out.insert(p.join("Programs").join("Python"));
+            if let Some(local) = local {
+                // python.org installers: %LOCALAPPDATA%\Programs\Python\Python313 and siblings.
+                if let Ok(read) = std::fs::read_dir(local.join("Programs").join("Python")) {
+                    out.extend(read.flatten().map(|e| e.path()));
+                }
+                out.extend(crate::whichcraft::tools::python_manager_roots(&local));
             }
         }
         _ => {}
     }
-    let _ = pf86;
 }
 
 /// Version folders mise installed in `store`. Its alias junctions (`latest`, `22`, …) are
@@ -312,6 +353,98 @@ mod tests {
         let roots: Vec<&PathBuf> = views.iter().map(|v| &v.installation.root).collect();
         assert!(roots.contains(&&in_a) && roots.contains(&&in_b));
         assert!(views.iter().all(|v| v.installation.managed));
+    }
+
+    /// Reads the real registry and disk (no writes) and prints what the survey machine has.
+    /// Run with `cargo test contract_discovers -- --ignored --nocapture`.
+    #[test]
+    #[cfg(windows)]
+    #[ignore = "contract: reads this machine's real environment"]
+    fn contract_discovers_the_survey_machine_tools() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        // D-6: Flutter at E:\Dev\flutter is only found once E:\Dev is a scan folder.
+        let mut settings = crate::whichcraft::persistence::load_settings().unwrap();
+        settings.scan_roots = vec![PathBuf::from("E:\\Dev")];
+        crate::whichcraft::persistence::save_settings(&settings).unwrap();
+        let backend = crate::env_backend::WinregBackend;
+        for tool in [ToolKind::Java, ToolKind::Node, ToolKind::Python, ToolKind::Go, ToolKind::Flutter, ToolKind::Git] {
+            for v in list_tool_installations(&backend, tool, None).unwrap() {
+                println!(
+                    "{tool:?}\t{} {}\teffective={}\t{:?}\t{}",
+                    v.installation.vendor,
+                    v.installation.version,
+                    v.effective,
+                    v.installer_kind,
+                    v.installation.root.display()
+                );
+            }
+        }
+        let temurin = list_tool_installations(&backend, ToolKind::Java, None)
+            .unwrap()
+            .into_iter()
+            .filter(|v| v.installation.vendor == "Eclipse Adoptium")
+            .count();
+        assert!(temurin >= 4, "expected the 4 Temurin JDKs from the survey, found {temurin}");
+    }
+
+    #[test]
+    fn java_home_alone_is_enough_to_find_a_jdk() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        let jdk = dir.path().join("jdk-21");
+        std::fs::create_dir_all(jdk.join("bin")).unwrap();
+        std::fs::write(jdk.join("bin").join("java.exe"), b"").unwrap();
+        std::fs::write(jdk.join("release"), "IMPLEMENTOR=\"Eclipse Adoptium\"\nJAVA_VERSION=\"21.0.12\"\n").unwrap();
+        let backend = MemBackend::new().with_system([(leak("JAVA_HOME"), leak(&jdk.to_string_lossy()))]);
+
+        let views = list_tool_installations_with_options(
+            &backend,
+            ToolKind::Java,
+            None,
+            ToolDiscoveryOptions { include_standard_locations: false },
+        )
+        .unwrap();
+        assert_eq!(views.len(), 1);
+        assert_eq!(views[0].installation.vendor, "Eclipse Adoptium");
+        assert_eq!(views[0].installation.version, "21.0.12");
+    }
+
+    #[test]
+    fn a_selected_installation_whose_folder_vanished_is_listed_as_unavailable() {
+        let selection = crate::whichcraft::persistence::ToolSelection {
+            tool: ToolKind::Node,
+            root: "C:\\gone\\node20".into(),
+            vendor: "Node.js".into(),
+            version: "20.19.0".into(),
+        };
+        let views = with_missing_selection(Vec::new(), Some(&selection));
+        assert_eq!(views.len(), 1);
+        assert!(!views[0].available && views[0].selected);
+        assert_eq!(views[0].installation.version, "20.19.0");
+        // Still present on disk: listed once, as found.
+        let again = with_missing_selection(views.clone(), Some(&selection));
+        assert_eq!(again.len(), 1);
+    }
+
+    #[test]
+    fn managed_installs_are_labelled_as_whichcraft_managed() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        let store = dir.path().join("store");
+        mise_node(&store, "22.23.4");
+        let mut settings = crate::whichcraft::persistence::load_settings().unwrap();
+        settings.install_store = store;
+        crate::whichcraft::persistence::save_settings(&settings).unwrap();
+
+        let views = list_tool_installations_with_options(
+            &MemBackend::new(),
+            ToolKind::Node,
+            None,
+            ToolDiscoveryOptions { include_standard_locations: false },
+        )
+        .unwrap();
+        assert_eq!(views[0].installer_kind, InstallerKind::ManagedByWhichcraft);
     }
 
     #[test]

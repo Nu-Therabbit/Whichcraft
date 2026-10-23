@@ -165,6 +165,16 @@ export interface ApplyToolResult {
   needsElevation: boolean;
 }
 
+export type TerminalKind = "windows_terminal" | "power_shell" | "cmd";
+
+export interface WhichcraftSettings {
+  installStore: string;
+  /** Earlier stores; their installations stay listed until empty. */
+  previousInstallStores?: string[];
+  scanRoots: string[];
+  terminal: TerminalKind;
+}
+
 export type ChangeState = "written" | "notWritten" | "changedElsewhere";
 
 export interface RecoveryItem {

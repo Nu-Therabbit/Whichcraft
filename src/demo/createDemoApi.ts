@@ -269,6 +269,12 @@ export function createDemoApi(
       throw new Error("Developer tools are unavailable in demo mode");
     },
     undoLastWhichcraftApply: async () => ({ conflicts: [], restored: 0 }),
+    getWhichcraftSettings: async () => ({
+      installStore: "C:\\Users\\demo\\AppData\\Local\\Whichcraft\\installs",
+      scanRoots: [],
+      terminal: "windows_terminal",
+    }),
+    saveWhichcraftSettings: async () => {},
     getRecoveryStatus: async () => null,
     resumeApply: async () => {},
     rollBackApply: async () => ({ conflicts: [], restored: 0 }),

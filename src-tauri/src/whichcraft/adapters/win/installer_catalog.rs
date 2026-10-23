@@ -122,118 +122,85 @@ fn classify_installer(display_name: &str, is_msi: bool, uninstall: &str) -> Inst
     InstallerKind::FolderOnly
 }
 
+/// The `{GUID}` in an MSI uninstall command such as `MsiExec.exe /I{285FFC48-…}`.
 fn product_code_from_uninstall(uninstall: Option<&str>) -> Option<String> {
     let text = uninstall?;
     let start = text.find('{')?;
-    let end = text.find('}')?;
+    let end = start + text[start..].find('}')?;
     Some(text[start..=end].to_string())
 }
 
+/// Executables whose folder tells where an MSI put a tool, and how far up its root is.
+const PRIMARY_FILES: &[(&str, usize)] = &[("node.exe", 0), ("go.exe", 1), ("java.exe", 1), ("git.exe", 1)];
+
+/// Where an MSI installed its product when the uninstall entry has no InstallLocation (Node, Go).
+/// Finds a primary executable in the cached package's File table, then asks Windows Installer
+/// where that component landed (spike 6).
 fn resolve_msi_install_root(product_code: &str) -> Option<PathBuf> {
-    let local_package = msi_product_info(product_code)?;
-    let msi_path = PathBuf::from(local_package);
-    let exe_name = guess_primary_exe(&msi_path)?;
-    let dir = msi_primary_executable_dir(&msi_path, &exe_name)?;
-    if exe_name.eq_ignore_ascii_case("go.exe") {
-        dir.parent().map(|p| p.to_path_buf())
-    } else {
-        Some(dir)
-    }
-}
-
-fn guess_primary_exe(msi_path: &Path) -> Option<String> {
-    let name = msi_path.file_stem()?.to_string_lossy().to_ascii_lowercase();
-    if name.contains("node") {
-        Some("node.exe".into())
-    } else if name.contains("go") {
-        Some("go.exe".into())
-    } else {
-        None
-    }
-}
-
-fn msi_primary_executable_dir(msi_path: &Path, file_name: &str) -> Option<PathBuf> {
-    let mut pkg = msi::open(msi_path).ok()?;
-    let query = Select::table("File")
-        .with(Expr::col("FileName").eq(Expr::string(file_name)));
-    let mut rows = pkg.select_rows(query).ok()?;
-    let row = rows.next()?;
-    let component = match &row["Component_"] {
-        Value::Str(s) => s.clone(),
-        _ => return None,
-    };
-    let query = Select::table("Component")
-        .with(Expr::col("Component").eq(Expr::string(component)));
-    let mut rows = pkg.select_rows(query).ok()?;
-    let row = rows.next()?;
-    let directory_id = match &row["Directory_"] {
-        Value::Str(s) => s.clone(),
-        _ => return None,
-    };
-    resolve_msi_directory(&mut pkg, &directory_id)
-}
-
-fn resolve_msi_directory(
-    pkg: &mut msi::Package<std::fs::File>,
-    directory_id: &str,
-) -> Option<PathBuf> {
-    let mut parts: Vec<String> = Vec::new();
-    let mut current = directory_id.to_string();
-    loop {
-        let query = Select::table("Directory")
-            .with(Expr::col("Directory").eq(Expr::string(&current)));
-        let mut rows = pkg.select_rows(query).ok()?;
-        let row = rows.next()?;
-        let default_dir = match &row["DefaultDir"] {
-            Value::Str(s) => s.clone(),
-            _ => String::new(),
+    let local_package = msi_product_info(product_code, "LocalPackage")?;
+    let mut pkg = msi::open(&local_package).ok()?;
+    for (file_name, levels_up) in PRIMARY_FILES {
+        let Some(component_id) = component_id_for_file(&mut pkg, file_name) else {
+            continue;
         };
-        let parent = match &row["Directory_Parent"] {
-            Value::Str(s) => s.clone(),
-            _ => String::new(),
-        };
-        if !default_dir.is_empty() && default_dir != "." {
-            parts.push(default_dir.trim_end_matches(':').replace('|', "\\"));
+        let file = PathBuf::from(msi_component_path(product_code, &component_id)?);
+        let mut root = file.parent()?.to_path_buf();
+        for _ in 0..*levels_up {
+            root = root.parent()?.to_path_buf();
         }
-        if parent.is_empty() || parent == current {
-            break;
-        }
-        current = parent;
+        return Some(root);
     }
-    parts.reverse();
-    let mut path = PathBuf::new();
-    for part in parts {
-        path.push(part);
-    }
-    Some(path)
+    None
 }
 
-fn msi_product_info(product_code: &str) -> Option<String> {
-    use std::ffi::OsStr;
+/// MSI file names are stored as `SHORT~1.EXE|long-name.exe`; the long name is after the bar.
+fn long_file_name(stored: &str) -> &str {
+    stored.rsplit('|').next().unwrap_or(stored)
+}
+
+fn component_id_for_file(pkg: &mut msi::Package<std::fs::File>, file_name: &str) -> Option<String> {
+    let component = pkg
+        .select_rows(Select::table("File"))
+        .ok()?
+        .find_map(|row| match (&row["FileName"], &row["Component_"]) {
+            (Value::Str(name), Value::Str(component))
+                if long_file_name(name).eq_ignore_ascii_case(file_name) =>
+            {
+                Some(component.clone())
+            }
+            _ => None,
+        })?;
+    let query = Select::table("Component").with(Expr::col("Component").eq(Expr::string(component)));
+    let row = pkg.select_rows(query).ok()?.next()?;
+    match &row["ComponentId"] {
+        Value::Str(id) => Some(id.clone()),
+        _ => None,
+    }
+}
+
+fn wide(s: &str) -> Vec<u16> {
     use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::System::ApplicationInstallationAndServicing::{
-        MsiGetProductInfoW, INSTALLPROPERTY_LOCALPACKAGE,
-    };
+    std::ffi::OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
+}
 
-    let wide_product: Vec<u16> = OsStr::new(product_code)
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect();
-    let mut buf = vec![0u16; 512];
+fn msi_product_info(product_code: &str, property: &str) -> Option<String> {
+    use windows_sys::Win32::System::ApplicationInstallationAndServicing::MsiGetProductInfoW;
+    let (product, property) = (wide(product_code), wide(property));
+    let mut buf = vec![0u16; 1024];
     let mut len = buf.len() as u32;
-    let rc = unsafe {
-        MsiGetProductInfoW(
-            wide_product.as_ptr(),
-            INSTALLPROPERTY_LOCALPACKAGE,
-            buf.as_mut_ptr(),
-            &mut len,
-        )
+    let rc = unsafe { MsiGetProductInfoW(product.as_ptr(), property.as_ptr(), buf.as_mut_ptr(), &mut len) };
+    (rc == 0).then(|| String::from_utf16_lossy(&buf[..len as usize]))
+}
+
+fn msi_component_path(product_code: &str, component_id: &str) -> Option<String> {
+    use windows_sys::Win32::System::ApplicationInstallationAndServicing::{
+        MsiGetComponentPathW, INSTALLSTATE_LOCAL,
     };
-    if rc != 0 {
-        return None;
-    }
-    let text = String::from_utf16_lossy(&buf[..len as usize]);
-    Some(text.trim_end_matches('\0').to_string())
+    let (product, component) = (wide(product_code), wide(component_id));
+    let mut buf = vec![0u16; 1024];
+    let mut len = buf.len() as u32;
+    let state = unsafe { MsiGetComponentPathW(product.as_ptr(), component.as_ptr(), buf.as_mut_ptr(), &mut len) };
+    (state == INSTALLSTATE_LOCAL).then(|| String::from_utf16_lossy(&buf[..len as usize]))
 }
 
 fn normalize_path(path: &Path) -> PathBuf {
@@ -244,15 +211,58 @@ fn normalize_path(path: &Path) -> PathBuf {
     )
 }
 
-pub fn catalog_for_root(root: &Path) -> Result<Vec<CatalogEntry>, EnvarlyError> {
-    let catalog = WinInstallerCatalog::load()?;
-    catalog.entries_for_root(root)
+impl WinInstallerCatalog {
+    /// How `root` was installed: the matching uninstall entry's kind, or a plain folder.
+    pub fn kind_for_root(&self, root: &Path) -> InstallerKind {
+        self.match_root(root)
+            .into_iter()
+            .next()
+            .map(|e| e.kind)
+            .unwrap_or(InstallerKind::FolderOnly)
+    }
 }
 
-pub fn installer_kind_for_root(root: &Path) -> Result<InstallerKind, EnvarlyError> {
-    let entries = catalog_for_root(root)?;
-    if entries.is_empty() {
-        return Ok(InstallerKind::FolderOnly);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn product_code_is_the_first_braced_guid() {
+        assert_eq!(
+            product_code_from_uninstall(Some("MsiExec.exe /I{285FFC48-F0BE-425E-9496-8F5E267BC34D}")).as_deref(),
+            Some("{285FFC48-F0BE-425E-9496-8F5E267BC34D}")
+        );
+        assert_eq!(product_code_from_uninstall(Some("\"C:\\Program Files\\Git\\unins001.exe\"")), None);
     }
-    Ok(entries[0].kind.clone())
+
+    #[test]
+    fn msi_file_names_use_the_long_part() {
+        assert_eq!(long_file_name("NODE~1.EXE|node.exe"), "node.exe");
+        assert_eq!(long_file_name("go.exe"), "go.exe");
+    }
+
+    #[test]
+    fn installers_are_classified_like_spike_6() {
+        assert_eq!(classify_installer("Node.js", true, "MsiExec.exe /I{X}"), InstallerKind::Msi);
+        assert_eq!(classify_installer("Git", false, "\"C:\\Program Files\\Git\\unins001.exe\""), InstallerKind::InnoSetup);
+        assert_eq!(
+            classify_installer("Python 3.14.6", false, "pymanager.exe uninstall --yes --by-id \"pythoncore-3.14-64\""),
+            InstallerKind::PythonInstallManager
+        );
+        assert_eq!(classify_installer("Android Studio", false, ""), InstallerKind::ManagedByOtherTool);
+    }
+
+    /// Reads this machine's real uninstall entries (no writes). Run with `cargo test -- --ignored`.
+    #[test]
+    #[ignore = "contract: reads the real registry and Windows Installer database"]
+    fn contract_msi_products_without_install_location_resolve_to_their_folder() {
+        let catalog = WinInstallerCatalog::load().unwrap();
+        let program_files = std::env::var("ProgramFiles").unwrap();
+        for folder in ["nodejs", "Go"] {
+            let root = Path::new(&program_files).join(folder);
+            if root.is_dir() {
+                assert_eq!(catalog.kind_for_root(&root), InstallerKind::Msi, "{}", root.display());
+            }
+        }
+    }
 }

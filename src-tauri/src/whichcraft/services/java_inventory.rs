@@ -87,6 +87,7 @@ pub fn list_java_installations_with_options<B: EnvBackend>(
         }
     }
 
+    let installer_kind_for = crate::whichcraft::services::tool_inventory::installer_kinds();
     let mut views: Vec<JavaInstallationView> = by_root
         .into_values()
         .map(|installation| {
@@ -130,19 +131,6 @@ pub fn list_java_installations_with_options<B: EnvBackend>(
     Ok(views)
 }
 
-fn installer_kind_for(root: &Path) -> crate::whichcraft::ports::installer_catalog::InstallerKind {
-    #[cfg(windows)]
-    {
-        crate::whichcraft::adapters::win::installer_kind_for_root(root)
-            .unwrap_or(crate::whichcraft::ports::installer_catalog::InstallerKind::FolderOnly)
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = root;
-        crate::whichcraft::ports::installer_catalog::InstallerKind::FolderOnly
-    }
-}
-
 fn shadow_reason_for_selection(
     installation: &JavaInstallation,
     user_path: &str,
@@ -181,7 +169,9 @@ fn java_home_from_bin_dir(bin_dir: &str) -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(bin_dir))
 }
 
-fn discover_java_roots(
+/// JDK roots named by JAVA_HOME, by `java.exe` folders on PATH, and (optionally) in the folders
+/// JDK installers use by default.
+pub(crate) fn discover_java_roots(
     user_path: &str,
     system_path: &str,
     user_vars: &HashMap<String, crate::model::EnvValue>,
@@ -189,11 +179,10 @@ fn discover_java_roots(
     include_standard_locations: bool,
 ) -> Vec<PathBuf> {
     let mut roots = Vec::new();
-    if let Some(home) = user_vars
-        .get("JAVA_HOME")
-        .or_else(|| system_vars.get("JAVA_HOME"))
-    {
-        roots.push(PathBuf::from(expand_env_vars(&home.value)));
+    for vars in [user_vars, system_vars] {
+        if let Some(home) = crate::whichcraft::services::get_var(vars, "JAVA_HOME") {
+            roots.push(PathBuf::from(expand_env_vars(&home.value)));
+        }
     }
     for segment in system_path
         .split(';')
@@ -230,6 +219,10 @@ fn standard_java_dirs() -> Vec<PathBuf> {
     }
     if let Some(prog86) = std::env::var_os("ProgramFiles(x86)") {
         dirs.push(PathBuf::from(prog86).join("Java"));
+    }
+    // Per-user Temurin MSI installs land here (21.0.11 on the survey machine).
+    if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+        dirs.push(PathBuf::from(local).join("Programs").join("Eclipse Adoptium"));
     }
     dirs
 }
