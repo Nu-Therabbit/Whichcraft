@@ -52,9 +52,40 @@ describe("createWriteCoordinator", () => {
     const coordination = createWriteCoordinator();
     const listener = vi.fn();
     coordination.subscribeInvalidation(listener);
-    const plan = coordination.beginPlanApply("plan-a");
+    const reviewed = {
+      planId: "plan-a",
+      tool: "java" as const,
+      requiresUac: false,
+      warnings: [],
+      limitationNotice: "",
+      userDiffs: [],
+      systemDiffs: [],
+      effectiveAfterUserOnly: false,
+      selected: { tool: "java" as const, vendor: "x", version: "1", root: "C:\\x", managed: false },
+    };
+    coordination.registerReviewedPlan(reviewed);
+    const plan = coordination.beginPlanApply(reviewed.planId, reviewed.tool);
     coordination.notifyAccountContextChanged("S-1-5-21");
     expect(listener).toHaveBeenCalled();
+    expect(coordination.isPlanApplyCurrent(plan)).toBe(false);
+  });
+
+  it("retires reviewed plan apply when the environment revision moves", () => {
+    const coordination = createWriteCoordinator();
+    const reviewed = {
+      planId: "plan-env",
+      tool: "java" as const,
+      requiresUac: false,
+      warnings: [],
+      limitationNotice: "",
+      userDiffs: [],
+      systemDiffs: [],
+      effectiveAfterUserOnly: false,
+      selected: { tool: "java" as const, vendor: "x", version: "1", root: "C:\\x", managed: false },
+    };
+    coordination.registerReviewedPlan(reviewed);
+    const plan = coordination.beginPlanApply(reviewed.planId, reviewed.tool);
+    coordination.invalidate(["environment-variables"]);
     expect(coordination.isPlanApplyCurrent(plan)).toBe(false);
   });
 });

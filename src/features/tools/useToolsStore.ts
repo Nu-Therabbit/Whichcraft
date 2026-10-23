@@ -25,6 +25,7 @@ export function useToolsStore(initialTool: ToolKind, runtime: ToolsRuntime) {
       if (isIntent(msg)) {
         void runEffects(msg, {
           state: before,
+          getState: () => current.current,
           dispatch: send,
           runtime,
           newId: () => crypto.randomUUID(),

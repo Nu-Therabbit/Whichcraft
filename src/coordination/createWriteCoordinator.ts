@@ -259,10 +259,9 @@ export function createWriteCoordinator(): WriteCoordinatorFacade {
       return (
         binding.planId === reviewedPlan.planId &&
         binding.tool === reviewedPlan.tool &&
-        binding.environmentRevision === reviewedPlan.environmentRevision &&
-        binding.toolsRevision === reviewedPlan.toolsRevision &&
-        binding.accountRevision === reviewedPlan.accountRevision &&
-        binding.accountToken === reviewedPlan.accountToken &&
+        reviewedPlan.planId === binding.planId &&
+        reviewedPlan.tool === binding.tool &&
+        snap.environmentRevision === reviewedPlan.environmentRevision &&
         snap.accountRevision === reviewedPlan.accountRevision &&
         snap.accountToken === reviewedPlan.accountToken
       );

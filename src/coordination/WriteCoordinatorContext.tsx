@@ -3,9 +3,17 @@ import { createWriteCoordinator, type WriteCoordinatorFacade } from "./createWri
 
 const WriteCoordinatorContext = createContext<WriteCoordinatorFacade | null>(null);
 
-export function WriteCoordinatorProvider({ children }: { children: React.ReactNode }) {
+export function WriteCoordinatorProvider({
+  children,
+  coordinator: coordinatorOverride,
+}: {
+  children: React.ReactNode;
+  coordinator?: WriteCoordinatorFacade;
+}) {
   const coordinatorRef = useRef<WriteCoordinatorFacade | null>(null);
-  if (!coordinatorRef.current) {
+  if (coordinatorOverride) {
+    coordinatorRef.current = coordinatorOverride;
+  } else if (!coordinatorRef.current) {
     coordinatorRef.current = createWriteCoordinator();
   }
   return (

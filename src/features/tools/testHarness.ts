@@ -63,7 +63,13 @@ export function harness(runtime: ToolsRuntime, start: Partial<ToolsState> = {}) 
     state = reduce(before, msg);
     log.push(msg);
     if (isIntent(msg)) {
-      const p = runEffects(msg, { state: before, dispatch, runtime, newId: () => "new-id" });
+      const p = runEffects(msg, {
+        state: before,
+        getState: () => state,
+        dispatch,
+        runtime,
+        newId: () => "new-id",
+      });
       pending.add(p);
       void p.finally(() => pending.delete(p));
     }

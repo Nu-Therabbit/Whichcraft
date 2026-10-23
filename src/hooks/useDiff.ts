@@ -21,6 +21,7 @@ export function useDiff(
   onExternalDiffDetected?: () => void,
 ): UseDiffResult {
   const baselineRef = useRef<EnvSnapshot | null>(null);
+  const externalCrossInvalidateSent = useRef(false);
   const [diffEntries, setDiffEntries] = useState<DiffEntry[]>([]);
   const [applyBusy, setApplyBusy] = useState(false);
   const [applyError, setApplyErrorState] = useState<string | null>(null);
@@ -33,7 +34,14 @@ export function useDiff(
         ? []
         : computeDiff(baselineRef.current, current);
       setDiffEntries(entries);
-      if (entries.length > 0) onExternalDiffDetected?.();
+      if (entries.length === 0) {
+        externalCrossInvalidateSent.current = false;
+        return;
+      }
+      if (!externalCrossInvalidateSent.current) {
+        externalCrossInvalidateSent.current = true;
+        onExternalDiffDetected?.();
+      }
     } catch {}
   }, [environment, onExternalDiffDetected]);
 

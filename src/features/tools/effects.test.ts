@@ -213,6 +213,92 @@ describe("tools effects", () => {
     expect(h.state.installations[0]?.root).toBe("C:\\new");
   });
 
+  it("does not leave plan.applying true when a late undo is dropped", async () => {
+    const jdk = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
+    const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });
+    let releaseUndo: (v: { planId: string; stale: boolean; needsElevation: boolean }) => void = () => {};
+    const undoLastWhichcraftApply = vi.fn(
+      () =>
+        new Promise<{ planId: string; stale: boolean; needsElevation: boolean }>((resolve) => {
+          releaseUndo = resolve;
+        }),
+    );
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async (tool: string) => (tool === "java" ? [jdk] : [node])),
+      undoLastWhichcraftApply,
+      listProfiles: vi.fn(async () => []),
+      profileStatus: vi.fn(async (p) => ({ profile: p, matches: true })),
+    });
+    const h = harness(runtime, { tool: "java", installations: [jdk] });
+    h.dispatch({ type: "undoLast" });
+    expect(h.state.plan.applying).toBe(true);
+    h.dispatch({ type: "selectTool", tool: "node" });
+    releaseUndo({ planId: "p", stale: false, needsElevation: false });
+    await h.settle();
+    expect(h.state.plan.applying).toBe(false);
+  });
+
+  it("does not leave plan.applying true when a late recovery resolve is dropped", async () => {
+    const jdk = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
+    let releaseRollBack: (v: { planId: string; stale: boolean; needsElevation: boolean }) => void = () => {};
+    const rollBackApply = vi.fn(
+      () =>
+        new Promise<{ planId: string; stale: boolean; needsElevation: boolean }>((resolve) => {
+          releaseRollBack = resolve;
+        }),
+    );
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async () => [jdk]),
+      rollBackApply,
+      listProfiles: vi.fn(async () => []),
+      profileStatus: vi.fn(async (p) => ({ profile: p, matches: true })),
+    });
+    const recovery = {
+      journalId: "j-1",
+      kind: "java_apply",
+      createdAt: "2026-10-23T09:00:00Z",
+      canResume: true,
+      items: [],
+    };
+    const h = harness(runtime, {
+      tool: "java",
+      installations: [jdk],
+      recovery,
+    });
+    h.dispatch({ type: "resolveRecovery", action: "rollBack" });
+    expect(h.state.plan.applying).toBe(true);
+    h.dispatch({ type: "selectTool", tool: "node" });
+    releaseRollBack({ planId: "p", stale: false, needsElevation: false });
+    await h.settle();
+    expect(h.state.plan.applying).toBe(false);
+  });
+
+  it("drops a delayed profile load superseded by invalidation", async () => {
+    const jdk = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
+    let releaseProfiles: (value: []) => void = () => {};
+    const listProfiles = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<[]>((resolve) => {
+            releaseProfiles = resolve;
+          }),
+      )
+      .mockResolvedValueOnce([{ id: "p1", name: "Winner", tools: [] }]);
+    const { runtime, coordination } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async () => [jdk]),
+      listProfiles,
+      profileStatus: vi.fn(async (p) => ({ profile: p, matchesEffective: false, unavailable: [] })),
+    });
+    const h = harness(runtime, { installations: [jdk], profiles: { ...initialToolsState().profiles, list: [] } });
+    h.dispatch({ type: "loadProfiles" });
+    coordination.invalidate(["tools-profiles"]);
+    h.dispatch({ type: "loadProfiles" });
+    releaseProfiles([]);
+    await h.settle();
+    expect(h.state.profiles.list[0]?.profile.name).toBe("Winner");
+  });
+
   it("does not apply a late tool result after switching tools", async () => {
     const jdk = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
     const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });

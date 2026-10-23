@@ -1,3 +1,4 @@
+import type { WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
 import type { ToolsWriteKind, WriteAdmission, WriteOutcome } from "../../coordination/types";
 import type { ProfileToolPin, ToolKind, ToolProfile } from "../../types";
 import type { ToolsRuntime } from "./runtime";
@@ -10,10 +11,25 @@ const PROFILE_TOOLS: ToolKind[] = ["java", "node", "python", "go", "flutter", "g
 export interface EffectContext {
   /** The state as it was when the intent was dispatched. */
   state: ToolsState;
+  /** Live panel state (may differ after overlapping intents). */
+  getState: () => ToolsState;
   /** Dispatches a message: the reducer runs, then that message's effects. */
   dispatch: (msg: ToolsMsg) => void;
   runtime: ToolsRuntime;
   newId: () => string;
+}
+
+function shouldCommitToolMutation(
+  ctx: EffectContext,
+  originTool: ToolKind,
+  resultBinding: ReturnType<WriteCoordinatorFacade["beginToolResult"]>,
+  planBinding?: ReturnType<WriteCoordinatorFacade["beginPlanApply"]>,
+): boolean {
+  const { coordination } = ctx.runtime;
+  if (ctx.getState().tool !== originTool) return false;
+  if (!coordination.isToolResultCurrent(resultBinding)) return false;
+  if (planBinding !== undefined && !coordination.isPlanApplyCurrent(planBinding)) return false;
+  return true;
 }
 
 function releaseToolsWrite(ctx: EffectContext, admission: WriteAdmission | null, outcome: "success" | "failure" | "cancel") {
@@ -46,6 +62,10 @@ async function withToolsWrite(
 async function readbackToolsState(ctx: EffectContext, tool: ToolKind): Promise<void> {
   await reload(ctx, tool);
   await loadProfiles(ctx);
+}
+
+function dropToolMutation(ctx: EffectContext, originTool: ToolKind) {
+  ctx.dispatch({ type: "toolMutationDropped", tool: originTool });
 }
 
 function guardConflictingToolWork(ctx: EffectContext, op: Operation): boolean {
@@ -86,7 +106,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       if (!guardConflictingToolWork(ctx, "plan")) return;
       const plan = await tools.planToolApply(tool, msg.root);
       coordination.registerReviewedPlan(plan);
-      dispatch({ type: "planBuilt", plan });
+      dispatch({ type: "planBuilt", tool, plan });
       return;
     }
     case "applyPlan": {
@@ -100,7 +120,8 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         const result = plan.requiresUac
           ? await tools.applyToolPlanWithUac(plan)
           : await tools.applyToolPlan(plan);
-        if (!coordination.isToolResultCurrent(resultBinding) || !coordination.isPlanApplyCurrent(planBinding)) {
+        if (!shouldCommitToolMutation(ctx, originTool, resultBinding, planBinding)) {
+          dropToolMutation(ctx, originTool);
           return "cancel";
         }
         dispatch({ type: "applyFinished", tool: originTool, result });
@@ -127,7 +148,10 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         const originTool = tool;
         const resultBinding = coordination.beginToolResult(originTool);
         const result = await tools.undoLastWhichcraftApply();
-        if (!coordination.isToolResultCurrent(resultBinding)) return "cancel";
+        if (!shouldCommitToolMutation(ctx, originTool, resultBinding)) {
+          dropToolMutation(ctx, originTool);
+          return "cancel";
+        }
         dispatch({ type: "undone", tool: originTool, result });
         await readbackToolsState(ctx, originTool);
       });
@@ -140,15 +164,23 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         try {
           if (msg.action === "resume") {
             await tools.resumeApply(recovery.journalId);
-            if (!coordination.isToolResultCurrent(resultBinding)) return "cancel";
+            if (!shouldCommitToolMutation(ctx, originTool, resultBinding)) {
+              dropToolMutation(ctx, originTool);
+              return "cancel";
+            }
             dispatch({ type: "recoveryResolved", tool: originTool, result: null });
           } else {
             const result = await tools.rollBackApply(recovery.journalId);
-            if (!coordination.isToolResultCurrent(resultBinding)) return "cancel";
+            if (!shouldCommitToolMutation(ctx, originTool, resultBinding)) {
+              dropToolMutation(ctx, originTool);
+              return "cancel";
+            }
             dispatch({ type: "recoveryResolved", tool: originTool, result });
           }
         } finally {
-          await readbackToolsState(ctx, originTool);
+          if (coordination.isToolResultCurrent(resultBinding)) {
+            await readbackToolsState(ctx, originTool);
+          }
         }
       });
     }
@@ -232,10 +264,16 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       const plan = state.uninstall.plan;
       if (!plan || !canConfirmUninstall(state, msg.replacementRoot)) return;
       return withToolsWrite(ctx, "uninstall", "uninstall", async () => {
+        const originTool = tool;
+        const resultBinding = coordination.beginToolResult(originTool);
         // The switch applied is exactly the one the user was shown.
         const replacement = plan.needsReplacement ? state.uninstall.switchPlan : null;
         const outcome = await tools.uninstall(tool, plan.installation.root, replacement);
-        dispatch({ type: "uninstallFinished", outcome });
+        if (!shouldCommitToolMutation(ctx, originTool, resultBinding)) {
+          dropToolMutation(ctx, originTool);
+          return;
+        }
+        dispatch({ type: "uninstallFinished", tool: originTool, outcome });
         // A switch gone stale must be shown again before it is applied.
         if (outcome.status === "blocked") dispatch({ type: "chooseReplacement", root: msg.replacementRoot });
         const target = plan.replacements.find((r) => r.root === msg.replacementRoot);
@@ -256,14 +294,16 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     case "loadProfiles":
       return loadProfiles(ctx);
     case "createProfile":
+      if (!guardConflictingToolWork(ctx, "profiles")) return;
       return saveProfiles(ctx, [...profilesOf(state), { id: ctx.newId(), name: msg.name, tools: msg.tools }]);
     case "deleteProfile":
+      if (!guardConflictingToolWork(ctx, "profiles")) return;
       return saveProfiles(ctx, profilesOf(state).filter((p) => p.id !== msg.id));
     case "planProfile": {
       if (!guardConflictingToolWork(ctx, "plan")) return;
       const plan = await tools.planProfile(msg.profile);
       coordination.registerReviewedPlan(plan);
-      dispatch({ type: "planBuilt", plan });
+      dispatch({ type: "planBuilt", tool, plan });
       return;
     }
     case "checkMissing":

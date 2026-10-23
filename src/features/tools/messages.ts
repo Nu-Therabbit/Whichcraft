@@ -75,7 +75,8 @@ export type ToolsEvent =
       settings: WhichcraftSettings;
       pythonInfo: PythonSupplementalView | null;
     }
-  | { type: "planBuilt"; plan: ToolApplyPlan }
+  | { type: "planBuilt"; tool: ToolKind; plan: ToolApplyPlan }
+  | { type: "toolMutationDropped"; tool: ToolKind }
   | { type: "cleanupPlanned"; plan: ToolApplyPlan | null; duplicates: string[]; missing: string[] }
   | { type: "applyFinished"; tool: ToolKind; result: ApplyToolResult }
   | { type: "undone"; tool: ToolKind; result: UndoResult }
@@ -90,7 +91,7 @@ export type ToolsEvent =
   | { type: "updateSwitched" }
   | { type: "uninstallPlanned"; plan: UninstallPlan }
   | { type: "switchPlanned"; plan: ToolApplyPlan | null }
-  | { type: "uninstallFinished"; outcome: UninstallOutcome }
+  | { type: "uninstallFinished"; tool: ToolKind; outcome: UninstallOutcome }
   | {
       type: "profilesLoaded";
       list: ProfileMatchStatus[];
@@ -105,6 +106,7 @@ const EVENT_TYPES: ReadonlySet<string> = new Set<ToolsEvent["type"]>([
   "failed",
   "refreshed",
   "planBuilt",
+  "toolMutationDropped",
   "cleanupPlanned",
   "applyFinished",
   "undone",

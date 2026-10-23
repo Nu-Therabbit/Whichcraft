@@ -68,8 +68,9 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
     applyError,
     setApplyError: setDiffApplyError,
   } = useDiff(environment, refresh, () => {
+    // Cross-feature readback only once per external-diff episode; omit environment-external-diff
+    // so invalidation subscribers do not re-enter detection and loop revisions.
     coordination.invalidate([
-      "environment-external-diff",
       "environment-variables",
       "environment-diagnostics",
       "tools-installations",
@@ -100,10 +101,9 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
     return coordination.subscribeInvalidation((scopes) => {
       if (!scopesNeedEnvironmentRefresh(scopes)) return;
       void refresh();
-      void checkForExternalChanges();
       void refreshPathStatus();
     });
-  }, [coordination, refresh, checkForExternalChanges, refreshPathStatus]);
+  }, [coordination, refresh, refreshPathStatus]);
 
   const { accounts, selectedAccount, handleSelectAccount, accountSwitchError } = useAccountSwitch(
     environment,

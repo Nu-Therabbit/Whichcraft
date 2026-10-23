@@ -28,3 +28,11 @@
 - **Readback:** Write `failure`/`success` (not `cancel`) publishes invalidation/readback scopes; tools `readbackToolsState` reloads inventory + profiles; legacy invalidation dispatches `loadProfiles` and bound `checkShell`; external diff detection invalidates cross-feature scopes; shell `rescan` calls `notifyAccountContextChanged` when account sid changes.
 - **Pending:** `useStaged` publishes pending synchronously via `onPendingChange`; diff apply admission denial sets `applyError`.
 - **Tests:** `writeCoordination.review.test.tsx` (legacy screen stage → apply/cleanup refused), `effects.test.ts` (delayed reload, shell check supersede, late apply after tool switch), `writeCoordination.behavior.test.tsx` (subscription failure), shell rescan account binding; `createToolsRuntime` requires explicit coordinator (no silent default).
+
+### Review round 2 (Grok 4.7)
+
+- **External diff loop:** `useDiff` fires cross-feature invalidation once per diff episode; invalidation subscribers refresh env/path only (no re-entry into `checkForExternalChanges`). External callback omits `environment-external-diff` scope.
+- **Stuck `plan.applying`:** Dropped late apply/undo/recovery/uninstall dispatches `toolMutationDropped` (clears applying even after tool switch); effects use live `getState().tool` plus binding checks before commit.
+- **Plan eligibility:** `isPlanApplyCurrent` compares live `environmentRevision` to reviewed baseline (not only account/plan id).
+- **Tool-tagged events:** `planBuilt` and `uninstallFinished` include `tool`; `createProfile`/`deleteProfile` gated like other profile writes.
+- **Tests:** `writeCoordination.review-round2.test.tsx` (single external invalidate, diff apply busy error, profile apply refused, shell rescan → coordinator token); `effects.test.ts` (delayed profiles, late undo/recovery not stuck); `createWriteCoordinator.test.ts` (environment revision retires plan).
