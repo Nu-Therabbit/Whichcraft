@@ -1,0 +1,91 @@
+import { vi } from "vitest";
+import type { EnvarlyApi } from "../../api";
+import type { ToolApplyPlan, ToolInstallationRef, ToolInstallationView, ToolKind } from "../../types";
+import { runEffects } from "./effects";
+import { isIntent, type ToolsIntent, type ToolsMsg } from "./messages";
+import { initialToolsState, type ToolsState } from "./model";
+import { reduce } from "./reduce";
+
+/** An API whose every call fails unless a test provides it, so unexpected calls show up. */
+export function fakeApi(overrides: Partial<EnvarlyApi>): EnvarlyApi {
+  const base = {
+    getRecoveryStatus: vi.fn(async () => null),
+    unfinishedUninstalls: vi.fn(async () => []),
+    getWhichcraftSettings: vi.fn(async () => ({
+      installStore: "C:\\store",
+      scanRoots: [],
+      terminal: "windows_terminal" as const,
+      installStoreConfirmed: true,
+    })),
+    listToolInstallations: vi.fn(async () => []),
+    getPythonLauncherInfo: vi.fn(async () => {
+      throw new Error("not used");
+    }),
+  };
+  return new Proxy({ ...base, ...overrides } as EnvarlyApi, {
+    get(target, key) {
+      if (key in target) return target[key as keyof EnvarlyApi];
+      return async () => {
+        throw new Error(`unexpected api call: ${String(key)}`);
+      };
+    },
+  });
+}
+
+/** Runs the reducer and effects the way useToolsStore does, and waits for all effects. */
+export function harness(api: EnvarlyApi, start: Partial<ToolsState> = {}) {
+  let state: ToolsState = { ...initialToolsState(), ...start };
+  const log: ToolsMsg[] = [];
+  const pending = new Set<Promise<void>>();
+  const dispatch = (msg: ToolsMsg) => {
+    const before = state;
+    state = reduce(before, msg);
+    log.push(msg);
+    if (isIntent(msg)) {
+      const p = runEffects(msg, { state: before, dispatch, api, newId: () => "new-id" });
+      pending.add(p);
+      void p.finally(() => pending.delete(p));
+    }
+  };
+  return {
+    get state() {
+      return state;
+    },
+    log,
+    dispatch: (intent: ToolsIntent) => dispatch(intent),
+    async settle() {
+      while (pending.size > 0) await Promise.all([...pending]);
+    },
+  };
+}
+
+export function inst(tool: ToolKind, version: string, root: string, extra: Partial<ToolInstallationView> = {}): ToolInstallationView {
+  return {
+    tool,
+    vendor: tool === "java" ? "Eclipse Adoptium" : "Node.js",
+    version,
+    root,
+    managed: false,
+    effective: false,
+    selected: false,
+    available: true,
+    installerKind: "folder_only",
+    mismatchReason: null,
+    ...extra,
+  };
+}
+
+export function planFor(selected: ToolInstallationRef, extra: Partial<ToolApplyPlan> = {}): ToolApplyPlan {
+  return {
+    planId: `plan-${selected.root}`,
+    tool: selected.tool,
+    requiresUac: false,
+    warnings: [],
+    limitationNotice: "",
+    userDiffs: [],
+    systemDiffs: [],
+    effectiveAfterUserOnly: true,
+    selected,
+    ...extra,
+  };
+}
