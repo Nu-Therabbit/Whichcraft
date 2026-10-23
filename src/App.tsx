@@ -329,12 +329,25 @@ export default function App() {
             onCheck: () => void developerTools.checkUpdates(),
             onUpdate: (candidate) => void developerTools.updateTo(candidate),
           }}
+          profiles={{
+            list: developerTools.profiles,
+            current: developerTools.currentPins,
+            missing: developerTools.missing,
+            busy: developerTools.profileBusy,
+            onLoad: developerTools.loadProfiles,
+            onCreate: (name, tools) => void developerTools.createProfile(name, tools),
+            onDelete: (id) => void developerTools.deleteProfile(id),
+            onApply: (profile) => void developerTools.planProfile(profile),
+            onCheckMissing: (profile) => void developerTools.checkMissing(profile),
+            onInstallMissing: (profile) => void developerTools.installMissingThenPlan(profile),
+          }}
           uninstall={{
             plan: developerTools.uninstallPlan,
             outcome: developerTools.uninstallOutcome,
             busy: developerTools.uninstallBusy,
+            defaultReplacement: developerTools.updatedRoot,
             onPlan: (root) => void developerTools.planUninstall(root),
-            onConfirm: (replacement) => void developerTools.confirmUninstall(replacement),
+            onConfirm: (replacement, repoint) => void developerTools.confirmUninstall(replacement, repoint),
             onOpenFolder: (path) => void developerTools.openFolder(path),
             onClose: developerTools.closeUninstall,
           }}

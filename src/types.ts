@@ -302,3 +302,29 @@ export type UninstallOutcome =
   | { status: "incomplete"; remaining: string }
   | { status: "blocked"; reason: string }
   | { status: "failed"; code: number };
+
+export interface ProfileToolPin {
+  tool: ToolKind;
+  vendor: string;
+  version: string;
+  preferredRoot: string | null;
+}
+
+export interface ToolProfile {
+  id: string;
+  name: string;
+  tools: ProfileToolPin[];
+}
+
+export interface ProfileMatchStatus {
+  profile: ToolProfile;
+  matchesEffective: boolean;
+  unavailable: ProfileToolPin[];
+}
+
+export interface MissingPin {
+  pin: ProfileToolPin;
+  /** What Whichcraft would install, or null when it cannot. */
+  installVersion: string | null;
+  downloadBytes: number | null;
+}

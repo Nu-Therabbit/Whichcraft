@@ -3,7 +3,10 @@ import { useI18n } from "../../hooks/useI18n";
 import type {
   AndroidInventory,
   MiseStatus,
+  MissingPin,
   MsvcInventory,
+  ProfileMatchStatus,
+  ProfileToolPin,
   PythonSupplementalView,
   RecoveryView,
   RemoteVersion,
@@ -11,6 +14,7 @@ import type {
   ToolApplyPlan,
   ToolInstallationView,
   ToolKind,
+  ToolProfile,
   UninstallOutcome,
   UninstallPlan,
   UpdateCandidate,
@@ -25,6 +29,7 @@ import { ShellCheckResult } from "./ShellCheckResult";
 import { PythonLauncherInfo, SdkInventory } from "./SupplementalInfo";
 import { ToolsSettings } from "./ToolsSettings";
 import { UninstallSection } from "./UninstallSection";
+import { ProfilesSection } from "./ProfilesSection";
 import { UpdateList } from "./UpdateList";
 
 const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
@@ -74,12 +79,25 @@ interface Props {
     onCheck: () => void;
     onUpdate: (candidate: UpdateCandidate) => void;
   };
+  profiles?: {
+    list: ProfileMatchStatus[];
+    current: ProfileToolPin[];
+    missing: { profileId: string; items: MissingPin[] } | null;
+    busy: boolean;
+    onLoad: () => void;
+    onCreate: (name: string, tools: ProfileToolPin[]) => void;
+    onDelete: (id: string) => void;
+    onApply: (profile: ToolProfile) => void;
+    onCheckMissing: (profile: ToolProfile) => void;
+    onInstallMissing: (profile: ToolProfile) => void;
+  };
   uninstall?: {
     plan: UninstallPlan | null;
     outcome: UninstallOutcome | null;
     busy: boolean;
+    defaultReplacement?: string | null;
     onPlan: (root: string) => void;
-    onConfirm: (replacementRoot: string | null) => void;
+    onConfirm: (replacementRoot: string | null, repointProfiles: boolean) => void;
     onOpenFolder: (path: string) => void;
     onClose: () => void;
   };
@@ -115,12 +133,22 @@ export function ToolsPanel({
   onOpenTerminal,
   install,
   updates,
+  profiles,
   uninstall,
 }: Props) {
   const { t } = useI18n();
   const [showSettings, setShowSettings] = useState(false);
   const [showSdks, setShowSdks] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
+  const [showProfiles, setShowProfiles] = useState(false);
+  const loadProfiles = profiles?.onLoad;
+
+  // Every refresh (focus, apply, uninstall) gives a new installations list; profile statuses
+  // follow it, so a change made outside the app shows up too (F-6).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: installations is the refresh signal
+  useEffect(() => {
+    if (open && showProfiles) loadProfiles?.();
+  }, [open, showProfiles, loadProfiles, installations]);
   // Git is switch-only in v1 (Q14).
   const canInstall = tool !== "git" && !!install;
   const loadInstallable = install?.onOpen;
@@ -163,10 +191,11 @@ export function ToolsPanel({
           {TOOL_KINDS.map((kind) => (
             <Button
               key={kind}
-              variant={kind === tool && !showSdks ? "primary" : "secondary"}
+              variant={kind === tool && !showSdks && !showProfiles ? "primary" : "secondary"}
               size="sm"
               onClick={() => {
                 setShowSdks(false);
+                setShowProfiles(false);
                 onToolChange(kind);
               }}
             >
@@ -179,15 +208,42 @@ export function ToolsPanel({
               size="sm"
               onClick={() => {
                 setShowSdks(true);
+                setShowProfiles(false);
                 onLoadSdks();
               }}
             >
               {t("tools.sdks_tab")}
             </Button>
           )}
+          {profiles && (
+            <Button
+              variant={showProfiles ? "primary" : "secondary"}
+              size="sm"
+              onClick={() => {
+                setShowProfiles(true);
+                setShowSdks(false);
+              }}
+            >
+              {t("tools.profiles_tab")}
+            </Button>
+          )}
         </div>
 
         {showSdks && <SdkInventory android={android ?? null} msvc={msvc ?? null} />}
+
+        {showProfiles && profiles && (
+          <ProfilesSection
+            profiles={profiles.list}
+            current={profiles.current}
+            missing={profiles.missing}
+            busy={profiles.busy || applyBusy}
+            onCreate={profiles.onCreate}
+            onDelete={profiles.onDelete}
+            onApply={profiles.onApply}
+            onCheckMissing={profiles.onCheckMissing}
+            onInstallMissing={profiles.onInstallMissing}
+          />
+        )}
 
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
@@ -311,6 +367,7 @@ export function ToolsPanel({
             plan={uninstall.plan}
             outcome={uninstall.outcome}
             busy={uninstall.busy}
+            defaultReplacement={uninstall.defaultReplacement}
             onConfirm={uninstall.onConfirm}
             onOpenFolder={uninstall.onOpenFolder}
             onClose={uninstall.onClose}

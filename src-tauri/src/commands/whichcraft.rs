@@ -12,9 +12,10 @@ use crate::whichcraft::services::elevation::WinElevator;
 use crate::whichcraft::services::java_inventory::{list_java_installations, JavaInstallationView};
 use crate::whichcraft::services::path_cleanup::{build_path_cleanup_plan, PathCleanupPlan};
 use crate::whichcraft::services::profiles::{
-    apply_profile, load_profiles, profile_status, save_profiles as persist_profiles, plan_profile_apply,
-    ProfileMatchStatus, ToolProfile,
+    apply_profile, load_profiles, missing_pins, profile_status, repoint_profiles, save_profiles as persist_profiles,
+    plan_profile_apply, MissingPin, ProfileMatchStatus, ToolProfile,
 };
+use crate::whichcraft::ports::installation_probe::ToolInstallation;
 use crate::whichcraft::services::supplemental_inventory::{
     android_inventory, msvc_inventory, python_supplemental, AndroidInventory, MsvcInventory,
     PythonSupplementalView,
@@ -433,6 +434,65 @@ pub async fn whichcraft_update_installation(tool: ToolKind, version: String) -> 
 #[tauri::command]
 pub async fn whichcraft_prepare_mise() -> Result<bool, EnvarlyError> {
     off_main(crate::whichcraft::mise::manager::prepare_mise).await
+}
+
+fn missing_for(profile: &ToolProfile) -> Result<Vec<MissingPin>, EnvarlyError> {
+    let status = profile_status(&WinregBackend, profile)?;
+    if status.unavailable.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mgr = MiseToolManager::new()?;
+    missing_pins(
+        &status.unavailable,
+        |tool| mgr.list_remote(tool),
+        |tool, version| {
+            crate::whichcraft::mise::sizes::download_size(tool, version, crate::whichcraft::mise::sizes::http_content_length)
+                .ok()
+                .flatten()
+        },
+    )
+}
+
+/// The unavailable pins of a profile and what Whichcraft would install for each (F-3).
+#[tauri::command]
+pub async fn whichcraft_profile_missing(profile: ToolProfile) -> Result<Vec<MissingPin>, EnvarlyError> {
+    off_main(move || missing_for(&profile)).await
+}
+
+/// Installs every missing pin; the caller then plans and applies the profile as usual.
+#[tauri::command]
+pub async fn whichcraft_install_missing(profile: ToolProfile) -> Result<(), EnvarlyError> {
+    off_main(move || {
+        let missing = missing_for(&profile)?;
+        let not_installable: Vec<String> = missing
+            .iter()
+            .filter(|m| m.install_version.is_none())
+            .map(|m| format!("{:?} {} {}", m.pin.tool, m.pin.vendor, m.pin.version))
+            .collect();
+        if !not_installable.is_empty() {
+            return Err(EnvarlyError::InvalidInput(format!(
+                "Whichcraft cannot install: {}",
+                not_installable.join(", ")
+            )));
+        }
+        let mgr = MiseToolManager::new()?;
+        for m in &missing {
+            mgr.install(m.pin.tool, m.install_version.as_deref().unwrap_or_default())?;
+        }
+        Ok(())
+    })
+    .await
+}
+
+/// Points the profiles that use `from` at `to` (F-5); returns the names that changed.
+#[tauri::command]
+pub fn whichcraft_repoint_profiles(from: ToolInstallation, to: ToolInstallation) -> Result<Vec<String>, EnvarlyError> {
+    let mut profiles = load_profiles()?;
+    let changed = repoint_profiles(&mut profiles, &from, &to);
+    if !changed.is_empty() {
+        persist_profiles(&profiles)?;
+    }
+    Ok(changed)
 }
 
 /// Opens a folder in Explorer, e.g. what an uninstaller left behind.

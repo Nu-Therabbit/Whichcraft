@@ -15,9 +15,15 @@ import type {
   UndoResult,
   UninstallOutcome,
   UninstallPlan,
+  MissingPin,
+  ProfileMatchStatus,
+  ProfileToolPin,
+  ToolProfile,
   UpdateCandidate,
   WhichcraftSettings,
 } from "../types";
+
+const PROFILE_TOOLS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
 
 export function useDeveloperTools(initialTool: ToolKind = "java") {
   const [tool, setTool] = useState<ToolKind>(initialTool);
@@ -249,16 +255,22 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     [tool],
   );
 
-  /** Switches to `replacementRoot` first when the installation is selected or effective (Q9). */
+  /** Switches to `replacementRoot` first when the installation is selected or effective (Q9), and
+   * afterwards points the profiles that used it at the replacement when `repoint` is set (F-5). */
   const confirmUninstall = useCallback(
-    async (replacementRoot: string | null) => {
+    async (replacementRoot: string | null, repoint: boolean) => {
       if (!uninstallPlan) return;
       setError(null);
       setUninstallBusy(true);
       try {
-        const replacement = replacementRoot ? await api.planToolApply(tool, replacementRoot) : null;
+        const replacement =
+          uninstallPlan.needsReplacement && replacementRoot ? await api.planToolApply(tool, replacementRoot) : null;
         const outcome = await api.uninstall(tool, uninstallPlan.installation.root, replacement);
         setUninstallOutcome(outcome);
+        const target = uninstallPlan.replacements.find((r) => r.root === replacementRoot);
+        if (outcome.status === "removed" && repoint && target) {
+          await api.repointProfiles(uninstallPlan.installation, target);
+        }
         if (outcome.status === "removed") setUninstallPlan(null);
         await refresh();
       } catch (e) {
@@ -282,6 +294,8 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
   const [updateBusy, setUpdateBusy] = useState(false);
   /** The installation an update replaces; offered for uninstall once the switch is applied. */
   const [replacedRoot, setReplacedRoot] = useState<string | null>(null);
+  /** The installation an update brought in; suggested as the replacement for the old one. */
+  const [updatedRoot, setUpdatedRoot] = useState<string | null>(null);
 
   const checkUpdates = useCallback(async () => {
     setError(null);
@@ -303,6 +317,7 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
         const result = await api.updateInstallation(tool, candidate.latest);
         setUpdates((list) => list?.filter((u) => u.root !== candidate.root) ?? null);
         setReplacedRoot(candidate.root);
+        setUpdatedRoot(result.installation.root);
         setPlan(result.plan);
         await refresh();
       } catch (e) {
@@ -324,6 +339,99 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     }
     return result;
   }, [applyPlan, replacedRoot, planUninstall]);
+
+  const [profiles, setProfiles] = useState<ProfileMatchStatus[]>([]);
+  const [currentPins, setCurrentPins] = useState<ProfileToolPin[]>([]);
+  const [missing, setMissing] = useState<{ profileId: string; items: MissingPin[] } | null>(null);
+  const [profileBusy, setProfileBusy] = useState(false);
+
+  /** Each profile with whether it matches what is effective now; recomputed on every load (F-6). */
+  const loadProfiles = useCallback(async () => {
+    setError(null);
+    try {
+      const list = await api.listProfiles();
+      setProfiles(await Promise.all(list.map((p) => api.profileStatus(p))));
+      const pins: ProfileToolPin[] = [];
+      for (const kind of PROFILE_TOOLS) {
+        const effective = (await api.listToolInstallations(kind)).find((v) => v.effective);
+        if (effective) {
+          pins.push({ tool: kind, vendor: effective.vendor, version: effective.version, preferredRoot: effective.root });
+        }
+      }
+      setCurrentPins(pins);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
+
+  const saveProfileList = useCallback(
+    async (next: ToolProfile[]) => {
+      setError(null);
+      try {
+        await api.saveProfiles(next);
+        await loadProfiles();
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [loadProfiles],
+  );
+
+  const createProfile = useCallback(
+    (name: string, tools: ProfileToolPin[]) =>
+      saveProfileList([...profiles.map((s) => s.profile), { id: crypto.randomUUID(), name, tools }]),
+    [profiles, saveProfileList],
+  );
+
+  const deleteProfile = useCallback(
+    (id: string) => saveProfileList(profiles.map((s) => s.profile).filter((p) => p.id !== id)),
+    [profiles, saveProfileList],
+  );
+
+  /** One plan for the whole profile, shown and applied like any other (same UAC, journal, Undo). */
+  const planProfile = useCallback(async (profile: ToolProfile) => {
+    setError(null);
+    setPlanBusy(true);
+    setPlan(null);
+    try {
+      setPlan(await api.planProfile(profile));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setPlanBusy(false);
+    }
+  }, []);
+
+  const checkMissing = useCallback(async (profile: ToolProfile) => {
+    setError(null);
+    setProfileBusy(true);
+    try {
+      setMissing({ profileId: profile.id, items: await api.profileMissing(profile) });
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setProfileBusy(false);
+    }
+  }, []);
+
+  /** F-3: install what is missing, then go straight on to the profile's plan. */
+  const installMissingThenPlan = useCallback(
+    async (profile: ToolProfile) => {
+      setError(null);
+      setProfileBusy(true);
+      try {
+        await api.installMissing(profile);
+        setMissing(null);
+        await loadProfiles();
+        await planProfile(profile);
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setProfileBusy(false);
+      }
+    },
+    [loadProfiles, planProfile],
+  );
 
   // The list belongs to the tool it was checked for.
   // biome-ignore lint/correctness/useExhaustiveDependencies: clearing is the point when the tool changes
@@ -391,9 +499,20 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     refresh,
     buildPlan,
     applyPlan: applyPlanThenOffer,
+    profiles,
+    currentPins,
+    missing,
+    profileBusy,
+    loadProfiles,
+    createProfile,
+    deleteProfile,
+    planProfile,
+    checkMissing,
+    installMissingThenPlan,
     updates,
     updateBusy,
     replacedRoot,
+    updatedRoot,
     checkUpdates,
     updateTo,
     undoLast,

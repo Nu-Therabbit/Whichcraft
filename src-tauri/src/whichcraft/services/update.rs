@@ -43,7 +43,7 @@ fn line_len(tool: ToolKind) -> usize {
 
 /// The numbers of a release, or `None` for pre-releases and variants (`3.15.0a1`, `1.27rc1`,
 /// `3.35.0-beta`, `3.14.6t`). Build metadata after `+` is ignored.
-fn release_numbers(tool: ToolKind, version: &str) -> Option<Vec<u64>> {
+pub(crate) fn release_numbers(tool: ToolKind, version: &str) -> Option<Vec<u64>> {
     let base = version.split('+').next()?;
     let base = if tool == ToolKind::Flutter { base.strip_suffix("-stable").unwrap_or(base) } else { base };
     let base = base.strip_prefix('v').unwrap_or(base);

@@ -7,7 +7,9 @@ interface Props {
   plan: UninstallPlan | null;
   outcome: UninstallOutcome | null;
   busy: boolean;
-  onConfirm: (replacementRoot: string | null) => void;
+  /** Preselected replacement, e.g. the version an update just installed. */
+  defaultReplacement?: string | null;
+  onConfirm: (replacementRoot: string | null, repointProfiles: boolean) => void;
   onOpenFolder: (path: string) => void;
   onClose: () => void;
 }
@@ -55,9 +57,12 @@ function OutcomeLine({ outcome, onOpenFolder }: { outcome: UninstallOutcome; onO
 }
 
 /** Shows how an installation would be removed and what blocks it, then removes it on confirm. */
-export function UninstallSection({ plan, outcome, busy, onConfirm, onOpenFolder, onClose }: Props) {
+export function UninstallSection({ plan, outcome, busy, defaultReplacement, onConfirm, onOpenFolder, onClose }: Props) {
   const { t } = useI18n();
-  const [replacement, setReplacement] = useState("");
+  const [replacement, setReplacement] = useState(
+    plan?.replacements.some((r) => r.root === defaultReplacement) ? (defaultReplacement ?? "") : "",
+  );
+  const [repoint, setRepoint] = useState(true);
   if (!plan && !outcome) return busy ? <p className="text-sm text-muted">{t("app.loading")}</p> : null;
 
   const inUse = plan ? plan.usage.processes.length > 0 || plan.usage.folderLocked : false;
@@ -108,9 +113,13 @@ export function UninstallSection({ plan, outcome, busy, onConfirm, onOpenFolder,
             </p>
           )}
 
-          {plan.needsReplacement && (
+          {(plan.needsReplacement || plan.affectedProfiles.length > 0) && (
             <label className="flex flex-col gap-1">
-              <span>{t("tools.uninstall.choose_replacement")}</span>
+              <span>
+                {plan.needsReplacement
+                  ? t("tools.uninstall.choose_replacement")
+                  : t("tools.uninstall.choose_profile_replacement")}
+              </span>
               <select
                 className="bg-surface border border-rim rounded-md px-2 py-1"
                 value={replacement}
@@ -129,10 +138,17 @@ export function UninstallSection({ plan, outcome, busy, onConfirm, onOpenFolder,
             </label>
           )}
 
+          {plan.affectedProfiles.length > 0 && replacement && (
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={repoint} onChange={(e) => setRepoint(e.target.checked)} />
+              <span>{t("tools.uninstall.repoint")}</span>
+            </label>
+          )}
+
           <Button
             variant="danger"
             disabled={busy || refused || inUse || missingReplacement}
-            onClick={() => onConfirm(plan.needsReplacement ? replacement : null)}
+            onClick={() => onConfirm(replacement || null, repoint && plan.affectedProfiles.length > 0)}
           >
             {busy ? t("tools.uninstall.removing") : t("tools.uninstall.confirm")}
           </Button>

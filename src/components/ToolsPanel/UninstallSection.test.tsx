@@ -38,7 +38,18 @@ describe("UninstallSection", () => {
     render(<UninstallSection plan={plan()} outcome={null} busy={false} {...h} />);
     expect(screen.getByText("msiexec.exe /x {ABC}")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Uninstall" }));
-    expect(h.onConfirm).toHaveBeenCalledWith(null);
+    expect(h.onConfirm).toHaveBeenCalledWith(null, false);
+  });
+
+  it("suggests the updated version and repoints profiles unless unticked", async () => {
+    const h = handlers();
+    const p = plan({ replacements: [jdk("21.0.13", "C:\\jdk21-new")], affectedProfiles: ["Android work"] });
+    render(<UninstallSection plan={p} outcome={null} busy={false} defaultReplacement={"C:\\jdk21-new"} {...h} />);
+    const repoint = screen.getByRole("checkbox", { name: /Point those profiles/ });
+    expect(repoint).toBeChecked();
+    await userEvent.click(repoint);
+    await userEvent.click(screen.getByRole("button", { name: "Uninstall" }));
+    expect(h.onConfirm).toHaveBeenCalledWith("C:\\jdk21-new", false);
   });
 
   it("will not remove an installation that is in use", () => {
@@ -73,7 +84,7 @@ describe("UninstallSection", () => {
     expect(confirm).toBeDisabled();
     await userEvent.selectOptions(screen.getByRole("combobox"), "C:\\jdk21");
     await userEvent.click(confirm);
-    expect(h.onConfirm).toHaveBeenCalledWith("C:\\jdk21");
+    expect(h.onConfirm).toHaveBeenCalledWith("C:\\jdk21", true);
   });
 
   it("offers to open a folder the uninstaller left behind", async () => {

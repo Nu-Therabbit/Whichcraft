@@ -92,6 +92,16 @@ export interface EnvarlyApi {
   updateCandidates: (tool: import("./types").ToolKind) => Promise<import("./types").UpdateCandidate[]>;
   updateInstallation: (tool: import("./types").ToolKind, version: string) => Promise<import("./types").UpdateResult>;
   prepareMise: () => Promise<boolean>;
+  listProfiles: () => Promise<import("./types").ToolProfile[]>;
+  saveProfiles: (profiles: import("./types").ToolProfile[]) => Promise<void>;
+  profileStatus: (profile: import("./types").ToolProfile) => Promise<import("./types").ProfileMatchStatus>;
+  planProfile: (profile: import("./types").ToolProfile) => Promise<import("./types").ToolApplyPlan>;
+  profileMissing: (profile: import("./types").ToolProfile) => Promise<import("./types").MissingPin[]>;
+  installMissing: (profile: import("./types").ToolProfile) => Promise<void>;
+  repointProfiles: (
+    from: import("./types").ToolInstallationRef,
+    to: import("./types").ToolInstallationRef,
+  ) => Promise<string[]>;
   openTerminal: () => Promise<void>;
   shellCheck: (tool: import("./types").ToolKind) => Promise<import("./types").ShellCheck>;
   getPythonLauncherInfo: () => Promise<import("./types").PythonSupplementalView>;
@@ -156,6 +166,13 @@ const normalApi: EnvarlyApi = {
   updateCandidates: (tool) => invoke("whichcraft_update_candidates", { tool }),
   updateInstallation: (tool, version) => invoke("whichcraft_update_installation", { tool, version }),
   prepareMise: () => invoke("whichcraft_prepare_mise"),
+  listProfiles: () => invoke("whichcraft_list_profiles"),
+  saveProfiles: (profiles) => invoke("whichcraft_save_profiles", { profiles }),
+  profileStatus: (profile) => invoke("whichcraft_profile_status", { profile }),
+  planProfile: (profile) => invoke("whichcraft_plan_profile", { profile }),
+  profileMissing: (profile) => invoke("whichcraft_profile_missing", { profile }),
+  installMissing: (profile) => invoke("whichcraft_install_missing", { profile }),
+  repointProfiles: (from, to) => invoke("whichcraft_repoint_profiles", { from, to }),
   openTerminal: () => invoke("whichcraft_open_terminal"),
   shellCheck: (tool) => invoke("whichcraft_shell_check", { tool }),
   getPythonLauncherInfo: () => invoke("whichcraft_python_supplemental"),
@@ -251,6 +268,13 @@ export const api: EnvarlyApi = {
   updateCandidates: async (tool) => (await getApi()).updateCandidates(tool),
   updateInstallation: async (tool, version) => (await getApi()).updateInstallation(tool, version),
   prepareMise: async () => (await getApi()).prepareMise(),
+  listProfiles: async () => (await getApi()).listProfiles(),
+  saveProfiles: async (profiles) => (await getApi()).saveProfiles(profiles),
+  profileStatus: async (profile) => (await getApi()).profileStatus(profile),
+  planProfile: async (profile) => (await getApi()).planProfile(profile),
+  profileMissing: async (profile) => (await getApi()).profileMissing(profile),
+  installMissing: async (profile) => (await getApi()).installMissing(profile),
+  repointProfiles: async (from, to) => (await getApi()).repointProfiles(from, to),
   openTerminal: async () => (await getApi()).openTerminal(),
   shellCheck: async (tool) => (await getApi()).shellCheck(tool),
   getPythonLauncherInfo: async () => (await getApi()).getPythonLauncherInfo(),

@@ -16,6 +16,8 @@ use crate::whichcraft::services::tool_apply::{
 };
 use crate::whichcraft::services::tool_inventory::{list_tool_installations, ToolInstallationView};
 use crate::whichcraft::services::tool_plan::ToolApplyPlan;
+use crate::whichcraft::ports::installation_probe::ToolInstallation;
+use crate::whichcraft::ports::tool_manager::RemoteVersion;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -210,6 +212,88 @@ pub fn apply_profile<B: EnvBackend>(
     }
 }
 
+/// A pin with no installation on this machine, and what Whichcraft could install for it (F-3).
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MissingPin {
+    pub pin: ProfileToolPin,
+    /// The version to install, as the remote list spells it; `None` when Whichcraft cannot.
+    pub install_version: Option<String>,
+    pub download_bytes: Option<u64>,
+}
+
+/// The remote release a pin means. Whichcraft installs Temurin only, so other Java vendors are
+/// not installable; a four-part MSI version such as 17.0.20.1 matches the 17.0.20 release.
+pub fn remote_for_pin(pin: &ProfileToolPin, remote: &[RemoteVersion]) -> Option<String> {
+    use crate::whichcraft::services::update::release_numbers;
+    if pin.tool == ToolKind::Git {
+        return None;
+    }
+    if pin.tool == ToolKind::Java {
+        let vendor = pin.vendor.to_ascii_lowercase();
+        if !vendor.contains("adoptium") && !vendor.contains("temurin") {
+            return None;
+        }
+    }
+    let wanted = release_numbers(pin.tool, &pin.version)?;
+    let numbered: Vec<(Vec<u64>, &String)> = remote
+        .iter()
+        .filter_map(|r| Some((release_numbers(pin.tool, &r.version)?, &r.version)))
+        .collect();
+    numbered
+        .iter()
+        .find(|(n, _)| *n == wanted)
+        .or_else(|| numbered.iter().filter(|(n, _)| n.len() >= 3 && wanted.starts_with(n)).max_by(|a, b| a.0.cmp(&b.0)))
+        .map(|(_, v)| (*v).clone())
+}
+
+/// Missing pins of a profile with what to install for each.
+pub fn missing_pins(
+    unavailable: &[ProfileToolPin],
+    remote: impl Fn(ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError>,
+    size: impl Fn(ToolKind, &str) -> Option<u64>,
+) -> Result<Vec<MissingPin>, EnvarlyError> {
+    unavailable
+        .iter()
+        .map(|pin| {
+            let install_version = if pin.tool == ToolKind::Git { None } else { remote_for_pin(pin, &remote(pin.tool)?) };
+            Ok(MissingPin {
+                download_bytes: install_version.as_deref().and_then(|v| size(pin.tool, v)),
+                pin: pin.clone(),
+                install_version,
+            })
+        })
+        .collect()
+}
+
+/// Points every pin that means `from` at `to` instead (F-5). Returns the names of the profiles
+/// that changed.
+pub fn repoint_profiles(profiles: &mut [ToolProfile], from: &ToolInstallation, to: &ToolInstallation) -> Vec<String> {
+    let mut changed = Vec::new();
+    for profile in profiles.iter_mut() {
+        let mut touched = false;
+        for pin in profile.tools.iter_mut() {
+            let means_from = pin.tool == from.tool
+                && pin.vendor.eq_ignore_ascii_case(&from.vendor)
+                && pin.version == from.version
+                && pin.preferred_root.as_ref().is_none_or(|r| *r == from.root);
+            if means_from {
+                *pin = ProfileToolPin {
+                    tool: to.tool,
+                    vendor: to.vendor.clone(),
+                    version: to.version.clone(),
+                    preferred_root: Some(to.root.clone()),
+                };
+                touched = true;
+            }
+        }
+        if touched {
+            changed.push(profile.name.clone());
+        }
+    }
+    changed
+}
+
 /// Finds the installation a pin means: same vendor and full version, preferring the remembered
 /// root when several match. Anything else counts as unavailable; there is no fallback.
 fn resolve_pin(installs: &[ToolInstallationView], pin: &ProfileToolPin) -> Option<ToolInstallationView> {
@@ -232,7 +316,6 @@ fn resolve_pin(installs: &[ToolInstallationView], pin: &ProfileToolPin) -> Optio
 mod tests {
     use super::*;
     use crate::whichcraft::persistence::{load_last_completed_apply, load_tool_selection, use_test_data_dir};
-    use crate::whichcraft::ports::installation_probe::ToolInstallation;
     use crate::whichcraft::ports::installer_catalog::InstallerKind;
     use crate::whichcraft::services::tool_apply::test_support::FakeElevator;
     use crate::whichcraft::services::tool_apply::apply_tool_plan_elevated;
@@ -330,6 +413,73 @@ mod tests {
         assert_eq!(load_tool_selection(ToolKind::Node).unwrap().unwrap().root, node.installation.root);
         assert_eq!(load_tool_selection(ToolKind::Java).unwrap().unwrap().root, jdk.installation.root);
         assert_eq!(load_last_completed_apply().unwrap().unwrap().id, plan.plan_id);
+    }
+
+    #[test]
+    fn a_later_profile_changes_only_the_tools_it_names() {
+        // F-1: A (Java 17 + Node 20), then B (Java 21 only) leaves Java 21 and Node 20.
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let jdk17 = install(dir.path(), ToolKind::Java, "jdk17", "Eclipse Adoptium", "17.0.20.1");
+        let jdk21 = install(dir.path(), ToolKind::Java, "jdk21", "Eclipse Adoptium", "21.0.12");
+        let node20 = install(dir.path(), ToolKind::Node, "node20", "Node.js", "20.19.0");
+        let backend = MemBackend::new()
+            .with_user([("Path", "C:\\u")])
+            .with_system([("PATHEXT", ".EXE;.CMD;.BAT")]);
+        let find = |tool: ToolKind| Ok(if tool == ToolKind::Java { vec![jdk17.clone(), jdk21.clone()] } else { vec![node20.clone()] });
+
+        let a = profile(vec![
+            pin(ToolKind::Java, "Eclipse Adoptium", "17.0.20.1", None),
+            pin(ToolKind::Node, "Node.js", "20.19.0", None),
+        ]);
+        apply_tool_plan(&backend, &plan_profile_apply_with(&backend, &a, find).unwrap()).unwrap();
+        let b = profile(vec![pin(ToolKind::Java, "Eclipse Adoptium", "21.0.12", None)]);
+        apply_tool_plan(&backend, &plan_profile_apply_with(&backend, &b, find).unwrap()).unwrap();
+
+        let user = backend.read_user().unwrap();
+        assert_eq!(user["JAVA_HOME"].value, jdk21.installation.root.to_string_lossy());
+        let path = &user["Path"].value;
+        // Switching prepends; the older JDK's entry stays behind the new one (ticket 20 cleans up).
+        let at = |root: &PathBuf| path.find(&*root.join("bin").to_string_lossy()).unwrap();
+        assert!(at(&jdk21.installation.root) < at(&jdk17.installation.root), "{path}");
+        assert!(path.contains(&*node20.installation.root.to_string_lossy()));
+        assert_eq!(load_tool_selection(ToolKind::Node).unwrap().unwrap().root, node20.installation.root);
+    }
+
+    fn remote(versions: &[&str]) -> Vec<RemoteVersion> {
+        versions.iter().map(|v| RemoteVersion { version: (*v).into(), download_bytes: None, install_bytes: None }).collect()
+    }
+
+    #[test]
+    fn missing_pins_map_to_the_release_whichcraft_would_install() {
+        let java = remote(&["17.0.20+8", "21.0.12+101.0.LTS"]);
+        assert_eq!(remote_for_pin(&pin(ToolKind::Java, "Eclipse Adoptium", "21.0.12", None), &java).as_deref(), Some("21.0.12+101.0.LTS"));
+        assert_eq!(remote_for_pin(&pin(ToolKind::Java, "Eclipse Adoptium", "17.0.20.1", None), &java).as_deref(), Some("17.0.20+8"));
+        assert_eq!(remote_for_pin(&pin(ToolKind::Java, "JetBrains s.r.o.", "21.0.12", None), &java), None, "only Temurin installs");
+        assert_eq!(remote_for_pin(&pin(ToolKind::Node, "Node.js", "20.19.0", None), &remote(&["20.19.0", "22.23.4"])).as_deref(), Some("20.19.0"));
+        assert_eq!(remote_for_pin(&pin(ToolKind::Node, "Node.js", "20.19.9", None), &remote(&["20.19.0"])), None);
+
+        let unavailable = vec![pin(ToolKind::Node, "Node.js", "20.19.0", None), pin(ToolKind::Git, "Git", "2.55.0", None)];
+        let missing = missing_pins(&unavailable, |_| Ok(remote(&["20.19.0"])), |_, _| Some(30_000_000)).unwrap();
+        assert_eq!(missing[0].install_version.as_deref(), Some("20.19.0"));
+        assert_eq!(missing[0].download_bytes, Some(30_000_000));
+        assert_eq!(missing[1].install_version, None, "Git is switch-only");
+        assert_eq!(missing[1].download_bytes, None);
+    }
+
+    #[test]
+    fn repointing_moves_only_pins_that_mean_the_old_installation() {
+        let old = ToolInstallation { tool: ToolKind::Java, vendor: "Eclipse Adoptium".into(), version: "21.0.12".into(), root: "C:\\old".into(), managed: true };
+        let new = ToolInstallation { tool: ToolKind::Java, vendor: "Eclipse Adoptium".into(), version: "21.0.13".into(), root: "C:\\new".into(), managed: true };
+        let mut profiles = vec![
+            ToolProfile { id: "a".into(), name: "Android".into(), tools: vec![pin(ToolKind::Java, "Eclipse Adoptium", "21.0.12", None)] },
+            ToolProfile { id: "b".into(), name: "Other copy".into(), tools: vec![pin(ToolKind::Java, "Eclipse Adoptium", "21.0.12", Some("C:\\elsewhere".into()))] },
+            ToolProfile { id: "c".into(), name: "Web".into(), tools: vec![pin(ToolKind::Node, "Node.js", "22.23.4", None)] },
+        ];
+        let changed = repoint_profiles(&mut profiles, &old, &new);
+        assert_eq!(changed, vec!["Android"]);
+        assert_eq!(profiles[0].tools[0], pin(ToolKind::Java, "Eclipse Adoptium", "21.0.13", Some("C:\\new".into())));
+        assert_eq!(profiles[1].tools[0].version, "21.0.12");
     }
 
     #[test]

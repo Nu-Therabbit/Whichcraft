@@ -293,6 +293,17 @@ export function createDemoApi(
       throw new Error("Updating is unavailable in demo mode");
     },
     prepareMise: async () => false,
+    listProfiles: async () => [],
+    saveProfiles: async () => {},
+    profileStatus: async (profile) => ({ profile, matchesEffective: false, unavailable: [] }),
+    planProfile: async () => {
+      throw new Error("Profiles are unavailable in demo mode");
+    },
+    profileMissing: async () => [],
+    installMissing: async () => {
+      throw new Error("Installing is unavailable in demo mode");
+    },
+    repointProfiles: async () => [],
     openTerminal: async () => {
       throw new Error("Opening a terminal is unavailable in demo mode");
     },
