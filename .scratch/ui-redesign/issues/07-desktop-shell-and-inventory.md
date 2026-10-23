@@ -29,3 +29,7 @@
 - `useToolsOverview`: account token bound to scan generation; stale results clear in-flight loading; account read errors surfaced (not `"local"`). Tests in `useToolsOverview.test.ts`.
 - Overview cards show “Scanning installations…” instead of `0` while loading; `desktopShell.test.tsx` clicks Rescan and asserts API calls.
 - `desktop_shell` i18n keys copied to ja/ko/vi/zh-CN/ru (English strings until translated).
+
+### Review round 2
+
+- Failed/superseded rescans retire `activeScan`, clear `sdkLoading`, and `loadTool` requires current request generation so stale lists cannot commit after account failure (`useToolsOverview.test.ts`).

@@ -134,6 +134,73 @@ describe("useToolsOverview rescan identity", () => {
     expect(OVERVIEW_TOOL_KINDS.every((tool) => !result.current.byTool[tool].loading)).toBe(true);
   });
 
+  it("keeps account error when a stale list resolves after a newer account failure", async () => {
+    let unblockStaleJava!: (value: ToolInstallationView[]) => void;
+
+    const getSelectedAccount = vi
+      .fn()
+      .mockImplementationOnce(async () => ({ sid: "account-old" }))
+      .mockImplementationOnce(async () => {
+        throw new Error("account read failed on retry");
+      });
+
+    let javaLoads = 0;
+    const listToolInstallations = vi.fn(async (tool: string) => {
+      if (tool === "java") {
+        javaLoads += 1;
+        if (javaLoads === 1) {
+          return new Promise<ToolInstallationView[]>((resolve) => {
+            unblockStaleJava = resolve;
+          });
+        }
+      }
+      return [];
+    });
+
+    const environment = makeEnvironment({ getSelectedAccount });
+    const toolsApi = makeTools({ listToolInstallations });
+
+    const { result } = renderHook(() => useToolsOverview(toolsApi, environment));
+
+    await waitFor(() => {
+      expect(result.current.byTool.java.inFlightRequestId).toBe(1);
+    });
+
+    await act(async () => {
+      await result.current.rescan();
+    });
+
+    await waitFor(() => {
+      expect(result.current.accountError).toMatch(/account read failed on retry/);
+      expect(result.current.sdkLoading).toBe(false);
+      expect(result.current.byTool.java.error).toMatch(/account read failed on retry/);
+    });
+
+    await act(async () => {
+      unblockStaleJava([
+        {
+          tool: "java",
+          vendor: "Stale",
+          version: "9.9",
+          root: "C:\\stale-after-account-fail",
+          managed: false,
+          effective: true,
+          selected: true,
+          available: true,
+          installerKind: "folder_only",
+          mismatchReason: null,
+        },
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(result.current.accountError).toMatch(/account read failed on retry/);
+      expect(result.current.byTool.java.installations).toEqual([]);
+      expect(result.current.byTool.java.error).toMatch(/account read failed on retry/);
+      expect(result.current.byTool.java.boundRequestId).toBe(0);
+    });
+  });
+
   it("surfaces account read failures instead of assuming local context", async () => {
     const getSelectedAccount = vi.fn(async () => {
       throw new Error("account hive unavailable");

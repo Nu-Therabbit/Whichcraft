@@ -56,6 +56,8 @@ function initialByTool(): Record<ToolKind, ToolOverviewSlice> {
 
 type ActiveScan = { generation: number; accountToken: string };
 
+const RETIRED_SCAN: ActiveScan = { generation: 0, accountToken: "" };
+
 function applyStaleDiscard(
   prev: Record<ToolKind, ToolOverviewSlice>,
   tool: ToolKind,
@@ -67,6 +69,17 @@ function applyStaleDiscard(
     ...prev,
     [tool]: { ...slice, loading: false, inFlightRequestId: 0 },
   };
+}
+
+function resultStillValid(
+  generation: number,
+  accountToken: string,
+  requestId: number,
+  scan: ActiveScan,
+): boolean {
+  if (generation !== requestId) return false;
+  if (scan.generation === 0) return false;
+  return generation === scan.generation && accountToken === scan.accountToken;
 }
 
 export function useToolsOverview(
@@ -88,7 +101,7 @@ export function useToolsOverview(
   const [sdkError, setSdkError] = useState<string | null>(null);
 
   const requestId = useRef(0);
-  const activeScan = useRef<ActiveScan>({ generation: 0, accountToken: "" });
+  const activeScan = useRef<ActiveScan>(RETIRED_SCAN);
 
   const loadTool = useCallback(
     async (tool: ToolKind, generation: number, accountToken: string) => {
@@ -99,8 +112,7 @@ export function useToolsOverview(
       try {
         const installations = await tools.listToolInstallations(tool);
         setByTool((prev) => {
-          const scan = activeScan.current;
-          if (generation !== scan.generation || accountToken !== scan.accountToken) {
+          if (!resultStillValid(generation, accountToken, requestId.current, activeScan.current)) {
             return applyStaleDiscard(prev, tool, generation);
           }
           return {
@@ -117,8 +129,7 @@ export function useToolsOverview(
         });
       } catch (err) {
         setByTool((prev) => {
-          const scan = activeScan.current;
-          if (generation !== scan.generation || accountToken !== scan.accountToken) {
+          if (!resultStillValid(generation, accountToken, requestId.current, activeScan.current)) {
             return applyStaleDiscard(prev, tool, generation);
           }
           return {
@@ -147,11 +158,16 @@ export function useToolsOverview(
     let accountToken: string;
     try {
       const selected = await environment.getSelectedAccount();
-      if (generation !== requestId.current) return;
+      if (generation !== requestId.current) {
+        setSdkLoading(false);
+        return;
+      }
       accountToken = selected?.sid ?? "local";
     } catch (err) {
       if (generation !== requestId.current) return;
       const message = String(err);
+      activeScan.current = RETIRED_SCAN;
+      setSdkLoading(false);
       setAccountError(message);
       setByTool((prev) => {
         const next = { ...prev };
@@ -161,6 +177,9 @@ export function useToolsOverview(
             loading: false,
             inFlightRequestId: 0,
             error: message,
+            installations: [],
+            boundRequestId: 0,
+            boundAccountToken: "",
           };
         }
         return next;
@@ -169,7 +188,10 @@ export function useToolsOverview(
       return;
     }
 
-    if (generation !== requestId.current) return;
+    if (generation !== requestId.current) {
+      setSdkLoading(false);
+      return;
+    }
 
     activeScan.current = { generation, accountToken };
 
@@ -180,7 +202,10 @@ export function useToolsOverview(
       tools.getAndroidInventory(),
       tools.getMsvcInventory(),
     ]);
-    if (generation !== requestId.current) return;
+    if (generation !== requestId.current) {
+      setSdkLoading(false);
+      return;
+    }
     setPythonInfo(sdkResults[0].status === "fulfilled" ? sdkResults[0].value : null);
     setSdks({
       android: sdkResults[1].status === "fulfilled" ? sdkResults[1].value : null,
@@ -225,4 +250,4 @@ export function useToolsOverview(
     sdkLoading,
     sdkError,
   };
-}
+};
