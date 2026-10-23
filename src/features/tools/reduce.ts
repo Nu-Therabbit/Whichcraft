@@ -7,6 +7,9 @@ const NEEDS_UAC = "This plan requires UAC approval for System PATH changes.";
 /** The only place the panel's state changes. Pure: no API calls, no time, no randomness. */
 export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
   // A slow result for the tool the panel has since left must not land on the new one.
+  if (!isIntent(msg) && msg.type === "planBuilt" && msg.tool !== s.tool) {
+    return { ...s, plan: { ...s.plan, building: false } };
+  }
   if (
     !isIntent(msg) &&
     "tool" in msg &&
@@ -48,7 +51,11 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
     case "planBuilt":
       return { ...s, plan: { ...s.plan, current: msg.plan, building: false } };
     case "toolMutationDropped":
-      return { ...s, plan: { ...s.plan, applying: false } };
+      return {
+        ...s,
+        plan: { ...s.plan, applying: false },
+        uninstall: { ...s.uninstall, busy: false },
+      };
     case "planCleanup":
       return {
         ...s,

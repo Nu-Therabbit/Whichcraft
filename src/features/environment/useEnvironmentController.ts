@@ -13,6 +13,7 @@ import { usePathStatus } from "../../hooks/usePathStatus";
 import { useStaged } from "../../hooks/useStaged";
 import { useStagingHandlers } from "../../hooks/useStagingHandlers";
 import type { PlatformApi } from "../../platform/api";
+import { EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES } from "./externalDiffInvalidation";
 import type { EnvironmentRuntime } from "./runtime";
 
 type PlatformInitSlice = Pick<PlatformApi, "isElevated">;
@@ -70,14 +71,7 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
   } = useDiff(environment, refresh, () => {
     // Cross-feature readback only once per external-diff episode; omit environment-external-diff
     // so invalidation subscribers do not re-enter detection and loop revisions.
-    coordination.invalidate([
-      "environment-variables",
-      "environment-diagnostics",
-      "tools-installations",
-      "tools-profiles",
-      "tools-shell-check",
-      "shell-overview",
-    ]);
+    coordination.invalidate([...EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES]);
   });
 
   const [elevated, setElevated] = useState(false);

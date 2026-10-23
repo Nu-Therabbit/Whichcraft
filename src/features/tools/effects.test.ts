@@ -213,6 +213,61 @@ describe("tools effects", () => {
     expect(h.state.installations[0]?.root).toBe("C:\\new");
   });
 
+  it("clears uninstall.busy when a late uninstall is dropped after switching tools", async () => {
+    const shown = planFor(jdk21new, { planId: "shown" });
+    const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });
+    let releaseUninstall: (value: { status: "removed" }) => void = () => {};
+    const uninstall = vi.fn(
+      () =>
+        new Promise<{ status: "removed" }>((resolve) => {
+          releaseUninstall = resolve;
+        }),
+    );
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async (tool: string) => (tool === "java" ? [jdk21] : [node])),
+      planUninstall: vi.fn(async () => uninstallPlanFor()),
+      planToolApply: vi.fn(async () => shown),
+      uninstall,
+    });
+    const h = harness(runtime, { tool: "java", installations: [jdk21] });
+    h.dispatch({ type: "planUninstall", root: "C:\\jdk21" });
+    await h.settle();
+    h.dispatch({ type: "chooseReplacement", root: jdk21new.root });
+    await h.settle();
+    h.dispatch({ type: "confirmUninstall", replacementRoot: jdk21new.root, repoint: false });
+    expect(h.state.uninstall.busy).toBe(true);
+    h.dispatch({ type: "selectTool", tool: "node" });
+    releaseUninstall({ status: "removed" });
+    await h.settle();
+    expect(h.state.uninstall.busy).toBe(false);
+    expect(h.state.uninstall.outcome).toBeNull();
+    expect(h.state.tool).toBe("node");
+  });
+
+  it("clears plan.building when a late planBuilt arrives for another tool", async () => {
+    const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });
+    let releasePlan: (value: ReturnType<typeof planFor>) => void = () => {};
+    const planToolApply = vi.fn(
+      () =>
+        new Promise<ReturnType<typeof planFor>>((resolve) => {
+          releasePlan = resolve;
+        }),
+    );
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async (tool: string) => (tool === "java" ? [jdk21] : [node])),
+      planToolApply,
+    });
+    const h = harness(runtime, { tool: "java", installations: [jdk21] });
+    h.dispatch({ type: "buildPlan", root: "C:\\jdk21" });
+    expect(h.state.plan.building).toBe(true);
+    h.dispatch({ type: "selectTool", tool: "node" });
+    releasePlan(planFor(jdk21));
+    await h.settle();
+    expect(h.state.plan.building).toBe(false);
+    expect(h.state.plan.current).toBeNull();
+    expect(h.state.tool).toBe("node");
+  });
+
   it("does not leave plan.applying true when a late undo is dropped", async () => {
     const jdk = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
     const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });

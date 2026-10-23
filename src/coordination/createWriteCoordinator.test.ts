@@ -70,22 +70,32 @@ describe("createWriteCoordinator", () => {
     expect(coordination.isPlanApplyCurrent(plan)).toBe(false);
   });
 
+  const reviewedPlan = {
+    planId: "plan-env",
+    tool: "java" as const,
+    requiresUac: false,
+    warnings: [],
+    limitationNotice: "",
+    userDiffs: [],
+    systemDiffs: [],
+    effectiveAfterUserOnly: false,
+    selected: { tool: "java" as const, vendor: "x", version: "1", root: "C:\\x", managed: false },
+  };
+
   it("retires reviewed plan apply when the environment revision moves", () => {
     const coordination = createWriteCoordinator();
-    const reviewed = {
-      planId: "plan-env",
-      tool: "java" as const,
-      requiresUac: false,
-      warnings: [],
-      limitationNotice: "",
-      userDiffs: [],
-      systemDiffs: [],
-      effectiveAfterUserOnly: false,
-      selected: { tool: "java" as const, vendor: "x", version: "1", root: "C:\\x", managed: false },
-    };
-    coordination.registerReviewedPlan(reviewed);
-    const plan = coordination.beginPlanApply(reviewed.planId, reviewed.tool);
+    coordination.registerReviewedPlan(reviewedPlan);
+    const plan = coordination.beginPlanApply(reviewedPlan.planId, reviewedPlan.tool);
     coordination.invalidate(["environment-variables"]);
     expect(coordination.isPlanApplyCurrent(plan)).toBe(false);
+  });
+
+  it("retires reviewed plan apply when plan id or tool does not match", () => {
+    const coordination = createWriteCoordinator();
+    coordination.registerReviewedPlan(reviewedPlan);
+    const wrongId = coordination.beginPlanApply("other-plan", reviewedPlan.tool);
+    expect(coordination.isPlanApplyCurrent(wrongId)).toBe(false);
+    const wrongTool = coordination.beginPlanApply(reviewedPlan.planId, "node");
+    expect(coordination.isPlanApplyCurrent(wrongTool)).toBe(false);
   });
 });

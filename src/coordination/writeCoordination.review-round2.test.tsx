@@ -6,6 +6,7 @@ import { UndoProvider } from "../contexts/UndoContext";
 import { createToolsRuntime, splitEnvarlyApi } from "../composition/appServices";
 import { AppServicesProvider, useAppServices } from "../composition/AppServicesContext";
 import { configureProductionServices } from "../composition/createProductionServices";
+import { EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES } from "../features/environment/externalDiffInvalidation";
 import { EnvironmentProvider } from "../features/environment/EnvironmentContext";
 import { LegacyEnvironmentView } from "../features/environment/LegacyEnvironmentView";
 import { DesktopShellApp } from "../features/shell/DesktopShellApp";
@@ -76,13 +77,7 @@ describe("write coordination review round 2", () => {
 
     const { result } = renderHook(() =>
       useDiff(environment, async () => {}, () => {
-        coordination.invalidate([
-          "environment-variables",
-          "tools-installations",
-          "tools-profiles",
-          "tools-shell-check",
-          "shell-overview",
-        ]);
+        coordination.invalidate([...EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES]);
       }),
     );
     result.current.baselineRef.current = baseline;
@@ -94,6 +89,7 @@ describe("write coordination review round 2", () => {
     result.current.baselineRef.current = changed;
     await result.current.checkForExternalChanges();
     expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledWith([...EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES]);
   });
 
   it("does not invalidate again when invalidation subscribers refresh after external diff", async () => {
@@ -102,15 +98,16 @@ describe("write coordination review round 2", () => {
     const coordination = createWriteCoordinator();
     const invalidate = vi.fn(coordination.invalidate.bind(coordination));
     coordination.invalidate = invalidate;
+    const getRegistrySnapshot = vi
+      .fn()
+      .mockResolvedValueOnce(baseline)
+      .mockImplementation(async () => changed);
 
     renderLegacyApp(
       {
         ...legacyApiExtras,
         getEnvVars: async () => [],
-        getRegistrySnapshot: vi
-          .fn()
-          .mockResolvedValueOnce(baseline)
-          .mockImplementation(async () => changed),
+        getRegistrySnapshot,
       },
       coordination,
     );
@@ -120,6 +117,10 @@ describe("write coordination review round 2", () => {
     await user.click(screen.getByRole("button", { name: /refresh/i }));
     await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(1));
+    expect(invalidate).toHaveBeenCalledWith([...EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES]);
+    const snapshotCallsAfterDetect = getRegistrySnapshot.mock.calls.length;
+    await new Promise((r) => setTimeout(r, 100));
+    expect(getRegistrySnapshot.mock.calls.length).toBe(snapshotCallsAfterDetect);
   });
 
   it("drops a delayed environment variable read superseded by a newer refresh", async () => {

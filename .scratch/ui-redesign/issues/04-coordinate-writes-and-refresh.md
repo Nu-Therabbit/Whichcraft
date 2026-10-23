@@ -36,3 +36,9 @@
 - **Plan eligibility:** `isPlanApplyCurrent` compares live `environmentRevision` to reviewed baseline (not only account/plan id).
 - **Tool-tagged events:** `planBuilt` and `uninstallFinished` include `tool`; `createProfile`/`deleteProfile` gated like other profile writes.
 - **Tests:** `writeCoordination.review-round2.test.tsx` (single external invalidate, diff apply busy error, profile apply refused, shell rescan → coordinator token); `effects.test.ts` (delayed profiles, late undo/recovery not stuck); `createWriteCoordinator.test.ts` (environment revision retires plan).
+
+### Review round 3 (Grok 4.7)
+
+- **Uninstall busy:** `toolMutationDropped` clears `uninstall.busy`; dropped `confirmUninstall` returns `"cancel"` (no success invalidation).
+- **Plan building:** Late wrong-tool `planBuilt` clears `plan.building` without applying the plan.
+- **Scopes / tests:** `EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES` shared with controller; screen test asserts exact scopes and that subscriber refresh does not re-call `getRegistrySnapshot`; `isPlanApplyCurrent` tests cover mismatched plan id/tool; duplicate id/tool comparisons removed.

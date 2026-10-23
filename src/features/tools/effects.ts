@@ -271,7 +271,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         const outcome = await tools.uninstall(tool, plan.installation.root, replacement);
         if (!shouldCommitToolMutation(ctx, originTool, resultBinding)) {
           dropToolMutation(ctx, originTool);
-          return;
+          return "cancel";
         }
         dispatch({ type: "uninstallFinished", tool: originTool, outcome });
         // A switch gone stale must be shown again before it is applied.
