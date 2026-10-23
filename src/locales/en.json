@@ -45,6 +45,7 @@
     "import_export": "Import / Export",
     "snapshots": "Snapshots",
     "check_command": "Check command",
+    "tools": "Developer tools",
     "run_as_admin": "Run as admin",
     "run_as_admin_title": "System variables are read-only. Restart as administrator to edit them.",
     "administrator": "Administrator",
@@ -264,6 +265,20 @@
     "heading": "Comparing snapshots",
     "no_diff": "These two snapshots are identical — no differences found.",
     "to_label": "→ {{label}}"
+  },
+  "tools": {
+    "title": "Developer tools",
+    "refresh": "Refresh",
+    "undo_last": "Undo last Whichcraft apply",
+    "java_hint": "Select a JDK to preview and apply JAVA_HOME and User PATH changes (user scope only).",
+    "no_java": "No JDK installations found.",
+    "effective": "Effective",
+    "selected": "Selected",
+    "plan_title": "Apply plan",
+    "dismiss_plan": "Dismiss",
+    "apply_plan": "Apply plan",
+    "applying": "Applying…",
+    "building_plan": "Building plan…"
   },
   "check_command": {
     "input_label": "Command or path",

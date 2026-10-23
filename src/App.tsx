@@ -23,11 +23,21 @@ import { useStaged } from "./hooks/useStaged";
 import { useStagingHandlers } from "./hooks/useStagingHandlers";
 import { useTheme } from "./hooks/useTheme";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
+import { useJavaTools } from "./hooks/useJavaTools";
+import { ToolsPanel } from "./components/ToolsPanel/ToolsPanel";
 import type { DiagnosticAction, EnvironmentDiagnostic } from "./lib/environmentDiagnostics";
 import { stagedToDiff } from "./lib/stagedToDiff";
 import type { EnvVar, VarScope } from "./types";
 
-type Dialog = "importexport" | "changes" | "staged" | "licenses" | "newvar" | "checkcommand" | null;
+type Dialog =
+  | "importexport"
+  | "changes"
+  | "staged"
+  | "licenses"
+  | "newvar"
+  | "checkcommand"
+  | "tools"
+  | null;
 
 export default function App() {
   const { t } = useI18n();
@@ -110,6 +120,7 @@ export default function App() {
   useKeyboardShortcuts(undo, redo, localUndoRef);
 
   const updateInfo = useUpdateCheck();
+  const javaTools = useJavaTools();
 
   const {
     handleStage,
@@ -194,6 +205,7 @@ export default function App() {
           onShowChanges={() => setDialog("changes")}
           onImportExport={() => setDialog("importexport")}
           onCheckCommand={() => setDialog("checkcommand")}
+          onTools={() => setDialog("tools")}
           onToggleSnapshots={() => setSnapshotsOpen((o) => !o)}
           onToggleTheme={toggleTheme}
           onLicenses={() => setDialog("licenses")}
@@ -269,8 +281,27 @@ export default function App() {
           />
         </main>
 
+        <ToolsPanel
+          open={dialog === "tools"}
+          onClose={() => {
+            setDialog(null);
+            javaTools.clearPlan();
+          }}
+          installations={javaTools.installations}
+          loading={javaTools.loading}
+          error={javaTools.error}
+          plan={javaTools.plan}
+          planBusy={javaTools.planBusy}
+          applyBusy={javaTools.applyBusy}
+          onRefresh={javaTools.refresh}
+          onSelect={javaTools.buildPlan}
+          onApplyPlan={() => void javaTools.applyPlan()}
+          onUndo={() => void javaTools.undoLast()}
+          onClearPlan={javaTools.clearPlan}
+        />
+
         <AppModals
-          dialog={dialog}
+          dialog={dialog === "tools" ? null : dialog}
           setDialog={setDialog}
           staged={staged}
           stagedDiff={stagedDiff}

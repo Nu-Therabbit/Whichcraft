@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] ค้นหา JDK จาก PATH, JAVA_HOME, Registry และโฟลเดอร์มาตรฐาน แล้วยืนยันรากการติดตั้งด้วย `release` + `bin\java.exe` และข้าม junction กับ symlink (D-3) — PATH/JAVA_HOME/มาตรฐาน + probe; Registry catalog ยังไม่มี
 - [ ] บนเครื่องทดสอบ พบ Temurin ครบ 4 ชุด ผู้จำหน่ายและเวอร์ชันอ่านจาก `IMPLEMENTOR` และ `JAVA_VERSION` (D-1, D-2)

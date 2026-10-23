@@ -69,6 +69,11 @@ pub fn run() {
             commands::users::get_selected_account,
             commands::whichcraft::whichcraft_health,
             commands::whichcraft::whichcraft_list_java,
+            commands::whichcraft::whichcraft_plan_java,
+            commands::whichcraft::whichcraft_apply_java_plan,
+            commands::whichcraft::whichcraft_undo_last_apply,
+            commands::whichcraft::whichcraft_incomplete_journal,
+            commands::whichcraft::whichcraft_get_java_selection,
         ])
         .build(tauri::generate_context!())
         .expect("error while running whichcraft")

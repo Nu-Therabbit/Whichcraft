@@ -20,6 +20,7 @@ interface AppHeaderProps {
   onShowChanges: () => void;
   onImportExport: () => void;
   onCheckCommand: () => void;
+  onTools: () => void;
   onToggleSnapshots: () => void;
   onToggleTheme: () => void;
   onLicenses: () => void;
@@ -42,6 +43,7 @@ export function AppHeader({
   onShowChanges,
   onImportExport,
   onCheckCommand,
+  onTools,
   onToggleSnapshots,
   onToggleTheme,
   onLicenses,
@@ -114,6 +116,10 @@ export function AppHeader({
 
           <Button variant="ghost" size="sm" onClick={onCheckCommand}>
             {t("header.check_command")}
+          </Button>
+
+          <Button variant="ghost" size="sm" onClick={onTools}>
+            {t("tools.title")}
           </Button>
         </div>
       </div>
@@ -240,6 +246,13 @@ export function AppHeader({
               className="flex w-full items-center rounded px-2 py-1.5 text-left text-sm text-muted hover:bg-hover hover:text-fg"
             >
               {t("header.check_command")}
+            </button>
+            <button
+              type="button"
+              onClick={onTools}
+              className="flex w-full items-center rounded px-2 py-1.5 text-left text-sm text-muted hover:bg-hover hover:text-fg"
+            >
+              {t("header.tools")}
             </button>
             <div className="flex items-center gap-2 px-2 py-1.5">
               <Icon name="globe" size={14} className="text-dim shrink-0" />

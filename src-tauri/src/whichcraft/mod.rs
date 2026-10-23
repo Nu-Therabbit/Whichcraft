@@ -4,6 +4,7 @@ mod api;
 mod core;
 pub mod fake;
 pub mod java;
+pub mod persistence;
 pub mod ports;
 pub mod services;
 

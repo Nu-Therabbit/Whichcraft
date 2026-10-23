@@ -94,3 +94,53 @@ export interface CheckCommandResult {
   hits: CommandHit[];
   fullPathStatus: FullPathStatus | null;
 }
+
+export interface JavaInstallationView {
+  vendor: string;
+  version: string;
+  root: string;
+  managed: boolean;
+  effective: boolean;
+  selected: boolean;
+  mismatchReason: string | null;
+}
+
+export interface PlanVariableDiff {
+  name: string;
+  scope: VarScope;
+  before: string | null;
+  after: string;
+  valueKind: EnvValueKind;
+}
+
+export interface JavaApplyPlan {
+  planId: string;
+  requiresUac: boolean;
+  warnings: string[];
+  limitationNotice: string;
+  userDiffs: PlanVariableDiff[];
+  systemDiffs: PlanVariableDiff[];
+  effectiveAfterUserOnly: boolean;
+  selected: {
+    vendor: string;
+    version: string;
+    root: string;
+    managed: boolean;
+  };
+}
+
+export interface ApplyJavaResult {
+  planId: string;
+  stale: boolean;
+}
+
+export interface UndoConflict {
+  name: string;
+  scope: VarScope;
+  message: string;
+}
+
+export interface UndoResult {
+  conflicts: UndoConflict[];
+  restored: number;
+}

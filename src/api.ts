@@ -70,6 +70,10 @@ export interface EnvarlyApi {
    * events) before the subscription exists to hear them.
    */
   onApplyProgress: (callback: (event: ApplyProgressEvent) => void) => Promise<() => void>;
+  listJavaInstallations: () => Promise<import("./types").JavaInstallationView[]>;
+  planJavaApply: (root: string) => Promise<import("./types").JavaApplyPlan>;
+  applyJavaPlan: (plan: import("./types").JavaApplyPlan) => Promise<import("./types").ApplyJavaResult>;
+  undoLastWhichcraftApply: () => Promise<import("./types").UndoResult>;
 }
 
 const normalApi: EnvarlyApi = {
@@ -106,6 +110,10 @@ const normalApi: EnvarlyApi = {
   getSelectedAccount: () => invoke<LocalAccount | null>("get_selected_account"),
   onApplyProgress: async (callback) =>
     listen<ApplyProgressEvent>("apply-progress", (event) => callback(event.payload)),
+  listJavaInstallations: () => invoke("whichcraft_list_java"),
+  planJavaApply: (root) => invoke("whichcraft_plan_java", { root }),
+  applyJavaPlan: (plan) => invoke("whichcraft_apply_java_plan", { plan }),
+  undoLastWhichcraftApply: () => invoke("whichcraft_undo_last_apply"),
 };
 
 let apiPromise: Promise<EnvarlyApi> | null = null;
@@ -173,4 +181,8 @@ export const api: EnvarlyApi = {
   selectAccount: async (sid) => (await getApi()).selectAccount(sid),
   getSelectedAccount: async () => (await getApi()).getSelectedAccount(),
   onApplyProgress: async (callback) => (await getApi()).onApplyProgress(callback),
+  listJavaInstallations: async () => (await getApi()).listJavaInstallations(),
+  planJavaApply: async (root) => (await getApi()).planJavaApply(root),
+  applyJavaPlan: async (plan) => (await getApi()).applyJavaPlan(plan),
+  undoLastWhichcraftApply: async () => (await getApi()).undoLastWhichcraftApply(),
 };
