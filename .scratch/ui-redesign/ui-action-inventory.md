@@ -1,8 +1,8 @@
 # Legacy UI action inventory and parity map
 
 Date: 2026-10-24
-Status: source-audited-baseline
-Production baseline observed: `main` at `7dff397`.
+Status: validated-at-expand-02
+Production baseline observed: `main` at `7dff397`; legacy entry points re-audited on branch `feat/ui-redesign-02-feature-contracts` before contract refactor (2026-10-24).
 
 This is an early source-based inventory, not a claim of tested production parity. Ticket 02 owns validating/extending the baseline against the implementation starting point before behaviour changes. Tickets that migrate a flow attach verification evidence to its rows. Ticket 18 checks this existing list for candidate cutover; ticket 21 checks it again after removal. Neither late ticket starts the audit from scratch.
 
@@ -10,11 +10,11 @@ Use the current implementation behaviour, the [spec](spec.md), and the original 
 
 ## Observed actions and owners
 
-All verification evidence is pending unless a later implementation ticket records actual results. Owners below identify who must preserve the capability, not whether the ticket is unblocked.
+Ticket 02 re-checked every row against current production source (`App.tsx`, `AppHeader`, `Sidebar`, `DetailPanel`, `ToolsPanel`, `SnapshotPanel*`, `ImportExportPanel`, `CheckCommandPanel`, modals). Legacy entry points remain reachable; migration evidence for new UI homes is still pending on owner tickets. Owners below identify who must preserve the capability, not whether the ticket is unblocked.
 
 | ID | Existing entry / capability observed in source | New home | Implementation owner | Evidence to attach |
 | --- | --- | --- | --- | --- |
-| UI-01 | AppHeader Refresh; ToolsPanel Refresh and focus refresh | Developer tools command bar; scoped refresh | 07, 04 | Rescan reads real state; external results do not replace another account/tool |
+| UI-01 | AppHeader Refresh; ToolsPanel Refresh and focus refresh | Developer tools command bar; scoped refresh | 07, 04 | 02: legacy refresh in `AppHeader` / `ToolsPanel` confirmed; post-migration TBD |
 | UI-02 | AppHeader Tools entry opens the tool modal | Developer tools overview and inspector | 07 | Six Tool Kinds, roots/ownership/counts, unavailable and mismatch states |
 | UI-03 | Sidebar search, scope, sorting, secrets filter, variable selection | Environment / Variables | 09 | Equivalent filtering/selection and supported account context |
 | UI-04 | Sidebar copy and secret-value display treatment | Environment / Variables | 09 | Correct value copied and existing secret-display behaviour preserved |
