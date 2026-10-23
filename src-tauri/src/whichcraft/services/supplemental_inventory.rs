@@ -1,6 +1,7 @@
 //! Read-only inventory (ticket 08): Android SDK pieces, MSVC and Windows SDK, and what the
 //! Python launcher and the Store alias would run. Nothing here can be selected or installed.
 
+use crate::whichcraft::ports::machine::Machine;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
@@ -133,11 +134,12 @@ pub fn read_android_sdk(root: &Path) -> AndroidInventory {
 /// Studio's default `%LOCALAPPDATA%\Android\Sdk` (the survey machine sets neither variable).
 pub fn android_inventory<B: EnvBackend>(
     backend: &B,
+    machine: &dyn Machine,
     local_app_data: Option<&Path>,
 ) -> Result<AndroidInventory, EnvarlyError> {
     let user = backend.read_user()?;
     let system = backend.read_system()?;
-    let expand = crate::whichcraft::services::registry_expander(&user, &system);
+    let expand = crate::whichcraft::services::registry_expander(&user, &system, machine);
     for name in ["ANDROID_HOME", "ANDROID_SDK_ROOT"] {
         if let Some(v) = get_var(&user, name).or_else(|| get_var(&system, name)) {
             let root = PathBuf::from(expand(&v.value));
@@ -253,6 +255,7 @@ fn windows_kits_root() -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
     use crate::env_store::MemBackend;
 
@@ -295,7 +298,7 @@ mod tests {
     fn without_android_variables_the_default_sdk_folder_is_used() {
         let local = tempfile::tempdir().unwrap();
         fake_sdk(&local.path().join("Android").join("Sdk"));
-        let inv = android_inventory(&MemBackend::new(), Some(local.path())).unwrap();
+        let inv = android_inventory(&MemBackend::new(), &LocalMachine, Some(local.path())).unwrap();
         assert_eq!(inv.root_source.as_deref(), Some("default"));
         assert_eq!(inv.ndk, vec!["27.0.12077973"]);
     }
@@ -306,7 +309,7 @@ mod tests {
         fake_sdk(sdk.path());
         let value: &'static str = Box::leak(sdk.path().to_string_lossy().into_owned().into_boxed_str());
         let backend = MemBackend::new().with_user([("ANDROID_HOME", value)]);
-        let inv = android_inventory(&backend, None).unwrap();
+        let inv = android_inventory(&backend, &LocalMachine, None).unwrap();
         assert_eq!(inv.root_source.as_deref(), Some("ANDROID_HOME"));
         assert_eq!(inv.platforms.len(), 2);
     }
@@ -331,7 +334,7 @@ mod tests {
     #[ignore = "contract: reads this machine's SDK folders, vswhere and py"]
     fn contract_reads_the_survey_machine_sdks() {
         let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
-        let android = android_inventory(&crate::env_backend::WinregBackend, local.as_deref()).unwrap();
+        let android = android_inventory(&crate::env_backend::WinregBackend, &LocalMachine, local.as_deref()).unwrap();
         println!("{android:#?}");
         let msvc = msvc_inventory();
         println!("{msvc:#?}");

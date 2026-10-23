@@ -1,17 +1,17 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-
-use crate::commands::path::dir_exists;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::ports::store::Store;
+use crate::whichcraft::ports::machine::Machine;
+use crate::whichcraft::ports::installer_catalog::InstallerCatalog;
 use crate::whichcraft::domain::InstallerKind;
 use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::tools::{
-    command_name, command_search_dirs, infer_root_from_command_dir, paths_equal, probe_tool_root,
+    command_name, command_search_dirs, infer_root_from_command_dir, paths_equal,
 };
 use crate::whichcraft::domain::ToolInstallationView;
 
@@ -31,15 +31,19 @@ impl Default for ToolDiscoveryOptions {
 pub fn list_tool_installations<B: EnvBackend>(
     backend: &B,
     store: &dyn Store,
+    machine: &dyn Machine,
+    catalog: &dyn InstallerCatalog,
     tool: ToolKind,
     selected_root: Option<&Path>,
 ) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
-    list_tool_installations_with_options(backend, store, tool, selected_root, ToolDiscoveryOptions::default())
+    list_tool_installations_with_options(backend, store, machine, catalog, tool, selected_root, ToolDiscoveryOptions::default())
 }
 
 pub fn list_tool_installations_with_options<B: EnvBackend>(
     backend: &B,
     store: &dyn Store,
+    machine: &dyn Machine,
+    catalog: &dyn InstallerCatalog,
     tool: ToolKind,
     selected_root: Option<&Path>,
     options: ToolDiscoveryOptions,
@@ -56,14 +60,14 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
         .unwrap_or("");
 
     let cmd = command_name(tool);
-    let expand = crate::whichcraft::services::registry_expander(&user, &system);
+    let expand = crate::whichcraft::services::registry_expander(&user, &system, machine);
     let effective = path_manage::check_command_with(
         cmd,
         user_path,
         system_path,
         pathext,
         &expand,
-        dir_exists,
+        |p: &str| machine.dir_exists(p),
     );
     let effective_root = effective
         .hits
@@ -86,6 +90,7 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
 
     if tool == ToolKind::Java {
         roots.extend(crate::whichcraft::services::java_inventory::discover_java_roots(
+            machine,
             user_path,
             system_path,
             &user,
@@ -95,36 +100,33 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
     }
 
     for scan in &settings.scan_roots {
-        if scan.is_dir() {
-            walk_scan_root(tool, scan, 4, &mut roots);
+        if machine.is_dir(scan) {
+            walk_scan_root(machine, tool, scan, 4, &mut roots);
         }
     }
 
     if options.include_standard_locations {
-        append_standard_roots(tool, &mut roots);
+        append_standard_roots(machine, tool, &mut roots);
     }
 
     let stores = settings.all_install_stores();
     for store in &stores {
-        append_managed_roots(tool, store, &mut roots);
+        append_managed_roots(machine, tool, store, &mut roots);
     }
 
     let mut by_root: HashMap<PathBuf, ToolInstallation> = HashMap::new();
     for root in roots {
         let managed = stores.iter().any(|s| root.starts_with(s));
-        if let Some(inst) = probe_tool_root(tool, &root, managed) {
+        if let Some(inst) = machine.probe(tool, &root, managed) {
             by_root.entry(inst.root.clone()).or_insert(inst);
         }
     }
 
-    // Read the uninstall entries once per listing, not once per installation.
-    let installer_kind_for = installer_kinds();
     let mut views: Vec<ToolInstallationView> = by_root
         .into_values()
         .map(|installation| {
-            let available = installation.root.is_dir()
-                && probe_tool_root(tool, &installation.root, installation.managed)
-                    .is_some();
+            let available = machine.is_dir(&installation.root)
+                && machine.probe(tool, &installation.root, installation.managed).is_some();
             let effective_match = effective_root
                 .as_ref()
                 .is_some_and(|r| paths_equal(r, &installation.root));
@@ -133,7 +135,7 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
             let installer_kind = if installation.managed {
                 InstallerKind::ManagedByWhichcraft
             } else {
-                installer_kind_for(&installation.root)
+                catalog.kind_for_root(&installation.root)
             };
             let mismatch_reason = if selected && !effective_match {
                 Some(format!(
@@ -160,16 +162,6 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
             .then_with(|| a.installation.root.cmp(&b.installation.root))
     });
     Ok(views)
-}
-
-/// A lookup from installation root to how it was installed, backed by one catalog read.
-/// Tests skip the registry and treat every external install as a plain folder.
-pub(crate) fn installer_kinds() -> Box<dyn Fn(&Path) -> InstallerKind> {
-    #[cfg(all(windows, not(test)))]
-    if let Ok(catalog) = crate::whichcraft::adapters::win::installer_catalog::WinInstallerCatalog::load() {
-        return Box::new(move |root| catalog.kind_for_root(root));
-    }
-    Box::new(|_| InstallerKind::FolderOnly)
 }
 
 /// Keeps a remembered selection visible after its folder disappeared, marked unavailable (D-5)
@@ -209,28 +201,24 @@ fn path_dirs<'a>(path: &'a str, expand: &'a dyn Fn(&str) -> String) -> impl Iter
         .map(move |s| PathBuf::from(expand(s).trim_end_matches(['\\', '/'])))
 }
 
-fn walk_scan_root(tool: ToolKind, dir: &Path, depth: u8, out: &mut HashSet<PathBuf>) {
+fn walk_scan_root(machine: &dyn Machine, tool: ToolKind, dir: &Path, depth: u8, out: &mut HashSet<PathBuf>) {
     if depth == 0 {
         return;
     }
-    if let Some(inst) = probe_tool_root(tool, dir, false) {
+    if let Some(inst) = machine.probe(tool, dir, false) {
         out.insert(inst.root);
         return;
     }
-    let Ok(read) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in read.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            walk_scan_root(tool, &path, depth - 1, out);
+    for path in machine.entries(dir) {
+        if machine.is_dir(&path) {
+            walk_scan_root(machine, tool, &path, depth - 1, out);
         }
     }
 }
 
-fn append_standard_roots(tool: ToolKind, out: &mut HashSet<PathBuf>) {
-    let pf = std::env::var("ProgramFiles").ok().map(PathBuf::from);
-    let local = std::env::var("LOCALAPPDATA").ok().map(PathBuf::from);
+fn append_standard_roots(machine: &dyn Machine, tool: ToolKind, out: &mut HashSet<PathBuf>) {
+    let pf = machine.env_var("ProgramFiles").map(PathBuf::from);
+    let local = machine.env_var("LOCALAPPDATA").map(PathBuf::from);
     match tool {
         ToolKind::Node => {
             if let Some(p) = pf {
@@ -250,10 +238,12 @@ fn append_standard_roots(tool: ToolKind, out: &mut HashSet<PathBuf>) {
         ToolKind::Python => {
             if let Some(local) = local {
                 // python.org installers: %LOCALAPPDATA%\Programs\Python\Python313 and siblings.
-                if let Ok(read) = std::fs::read_dir(local.join("Programs").join("Python")) {
-                    out.extend(read.flatten().map(|e| e.path()));
-                }
-                out.extend(crate::whichcraft::tools::python_manager_roots(&local));
+                out.extend(machine.entries(&local.join("Programs").join("Python")));
+                // Python install manager: %LOCALAPPDATA%\Python\pythoncore-*. Its Python\bin folder
+                // on PATH only holds hard links, so PATH alone never finds these.
+                out.extend(machine.entries(&local.join("Python")).into_iter().filter(|p| {
+                    machine.is_dir(p) && p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("pythoncore-"))
+                }));
             }
         }
         _ => {}
@@ -262,19 +252,12 @@ fn append_standard_roots(tool: ToolKind, out: &mut HashSet<PathBuf>) {
 
 /// Version folders mise installed in `store`. Its alias junctions (`latest`, `22`, …) are
 /// left to `probe_tool_root`, which rejects reparse points.
-fn append_managed_roots(tool: ToolKind, store: &Path, out: &mut HashSet<PathBuf>) {
-    let Some(tool_dir) = crate::whichcraft::mise::manager::mise_installs_dir(store, tool) else {
+fn append_managed_roots(machine: &dyn Machine, tool: ToolKind, store: &Path, out: &mut HashSet<PathBuf>) {
+    let Some(tool_dir) = crate::whichcraft::domain::store_layout::mise_installs_dir(store, tool) else {
         return;
     };
-    if !tool_dir.is_dir() {
-        return;
-    }
-    let Ok(read) = std::fs::read_dir(&tool_dir) else {
-        return;
-    };
-    for entry in read.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
+    for path in machine.entries(&tool_dir) {
+        if machine.is_dir(&path) {
             out.insert(path);
         }
     }
@@ -282,6 +265,8 @@ fn append_managed_roots(tool: ToolKind, store: &Path, out: &mut HashSet<PathBuf>
 
 #[cfg(test)]
 mod tests {
+    use crate::whichcraft::adapters::local::LocalMachine;
+    use crate::whichcraft::fake::FakeInstallerCatalog;
     use super::*;
     use crate::whichcraft::persistence::FileStore;
     use crate::env_store::MemBackend;
@@ -299,7 +284,7 @@ mod tests {
     }
 
     fn java_views(backend: &MemBackend, selected: Option<&Path>) -> Vec<ToolInstallationView> {
-        list_tool_installations_with_options(backend, &FileStore, ToolKind::Java, selected, ToolDiscoveryOptions { include_standard_locations: false })
+        list_tool_installations_with_options(backend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Java, selected, ToolDiscoveryOptions { include_standard_locations: false })
             .unwrap()
     }
 
@@ -331,6 +316,55 @@ mod tests {
         assert!(user_view.mismatch_reason.is_some(), "the selection is shadowed");
     }
 
+    /// The local machine, except for the environment variables a test sets.
+    struct WithVars(Vec<(&'static str, String)>);
+    impl Machine for WithVars {
+        fn probe(&self, tool: ToolKind, root: &Path, managed: bool) -> Option<ToolInstallation> {
+            LocalMachine.probe(tool, root, managed)
+        }
+        fn dir_exists(&self, path: &str) -> bool {
+            LocalMachine.dir_exists(path)
+        }
+        fn is_dir(&self, path: &Path) -> bool {
+            path.is_dir()
+        }
+        fn is_file(&self, path: &Path) -> bool {
+            path.is_file()
+        }
+        fn entries(&self, dir: &Path) -> Vec<PathBuf> {
+            LocalMachine.entries(dir)
+        }
+        fn is_reparse_point(&self, path: &Path) -> bool {
+            LocalMachine.is_reparse_point(path)
+        }
+        fn env_var(&self, name: &str) -> Option<String> {
+            self.0.iter().find(|(k, _)| *k == name).map(|(_, v)| v.clone())
+        }
+    }
+
+    #[test]
+    fn python_install_manager_interpreters_are_found_under_local_app_data() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        let core = dir.path().join("Python").join("pythoncore-3.14-64");
+        std::fs::create_dir_all(core.join("Lib")).unwrap();
+        std::fs::write(core.join("python.exe"), b"").unwrap();
+        // The bin folder only holds hard links and is not an installation of its own.
+        std::fs::create_dir_all(dir.path().join("Python").join("bin")).unwrap();
+        let machine = WithVars(vec![("LOCALAPPDATA", dir.path().to_string_lossy().into_owned())]);
+        let views = list_tool_installations_with_options(
+            &MemBackend::new(),
+            &crate::whichcraft::persistence::FileStore,
+            &machine,
+            &FakeInstallerCatalog::default(),
+            ToolKind::Python,
+            None,
+            ToolDiscoveryOptions { include_standard_locations: true },
+        )
+        .unwrap();
+        assert_eq!(views.iter().map(|v| v.installation.root.clone()).collect::<Vec<_>>(), vec![core]);
+    }
+
     #[test]
     fn lists_node_from_user_path() {
         let dir = tempfile::tempdir().unwrap();
@@ -343,7 +377,7 @@ mod tests {
         let backend = MemBackend::new().with_user([(leak("Path"), path_val)]);
         let views = list_tool_installations_with_options(
             &backend,
-            &FileStore, ToolKind::Node,
+            &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Node,
             None,
             ToolDiscoveryOptions {
                 include_standard_locations: false,
@@ -378,7 +412,7 @@ mod tests {
 
         let views = list_tool_installations_with_options(
             &MemBackend::new(),
-            &FileStore, ToolKind::Node,
+            &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Node,
             None,
             ToolDiscoveryOptions { include_standard_locations: false },
         )
@@ -402,7 +436,7 @@ mod tests {
         crate::whichcraft::persistence::save_settings(&settings).unwrap();
         let backend = crate::env_backend::WinregBackend;
         for tool in [ToolKind::Java, ToolKind::Node, ToolKind::Python, ToolKind::Go, ToolKind::Flutter, ToolKind::Git] {
-            for v in list_tool_installations(&backend, &FileStore, tool, None).unwrap() {
+            for v in list_tool_installations(&backend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), tool, None).unwrap() {
                 println!(
                     "{tool:?}\t{} {}\teffective={}\t{:?}\t{}",
                     v.installation.vendor,
@@ -413,7 +447,7 @@ mod tests {
                 );
             }
         }
-        let temurin = list_tool_installations(&backend, &FileStore, ToolKind::Java, None)
+        let temurin = list_tool_installations(&backend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Java, None)
             .unwrap()
             .into_iter()
             .filter(|v| v.installation.vendor == "Eclipse Adoptium")
@@ -433,7 +467,7 @@ mod tests {
 
         let views = list_tool_installations_with_options(
             &backend,
-            &FileStore, ToolKind::Java,
+            &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Java,
             None,
             ToolDiscoveryOptions { include_standard_locations: false },
         )
@@ -472,7 +506,7 @@ mod tests {
 
         let views = list_tool_installations_with_options(
             &MemBackend::new(),
-            &FileStore, ToolKind::Node,
+            &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Node,
             None,
             ToolDiscoveryOptions { include_standard_locations: false },
         )

@@ -20,6 +20,8 @@ use crate::whichcraft::services::tool_apply::{apply_tool_plan, apply_tool_plan_e
 use crate::whichcraft::domain::plan::{PlanVariableDiff, ToolApplyPlan};
 use crate::whichcraft::services::undo::undo_last_apply;
 use crate::whichcraft::persistence::FileStore;
+use crate::whichcraft::adapters::local::LocalMachine;
+use crate::whichcraft::fake::FakeInstallerCatalog;
 
 /// A plan that sets one variable, shaped like any tool plan so it takes the same path through
 /// apply, journal and Undo.
@@ -161,7 +163,7 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
     let defaults_after: Vec<bool> = mise_defaults.iter().map(|p| p.exists()).collect();
     assert_eq!(defaults_after, defaults_before, "mise wrote outside the store: {mise_defaults:?}");
 
-    let views = list_tool_installations(&WinregBackend, &FileStore, ToolKind::Node, None).unwrap();
+    let views = list_tool_installations(&WinregBackend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Node, None).unwrap();
     let view = views
         .iter()
         .find(|v| crate::whichcraft::tools::paths_equal(&v.installation.root, &root))
@@ -172,16 +174,16 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
 
     let stores = settings.all_install_stores();
     let plan = plan_uninstall(
-        PlanInputs { view, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
+        PlanInputs { machine: &LocalMachine, view, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
         &WinUsageProbe,
     )
     .unwrap();
     assert!(matches!(&plan.method, UninstallMethod::Managed { mise_version, .. } if mise_version == VERSION), "{:?}", plan.method);
-    let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+    let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
     assert_eq!(outcome, UninstallOutcome::Removed);
     assert!(!root.exists());
     assert!(
-        !list_tool_installations(&WinregBackend, &FileStore, ToolKind::Node, None).unwrap().iter().any(|v| v.installation.root == root),
+        !list_tool_installations(&WinregBackend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Node, None).unwrap().iter().any(|v| v.installation.root == root),
         "gone from the inventory"
     );
     assert!(same_values(&WinregBackend.read_user().unwrap(), &user_before));
@@ -203,7 +205,7 @@ fn newest_remote(mgr: &crate::whichcraft::mise::MiseToolManager<crate::whichcraf
 
 /// Everything still under the store for one tool: its installs folder and mise's download cache.
 fn leftovers(store: &std::path::Path, tool: ToolKind) -> Vec<String> {
-    let installs = crate::whichcraft::mise::manager::mise_installs_dir(store, tool).unwrap();
+    let installs = crate::whichcraft::domain::store_layout::mise_installs_dir(store, tool).unwrap();
     let cache = store.join("_mise").join("cache").join(installs.file_name().unwrap());
     [installs, cache]
         .iter()
@@ -252,7 +254,7 @@ fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
         assert!(out.status.success(), "{tool:?} does not run: {said}");
         assert!(root.starts_with(store.path()));
 
-        let views = list_tool_installations(&WinregBackend, &FileStore, tool, None).unwrap();
+        let views = list_tool_installations(&WinregBackend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), tool, None).unwrap();
         let ours: Vec<_> = views.iter().filter(|v| v.installation.root.starts_with(store.path())).collect();
         println!("  listed: {:?}", ours.iter().map(|v| (&v.installation.vendor, &v.installation.version)).collect::<Vec<_>>());
         assert_eq!(ours.len(), 1, "listed once, not once per junction");
@@ -263,11 +265,11 @@ fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
 
         let stores = settings.all_install_stores();
         let plan = plan_uninstall(
-            PlanInputs { view: ours[0], all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
+            PlanInputs { machine: &LocalMachine, view: ours[0], all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
             &WinUsageProbe,
         )
         .unwrap();
-        let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+        let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
         assert_eq!(outcome, UninstallOutcome::Removed, "{tool:?}");
         let left = leftovers(store.path(), tool);
         println!("  after uninstall: {left:?}");
@@ -311,20 +313,20 @@ fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
     let in_b = MiseToolManager::with_runner(ProcessMiseRunner::from_settings().unwrap()).install(ToolKind::Node, "22.12.0").unwrap();
     assert!(in_a.starts_with(a.path()) && in_b.starts_with(b.path()), "{} {}", in_a.display(), in_b.display());
 
-    let views = list_tool_installations(&WinregBackend, &FileStore, ToolKind::Node, None).unwrap();
+    let views = list_tool_installations(&WinregBackend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Node, None).unwrap();
     let find = |root: &std::path::Path| views.iter().find(|v| crate::whichcraft::tools::paths_equal(&v.installation.root, root));
     let (view_a, _) = (find(&in_a).expect("store A still listed"), find(&in_b).expect("store B listed"));
 
     let settings = load_settings().unwrap();
     let stores = settings.all_install_stores();
     let plan = plan_uninstall(
-        PlanInputs { view: view_a, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
+        PlanInputs { machine: &LocalMachine, view: view_a, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
         &WinUsageProbe,
     )
     .unwrap();
     assert!(matches!(&plan.method, UninstallMethod::Managed { store, .. } if crate::whichcraft::tools::paths_equal(store, a.path())), "{:?}", plan.method);
     assert_eq!(
-        uninstall(&plan, None, &WinregBackend, &FileStore, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
+        uninstall(&plan, None, &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
         UninstallOutcome::Removed
     );
     assert!(!in_a.exists());
@@ -379,7 +381,7 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
     let started = std::time::Instant::now();
     let root = mgr.install(ToolKind::Flutter, &version).unwrap();
     println!("Flutter {version} at {} in {:?}, {:.2} GB on disk", root.display(), started.elapsed(), folder_bytes(&root) as f64 / 1e9);
-    let listed_before_first_run = list_tool_installations(&WinregBackend, &FileStore, ToolKind::Flutter, None)
+    let listed_before_first_run = list_tool_installations(&WinregBackend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Flutter, None)
         .unwrap()
         .iter()
         .any(|v| v.installation.root.starts_with(store.path()));
@@ -398,7 +400,7 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
     assert!(out.status.success(), "{said}{}", String::from_utf8_lossy(&out.stderr));
     assert!(said.contains(version.trim_end_matches("-stable")), "{said}");
 
-    let views = list_tool_installations(&WinregBackend, &FileStore, ToolKind::Flutter, None).unwrap();
+    let views = list_tool_installations(&WinregBackend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Flutter, None).unwrap();
     let ours: Vec<_> = views.iter().filter(|v| v.installation.root.starts_with(store.path())).collect();
     println!("listed: {:?}", ours.iter().map(|v| &v.installation.version).collect::<Vec<_>>());
     assert_eq!(ours.len(), 1, "listed once");
@@ -406,11 +408,11 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
 
     let stores = settings.all_install_stores();
     let plan = plan_uninstall(
-        PlanInputs { view: ours[0], all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
+        PlanInputs { machine: &LocalMachine, view: ours[0], all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
         &WinUsageProbe,
     )
     .unwrap();
-    let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+    let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
     let left = leftovers(store.path(), ToolKind::Flutter);
     println!("after uninstall: {outcome:?} {left:?}");
     assert_eq!(outcome, UninstallOutcome::Removed);
@@ -516,7 +518,7 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
         .unwrap();
     assert!(!pinned_dir.exists(), "nothing downloaded: the old mise did the work");
     assert!(root.join("node.exe").is_file());
-    assert!(list_tool_installations(&WinregBackend, &FileStore, ToolKind::Node, None).unwrap().iter().any(|v| v.installation.root == root));
+    assert!(list_tool_installations(&WinregBackend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Node, None).unwrap().iter().any(|v| v.installation.root == root));
 
     // The app update's background step: fetch the new pin, verify it, drop the old one.
     assert!(prepare_mise().unwrap());
@@ -525,16 +527,16 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
     assert!(mise_status().unwrap().old_versions.is_empty());
 
     // The new mise removes what the old one installed.
-    let views = list_tool_installations(&WinregBackend, &FileStore, ToolKind::Node, None).unwrap();
+    let views = list_tool_installations(&WinregBackend, &FileStore, &LocalMachine, &FakeInstallerCatalog::default(), ToolKind::Node, None).unwrap();
     let view = views.iter().find(|v| v.installation.root == root).expect("still listed after the update");
     let stores = settings.all_install_stores();
     let plan = plan_uninstall(
-        PlanInputs { view, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
+        PlanInputs { machine: &LocalMachine, view, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[], other_tool_roots: &[] },
         &WinUsageProbe,
     )
     .unwrap();
     assert_eq!(
-        uninstall(&plan, None, &WinregBackend, &FileStore, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
+        uninstall(&plan, None, &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
         UninstallOutcome::Removed
     );
     assert!(!root.exists());

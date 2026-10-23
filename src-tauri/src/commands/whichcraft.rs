@@ -31,6 +31,8 @@ use crate::whichcraft::services::uninstall::{dismiss_unfinished_uninstall, plan_
 use crate::whichcraft::domain::uninstall::{UninstallOutcome, UninstallRecord};
 use crate::whichcraft::ports::store::Store;
 use crate::whichcraft::persistence::FileStore;
+use crate::whichcraft::adapters::local::LocalMachine;
+use crate::whichcraft::adapters::win::installer_catalog::WinInstallerCatalog;
 /// Runs blocking work (UAC prompts, downloads, child processes) off the UI thread. Sync Tauri
 /// commands run on the main thread, so waiting there froze the window.
 async fn off_main<T: Send + 'static>(
@@ -46,7 +48,7 @@ pub async fn whichcraft_list_tools(tool: ToolKind) -> Result<Vec<ToolInstallatio
     off_main(move || {
         let backend = WinregBackend;
         let selection = FileStore.selection(tool)?;
-        let views = list_tool_installations(&backend, &FileStore, tool, selection.as_ref().map(|s| s.root.as_path()))?;
+        let views = list_tool_installations(&backend, &FileStore, &LocalMachine, &WinInstallerCatalog::load()?, tool, selection.as_ref().map(|s| s.root.as_path()))?;
         Ok(crate::whichcraft::services::tool_inventory::with_missing_selection(views, selection.as_ref()))
     })
     .await
@@ -120,13 +122,13 @@ mod tests {
 pub async fn whichcraft_plan_tool(root: String, tool: ToolKind) -> Result<ToolApplyPlan, EnvarlyError> {
     off_main(move || {
         let backend = WinregBackend;
-        let views = list_tool_installations(&backend, &FileStore, tool, None)?;
+        let views = list_tool_installations(&backend, &FileStore, &LocalMachine, &WinInstallerCatalog::load()?, tool, None)?;
         let installation = views
             .into_iter()
             .find(|v| v.installation.root == PathBuf::from(&root))
             .map(|v| v.installation)
             .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown {tool:?} root: {root}")))?;
-        create_tool_plan(&backend, &installation)
+        create_tool_plan(&backend, &LocalMachine, &installation)
     })
     .await
 }
@@ -149,7 +151,7 @@ pub async fn whichcraft_apply_tool_plan_with_uac(plan: ToolApplyPlan) -> Result<
 
 #[tauri::command]
 pub fn whichcraft_plan_path_cleanup() -> Result<PathCleanupPlan, EnvarlyError> {
-    build_path_cleanup_plan(&WinregBackend)
+    build_path_cleanup_plan(&WinregBackend, &LocalMachine)
 }
 
 #[tauri::command]
@@ -182,7 +184,7 @@ pub async fn whichcraft_shell_check(
         let kind = FileStore.settings()?.terminal;
         crate::whichcraft::services::terminal::shell_check(
             &WinregBackend,
-            &WinProcessRunner,
+            &LocalMachine, &WinProcessRunner,
             kind,
             tool,
             fresh_environment()?,
@@ -288,7 +290,7 @@ pub fn whichcraft_save_profiles(profiles: Vec<ToolProfile>) -> Result<(), Envarl
 #[tauri::command]
 pub async fn whichcraft_profile_status(profile: ToolProfile) -> Result<ProfileMatchStatus, EnvarlyError> {
     off_main(move || {
-        profile_status(&WinregBackend, &FileStore, &profile)
+        profile_status(&WinregBackend, &FileStore, &LocalMachine, &WinInstallerCatalog::load()?, &profile)
     })
     .await
 }
@@ -296,7 +298,7 @@ pub async fn whichcraft_profile_status(profile: ToolProfile) -> Result<ProfileMa
 #[tauri::command]
 pub async fn whichcraft_plan_profile(profile: ToolProfile) -> Result<ToolApplyPlan, EnvarlyError> {
     off_main(move || {
-        plan_profile_apply(&WinregBackend, &FileStore, &profile)
+        plan_profile_apply(&WinregBackend, &FileStore, &LocalMachine, &WinInstallerCatalog::load()?, &profile)
     })
     .await
 }
@@ -313,7 +315,7 @@ pub async fn whichcraft_python_supplemental() -> Result<PythonSupplementalView, 
 pub async fn whichcraft_android_inventory() -> Result<AndroidInventory, EnvarlyError> {
     off_main(move || {
         let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
-        android_inventory(&WinregBackend, local.as_deref())
+        android_inventory(&WinregBackend, &LocalMachine, local.as_deref())
     })
     .await
 }
@@ -330,7 +332,7 @@ fn build_uninstall_plan(tool: ToolKind, root: &str) -> Result<UninstallPlan, Env
     let backend = WinregBackend;
     let selection = FileStore.selection(tool)?;
     let views = crate::whichcraft::services::tool_inventory::with_missing_selection(
-        list_tool_installations(&backend, &FileStore, tool, selection.as_ref().map(|s| s.root.as_path()))?,
+        list_tool_installations(&backend, &FileStore, &LocalMachine, &WinInstallerCatalog::load()?, tool, selection.as_ref().map(|s| s.root.as_path()))?,
         selection.as_ref(),
     );
     let root = PathBuf::from(root);
@@ -345,18 +347,19 @@ fn build_uninstall_plan(tool: ToolKind, root: &str) -> Result<UninstallPlan, Env
     if catalog.is_none() {
         for other in [ToolKind::Java, ToolKind::Node, ToolKind::Python, ToolKind::Go, ToolKind::Flutter, ToolKind::Git] {
             if other != tool {
-                other_tool_roots.extend(list_tool_installations(&backend, &FileStore, other, None)?.into_iter().map(|v| v.installation.root));
+                other_tool_roots.extend(list_tool_installations(&backend, &FileStore, &LocalMachine, &WinInstallerCatalog::load()?, other, None)?.into_iter().map(|v| v.installation.root));
             }
         }
     }
     plan_uninstall(
         PlanInputs {
+            machine: &LocalMachine,
             view,
             all: &views,
             catalog,
             stores: &settings.all_install_stores(),
             scan_roots: &settings.scan_roots,
-            protected: &protected_folders(),
+            protected: &protected_folders(&LocalMachine),
             profiles: &FileStore.profiles()?,
             other_tool_roots: &other_tool_roots,
         },
@@ -381,7 +384,7 @@ pub async fn whichcraft_uninstall(
     use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
     off_main(move || {
         let plan = build_uninstall_plan(tool, &root)?;
-        uninstall(&plan, replacement.as_ref(), &WinregBackend, &FileStore, &WinElevator, &WinUsageProbe, &WinUninstaller)
+        uninstall(&plan, replacement.as_ref(), &WinregBackend, &FileStore, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller)
     })
     .await
 }
@@ -390,7 +393,7 @@ pub async fn whichcraft_uninstall(
 #[tauri::command]
 pub async fn whichcraft_update_candidates(tool: ToolKind) -> Result<Vec<UpdateCandidate>, EnvarlyError> {
     off_main(move || {
-        let views = list_tool_installations(&WinregBackend, &FileStore, tool, None)?;
+        let views = list_tool_installations(&WinregBackend, &FileStore, &LocalMachine, &WinInstallerCatalog::load()?, tool, None)?;
         let remote = MiseToolManager::new()?.list_remote(tool)?;
         Ok(update_candidates(tool, &views, &remote))
     })
@@ -402,7 +405,7 @@ pub async fn whichcraft_update_candidates(tool: ToolKind) -> Result<Vec<UpdateCa
 pub async fn whichcraft_update_installation(tool: ToolKind, version: String) -> Result<UpdateResult, EnvarlyError> {
     off_main(move || {
         let mgr = installing_manager()?;
-        install_and_plan(&WinregBackend, tool, &version, |tool, version| mgr.install(tool, version))
+        install_and_plan(&WinregBackend, &LocalMachine, tool, &version, |tool, version| mgr.install(tool, version))
     })
     .await
 }
@@ -415,7 +418,7 @@ pub async fn whichcraft_prepare_mise() -> Result<bool, EnvarlyError> {
 }
 
 fn missing_for(profile: &ToolProfile) -> Result<Vec<MissingPin>, EnvarlyError> {
-    let status = profile_status(&WinregBackend, &FileStore, profile)?;
+    let status = profile_status(&WinregBackend, &FileStore, &LocalMachine, &WinInstallerCatalog::load()?, profile)?;
     if status.unavailable.is_empty() {
         return Ok(Vec::new());
     }
@@ -488,7 +491,7 @@ pub fn whichcraft_unfinished_uninstalls() -> Result<Vec<UninstallRecord>, Envarl
 /// Records what the disk shows now for an uninstall that was cut short.
 #[tauri::command]
 pub fn whichcraft_dismiss_unfinished_uninstall(id: String) -> Result<(), EnvarlyError> {
-    dismiss_unfinished_uninstall(&FileStore, &id)
+    dismiss_unfinished_uninstall(&FileStore, &LocalMachine, &id)
 }
 
 /// Opens a folder in Explorer, e.g. what an uninstaller left behind.

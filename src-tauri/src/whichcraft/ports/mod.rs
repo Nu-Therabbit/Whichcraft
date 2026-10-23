@@ -1,5 +1,6 @@
 pub mod elevator;
 pub mod installer_catalog;
+pub mod machine;
 pub mod store;
 pub mod tool_manager;
 pub mod uninstaller;

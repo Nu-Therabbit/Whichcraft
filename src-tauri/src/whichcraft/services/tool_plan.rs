@@ -1,5 +1,4 @@
 
-use crate::commands::path::dir_exists;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::model::{EnvValue, EnvValueKind, VarScope};
@@ -10,13 +9,15 @@ use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::domain::path::{compute_prepend, path_entries, path_entry_diff};
 use crate::whichcraft::domain::plan::path_dirs_for_tool;
 use crate::whichcraft::domain::{PlanVariableDiff, ToolApplyPlan};
+use crate::whichcraft::ports::machine::Machine;
 
 pub fn build_tool_apply_plan<B: EnvBackend>(
     backend: &B,
+    machine: &dyn Machine,
     installation: &ToolInstallation,
     plan_id: String,
 ) -> Result<ToolApplyPlan, EnvarlyError> {
-    if !installation.root.is_dir() {
+    if !machine.is_dir(&installation.root) {
         return Err(EnvarlyError::InvalidInput(
             "installation folder is missing (unavailable)".into(),
         ));
@@ -47,8 +48,8 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
             crate::model::EnvValue::typed(installation.root.to_string_lossy().into_owned(), EnvValueKind::String),
         );
     }
-    let expand_planned = crate::whichcraft::services::registry_expander(&planned_user, &system);
-    for entry in other_installation_entries(&path_after, installation, &expand_planned) {
+    let expand_planned = crate::whichcraft::services::registry_expander(&planned_user, &system, machine);
+    for entry in other_installation_entries(machine, &path_after, installation, &expand_planned) {
         path_after = remove_path_entry(&path_after, &entry);
     }
 
@@ -100,14 +101,14 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     for diff in &user_diffs {
         user_after.insert(diff.name.clone(), crate::model::EnvValue::typed(diff.after.clone(), diff.value_kind));
     }
-    let expand = crate::whichcraft::services::registry_expander(&user_after, &system);
+    let expand = crate::whichcraft::services::registry_expander(&user_after, &system, machine);
     let check_user = path_manage::check_command_with(
         cmd,
         &path_after,
         system_path_before.as_str(),
         pathext,
         &expand,
-        dir_exists,
+        |p: &str| machine.dir_exists(p),
     );
     let effective_after_user = check_user.hits.first().is_some_and(|hit| {
         path_dirs_for_tool(installation)
@@ -116,7 +117,7 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     });
 
     if !effective_after_user {
-        if let Some(shadow) = find_system_shadow(&system_path_before, installation, &expand) {
+        if let Some(shadow) = find_system_shadow(machine, &system_path_before, installation, &expand) {
             let mut system_after = system_path_before.clone();
             system_after = remove_path_entry(&system_after, &shadow);
             system_diffs.push(PlanVariableDiff {
@@ -137,7 +138,7 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     }
 
     for dir in path_dirs_for_tool(installation) {
-        if is_local_appdata_path(&dir) && system_diffs.iter().any(|d| d.scope == VarScope::System) {
+        if is_local_appdata_path(machine, &dir) && system_diffs.iter().any(|d| d.scope == VarScope::System) {
             return Err(EnvarlyError::InvalidInput(
                 "refusing to mirror LocalAppData paths into System PATH".into(),
             ));
@@ -181,6 +182,7 @@ pub fn tool_plan_is_stale(plan: &ToolApplyPlan, backend: &dyn EnvBackend) -> Res
 }
 
 fn find_system_shadow(
+    machine: &dyn Machine,
     system_path: &str,
     installation: &ToolInstallation,
     expand: &dyn Fn(&str) -> String,
@@ -188,14 +190,14 @@ fn find_system_shadow(
     let selected_dirs: Vec<String> = path_dirs_for_tool(installation);
     for entry in path_entries(system_path) {
         let expanded = expand(&entry);
-        if !dir_exists(&expanded) {
+        if !machine.dir_exists(&expanded) {
             continue;
         }
         for sel in &selected_dirs {
             if entry.eq_ignore_ascii_case(sel) {
                 continue;
             }
-            if would_shadow(&expanded, sel, installation.tool) {
+            if would_shadow(machine, &expanded, sel, installation.tool) {
                 return Some(entry);
             }
         }
@@ -206,6 +208,7 @@ fn find_system_shadow(
 /// User PATH entries that run `installation`'s tool from another installation: the folder holds
 /// the tool's executable and its root is recognised as an installation of that tool.
 fn other_installation_entries(
+    machine: &dyn Machine,
     path: &str,
     installation: &ToolInstallation,
     expand: &dyn Fn(&str) -> String,
@@ -216,17 +219,17 @@ fn other_installation_entries(
         .into_iter()
         .filter(|entry| {
             let dir = std::path::PathBuf::from(expand(entry).trim_end_matches(['\\', '/']));
-            if !dir.join(&exe).is_file() {
+            if !machine.is_file(&dir.join(&exe)) {
                 return false;
             }
             crate::whichcraft::tools::probes::infer_root_from_command_dir(tool, &dir)
-                .and_then(|root| crate::whichcraft::tools::probe_tool_root(tool, &root, false))
+                .and_then(|root| machine.probe(tool, &root, false))
                 .is_some_and(|other| !crate::whichcraft::tools::paths_equal(&other.root, &installation.root))
         })
         .collect()
 }
 
-fn would_shadow(system_dir: &str, selected_dir: &str, tool: ToolKind) -> bool {
+fn would_shadow(machine: &dyn Machine, system_dir: &str, selected_dir: &str, tool: ToolKind) -> bool {
     let cmd = crate::whichcraft::tools::command_name(tool);
     let hit = path_manage::check_command_with(
         cmd,
@@ -235,7 +238,7 @@ fn would_shadow(system_dir: &str, selected_dir: &str, tool: ToolKind) -> bool {
         ".EXE;.CMD;.BAT",
         // Both folders are already expanded.
         |s: &str| s.to_string(),
-        dir_exists,
+        |p: &str| machine.dir_exists(p),
     );
     !hit.hits.is_empty()
 }
@@ -248,8 +251,8 @@ fn remove_path_entry(path: &str, entry: &str) -> String {
         .join(";")
 }
 
-fn is_local_appdata_path(dir: &str) -> bool {
-    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+fn is_local_appdata_path(machine: &dyn Machine, dir: &str) -> bool {
+    if let Some(local) = machine.env_var("LOCALAPPDATA") {
         return dir
             .trim_end_matches(['\\', '/'])
             .eq_ignore_ascii_case(local.trim_end_matches(['\\', '/']));
@@ -281,6 +284,7 @@ pub fn plan_to_mutations(
 
 #[cfg(test)]
 mod tests {
+    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
     use crate::whichcraft::persistence::FileStore;
     use crate::env_store::MemBackend;
@@ -314,7 +318,7 @@ mod tests {
             .with_user([("Path", user_path), ("JAVA_HOME", old_home)])
             .with_system([("PATHEXT", ".EXE;.CMD;.BAT")]);
 
-        let plan = build_tool_apply_plan(&backend, &new, "p".into()).unwrap();
+        let plan = build_tool_apply_plan(&backend, &LocalMachine, &new, "p".into()).unwrap();
         let path = &plan.user_diffs.iter().find(|d| d.name == "Path").unwrap().after;
         let expected = format!("{};{};%JAVA_HOME%\\bin", new.root.join("bin").display(), other.display());
         // The old JDK goes; an unrelated folder stays; %JAVA_HOME%\bin follows the new JAVA_HOME and stays.
@@ -330,7 +334,7 @@ mod tests {
         let before = leak(format!("{};C:\\u", old.root.join("bin").display()));
         let backend = MemBackend::new().with_user([("Path", before)]).with_system([("PATHEXT", ".EXE")]);
 
-        let plan = crate::whichcraft::services::tool_apply::create_tool_plan(&backend, &new).unwrap();
+        let plan = crate::whichcraft::services::tool_apply::create_tool_plan(&backend, &LocalMachine, &new).unwrap();
         crate::whichcraft::services::tool_apply::apply_tool_plan(&backend, &FileStore, &plan).unwrap();
         assert!(!backend.read_user().unwrap()["Path"].value.contains("jdk17"));
 
@@ -346,7 +350,7 @@ mod tests {
         let new = jdk(dir.path(), "jdk21", "21.0.12");
         let user_path = leak(format!("{};{}", old.root.join("bin").display(), new.root.join("bin").display()));
         let backend = MemBackend::new().with_user([("Path", user_path)]).with_system([("PATHEXT", ".EXE")]);
-        let plan = build_tool_apply_plan(&backend, &new, "p".into()).unwrap();
+        let plan = build_tool_apply_plan(&backend, &LocalMachine, &new, "p".into()).unwrap();
         let path = &plan.user_diffs.iter().find(|d| d.name == "Path").unwrap().after;
         assert_eq!(path, &new.root.join("bin").to_string_lossy());
         assert!(plan.effective_after_user_only);
@@ -370,7 +374,7 @@ mod tests {
             root: dir.path().join("jdk21"),
             managed: false,
         };
-        let plan = build_tool_apply_plan(&backend, &jdk21, "p".into()).unwrap();
+        let plan = build_tool_apply_plan(&backend, &LocalMachine, &jdk21, "p".into()).unwrap();
         assert!(plan.system_diffs.is_empty(), "{:?}", plan.system_diffs);
         assert!(!plan.requires_uac);
     }

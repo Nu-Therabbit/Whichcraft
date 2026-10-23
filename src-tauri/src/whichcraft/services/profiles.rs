@@ -6,6 +6,8 @@ use crate::model::{EnvValue, VarScope};
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::persistence::new_journal_id;
 use crate::whichcraft::ports::store::Store;
+use crate::whichcraft::ports::machine::Machine;
+use crate::whichcraft::ports::installer_catalog::InstallerCatalog;
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::domain::PlanVariableDiff;
 use crate::whichcraft::services::tool_apply::create_tool_plan;
@@ -17,9 +19,11 @@ use crate::whichcraft::domain::profiles::{resolve_pin, ProfileMatchStatus, ToolP
 pub fn profile_status<B: EnvBackend>(
     backend: &B,
     store: &dyn Store,
+    machine: &dyn Machine,
+    catalog: &dyn InstallerCatalog,
     profile: &ToolProfile,
 ) -> Result<ProfileMatchStatus, EnvarlyError> {
-    profile_status_with(profile, |tool| list_tool_installations(backend, store, tool, None))
+    profile_status_with(profile, |tool| list_tool_installations(backend, store, machine, catalog, tool, None))
 }
 
 fn profile_status_with(
@@ -45,13 +49,18 @@ fn profile_status_with(
 pub fn plan_profile_apply<B: EnvBackend>(
     backend: &B,
     store: &dyn Store,
+    machine: &dyn Machine,
+    catalog: &dyn InstallerCatalog,
     profile: &ToolProfile,
 ) -> Result<ToolApplyPlan, EnvarlyError> {
-    plan_profile_apply_with(backend, profile, |tool| list_tool_installations(backend, store, tool, None))
+    plan_profile_apply_with(backend, machine, profile, |tool| {
+        list_tool_installations(backend, store, machine, catalog, tool, None)
+    })
 }
 
 fn plan_profile_apply_with<B: EnvBackend>(
     backend: &B,
+    machine: &dyn Machine,
     profile: &ToolProfile,
     find: impl Fn(ToolKind) -> Result<Vec<ToolInstallationView>, EnvarlyError>,
 ) -> Result<ToolApplyPlan, EnvarlyError> {
@@ -84,7 +93,7 @@ fn plan_profile_apply_with<B: EnvBackend>(
     let mut warnings = Vec::new();
     let mut effective_after_user_only = true;
     for installation in &chosen {
-        let step = create_tool_plan(&scratch, installation)?;
+        let step = create_tool_plan(&scratch, machine, installation)?;
         warnings.extend(step.warnings);
         effective_after_user_only &= step.effective_after_user_only;
         for diff in step.user_diffs.into_iter().chain(step.system_diffs) {
@@ -147,6 +156,7 @@ fn plan_profile_apply_with<B: EnvBackend>(
 
 #[cfg(test)]
 mod tests {
+    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
     use std::path::PathBuf;
     use crate::whichcraft::services::tool_apply::apply_tool_plan;
@@ -204,7 +214,7 @@ mod tests {
         let p = profile(vec![pin(ToolKind::Node, "Node.js", "20.19.0", None)]);
 
         let found = vec![node22];
-        assert!(plan_profile_apply_with(&backend, &p, |_| Ok(found.clone())).is_err());
+        assert!(plan_profile_apply_with(&backend, &LocalMachine, &p, |_| Ok(found.clone())).is_err());
         let status = profile_status_with(&p, |_| Ok(found.clone())).unwrap();
         assert_eq!(status.unavailable.len(), 1);
         assert!(!status.matches_effective);
@@ -240,7 +250,7 @@ mod tests {
         ]);
         let find = |tool: ToolKind| Ok(if tool == ToolKind::Java { vec![jdk.clone()] } else { vec![node.clone()] });
 
-        let plan = plan_profile_apply_with(&backend, &p, find).unwrap();
+        let plan = plan_profile_apply_with(&backend, &LocalMachine, &p, find).unwrap();
         let result = apply_tool_plan(&backend, &FileStore, &plan).unwrap();
         assert!(!result.stale);
 
@@ -272,9 +282,9 @@ mod tests {
             pin(ToolKind::Java, "Eclipse Adoptium", "17.0.20.1", None),
             pin(ToolKind::Node, "Node.js", "20.19.0", None),
         ]);
-        apply_tool_plan(&backend, &FileStore, &plan_profile_apply_with(&backend, &a, find).unwrap()).unwrap();
+        apply_tool_plan(&backend, &FileStore, &plan_profile_apply_with(&backend, &LocalMachine, &a, find).unwrap()).unwrap();
         let b = profile(vec![pin(ToolKind::Java, "Eclipse Adoptium", "21.0.12", None)]);
-        apply_tool_plan(&backend, &FileStore, &plan_profile_apply_with(&backend, &b, find).unwrap()).unwrap();
+        apply_tool_plan(&backend, &FileStore, &plan_profile_apply_with(&backend, &LocalMachine, &b, find).unwrap()).unwrap();
 
         let user = backend.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, jdk21.installation.root.to_string_lossy());
@@ -303,7 +313,7 @@ mod tests {
         ]);
         let find = |tool: ToolKind| Ok(if tool == ToolKind::Java { vec![jdk.clone()] } else { vec![node.clone(), shadow.clone()] });
 
-        let plan = plan_profile_apply_with(&backend, &p, find).unwrap();
+        let plan = plan_profile_apply_with(&backend, &LocalMachine, &p, find).unwrap();
         assert!(plan.requires_uac);
         let elevator = FakeElevator::new(&backend, vec![]);
         apply_tool_plan_elevated(&backend, &FileStore, &elevator, &plan).unwrap();

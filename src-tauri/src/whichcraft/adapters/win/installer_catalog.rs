@@ -212,17 +212,6 @@ fn normalize_path(path: &Path) -> PathBuf {
     )
 }
 
-impl WinInstallerCatalog {
-    /// How `root` was installed: the matching uninstall entry's kind, or a plain folder.
-    pub fn kind_for_root(&self, root: &Path) -> InstallerKind {
-        self.match_root(root)
-            .into_iter()
-            .next()
-            .map(|e| e.kind)
-            .unwrap_or(InstallerKind::FolderOnly)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

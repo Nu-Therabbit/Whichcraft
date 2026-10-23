@@ -9,6 +9,7 @@ pub mod plan;
 pub mod profiles;
 pub mod selection;
 pub mod settings;
+pub mod store_layout;
 pub mod tool;
 pub mod uninstall;
 pub mod versions;

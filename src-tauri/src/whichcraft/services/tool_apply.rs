@@ -5,6 +5,7 @@ use crate::whichcraft::domain::journal::{JournalStatus, MutationRecord, Whichcra
 use crate::whichcraft::domain::selection::ToolSelection;
 use crate::whichcraft::persistence::new_journal_id;
 use crate::whichcraft::ports::store::Store;
+use crate::whichcraft::ports::machine::Machine;
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
 use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::domain::env::get_var;
@@ -22,9 +23,10 @@ pub struct ApplyToolResult {
 
 pub fn create_tool_plan<B: EnvBackend>(
     backend: &B,
+    machine: &dyn Machine,
     installation: &ToolInstallation,
 ) -> Result<ToolApplyPlan, EnvarlyError> {
-    build_tool_apply_plan(backend, installation, new_journal_id())
+    build_tool_apply_plan(backend, machine, installation, new_journal_id())
 }
 
 /// Applies a plan in this process. A plan that touches System needs this process to be elevated.
@@ -300,6 +302,7 @@ pub(crate) mod test_support {
 
 #[cfg(test)]
 mod tests {
+    use crate::whichcraft::adapters::local::LocalMachine;
     use super::test_support::{FakeElevator, Script};
     use crate::whichcraft::persistence::{save_tool_selection, FileStore};
     use super::*;
@@ -362,7 +365,7 @@ mod tests {
         };
         let b = MemBackend::new().with_user([("Path", "C:\\old")]);
 
-        let plan = create_tool_plan(&b, &installation).unwrap();
+        let plan = create_tool_plan(&b, &LocalMachine, &installation).unwrap();
         assert!(!apply_tool_plan(&b, &FileStore, &plan).unwrap().stale);
 
         let user = b.read_user().unwrap();
@@ -395,7 +398,7 @@ mod tests {
         let path = leak_str(format!("{0};C:\\gone-for-good;{0}", keep.display()));
         let b = MemBackend::new().with_user([("Path", path)]);
 
-        let cleanup = crate::whichcraft::services::path_cleanup::build_path_cleanup_plan(&b).unwrap();
+        let cleanup = crate::whichcraft::services::path_cleanup::build_path_cleanup_plan(&b, &LocalMachine).unwrap();
         apply_tool_plan(&b, &FileStore, &cleanup.inner).unwrap();
 
         assert_eq!(b.read_user().unwrap()["Path"].value, keep.to_string_lossy());

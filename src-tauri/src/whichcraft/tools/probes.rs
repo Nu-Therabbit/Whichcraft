@@ -189,23 +189,6 @@ pub fn infer_root_from_command_dir(tool: ToolKind, dir: &Path) -> Option<PathBuf
     }
 }
 
-/// Interpreters installed by the Python install manager: `%LOCALAPPDATA%\Python\pythoncore-*`.
-/// Its `Python\bin` folder on PATH only holds hard links, so PATH alone never finds them.
-pub fn python_manager_roots(local_app_data: &Path) -> Vec<PathBuf> {
-    let Ok(read) = std::fs::read_dir(local_app_data.join("Python")) else {
-        return Vec::new();
-    };
-    read.flatten()
-        .map(|e| e.path())
-        .filter(|p| {
-            p.is_dir()
-                && p.file_name()
-                    .and_then(|n| n.to_str())
-                    .is_some_and(|n| n.starts_with("pythoncore-"))
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -235,15 +218,6 @@ mod tests {
             root(ToolKind::Git, "C:\\Program Files\\Git\\mingw64\\bin"),
             PathBuf::from("C:\\Program Files\\Git")
         );
-    }
-
-    #[test]
-    fn python_manager_interpreters_are_found_under_local_app_data() {
-        let dir = tempfile::tempdir().unwrap();
-        let core = dir.path().join("Python").join("pythoncore-3.14-64");
-        fs::create_dir_all(core.join("Lib")).unwrap();
-        fs::create_dir_all(dir.path().join("Python").join("bin")).unwrap();
-        assert_eq!(python_manager_roots(dir.path()), vec![core]);
     }
 
     #[test]

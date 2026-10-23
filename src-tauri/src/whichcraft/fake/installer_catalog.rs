@@ -1,0 +1,16 @@
+use std::path::Path;
+
+use crate::error::EnvarlyError;
+use crate::whichcraft::ports::installer_catalog::{CatalogEntry, InstallerCatalog};
+
+/// Knows only the entries a test gives it; anything else is a plain folder.
+#[derive(Default)]
+pub struct FakeInstallerCatalog {
+    pub entries: Vec<CatalogEntry>,
+}
+
+impl InstallerCatalog for FakeInstallerCatalog {
+    fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, EnvarlyError> {
+        Ok(self.entries.iter().filter(|e| e.install_root == root).cloned().collect())
+    }
+}

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::commands::path::dir_exists;
+use crate::whichcraft::ports::machine::Machine;
 use crate::whichcraft::services::registry_expander;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
@@ -23,11 +23,12 @@ pub struct PathCleanupPlan {
 
 pub fn build_path_cleanup_plan<B: EnvBackend>(
     backend: &B,
+    machine: &dyn Machine,
 ) -> Result<PathCleanupPlan, EnvarlyError> {
     let user = backend.read_user()?;
     let system = backend.read_system()?;
     let before = user.get("Path").map(|v| v.value.clone()).unwrap_or_default();
-    let (after, removed_duplicates, removed_missing) = cleanup_path(&before, registry_expander(&user, &system));
+    let (after, removed_duplicates, removed_missing) = cleanup_path(&before, registry_expander(&user, &system, machine), machine);
 
     let baseline = crate::env_store::read_snapshot_with(backend)?;
     let kind = user
@@ -76,7 +77,7 @@ pub fn build_path_cleanup_plan<B: EnvBackend>(
 /// Drops entries that repeat an earlier one (compared after expanding, ignoring case and a
 /// trailing separator) and entries whose folder does not exist. An entry with a variable that
 /// cannot be expanded is kept: there is no telling what it will mean (C-2).
-fn cleanup_path(raw: &str, expand: impl Fn(&str) -> String) -> (String, Vec<String>, Vec<String>) {
+fn cleanup_path(raw: &str, expand: impl Fn(&str) -> String, machine: &dyn Machine) -> (String, Vec<String>, Vec<String>) {
     let mut seen: Vec<String> = Vec::new();
     let mut kept = Vec::new();
     let mut removed_duplicates = Vec::new();
@@ -85,7 +86,7 @@ fn cleanup_path(raw: &str, expand: impl Fn(&str) -> String) -> (String, Vec<Stri
     for entry in path_entries(raw) {
         let expanded = expand(&entry);
         let unresolved = expanded.matches('%').count() >= 2;
-        if !unresolved && !dir_exists(&expanded) {
+        if !unresolved && !machine.dir_exists(&expanded) {
             removed_missing.push(entry.clone());
             continue;
         }
@@ -102,6 +103,7 @@ fn cleanup_path(raw: &str, expand: impl Fn(&str) -> String) -> (String, Vec<Stri
 
 #[cfg(test)]
 mod tests {
+    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
 
     #[test]
@@ -112,7 +114,7 @@ mod tests {
         std::fs::create_dir_all(&a).unwrap();
         std::fs::create_dir_all(&b).unwrap();
         let raw = format!("{};{};{}", a.display(), b.display(), a.display());
-        let (after, dupes, missing) = cleanup_path(&raw, |s| s.to_string());
+        let (after, dupes, missing) = cleanup_path(&raw, |s| s.to_string(), &LocalMachine);
         assert_eq!(dupes.len(), 1);
         assert!(missing.is_empty());
         assert!(after.contains(&a.to_string_lossy().to_string()));
@@ -139,7 +141,7 @@ mod tests {
         backend.user.lock().unwrap().extend(vars(&[("Path", raw.clone())]));
         backend.user.lock().unwrap().extend(user_vars);
 
-        let plan = build_path_cleanup_plan(&backend).unwrap();
+        let plan = build_path_cleanup_plan(&backend, &LocalMachine).unwrap();
         assert_eq!(plan.removed_duplicates.len(), 2);
         assert_eq!(plan.removed_missing, vec![ollama.to_string_lossy().into_owned()]);
         assert_eq!(plan.inner.user_diffs[0].after, go_bin.to_string_lossy());
@@ -150,7 +152,7 @@ mod tests {
     #[test]
     #[ignore = "contract: reads the real registry"]
     fn contract_path_cleanup_on_this_machine() {
-        let plan = build_path_cleanup_plan(&crate::env_backend::WinregBackend).unwrap();
+        let plan = build_path_cleanup_plan(&crate::env_backend::WinregBackend, &LocalMachine).unwrap();
         println!("duplicates: {:?}\nmissing: {:?}", plan.removed_duplicates, plan.removed_missing);
         assert!(
             plan.removed_duplicates.iter().any(|d| d.to_ascii_lowercase().ends_with("go\\bin")),
@@ -169,12 +171,12 @@ mod tests {
         let user = vars(&[("JAVA_HOME", dir.path().join("jdk21").to_string_lossy().into_owned())]);
         let system = vars(&[]);
         let raw = "%JAVA_HOME%\\bin;%WHICHCRAFT_UNSET_VAR_42%\\bin";
-        let (after, dupes, missing) = cleanup_path(raw, registry_expander(&user, &system));
+        let (after, dupes, missing) = cleanup_path(raw, registry_expander(&user, &system, &LocalMachine), &LocalMachine);
         assert_eq!(after, raw);
         assert!(dupes.is_empty() && missing.is_empty());
 
         let gone = vars(&[("JAVA_HOME", dir.path().join("jdk17-removed").to_string_lossy().into_owned())]);
-        let (_, _, missing) = cleanup_path("%JAVA_HOME%\\bin", registry_expander(&gone, &system));
+        let (_, _, missing) = cleanup_path("%JAVA_HOME%\\bin", registry_expander(&gone, &system, &LocalMachine), &LocalMachine);
         assert_eq!(missing, vec!["%JAVA_HOME%\\bin"]);
     }
 }

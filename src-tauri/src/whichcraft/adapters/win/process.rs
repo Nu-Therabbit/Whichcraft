@@ -82,6 +82,7 @@ impl ProcessRunner for WinProcessRunner {
 
 #[cfg(test)]
 mod tests {
+    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
     use crate::whichcraft::domain::ToolKind;
     use crate::whichcraft::domain::settings::TerminalKind;
@@ -97,7 +98,7 @@ mod tests {
         for shell in [TerminalKind::PowerShell, TerminalKind::Cmd] {
             let check = shell_check(
                 &crate::env_backend::WinregBackend,
-                &WinProcessRunner,
+                &LocalMachine, &WinProcessRunner,
                 shell,
                 ToolKind::Node,
                 env.clone(),

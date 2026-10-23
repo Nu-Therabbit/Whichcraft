@@ -16,6 +16,7 @@ use std::collections::HashMap;
 
 use crate::model::EnvValue;
 use crate::whichcraft::domain::env::{expand_vars, get_var};
+use crate::whichcraft::ports::machine::Machine;
 
 /// Expands `%NAME%` the way a new process would: from the registry values (User over System, as
 /// Windows builds the environment), then this process for names the registry does not hold
@@ -24,17 +25,19 @@ use crate::whichcraft::domain::env::{expand_vars, get_var};
 pub fn registry_expander<'a>(
     user: &'a HashMap<String, EnvValue>,
     system: &'a HashMap<String, EnvValue>,
+    machine: &'a dyn Machine,
 ) -> impl Fn(&str) -> String + 'a {
     move |raw| expand_vars(raw, &|name| {
         get_var(user, name)
             .or_else(|| get_var(system, name))
             .map(|v| v.value.clone())
-            .or_else(|| std::env::var(name).ok())
+            .or_else(|| machine.env_var(name))
     }, 0)
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
 
     fn vars(pairs: &[(&str, &str)]) -> HashMap<String, EnvValue> {
@@ -45,7 +48,7 @@ mod tests {
     fn registry_values_win_over_this_process() {
         let user = vars(&[("JAVA_HOME", "C:\\jdk21")]);
         let system = vars(&[("JAVA_HOME", "C:\\jdk17"), ("TOOLS", "%SystemDrive%\\tools")]);
-        let expand = registry_expander(&user, &system);
+        let expand = registry_expander(&user, &system, &LocalMachine);
         assert_eq!(expand("%java_home%\\bin"), "C:\\jdk21\\bin");
         assert_eq!(expand("%TOOLS%\\x"), format!("{}\\tools\\x", std::env::var("SystemDrive").unwrap()));
         assert_eq!(expand("%NOT_DEFINED_ANYWHERE_42%\\bin"), "%NOT_DEFINED_ANYWHERE_42%\\bin");
