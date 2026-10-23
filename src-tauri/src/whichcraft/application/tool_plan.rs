@@ -264,10 +264,10 @@ pub fn diff_to_env_value(diff: &PlanVariableDiff) -> EnvValue {
     EnvValue::typed(diff.after.clone(), diff.value_kind)
 }
 
+type PathMutation = (PlanVariableDiff, (Vec<String>, Vec<String>));
+
 /// Each diff with the PATH entries it adds and removes (empty for other variables).
-pub fn plan_to_mutations(
-    plan: &ToolApplyPlan,
-) -> Vec<(PlanVariableDiff, (Vec<String>, Vec<String>))> {
+pub fn plan_to_mutations(plan: &ToolApplyPlan) -> Vec<PathMutation> {
     plan.user_diffs
         .iter()
         .chain(plan.system_diffs.iter())
@@ -334,8 +334,12 @@ mod tests {
         let before = leak(format!("{};C:\\u", old.root.join("bin").display()));
         let backend = MemBackend::new().with_user([("Path", before)]).with_system([("PATHEXT", ".EXE")]);
 
-        let plan = crate::whichcraft::application::tool_apply::create_tool_plan(&backend, &LocalMachine, &new).unwrap();
-        crate::whichcraft::application::tool_apply::apply_tool_plan(&backend, &FileStore, &plan).unwrap();
+        use crate::whichcraft::adapters::operation_ids::SystemOperationIds;
+        let plan =
+            crate::whichcraft::application::tool_apply::create_tool_plan(&backend, &LocalMachine, &new, &SystemOperationIds)
+                .unwrap();
+        crate::whichcraft::application::tool_apply::apply_tool_plan(&backend, &FileStore, &SystemOperationIds, &plan)
+            .unwrap();
         assert!(!backend.read_user().unwrap()["Path"].value.contains("jdk17"));
 
         let undo = crate::whichcraft::application::undo::undo_last_apply(&backend, &FileStore, None).unwrap();

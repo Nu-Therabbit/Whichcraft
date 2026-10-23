@@ -261,18 +261,7 @@ fn plugin_ref(listing: &str, name: &str) -> Option<String> {
     })
 }
 
-/// Whether the pinned mise is already on disk, and what the first install would download.
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MiseStatus {
-    pub version: String,
-    pub present: bool,
-    pub download_bytes: u64,
-    /// Versions an earlier Whichcraft pinned that are still on disk, newest first.
-    pub old_versions: Vec<String>,
-    /// The pinned mise is being downloaded in the background; installs wait for it.
-    pub fetching: bool,
-}
+pub use crate::whichcraft::ports::installer_lifecycle::MiseStatus;
 
 pub fn mise_status() -> Result<MiseStatus, EnvarlyError> {
     Ok(MiseStatus {
@@ -306,7 +295,7 @@ fn older_mise(root: &Path, pinned: &str) -> Vec<(String, PathBuf)> {
             (name != pinned && exe.is_file()).then_some((name, exe))
         })
         .collect();
-    found.sort_by(|a, b| version_key(&b.0).cmp(&version_key(&a.0)));
+    found.sort_by_key(|a| std::cmp::Reverse(version_key(&a.0)));
     found
 }
 
@@ -349,6 +338,19 @@ pub fn prepare_mise() -> Result<bool, EnvarlyError> {
     let result = prepare_in(&mise_root()?, pinned_version(), ensure_mise);
     FETCHING.store(false, Ordering::SeqCst);
     result
+}
+
+/// Application port adapter: pinned mise status and prepare-on-start behaviour.
+pub struct MiseInstallerLifecycle;
+
+impl crate::whichcraft::ports::installer_lifecycle::InstallerLifecycle for MiseInstallerLifecycle {
+    fn mise_status(&self) -> Result<MiseStatus, EnvarlyError> {
+        mise_status()
+    }
+
+    fn prepare_mise(&self) -> Result<bool, EnvarlyError> {
+        prepare_mise()
+    }
 }
 
 /// The pinned hashes a mise.exe must match before it is run.

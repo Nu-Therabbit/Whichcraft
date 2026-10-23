@@ -87,6 +87,7 @@ pub fn load_last_completed_apply() -> Result<Option<WhichcraftJournal>, EnvarlyE
     Ok(completed.into_iter().next())
 }
 
+#[allow(dead_code)] // contract and module tests build plans outside the application seam
 pub fn new_journal_id() -> String {
     format!("apply-{}", Utc::now().format("%Y%m%dT%H%M%S%.3fZ"))
 }

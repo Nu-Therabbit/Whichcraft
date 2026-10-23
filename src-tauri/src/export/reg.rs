@@ -166,8 +166,10 @@ fn parse_reg_entry(line: &str) -> Option<(String, EnvValue)> {
         return None;
     }
     let mut units: Vec<u16> = raw
-        .chunks_exact(2)
-        .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|pair| u16::from_le_bytes(*pair))
         .collect();
     if units.last() == Some(&0) {
         units.pop();

@@ -11,8 +11,8 @@ use crate::whichcraft::domain::settings::WhichcraftSettings;
 use crate::whichcraft::domain::uninstall::UninstallOutcome;
 use crate::whichcraft::domain::{ToolInstallation, ToolKind};
 use crate::whichcraft::fake::{
-    DeclinesUac, FakeMachine, FakeProcessRunner, FakeToolManagers, FakeTools, FakeUsageProbe, MachineUninstaller, MemStore,
-    NoInstallerEntries, NoSdks,
+    DeclinesUac, FakeInstallerLifecycle, FakeMachine, FakeOperationIds, FakeProcessRunner, FakeToolManagers, FakeTools,
+    FakeUsageProbe, MachineUninstaller, MemStore, NoInstallerEntries, NoSdks,
 };
 
 const STORE: &str = r"C:\Users\me\AppData\Local\Whichcraft\installs";
@@ -48,8 +48,20 @@ fn world(user_path: &'static str, confirmed: bool) -> World {
         uninstaller: Box::new(MachineUninstaller(machine.clone())),
         sdk: Box::new(NoSdks),
         processes: Box::new(processes.clone()),
+        ids: Box::new(FakeOperationIds::fixed(
+            "apply-test-fixed-id",
+            "uninstall-test-fixed-id",
+            "2025-06-01T12:00:00+00:00",
+        )),
+        installer_lifecycle: Box::new(FakeInstallerLifecycle::ready("2025.3.6")),
     };
     World { app, machine, tools, processes }
+}
+
+fn world_with_lifecycle(lifecycle: FakeInstallerLifecycle) -> World {
+    let mut w = world(r"C:\u", true);
+    w.app.installer_lifecycle = Box::new(lifecycle);
+    w
 }
 
 fn node(version: &str, root: &str) -> ToolInstallation {
@@ -58,6 +70,20 @@ fn node(version: &str, root: &str) -> ToolInstallation {
 
 fn user_path(app: &App<MemBackend>) -> String {
     app.env.read_user().unwrap()["Path"].value.clone()
+}
+
+#[test]
+fn plans_and_journals_use_injected_ids_and_timestamps() {
+    let w = world(r"C:\u", true);
+    w.machine.add_install(node("20.19.0", r"C:\nodes\node20"));
+    let plan = w.app.plan_switch(ToolKind::Node, Path::new(r"C:\nodes\node20")).unwrap();
+    assert_eq!(plan.plan_id, "apply-test-fixed-id");
+    w.app.apply(&plan, false).unwrap();
+    let journal = w.app.store.journal("apply-test-fixed-id").unwrap();
+    assert_eq!(journal.created_at, "2025-06-01T12:00:00+00:00");
+
+    let cleanup = w.app.plan_path_cleanup().unwrap();
+    assert_eq!(cleanup.inner.plan_id, "apply-test-fixed-id");
 }
 
 #[test]
@@ -158,6 +184,8 @@ fn removing_a_managed_install_goes_through_its_store_and_is_journaled() {
     assert_eq!(outcome, UninstallOutcome::Removed);
     assert!(w.app.list_tools(ToolKind::Node).unwrap().is_empty());
     let records = w.app.store.uninstall_records().unwrap();
+    assert_eq!(records[0].id, "uninstall-test-fixed-id");
+    assert_eq!(records[0].started_at, "2025-06-01T12:00:00+00:00");
     assert_eq!(records[0].outcome, Some(UninstallOutcome::Removed));
     assert!(w.app.unfinished_uninstalls().unwrap().is_empty());
 }
@@ -195,6 +223,28 @@ fn flutter_downloads_come_with_a_disk_estimate() {
     assert_eq!(size.download_bytes, Some(1_749_058_829));
     assert!(size.disk_bytes.unwrap() > 3_000_000_000);
     assert_eq!(w.app.download_size(ToolKind::Node, "22.24.0").unwrap().disk_bytes, None);
+}
+
+#[test]
+fn mise_status_and_prepare_go_through_the_application_port() {
+    let w = world_with_lifecycle(FakeInstallerLifecycle::needs_download("2025.3.6", 230_000_000));
+    let status = w.app.mise_status().unwrap();
+    assert!(!status.present);
+    assert_eq!(status.download_bytes, 230_000_000);
+    assert!(w.app.prepare_mise().unwrap());
+
+    let offline = world_with_lifecycle(FakeInstallerLifecycle::offline("2025.3.6"));
+    assert!(offline.app.mise_status().is_err());
+    assert!(offline.app.prepare_mise().is_err());
+}
+
+#[test]
+fn app_start_and_install_list_still_see_mise_when_it_is_ready() {
+    let w = world_with_lifecycle(FakeInstallerLifecycle::ready("2025.3.6"));
+    let status = w.app.mise_status().unwrap();
+    assert!(status.present);
+    assert!(!status.fetching);
+    assert_eq!(w.app.remote_versions(ToolKind::Node).unwrap().len(), 0);
 }
 
 #[test]

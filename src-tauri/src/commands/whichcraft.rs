@@ -102,8 +102,8 @@ pub async fn whichcraft_list_remote_versions(tool: ToolKind) -> Result<Vec<Remot
 
 /// Whether the pinned mise still has to be downloaded before the first install, and its size.
 #[tauri::command]
-pub fn whichcraft_mise_status() -> Result<crate::whichcraft::mise::manager::MiseStatus, EnvarlyError> {
-    crate::whichcraft::mise::manager::mise_status()
+pub fn whichcraft_mise_status() -> Result<crate::whichcraft::ports::installer_lifecycle::MiseStatus, EnvarlyError> {
+    windows_app().mise_status()
 }
 
 #[tauri::command]
@@ -179,7 +179,7 @@ pub async fn whichcraft_update_installation(tool: ToolKind, version: String) -> 
 /// one is on disk, then removes the older one (ticket 17).
 #[tauri::command]
 pub async fn whichcraft_prepare_mise() -> Result<bool, EnvarlyError> {
-    off_main(crate::whichcraft::mise::manager::prepare_mise).await
+    off_main(|| windows_app().prepare_mise()).await
 }
 
 #[tauri::command]
