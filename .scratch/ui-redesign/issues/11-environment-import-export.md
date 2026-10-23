@@ -4,7 +4,7 @@
 
 **Blocked by:** 09: แก้ Environment variables ผ่าน workspace ใหม่.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / transfer journey
 
@@ -31,3 +31,7 @@
 ### Review round 2 (Grok 4.7)
 
 - **Replace-staged cancel lock:** After a declined import replace confirm, shell test opens KEEP on Variables and asserts staged value `pending` before the accepted second stage — fails if cancel is ignored and import replaces pending work while the count stays at one staged name.
+
+### Review round 2 approval
+
+- Approved. After a declined confirm, the test opens KEEP and expects `pending` before the accepted stage. An ignored cancel that replaces KEEP fails that assertion. The accept path still expects the registry value. The Windows file round-trip checkbox stays open and is not a pass.
