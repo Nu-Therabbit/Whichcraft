@@ -39,6 +39,14 @@ zip ของ Flutter มีไฟล์ read-only 4 ไฟล์ใน `flutter
 
 หลังเปลี่ยนชื่อโฟลเดอร์โปรเจกต์จาก `E:\Dev\Switchyard` เป็น `E:\Dev\Whichcraft` junction ทุกตัวในที่เก็บ (`22`, `22.23`, `latest`, `lts-jod`) ยังชี้ไปพาธเดิม จึงกลายเป็น junction เสีย ส่วนโฟลเดอร์เวอร์ชันจริง (`22.23.4`) ยังรันได้ปกติ ถ้าย้ายหรือเปลี่ยนชื่อโฟลเดอร์ของที่เก็บ junction จะเสียหมด ข้อนี้ยืนยันว่า environment ต้องชี้ไปโฟลเดอร์เวอร์ชันจริงเท่านั้น (เกณฑ์ A-5, D-3) และสนับสนุนการตัดสินใจ Q17 ที่ไม่ย้ายการติดตั้งเดิมตามเมื่อเปลี่ยนที่เก็บ
 
+## พบภายหลัง: pin ปลั๊กอิน vfox ได้
+
+`vfox:jdx/vfox-flutter` โหลดปลั๊กอินจาก Git แยกต่างหาก ในงานพิสูจน์นี้ได้ commit `835840d` (HEAD ณ วันทดสอบ) ทดลองเพิ่มในที่เก็บแยก ได้ผลดังนี้
+- `mise plugins install vfox-jdx-vfox-flutter https://github.com/jdx/vfox-flutter#<sha>` ใช้ SHA แบบย่อไม่ได้ ("abbreviated commit SHAs are not supported") ต้องใช้ SHA เต็ม
+- pin ไว้ที่ commit ก่อน HEAD (`2b8eaef…`) ได้ และหลังเรียก `ls-remote` ผ่าน backend แล้ว HEAD ยังอยู่ที่ commit ที่ pin ไว้ ส่วน `plugins ls --refs` แสดง `2b8eaef`
+- SHA เต็มของ `835840d` คือ `835840d23e05bfe0de18ef85cfead412e33c3039`
+- **ยังไม่ได้ตรวจ:** ระหว่าง `mise install` จะมีการอัปเดตปลั๊กอินอัตโนมัติหรือไม่ (mise มีการตั้งค่า `plugin_autoupdate_last_check_duration`)
+
 ## ยังไม่ได้ทดสอบ
 
 - ถอนขณะมี process ใช้อยู่ (งานพิสูจน์ข้อ 7)
