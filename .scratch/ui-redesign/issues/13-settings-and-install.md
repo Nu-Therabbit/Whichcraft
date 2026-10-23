@@ -4,7 +4,7 @@
 
 **Blocked by:** 04: ประสานการเขียนและรีเฟรช Tools กับ Environment; 06: ให้สถานะและการเตรียม mise ผ่าน application; 07: เปิดภาพรวมเครื่องมือจริงใน desktop shell แบบ A.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / install journey
 
@@ -29,3 +29,7 @@
 - Install success/failure/tool-switch now calls `coordination.invalidate` (`tools-installations`, `shell-overview`, …) and reloads the panel; overview uses `overview-inventory` read keys so tools-store reloads do not cancel in-flight grid reads.
 - `ShellInstallView` skips repeat `openInstallList` when versions are already loaded or install is busy; install errors survive `install=1` navigation via `install.retainErrorOnRefresh`.
 - Tests: `effects.test.ts` (install invalidate paths), `useToolsOverview.test.ts` (read key + revision drop), expanded `desktopShellSettingsInstall.test.tsx` (overview refresh after install, settings fields, Git install/update exclusion, no `applyToolPlan` on install-only).
+
+### Review round 1 approval
+
+- Approved. Install success, failure, and a tool switch during install invalidate the coordinator, and those tests fail if `invalidate()` is removed. Remounting the install page does not start a second catalog fetch or clear the error. The Windows first-use checkbox stays open and is not a pass. Switching away does not abort an in-flight download; it still invalidates and clears the busy flag when the download finishes.
