@@ -82,6 +82,13 @@ export interface EnvarlyApi {
   getMiseStatus: () => Promise<import("./types").MiseStatus>;
   downloadSize: (tool: import("./types").ToolKind, version: string) => Promise<number | null>;
   installManaged: (tool: import("./types").ToolKind, version: string) => Promise<string>;
+  planUninstall: (tool: import("./types").ToolKind, root: string) => Promise<import("./types").UninstallPlan>;
+  uninstall: (
+    tool: import("./types").ToolKind,
+    root: string,
+    replacement: import("./types").ToolApplyPlan | null,
+  ) => Promise<import("./types").UninstallOutcome>;
+  openFolder: (path: string) => Promise<void>;
   openTerminal: () => Promise<void>;
   shellCheck: (tool: import("./types").ToolKind) => Promise<import("./types").ShellCheck>;
   getPythonLauncherInfo: () => Promise<import("./types").PythonSupplementalView>;
@@ -140,6 +147,9 @@ const normalApi: EnvarlyApi = {
   getMiseStatus: () => invoke("whichcraft_mise_status"),
   downloadSize: (tool, version) => invoke("whichcraft_download_size", { tool, version }),
   installManaged: (tool, version) => invoke("whichcraft_install_managed", { tool, version }),
+  planUninstall: (tool, root) => invoke("whichcraft_plan_uninstall", { tool, root }),
+  uninstall: (tool, root, replacement) => invoke("whichcraft_uninstall", { tool, root, replacement }),
+  openFolder: (path) => invoke("whichcraft_open_folder", { path }),
   openTerminal: () => invoke("whichcraft_open_terminal"),
   shellCheck: (tool) => invoke("whichcraft_shell_check", { tool }),
   getPythonLauncherInfo: () => invoke("whichcraft_python_supplemental"),
@@ -229,6 +239,9 @@ export const api: EnvarlyApi = {
   getMiseStatus: async () => (await getApi()).getMiseStatus(),
   downloadSize: async (tool, version) => (await getApi()).downloadSize(tool, version),
   installManaged: async (tool, version) => (await getApi()).installManaged(tool, version),
+  planUninstall: async (tool, root) => (await getApi()).planUninstall(tool, root),
+  uninstall: async (tool, root, replacement) => (await getApi()).uninstall(tool, root, replacement),
+  openFolder: async (path) => (await getApi()).openFolder(path),
   openTerminal: async () => (await getApi()).openTerminal(),
   shellCheck: async (tool) => (await getApi()).shellCheck(tool),
   getPythonLauncherInfo: async () => (await getApi()).getPythonLauncherInfo(),

@@ -275,6 +275,13 @@ export function createDemoApi(
     installManaged: async () => {
       throw new Error("Installing is unavailable in demo mode");
     },
+    planUninstall: async () => {
+      throw new Error("Uninstalling is unavailable in demo mode");
+    },
+    uninstall: async () => {
+      throw new Error("Uninstalling is unavailable in demo mode");
+    },
+    openFolder: async () => {},
     openTerminal: async () => {
       throw new Error("Opening a terminal is unavailable in demo mode");
     },

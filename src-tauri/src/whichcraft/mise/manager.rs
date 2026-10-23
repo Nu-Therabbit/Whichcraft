@@ -131,6 +131,12 @@ impl<R: MiseRunner> MiseToolManager<R> {
         self.install_path(tool, version)
     }
 
+    /// Removes one installed version; `version` may be in mise's own form (the folder name).
+    pub fn uninstall(&self, tool: ToolKind, version: &str) -> Result<(), EnvarlyError> {
+        let spec = format!("{}@{}", mise_tool(tool)?, mise_version(tool, version));
+        self.run_ok(&["uninstall", &spec]).map(|_| ())
+    }
+
     pub fn install_path(&self, tool: ToolKind, version: &str) -> Result<PathBuf, EnvarlyError> {
         let wanted = mise_version(tool, version);
         parse_ls(&self.run_ok(&["ls", "--json", mise_tool(tool)?])?)?
@@ -406,6 +412,20 @@ mod tests {
         assert_eq!(
             *mgr.runner.calls.lock().unwrap(),
             vec!["install node@22.23.4".to_string(), "uninstall node@22.23.4".to_string()]
+        );
+    }
+
+    #[test]
+    fn uninstall_names_the_version_the_way_mise_stored_it() {
+        let mgr = MiseToolManager::with_runner(FakeRunner::default());
+        mgr.uninstall(ToolKind::Java, "temurin-21.0.12+101.0.LTS").unwrap();
+        mgr.uninstall(ToolKind::Flutter, "3.32.4-stable").unwrap();
+        assert_eq!(
+            *mgr.runner.calls.lock().unwrap(),
+            vec![
+                "uninstall java@temurin-21.0.12+101.0.LTS".to_string(),
+                "uninstall vfox:jdx/vfox-flutter@3.32.4-stable".to_string()
+            ]
         );
     }
 

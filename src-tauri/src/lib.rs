@@ -97,6 +97,9 @@ pub fn run() {
             commands::whichcraft::whichcraft_python_supplemental,
             commands::whichcraft::whichcraft_android_inventory,
             commands::whichcraft::whichcraft_msvc_inventory,
+            commands::whichcraft::whichcraft_plan_uninstall,
+            commands::whichcraft::whichcraft_uninstall,
+            commands::whichcraft::whichcraft_open_folder,
         ])
         .build(tauri::generate_context!())
         .expect("error while running whichcraft")

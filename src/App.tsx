@@ -322,6 +322,15 @@ export default function App() {
             onChoose: (version) => void developerTools.chooseVersion(version),
             onInstall: () => void developerTools.installChosen(),
           }}
+          uninstall={{
+            plan: developerTools.uninstallPlan,
+            outcome: developerTools.uninstallOutcome,
+            busy: developerTools.uninstallBusy,
+            onPlan: (root) => void developerTools.planUninstall(root),
+            onConfirm: (replacement) => void developerTools.confirmUninstall(replacement),
+            onOpenFolder: (path) => void developerTools.openFolder(path),
+            onClose: developerTools.closeUninstall,
+          }}
         />
 
         <AppModals

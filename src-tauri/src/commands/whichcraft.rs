@@ -28,6 +28,9 @@ use crate::whichcraft::services::recovery::{
 use crate::whichcraft::services::tool_inventory::{list_tool_installations, ToolInstallationView};
 use crate::whichcraft::services::tool_plan::ToolApplyPlan;
 use crate::whichcraft::services::undo::{undo_last_apply, UndoResult};
+use crate::whichcraft::services::uninstall::{
+    plan_uninstall, protected_folders, uninstall, PlanInputs, UninstallOutcome, UninstallPlan,
+};
 use crate::whichcraft::{CoreHealth, WhichcraftCore};
 /// Runs blocking work (UAC prompts, downloads, child processes) off the UI thread. Sync Tauri
 /// commands run on the main thread, so waiting there froze the window.
@@ -348,4 +351,71 @@ pub async fn whichcraft_android_inventory() -> Result<AndroidInventory, EnvarlyE
 #[tauri::command]
 pub fn whichcraft_msvc_inventory() -> MsvcInventory {
     msvc_inventory()
+}
+
+fn build_uninstall_plan(tool: ToolKind, root: &str) -> Result<UninstallPlan, EnvarlyError> {
+    use crate::whichcraft::adapters::win::installer_catalog::WinInstallerCatalog;
+    use crate::whichcraft::adapters::win::uninstall::WinUsageProbe;
+    use crate::whichcraft::ports::installer_catalog::InstallerCatalog;
+    let backend = WinregBackend;
+    let selection = load_tool_selection(tool)?;
+    let views = crate::whichcraft::services::tool_inventory::with_missing_selection(
+        list_tool_installations(&backend, tool, selection.as_ref().map(|s| s.root.as_path()))?,
+        selection.as_ref(),
+    );
+    let root = PathBuf::from(root);
+    let view = views
+        .iter()
+        .find(|v| v.installation.root == root)
+        .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown {tool:?} root: {}", root.display())))?;
+    let catalog = WinInstallerCatalog::load()?.entries_for_root(&root)?.into_iter().next();
+    let settings = load_settings()?;
+    plan_uninstall(
+        PlanInputs {
+            view,
+            all: &views,
+            catalog,
+            stores: &settings.all_install_stores(),
+            scan_roots: &settings.scan_roots,
+            protected: &protected_folders(),
+            profiles: &load_profiles()?,
+        },
+        &WinUsageProbe,
+    )
+}
+
+/// Everything the uninstall dialog shows before the user confirms: method, usage, replacement.
+#[tauri::command]
+pub async fn whichcraft_plan_uninstall(tool: ToolKind, root: String) -> Result<UninstallPlan, EnvarlyError> {
+    off_main(move || build_uninstall_plan(tool, &root)).await
+}
+
+/// Plans again from the installation itself (the program to run never comes from the UI), switches
+/// to `replacement` first when the installation is selected or effective, then removes it.
+#[tauri::command]
+pub async fn whichcraft_uninstall(
+    tool: ToolKind,
+    root: String,
+    replacement: Option<ToolApplyPlan>,
+) -> Result<UninstallOutcome, EnvarlyError> {
+    use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
+    off_main(move || {
+        let plan = build_uninstall_plan(tool, &root)?;
+        uninstall(&plan, replacement.as_ref(), &WinregBackend, &WinElevator, &WinUsageProbe, &WinUninstaller)
+    })
+    .await
+}
+
+/// Opens a folder in Explorer, e.g. what an uninstaller left behind.
+#[tauri::command]
+pub fn whichcraft_open_folder(path: String) -> Result<(), EnvarlyError> {
+    // Explorer opens (runs) a file it is given, so only folders are accepted.
+    if !std::path::Path::new(&path).is_dir() {
+        return Err(EnvarlyError::InvalidInput(format!("not a folder: {path}")));
+    }
+    std::process::Command::new("explorer.exe")
+        .arg(&path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| EnvarlyError::InvalidInput(format!("open {path}: {e}")))
 }

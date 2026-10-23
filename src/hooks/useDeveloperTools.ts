@@ -13,6 +13,8 @@ import type {
   ToolInstallationView,
   ToolKind,
   UndoResult,
+  UninstallOutcome,
+  UninstallPlan,
   WhichcraftSettings,
 } from "../types";
 
@@ -225,6 +227,56 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     }
   }, [tool, chosenVersion, refresh]);
 
+  const [uninstallPlan, setUninstallPlan] = useState<UninstallPlan | null>(null);
+  const [uninstallOutcome, setUninstallOutcome] = useState<UninstallOutcome | null>(null);
+  const [uninstallBusy, setUninstallBusy] = useState(false);
+
+  const planUninstall = useCallback(
+    async (root: string) => {
+      setError(null);
+      setUninstallOutcome(null);
+      setUninstallPlan(null);
+      setUninstallBusy(true);
+      try {
+        setUninstallPlan(await api.planUninstall(tool, root));
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setUninstallBusy(false);
+      }
+    },
+    [tool],
+  );
+
+  /** Switches to `replacementRoot` first when the installation is selected or effective (Q9). */
+  const confirmUninstall = useCallback(
+    async (replacementRoot: string | null) => {
+      if (!uninstallPlan) return;
+      setError(null);
+      setUninstallBusy(true);
+      try {
+        const replacement = replacementRoot ? await api.planToolApply(tool, replacementRoot) : null;
+        const outcome = await api.uninstall(tool, uninstallPlan.installation.root, replacement);
+        setUninstallOutcome(outcome);
+        if (outcome.status === "removed") setUninstallPlan(null);
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setUninstallBusy(false);
+      }
+    },
+    [tool, uninstallPlan, refresh],
+  );
+
+  const openFolder = useCallback(async (path: string) => {
+    try {
+      await api.openFolder(path);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
+
   const loadSdks = useCallback(async () => {
     setError(null);
     try {
@@ -251,6 +303,16 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     loadRemoteVersions,
     chooseVersion,
     installChosen,
+    uninstallPlan,
+    uninstallOutcome,
+    uninstallBusy,
+    planUninstall,
+    confirmUninstall,
+    openFolder,
+    closeUninstall: () => {
+      setUninstallPlan(null);
+      setUninstallOutcome(null);
+    },
     shellCheck,
     runShellCheck,
     openTerminal,

@@ -11,6 +11,8 @@ import type {
   ToolApplyPlan,
   ToolInstallationView,
   ToolKind,
+  UninstallOutcome,
+  UninstallPlan,
   WhichcraftSettings,
 } from "../../types";
 import { Badge } from "../ui/Badge";
@@ -21,6 +23,7 @@ import { RecoveryBanner } from "./RecoveryBanner";
 import { ShellCheckResult } from "./ShellCheckResult";
 import { PythonLauncherInfo, SdkInventory } from "./SupplementalInfo";
 import { ToolsSettings } from "./ToolsSettings";
+import { UninstallSection } from "./UninstallSection";
 
 const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
 
@@ -62,6 +65,15 @@ interface Props {
     onChoose: (version: string) => void;
     onInstall: () => void;
   };
+  uninstall?: {
+    plan: UninstallPlan | null;
+    outcome: UninstallOutcome | null;
+    busy: boolean;
+    onPlan: (root: string) => void;
+    onConfirm: (replacementRoot: string | null) => void;
+    onOpenFolder: (path: string) => void;
+    onClose: () => void;
+  };
 }
 
 export function ToolsPanel({
@@ -93,6 +105,7 @@ export function ToolsPanel({
   onShellCheck,
   onOpenTerminal,
   install,
+  uninstall,
 }: Props) {
   const { t } = useI18n();
   const [showSettings, setShowSettings] = useState(false);
@@ -214,27 +227,39 @@ export function ToolsPanel({
             <div className="p-4 text-sm text-muted">{t("tools.no_installations")}</div>
           ) : (
             installations.map((item) => (
-              <button
-                type="button"
-                key={item.root}
-                className="w-full text-left px-4 py-3 hover:bg-surface/60 flex flex-col gap-1 disabled:opacity-50"
-                onClick={() => onSelect(item.root)}
-                disabled={!item.available}
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium">
-                    {item.vendor} {item.version}
-                  </span>
-                  {item.effective && <Badge variant="user">{t("tools.effective")}</Badge>}
-                  {item.selected && <Badge variant="muted">{t("tools.selected")}</Badge>}
-                  {!item.available && <Badge variant="warn">{t("tools.unavailable")}</Badge>}
-                  <Badge variant="muted">{t(`tools.installer.${item.installerKind}`)}</Badge>
-                </div>
-                <span className="text-xs text-muted font-mono break-all">{item.root}</span>
-                {item.mismatchReason && (
-                  <span className="text-xs text-warning">{item.mismatchReason}</span>
+              <div key={item.root} className="flex items-start">
+                <button
+                  type="button"
+                  className="flex-1 text-left px-4 py-3 hover:bg-surface/60 flex flex-col gap-1 disabled:opacity-50"
+                  onClick={() => onSelect(item.root)}
+                  disabled={!item.available}
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium">
+                      {item.vendor} {item.version}
+                    </span>
+                    {item.effective && <Badge variant="user">{t("tools.effective")}</Badge>}
+                    {item.selected && <Badge variant="muted">{t("tools.selected")}</Badge>}
+                    {!item.available && <Badge variant="warn">{t("tools.unavailable")}</Badge>}
+                    <Badge variant="muted">{t(`tools.installer.${item.installerKind}`)}</Badge>
+                  </div>
+                  <span className="text-xs text-muted font-mono break-all">{item.root}</span>
+                  {item.mismatchReason && (
+                    <span className="text-xs text-warning">{item.mismatchReason}</span>
+                  )}
+                </button>
+                {uninstall && item.available && (
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="m-3"
+                    disabled={uninstall.busy}
+                    onClick={() => uninstall.onPlan(item.root)}
+                  >
+                    {t("tools.uninstall_button")}
+                  </Button>
                 )}
-              </button>
+              </div>
             ))
           )}
         </div>
@@ -253,6 +278,18 @@ export function ToolsPanel({
             onChoose={install.onChoose}
             onConfirmStore={(store) => onSaveSettings({ ...settings, installStore: store, installStoreConfirmed: true })}
             onInstall={install.onInstall}
+          />
+        )}
+
+        {uninstall && (
+          <UninstallSection
+            key={uninstall.plan?.installation.root ?? "none"}
+            plan={uninstall.plan}
+            outcome={uninstall.outcome}
+            busy={uninstall.busy}
+            onConfirm={uninstall.onConfirm}
+            onOpenFolder={uninstall.onOpenFolder}
+            onClose={uninstall.onClose}
           />
         )}
 

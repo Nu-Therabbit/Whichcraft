@@ -6,11 +6,11 @@
 
 **Status:** ready-for-agent
 
-- [ ] MSI ใช้ `msiexec /x {ProductCode}` เสมอ ไม่ใช้ UninstallString แบบ `/I` (R-2)
-- [ ] Inno Setup และ Python install manager ใช้ UninstallString ตามที่ลงทะเบียน แบบไม่ silent ส่วน pymanager ต้องแจ้งก่อนว่าไม่มีหน้าจอให้ยืนยัน (R-3, R-4)
-- [ ] รายการที่มีแต่ไม่มี UninstallString แจ้งว่ามีเครื่องมืออื่นดูแลอยู่ และไม่เสนอให้ลบ (R-9)
-- [ ] โฟลเดอร์ล้วนต้องผ่าน 5 เงื่อนไขของ Q26 ก่อนย้ายไป Recycle Bin (R-6) ถ้าไม่ผ่าน ให้ปฏิเสธพร้อมเหตุผลและมีปุ่มเปิดโฟลเดอร์ (R-7, R-8)
-- [ ] หลังถอนสแกนใหม่ ถ้าโฟลเดอร์ยังเหลือ แจ้งว่าถอนไม่ครบและเสนอกฎของโฟลเดอร์ล้วน (R-5)
-- [ ] ถ้ายกเลิกใน uninstaller การสลับที่ทำไปแล้วยังคงอยู่ และการติดตั้งเดิมยังเลือกกลับได้ (R-13)
-- [ ] ใช้ UsageProbe และขั้นตอนเลือกตัวแทนจากใบที่ 14
-- [ ] มี test ที่ core ด้วยของปลอมครบทุกชนิดของตัวติดตั้ง และมี adapter contract test ที่ใช้โฟลเดอร์จำลองสำหรับ Recycle Bin ห้ามเรียก uninstaller จริงใน test อัตโนมัติ
+- [x] MSI ใช้ `msiexec /x {ProductCode}` เสมอ ไม่ใช้ UninstallString แบบ `/I` (R-2) — test msi_uninstalls_with_x_not_the_registered_i
+- [x] Inno Setup และ Python install manager ใช้ UninstallString ตามที่ลงทะเบียน แบบไม่ silent ส่วน pymanager ต้องแจ้งก่อนว่าไม่มีหน้าจอให้ยืนยัน (R-3, R-4) — แยก command line ตามเครื่องหมายคำพูด รันผ่าน ShellExecuteExW แบบมีหน้าต่างแล้วรอ; pymanager แสดงคำเตือน no_confirmation ก่อน
+- [x] รายการที่มีแต่ไม่มี UninstallString แจ้งว่ามีเครื่องมืออื่นดูแลอยู่ และไม่เสนอให้ลบ (R-9) — ManagedByOtherTool และรายการที่ไม่มี UninstallString ถูกปฏิเสธพร้อมเหตุผล
+- [x] โฟลเดอร์ล้วนต้องผ่าน 5 เงื่อนไขของ Q26 ก่อนย้ายไป Recycle Bin (R-6) ถ้าไม่ผ่าน ให้ปฏิเสธพร้อมเหตุผลและมีปุ่มเปิดโฟลเดอร์ (R-7, R-8) — folder_refusal ตรวจ junction, รากไดรฟ์, รากของการติดตั้ง, scan folder, โฟลเดอร์ระบบ/โปรไฟล์ และการติดตั้งอื่นข้างใน; ข้อ 5 ใช้ UsageProbe; ปฏิเสธแล้วมีปุ่มเปิดโฟลเดอร์
+- [x] หลังถอนสแกนใหม่ ถ้าโฟลเดอร์ยังเหลือ แจ้งว่าถอนไม่ครบและเสนอกฎของโฟลเดอร์ล้วน (R-5) — หลังถอนตรวจว่าโฟลเดอร์ยังอยู่ไหม แจ้งถอนไม่ครบพร้อมปุ่มเปิดโฟลเดอร์; สแกนใหม่แล้วกดถอนอีกครั้งจะใช้กฎโฟลเดอร์ล้วนถ้ารายการ uninstall หายไปแล้ว
+- [x] ถ้ายกเลิกใน uninstaller การสลับที่ทำไปแล้วยังคงอยู่ และการติดตั้งเดิมยังเลือกกลับได้ (R-13) — test a_cancelled_uninstaller_keeps_the_switch_and_the_installation (MSI 1602 = ยกเลิก, UAC ถูกปฏิเสธ = ยกเลิก)
+- [x] ใช้ UsageProbe และขั้นตอนเลือกตัวแทนจากใบที่ 14
+- [x] มี test ที่ core ด้วยของปลอมครบทุกชนิดของตัวติดตั้ง และมี adapter contract test ที่ใช้โฟลเดอร์จำลองสำหรับ Recycle Bin ห้ามเรียก uninstaller จริงใน test อัตโนมัติ — test ที่ core ครบทุกชนิด; contract test ของ Recycle Bin เป็น #[ignore] (ย้ายโฟลเดอร์ชั่วคราวไปถังขยะจริง) ยังไม่ได้รัน ไม่มี test ที่เรียก uninstaller จริง

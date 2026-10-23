@@ -258,3 +258,32 @@ export interface UndoResult {
   conflicts: UndoConflict[];
   restored: number;
 }
+
+export interface UsageReport {
+  processes: string[];
+  folderLocked: boolean;
+}
+
+export type UninstallMethod =
+  | { kind: "managed"; store: string; miseVersion: string }
+  | { kind: "uninstaller"; program: string; args: string[] }
+  | { kind: "recycleFolder" }
+  | { kind: "refused"; reason: string };
+
+export interface UninstallPlan {
+  installation: ToolInstallationView;
+  method: UninstallMethod;
+  usage: UsageReport;
+  needsReplacement: boolean;
+  replacements: ToolInstallationView[];
+  affectedProfiles: string[];
+  gradleHint: boolean;
+  noConfirmation: boolean;
+}
+
+export type UninstallOutcome =
+  | { status: "removed" }
+  | { status: "cancelled" }
+  | { status: "incomplete"; remaining: string }
+  | { status: "blocked"; reason: string }
+  | { status: "failed"; code: number };
