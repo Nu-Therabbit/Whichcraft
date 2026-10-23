@@ -42,6 +42,7 @@ interface Props {
       valueKind: EnvValueKind | null;
     }>,
     deletes?: Array<{ name: string; scope: VarScope }>,
+    options?: { replacePendingStaged?: boolean },
   ) => void;
   effectiveVars: EnvVar[];
   elevated: boolean;
@@ -88,7 +89,7 @@ export function AppModals({
         title={t("modal.import_export")}
         size="xl"
       >
-        <ImportExportPanel onStage={onStageImport} />
+        <ImportExportPanel onStage={onStageImport} pendingStagedCount={staged.size} />
       </Modal>
 
       <Modal

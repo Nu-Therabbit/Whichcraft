@@ -17,6 +17,7 @@ interface Props {
       valueKind: EnvValueKind | null;
     }>,
     deletes: Array<{ name: string; scope: VarScope }>,
+    options?: { replacePendingStaged?: boolean },
   ) => void;
 }
 

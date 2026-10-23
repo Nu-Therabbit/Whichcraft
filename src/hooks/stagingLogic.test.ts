@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EnvSnapshot, EnvVar } from "../types";
-import { computeStageSnapshot, stagedKey } from "./stagingLogic";
+import { computeStageImport, computeStageSnapshot, stagedKey } from "./stagingLogic";
 
 const registryVars: EnvVar[] = [
   {
@@ -36,6 +36,31 @@ const snap: EnvSnapshot = {
   },
   system: {},
 };
+
+describe("computeStageImport", () => {
+  it("drops orphan pending edits when replacing staged work", () => {
+    const prev = new Map([
+      [
+        stagedKey("ORPHAN", "User"),
+        {
+          kind: "set" as const,
+          name: "ORPHAN",
+          scope: "User" as const,
+          originalValue: null,
+          originalValueKind: null,
+          newValue: "pending",
+          newValueKind: "String" as const,
+        },
+      ],
+    ]);
+    const sets = [{ name: "IMPORTED", scope: "User" as const, value: "from-file", valueKind: "String" as const }];
+    const merged = computeStageImport(registryByKey, prev, sets, [], false);
+    expect(merged.has(stagedKey("ORPHAN", "User"))).toBe(true);
+    const replaced = computeStageImport(registryByKey, prev, sets, [], true);
+    expect(replaced.has(stagedKey("ORPHAN", "User"))).toBe(false);
+    expect(replaced.get(stagedKey("IMPORTED", "User"))?.newValue).toBe("from-file");
+  });
+});
 
 describe("computeStageSnapshot", () => {
   it("stages deletes and value-kind changes toward the snapshot", () => {

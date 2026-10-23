@@ -241,8 +241,8 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
           >
             <ImportExportPanel
               pendingStagedCount={staged.size}
-              onStage={(sets, deletes) => {
-                handleStageImport(sets, deletes);
+              onStage={(sets, deletes, options) => {
+                handleStageImport(sets, deletes, options);
               }}
             />
           </div>

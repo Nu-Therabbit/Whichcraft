@@ -118,8 +118,9 @@ export function computeStageImport(
   prev: StagedMap,
   sets: Array<{ name: string; scope: VarScope; value: string; valueKind: EnvValueKind | null }>,
   deletes: Array<{ name: string; scope: VarScope }> = [],
+  replacePendingStaged = false,
 ): StagedMap {
-  const next = new Map(prev);
+  const next = replacePendingStaged ? new Map<StagedKey, StagedChange>() : new Map(prev);
   for (const v of sets) {
     const k = stagedKey(v.name, v.scope);
     const registryValue = registryByKey.get(k);

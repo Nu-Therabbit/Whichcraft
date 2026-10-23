@@ -62,8 +62,19 @@ export function useStaged(registryVars: EnvVar[], onPendingChange?: (pending: bo
         valueKind: EnvValueKind | null;
       }>,
       deletes: Array<{ name: string; scope: VarScope }> = [],
+      options?: { replacePendingStaged?: boolean },
     ) => {
-      setStaged((prev) => publishPending(computeStageImport(registryByKey, prev, sets, deletes)));
+      setStaged((prev) =>
+        publishPending(
+          computeStageImport(
+            registryByKey,
+            prev,
+            sets,
+            deletes,
+            options?.replacePendingStaged ?? false,
+          ),
+        ),
+      );
     },
     [registryByKey, publishPending],
   );

@@ -29,6 +29,7 @@ interface ImportTabProps {
       valueKind: EnvValueKind | null;
     }>,
     deletes: Array<{ name: string; scope: VarScope }>,
+    options?: { replacePendingStaged?: boolean },
   ) => void;
   onStatus: (msg: string | null) => void;
 }
@@ -127,7 +128,7 @@ export function ImportTab({ onStage, onStatus, pendingStagedCount = 0 }: ImportT
         }
       }
 
-      onStage(sets, deletes);
+      onStage(sets, deletes, { replacePendingStaged: pendingStagedCount > 0 });
       const extra =
         strategy === "replace" && deletes.length > 0
           ? t("import.result_extra", { count: deletes.length })

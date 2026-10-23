@@ -180,6 +180,7 @@ describe("useStagingHandlers", () => {
       expect(params.stageImport).toHaveBeenCalledWith(
         [{ name: "A", scope: "User", value: "1" }],
         [],
+        undefined,
       );
       expect(params.push).toHaveBeenCalledTimes(1);
     });

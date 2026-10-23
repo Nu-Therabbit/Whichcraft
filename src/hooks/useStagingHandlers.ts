@@ -21,6 +21,7 @@ interface Params {
       valueKind: EnvValueKind | null;
     }>,
     deletes: Array<{ name: string; scope: VarScope }>,
+    options?: { replacePendingStaged?: boolean },
   ) => void;
   stageSnapshot: (snap: EnvSnapshot, options?: { replacePendingStaged?: boolean }) => void;
   unstage: (name: string, scope: VarScope) => void;
@@ -118,13 +119,14 @@ export function useStagingHandlers({
         valueKind: EnvValueKind | null;
       }>,
       deletes: Array<{ name: string; scope: VarScope }> = [],
+      options?: { replacePendingStaged?: boolean },
     ) => {
       const snapshot = new Map(staged);
-      stageImport(sets, deletes);
+      stageImport(sets, deletes, options);
       push({
         label: "Import",
         undo: () => restoreStaged(snapshot),
-        redo: () => stageImport(sets, deletes),
+        redo: () => stageImport(sets, deletes, options),
       });
     },
     [staged, stageImport, restoreStaged, push],

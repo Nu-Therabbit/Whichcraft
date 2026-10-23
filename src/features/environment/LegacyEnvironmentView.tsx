@@ -268,8 +268,8 @@ export function LegacyEnvironmentView({ tools, sendTools }: LegacyEnvironmentVie
             handleDiffDismiss();
             setDialog(null);
           }}
-          onStageImport={(sets, deletes) => {
-            handleStageImport(sets, deletes);
+          onStageImport={(sets, deletes, options) => {
+            handleStageImport(sets, deletes, options);
             setDialog(null);
           }}
           effectiveVars={effectiveVars}

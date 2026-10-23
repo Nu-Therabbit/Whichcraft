@@ -21,3 +21,9 @@
 - **No premature writes:** Parse/preview/stage only call `onStage`; Registry writes remain on Apply staged through the environment controller/coordinator.
 - **Tests:** `desktopShellImportExport.test.tsx` (parse/stage without `applyEnvChanges`/`setEnvVar`, parse error UI, export via `exportVars` without extra installation rescans).
 - **Windows manual (file dialogs, cancel/save, round-trip):** Not run in this agent environment. Leave checkbox open for human QA.
+
+### Review round 1 (Grok 4.7)
+
+- **Replace-staged test:** `desktopShellImportExport.test.tsx` mirrors snapshot restore (cancel keeps pending edit; accept replaces with import-only staging). Removing `pendingStagedCount` / confirm fails the test.
+- **Whole-map replace:** `computeStageImport(..., replacePendingStaged)` clears orphan pending edits when the user confirmed replace (`stagingLogic.test.ts`).
+- **Legacy modal:** `AppModals` passes `pendingStagedCount={staged.size}` into `ImportExportPanel`.

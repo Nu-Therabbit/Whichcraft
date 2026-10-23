@@ -82,10 +82,10 @@ describe("desktop shell import export", () => {
       "",
       shellNavigationHref({ page: "environment", envTab: "import-export" }),
     );
-    vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   it("parses import preview and stages without registry writes", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     const parseImport = vi.fn(async () => IMPORT_SNAP);
     const applyEnvChanges = vi.fn(async () => {});
     const setEnvVar = vi.fn(async () => {});
@@ -124,6 +124,58 @@ describe("desktop shell import export", () => {
     await user.click(screen.getByRole("button", { name: /^parse$/i }));
     expect(await screen.findByText(/parse failed/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /staged/i })).not.toBeInTheDocument();
+  });
+
+  it("asks before replacing existing staged work when staging an import", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      shellNavigationHref({ page: "environment", envTab: "variables" }),
+    );
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    renderShell({
+      getEnvVars: async () => [
+        {
+          name: "KEEP",
+          value: "current",
+          valueKind: "String" as const,
+          scope: "User" as const,
+          listSeparator: null,
+        },
+      ],
+      parseImport: async () => IMPORT_SNAP,
+      getRegistrySnapshot: async () => ({ user: {}, system: {} }),
+    });
+
+    const user = userEvent.setup();
+    await waitFor(() => expect(screen.getAllByText("KEEP").length).toBeGreaterThan(0));
+    await user.click(screen.getAllByText("KEEP")[0]);
+    const editor = await screen.findByLabelText(/^value$/i);
+    await user.clear(editor);
+    await user.type(editor, "pending");
+    await user.click(screen.getByRole("button", { name: /^stage$/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument());
+
+    await user.click(screen.getByRole("tab", { name: /^import \/ export$/i }));
+    await user.click(screen.getByRole("radio", { name: /^import$/i }));
+    fireEvent.change(await screen.findByPlaceholderText(/paste file contents/i), {
+      target: { value: '{"user":{}}' },
+    });
+    await user.click(screen.getByRole("button", { name: /^parse$/i }));
+    await user.click(await screen.findByRole("button", { name: /stage 1 variable/i }));
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument();
+
+    fireEvent.change(await screen.findByPlaceholderText(/paste file contents/i), {
+      target: { value: '{"user":{}}' },
+    });
+    await user.click(screen.getByRole("button", { name: /^parse$/i }));
+    await user.click(await screen.findByRole("button", { name: /stage 1 variable/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument());
+    await user.click(screen.getByRole("tab", { name: /^variables$/i }));
+    await user.click(screen.getAllByText("KEEP")[0]);
+    expect(await screen.findByLabelText(/^value$/i)).toHaveValue("current");
+    confirmSpy.mockRestore();
   });
 
   it("export uses the platform API and does not rescan tool installations", async () => {

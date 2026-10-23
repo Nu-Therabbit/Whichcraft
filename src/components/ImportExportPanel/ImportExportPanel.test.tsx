@@ -175,6 +175,7 @@ describe("ImportExportPanel — Import tab", () => {
     expect(onStage).toHaveBeenCalledWith(
       [{ name: "VALID", scope: "User", value: "", valueKind: "String" }],
       [],
+      { replacePendingStaged: false },
     );
   });
 
