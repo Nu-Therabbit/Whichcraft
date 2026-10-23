@@ -64,7 +64,7 @@ describe("reduce", () => {
   it("drops a download size that arrives after another version was picked", () => {
     let s = reduce(initialToolsState(), { type: "chooseVersion", version: "22.1.0" });
     s = reduce(s, { type: "chooseVersion", version: "22.2.0" });
-    s = reduce(s, { type: "versionSized", chosen: { version: "22.1.0", downloadBytes: 1 } });
+    s = reduce(s, { type: "versionSized", tool: "java", chosen: { version: "22.1.0", downloadBytes: 1 } });
     expect(s.install.chosen).toEqual({ version: "22.2.0", downloadBytes: null });
   });
 

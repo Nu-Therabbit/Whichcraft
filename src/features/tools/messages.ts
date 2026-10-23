@@ -62,11 +62,13 @@ export type ToolsIntent =
 /** Which busy flag a failure ends. */
 export type Operation = "inventory" | "plan" | "apply" | "install" | "update" | "uninstall" | "profiles" | "other";
 
-/** What came back from the backend. Only effects dispatch these. */
+/** What came back from the backend. Only effects dispatch these. One that names a `tool` is
+ * dropped when the panel has moved to another tool by the time it arrives. */
 export type ToolsEvent =
   | { type: "failed"; op: Operation; error: string }
   | {
       type: "refreshed";
+      tool: ToolKind;
       installations: ToolInstallationView[];
       recovery: RecoveryView | null;
       unfinished: UnfinishedUninstall[];
@@ -78,12 +80,12 @@ export type ToolsEvent =
   | { type: "applyFinished"; result: ApplyToolResult }
   | { type: "undone"; result: UndoResult }
   | { type: "recoveryResolved"; result: UndoResult | null }
-  | { type: "shellChecked"; check: ShellCheck }
+  | { type: "shellChecked"; tool: ToolKind; check: ShellCheck }
   | { type: "sdksLoaded"; android: AndroidInventory; msvc: MsvcInventory }
-  | { type: "versionsLoaded"; miseStatus: MiseStatus; versions: RemoteVersion[] }
-  | { type: "versionSized"; chosen: ChosenVersion }
+  | { type: "versionsLoaded"; tool: ToolKind; miseStatus: MiseStatus; versions: RemoteVersion[] }
+  | { type: "versionSized"; tool: ToolKind; chosen: ChosenVersion }
   | { type: "installed" }
-  | { type: "updatesChecked"; list: UpdateCandidate[] }
+  | { type: "updatesChecked"; tool: ToolKind; list: UpdateCandidate[] }
   | { type: "updateInstalled"; candidateRoot: string; plan: ToolApplyPlan; pending: PendingUpdate }
   | { type: "updateSwitched" }
   | { type: "uninstallPlanned"; plan: UninstallPlan }

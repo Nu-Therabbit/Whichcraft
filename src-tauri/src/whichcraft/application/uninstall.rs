@@ -77,6 +77,34 @@ pub fn folder_refusal(
     if let Some(inner) = other_roots.iter().find(|o| !same(o, root) && o.starts_with(root)) {
         return Some(format!("another installation is inside it: {}", inner.display()));
     }
+    // The inventory only knows folders on PATH or under a scan root, so look inside as well.
+    if let Some(inner) = nested_installation(machine, tool, root, NESTED_DEPTH) {
+        return Some(format!("another installation is inside it: {}", inner.display()));
+    }
+    None
+}
+
+/// How many folder levels below a root are searched for another tool's installation.
+const NESTED_DEPTH: u8 = 3;
+
+const ALL_TOOLS: [ToolKind; 6] = [ToolKind::Java, ToolKind::Node, ToolKind::Python, ToolKind::Go, ToolKind::Flutter, ToolKind::Git];
+
+/// The first folder below `dir` that is the root of an installation of a tool other than `tool`.
+fn nested_installation(machine: &dyn Machine, tool: ToolKind, dir: &Path, depth: u8) -> Option<PathBuf> {
+    if depth == 0 {
+        return None;
+    }
+    for path in machine.entries(dir) {
+        if machine.is_reparse_point(&path) || !machine.is_dir(&path) {
+            continue;
+        }
+        if ALL_TOOLS.iter().any(|other| *other != tool && machine.probe(*other, &path, false).is_some()) {
+            return Some(path);
+        }
+        if let Some(found) = nested_installation(machine, tool, &path, depth - 1) {
+            return Some(found);
+        }
+    }
     None
 }
 

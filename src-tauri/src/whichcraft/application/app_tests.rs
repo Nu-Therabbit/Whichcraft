@@ -163,6 +163,19 @@ fn removing_a_managed_install_goes_through_its_store_and_is_journaled() {
 }
 
 #[test]
+fn a_folder_holding_another_tool_off_path_is_not_recycled() {
+    use crate::whichcraft::domain::uninstall::UninstallMethod;
+    let w = world(r"C:\jdk\bin;C:\u", true);
+    let jdk = ToolInstallation { tool: ToolKind::Java, vendor: "Eclipse Adoptium".into(), version: "21.0.12".into(), root: r"C:\jdk".into(), managed: false };
+    w.machine.add_install(jdk.clone());
+    w.machine.add_install(ToolInstallation { tool: ToolKind::Python, vendor: "Python".into(), version: "3.14.0".into(), root: r"C:\jdk\tools\python".into(), managed: false });
+    assert!(w.app.list_tools(ToolKind::Python).unwrap().is_empty(), "the inner Python is neither on PATH nor under a scan root");
+
+    let plan = w.app.plan_uninstall(ToolKind::Java, &jdk.root).unwrap();
+    assert!(matches!(&plan.method, UninstallMethod::Refused { reason } if reason.contains(r"C:\jdk\tools\python")), "{:?}", plan.method);
+}
+
+#[test]
 fn the_terminal_opens_in_the_home_folder_with_the_fresh_environment() {
     let w = world(r"C:\u", true);
     w.app.open_terminal().unwrap();

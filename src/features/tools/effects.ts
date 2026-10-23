@@ -81,7 +81,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       await api.saveWhichcraftSettings(msg.settings);
       return reload(ctx, tool);
     case "checkShell":
-      dispatch({ type: "shellChecked", check: await api.shellCheck(tool) });
+      dispatch({ type: "shellChecked", tool, check: await api.shellCheck(tool) });
       return;
     case "openTerminal":
       return api.openTerminal();
@@ -90,13 +90,14 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       return;
 
     case "openInstallList": {
-      const miseStatus = await api.getMiseStatus();
-      dispatch({ type: "versionsLoaded", miseStatus, versions: await api.listRemoteVersions(tool) });
+      // Listing may wait for mise to finish downloading, so its status is read afterwards.
+      const versions = await api.listRemoteVersions(tool);
+      dispatch({ type: "versionsLoaded", tool, miseStatus: await api.getMiseStatus(), versions });
       return;
     }
     case "chooseVersion":
       try {
-        dispatch({ type: "versionSized", chosen: { version: msg.version, ...(await api.downloadSize(tool, msg.version)) } });
+        dispatch({ type: "versionSized", tool, chosen: { version: msg.version, ...(await api.downloadSize(tool, msg.version)) } });
       } catch {
         // The size is informative only; installing still works without it.
       }
@@ -110,7 +111,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     }
 
     case "checkUpdates":
-      dispatch({ type: "updatesChecked", list: await api.updateCandidates(tool) });
+      dispatch({ type: "updatesChecked", tool, list: await api.updateCandidates(tool) });
       return;
     case "update": {
       const old = state.installations.find((v) => v.root === msg.candidate.root);
@@ -202,6 +203,7 @@ async function reload({ api, dispatch }: EffectContext, tool: ToolKind): Promise
   try {
     dispatch({
       type: "refreshed",
+      tool,
       recovery: await api.getRecoveryStatus(),
       unfinished: await api.unfinishedUninstalls(),
       settings: await api.getWhichcraftSettings(),

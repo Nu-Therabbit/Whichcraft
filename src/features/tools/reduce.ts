@@ -1,4 +1,4 @@
-import type { Operation, ToolsMsg } from "./messages";
+import { isIntent, type Operation, type ToolsMsg } from "./messages";
 import { isSingleToolPlan, type ToolsState } from "./model";
 
 const STALE = "Environment changed since the plan was created. Refresh and try again.";
@@ -6,6 +6,8 @@ const NEEDS_UAC = "This plan requires UAC approval for System PATH changes.";
 
 /** The only place the panel's state changes. Pure: no API calls, no time, no randomness. */
 export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
+  // A slow result for the tool the panel has since left must not land on the new one.
+  if (!isIntent(msg) && "tool" in msg && msg.tool !== s.tool) return s;
   switch (msg.type) {
     // --- inventory ---
     case "started":

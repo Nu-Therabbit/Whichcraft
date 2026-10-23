@@ -146,4 +146,45 @@ describe("tools effects", () => {
     expect(h.state.update.busy).toBe(false);
     expect(h.state.error).toContain("offline");
   });
+  it("a slow inventory for the tool the panel left does not replace the new tool's list", async () => {
+    let releaseJava: () => void = () => {};
+    const javaGate = new Promise<void>((resolve) => {
+      releaseJava = resolve;
+    });
+    const node22 = inst("node", "22.23.4", "C:\\node22");
+    const api = fakeApi({
+      listToolInstallations: vi.fn(async (tool) => {
+        if (tool === "java") {
+          await javaGate;
+          return [jdk21];
+        }
+        return [node22];
+      }),
+    });
+    const h = harness(api);
+    h.dispatch({ type: "refresh" });
+    h.dispatch({ type: "selectTool", tool: "node" });
+    await vi.waitFor(() => expect(h.state.installations).toEqual([node22]));
+    releaseJava();
+    await h.settle();
+    expect(h.state.tool).toBe("node");
+    expect(h.state.installations).toEqual([node22]);
+  });
+
+  it("reads the mise status after listing versions, so a finished download unlocks Install", async () => {
+    let fetching = true;
+    const status = (f: boolean) => ({ version: "2026.10.1", present: !f, downloadBytes: 1, oldVersions: [], fetching: f });
+    const api = fakeApi({
+      getMiseStatus: vi.fn(async () => status(fetching)),
+      listRemoteVersions: vi.fn(async () => {
+        fetching = false;
+        return [{ version: "22.24.0", downloadBytes: null, installBytes: null }];
+      }),
+    });
+    const h = harness(api);
+    h.dispatch({ type: "openInstallList" });
+    await h.settle();
+    expect(h.state.install.miseStatus?.fetching).toBe(false);
+    expect(h.state.install.versions).toHaveLength(1);
+  });
 });
