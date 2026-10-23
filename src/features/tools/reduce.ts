@@ -40,12 +40,16 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
       return {
         ...s,
         loading: false,
-        error: s.loading && !isApplyPlanOutcomeError(s.error) ? null : s.error,
+        error:
+          s.loading && !isApplyPlanOutcomeError(s.error) && !s.install.retainErrorOnRefresh
+            ? null
+            : s.error,
         installations: msg.installations,
         recovery: msg.recovery,
         unfinished: msg.unfinished,
         settings: msg.settings,
         pythonInfo: msg.pythonInfo,
+        install: { ...s.install, retainErrorOnRefresh: false },
       };
 
     // --- plan, apply, undo, recovery ---
@@ -137,7 +141,10 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
     case "install":
       return s.install.chosen ? { ...s, error: null, install: { ...s.install, busy: true } } : s;
     case "installed":
-      return { ...s, install: { ...s.install, busy: false, chosen: null } };
+      return {
+        ...s,
+        install: { ...s.install, busy: false, chosen: null, retainErrorOnRefresh: false },
+      };
 
     // --- update ---
     case "checkUpdates":
@@ -212,8 +219,11 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
     case "missingInstalled":
       return { ...s, profiles: { ...s.profiles, busy: false, missing: null } };
 
-    case "failed":
-      return endBusy({ ...s, error: msg.error }, msg.op);
+    case "failed": {
+      const next = endBusy({ ...s, error: msg.error }, msg.op);
+      if (msg.op !== "install") return next;
+      return { ...next, install: { ...next.install, retainErrorOnRefresh: true } };
+    }
   }
 }
 

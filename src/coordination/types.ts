@@ -30,6 +30,7 @@ export type ToolsWriteGateResult = { ok: true } | { ok: false; reason: string };
 
 export type ReadScopeKey =
   | { kind: "tool-inventory"; tool: ToolKind }
+  | { kind: "overview-inventory"; tool: ToolKind }
   | { kind: "profiles" }
   | { kind: "shell-check"; tool: ToolKind }
   | { kind: "environment" }
@@ -68,6 +69,8 @@ export function readScopeKey(scope: ReadScopeKey): string {
   switch (scope.kind) {
     case "tool-inventory":
       return `inv:${scope.tool}`;
+    case "overview-inventory":
+      return `overview:${scope.tool}`;
     case "profiles":
       return "profiles";
     case "shell-check":

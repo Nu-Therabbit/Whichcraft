@@ -21,8 +21,9 @@ export function ShellInstallView({ tool, onClose }: Props) {
 
   useEffect(() => {
     if (tool === "git" || state.tool !== tool) return;
+    if (install.busy || install.loading || install.versions.length > 0) return;
     dispatch({ type: "openInstallList" });
-  }, [tool, state.tool, dispatch]);
+  }, [tool, state.tool, install.busy, install.loading, install.versions.length, dispatch]);
 
   if (tool === "git") {
     return (

@@ -453,6 +453,82 @@ describe("tools effects", () => {
     expect(h.state.error).toBe(ENVIRONMENT_PENDING_TOOLS_MESSAGE);
   });
 
+  it("invalidates shell overview after a successful install and reloads inventory", async () => {
+    const listener = vi.fn();
+    const installManaged = vi.fn(async () => "C:\\store\\node\\22.0.1");
+    const { runtime, coordination } = fakeToolsRuntime({
+      installManaged,
+      listToolInstallations: vi.fn(async () => [inst("node", "22.0.1", "C:\\store\\node\\22.0.1", { managed: true })]),
+    });
+    coordination.subscribeInvalidation(listener);
+    const h = harness(runtime, {
+      tool: "node",
+      install: {
+        ...initialToolsState().install,
+        chosen: { version: "22.0.1", downloadBytes: 1000, diskBytes: 2000 },
+      },
+    });
+    h.dispatch({ type: "install" });
+    await h.settle();
+    expect(installManaged).toHaveBeenCalledWith("node", "22.0.1");
+    expect(listener).toHaveBeenCalledWith(
+      expect.arrayContaining(["shell-overview", "tools-installations"]),
+    );
+    expect(h.state.install.busy).toBe(false);
+  });
+
+  it("invalidates shell overview when install fails and still reloads the panel", async () => {
+    const listener = vi.fn();
+    const installManaged = vi.fn(async () => {
+      throw new Error("download failed");
+    });
+    const listToolInstallations = vi.fn(async () => []);
+    const { runtime, coordination } = fakeToolsRuntime({ installManaged, listToolInstallations });
+    coordination.subscribeInvalidation(listener);
+    const h = harness(runtime, {
+      tool: "node",
+      install: {
+        ...initialToolsState().install,
+        chosen: { version: "22.0.1", downloadBytes: null },
+      },
+    });
+    h.dispatch({ type: "install" });
+    await h.settle();
+    expect(listener).toHaveBeenCalledWith(expect.arrayContaining(["shell-overview"]));
+    expect(h.state.error).toMatch(/download failed/);
+    expect(h.state.install.busy).toBe(false);
+    expect(listToolInstallations).toHaveBeenCalled();
+  });
+
+  it("invalidates shell overview when install is cancelled and clears busy after switching tools", async () => {
+    const listener = vi.fn();
+    let finishInstall!: () => void;
+    const installManaged = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          finishInstall = () => resolve("C:\\store\\node\\22.0.1");
+        }),
+    );
+    const { runtime, coordination } = fakeToolsRuntime({
+      installManaged,
+      listToolInstallations: vi.fn(async () => []),
+    });
+    coordination.subscribeInvalidation(listener);
+    const h = harness(runtime, {
+      tool: "node",
+      install: {
+        ...initialToolsState().install,
+        chosen: { version: "22.0.1", downloadBytes: null },
+      },
+    });
+    h.dispatch({ type: "install" });
+    h.dispatch({ type: "selectTool", tool: "java" });
+    finishInstall();
+    await h.settle();
+    expect(listener).toHaveBeenCalledWith(expect.arrayContaining(["shell-overview"]));
+    expect(h.state.install.busy).toBe(false);
+  });
+
   it("reads the mise status after listing versions, so a finished download unlocks Install", async () => {
     let fetching = true;
     const status = (f: boolean) => ({ version: "2026.10.1", present: !f, downloadBytes: 1, oldVersions: [], fetching: f });

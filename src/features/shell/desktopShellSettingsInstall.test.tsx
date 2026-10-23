@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UndoProvider } from "../../contexts/UndoContext";
@@ -64,8 +64,8 @@ describe("desktop shell settings and install", () => {
     window.history.replaceState(null, "", "/?presentation=desktop-shell");
   });
 
-  it("saves scan roots and install store from Settings without dropping old-store installations", async () => {
-    const oldStoreInstall = inst("java", "11.0.2", "D:\\old-store\\java\\11", { managed: true });
+  it("saves scan roots and terminal, keeps previous store history, and lists old-store installs after store change", async () => {
+    const oldStoreInstall = inst("java", "11.0.2", "D:\\old-store\\java\\11", { managed: true, effective: true, selected: true });
     const listToolInstallations = vi.fn(async () => [oldStoreInstall]);
     const saveWhichcraftSettings = vi.fn(async (settings: unknown) => settings);
     const getWhichcraftSettings = vi.fn(async () => ({
@@ -73,6 +73,7 @@ describe("desktop shell settings and install", () => {
       scanRoots: ["C:\\scan"],
       terminal: "windows_terminal" as const,
       installStoreConfirmed: true,
+      previousInstallStores: ["D:\\legacy-store"],
     }));
     const services = splitEnvarlyApi(
       fakeToolsRuntime({
@@ -90,35 +91,95 @@ describe("desktop shell settings and install", () => {
     await waitFor(() => expect(getWhichcraftSettings).toHaveBeenCalled());
     await user.click(screen.getByRole("link", { name: /^settings/i }));
     await screen.findByTestId("shell-settings-ready");
+    expect(screen.getByText("D:\\legacy-store")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole("combobox", { name: /terminal/i }), "power_shell");
+    await waitFor(() =>
+      expect(saveWhichcraftSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ terminal: "power_shell" }),
+      ),
+    );
+
+    await user.type(screen.getByRole("textbox", { name: /folder to scan/i }), "E:\\extra");
+    await user.click(screen.getByRole("button", { name: /^add$/i }));
+    await waitFor(() =>
+      expect(saveWhichcraftSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ scanRoots: expect.arrayContaining(["C:\\scan", "E:\\extra"]) }),
+      ),
+    );
+
     const storeInput = screen.getByRole("textbox", { name: "Install folder" });
-    expect(storeInput).toHaveValue("D:\\old-store");
-    expect(screen.getByText("C:\\scan")).toBeInTheDocument();
     await user.clear(storeInput);
     await user.type(storeInput, "E:\\new-store");
     await user.click(screen.getByRole("button", { name: /^save$/i }));
 
     await waitFor(() => expect(saveWhichcraftSettings).toHaveBeenCalled());
-    await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThan(0));
+    await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThan(1));
 
     await user.click(screen.getByRole("link", { name: /^developer tools/i }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /Java/i })).toBeInTheDocument());
-    await waitFor(() =>
-      expect(listToolInstallations.mock.calls.some(() => true)).toBe(true),
+    expect(
+      await screen.findByRole("button", { name: /Java, Windows uses 11\.0\.2/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("refreshes the tool overview after install via coordinator invalidation", async () => {
+    const node20 = inst("node", "20.0.0", "C:\\node20", { effective: true, selected: true });
+    const node22 = inst("node", "22.0.1", "C:\\store\\node\\22.0.1", { managed: true });
+    let installFinished = false;
+    const listToolInstallations = vi.fn(async (tool: string) => {
+      if (tool !== "node") return [];
+      return installFinished ? [node20, node22] : [node20];
+    });
+    const listRemoteVersions = vi.fn(async () => [
+      { version: "22.0.1", downloadBytes: 1000, installBytes: 2000 },
+    ]);
+    const installManaged = vi.fn(async () => {
+      installFinished = true;
+      return "C:\\store\\node\\22.0.1";
+    });
+    const services = splitEnvarlyApi(
+      fakeToolsRuntime({
+        ...sdkMocks,
+        getWhichcraftSettings: async () => ({
+          installStore: "C:\\store",
+          scanRoots: [],
+          terminal: "windows_terminal" as const,
+          installStoreConfirmed: true,
+        }),
+        listToolInstallations,
+        listRemoteVersions,
+        getMiseStatus: async () => ({
+          version: "2026.10.1",
+          present: true,
+          downloadBytes: 1,
+          oldVersions: [],
+          fetching: false,
+        }),
+        downloadSize: async () => ({ downloadBytes: 1000, diskBytes: 2000 }),
+        installManaged,
+      }).api,
     );
-    expect(await screen.findByRole("button", { name: /Java/i })).toBeInTheDocument();
+    window.history.replaceState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
+    renderDesktopShell(services);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /Node\.js/i }));
+    await waitFor(() => expect(listRemoteVersions).toHaveBeenCalledTimes(1));
+    const installSection = await screen.findByRole("region", { name: /install node/i });
+    await user.click(within(installSection).getByRole("button", { name: "22.0.1" }));
+    await user.click(within(installSection).getByRole("button", { name: /^install$/i }));
+
+    await waitFor(() => expect(installManaged).toHaveBeenCalledWith("node", "22.0.1"));
+    await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThanOrEqual(2));
+    expect(
+      await screen.findByRole("button", { name: /Node\.js, Windows uses 20\.0\.0.*2 installations/i }),
+    ).toBeInTheDocument();
   });
 
   it("lists remote versions and keeps install busy status after navigating to Settings", async () => {
     const listRemoteVersions = vi.fn(async () => [
       { version: "22.0.1", downloadBytes: 1000, installBytes: 2000 },
     ]);
-    const getMiseStatus = vi.fn(async () => ({
-      version: "2026.10.1",
-      present: true,
-      downloadBytes: 1,
-      oldVersions: [],
-      fetching: false,
-    }));
     let installDone: (() => void) | null = null;
     const installManaged = vi.fn(
       () =>
@@ -139,7 +200,13 @@ describe("desktop shell settings and install", () => {
           inst("node", "20.0.0", "C:\\node20", { effective: true, selected: true }),
         ],
         listRemoteVersions,
-        getMiseStatus,
+        getMiseStatus: async () => ({
+          version: "2026.10.1",
+          present: true,
+          downloadBytes: 1,
+          oldVersions: [],
+          fetching: false,
+        }),
         downloadSize: async () => ({ downloadBytes: 1000, diskBytes: 2000 }),
         installManaged,
       }).api,
@@ -150,10 +217,6 @@ describe("desktop shell settings and install", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /Node\.js/i }));
     await waitFor(() => expect(listRemoteVersions).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /22\.0\.1/ })).toBeInTheDocument(),
-    );
-
     await user.click(screen.getByRole("button", { name: /22\.0\.1/ }));
     await user.click(screen.getByRole("button", { name: /^install$/i }));
 
@@ -167,10 +230,109 @@ describe("desktop shell settings and install", () => {
     await waitFor(() => expect(screen.queryAllByText(/installing/i)).toHaveLength(0));
   });
 
-  it("does not offer install for Git", async () => {
+  it("does not reopen install listing or wipe a failed install error when returning to install=1", async () => {
+    const listRemoteVersions = vi.fn(async () => [
+      { version: "22.0.1", downloadBytes: 1000, installBytes: 2000 },
+    ]);
+    const installManaged = vi.fn(async () => {
+      throw new Error("download cancelled by user");
+    });
     const services = splitEnvarlyApi(
       fakeToolsRuntime({
         ...sdkMocks,
+        getWhichcraftSettings: async () => ({
+          installStore: "C:\\store",
+          scanRoots: [],
+          terminal: "windows_terminal" as const,
+          installStoreConfirmed: true,
+        }),
+        listToolInstallations: async () => [
+          inst("node", "20.0.0", "C:\\node20", { effective: true, selected: true }),
+        ],
+        listRemoteVersions,
+        getMiseStatus: async () => ({
+          version: "2026.10.1",
+          present: true,
+          downloadBytes: 1,
+          oldVersions: [],
+          fetching: false,
+        }),
+        downloadSize: async () => ({ downloadBytes: 1000, diskBytes: 2000 }),
+        installManaged,
+      }).api,
+    );
+    window.history.replaceState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
+    renderDesktopShell(services);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /Node\.js/i }));
+    await waitFor(() => expect(listRemoteVersions).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: /22\.0\.1/ }));
+    await user.click(screen.getByRole("button", { name: /^install$/i }));
+    expect(await screen.findAllByText(/download cancelled by user/i)).not.toHaveLength(0);
+
+    await user.click(screen.getByRole("button", { name: /close install/i }));
+    window.history.pushState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    expect(await screen.findAllByText(/download cancelled by user/i)).not.toHaveLength(0);
+    expect(listRemoteVersions).toHaveBeenCalledTimes(1);
+  });
+
+  it("installs without applying a tool plan or writing the environment", async () => {
+    const applyToolPlan = vi.fn(async () => ({ planId: "p", stale: false, needsElevation: false }));
+    const setEnvVar = vi.fn(async () => {});
+    const listRemoteVersions = vi.fn(async () => [
+      { version: "22.0.1", downloadBytes: 1000, installBytes: 2000 },
+    ]);
+    const installManaged = vi.fn(async () => "C:\\store\\node\\22.0.1");
+    const services = splitEnvarlyApi(
+      fakeToolsRuntime({
+        ...sdkMocks,
+        setEnvVar,
+        applyToolPlan,
+        getWhichcraftSettings: async () => ({
+          installStore: "C:\\store",
+          scanRoots: [],
+          terminal: "windows_terminal" as const,
+          installStoreConfirmed: true,
+        }),
+        listToolInstallations: async () => [
+          inst("node", "20.0.0", "C:\\node20", { effective: true, selected: true }),
+        ],
+        listRemoteVersions,
+        getMiseStatus: async () => ({
+          version: "2026.10.1",
+          present: true,
+          downloadBytes: 1,
+          oldVersions: [],
+          fetching: false,
+        }),
+        downloadSize: async () => ({ downloadBytes: 1000, diskBytes: 2000 }),
+        installManaged,
+      }).api,
+    );
+    window.history.replaceState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
+    renderDesktopShell(services, { withEnvironment: true });
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /Node\.js/i }));
+    await user.click(await screen.findByRole("button", { name: /22\.0\.1/ }));
+    await user.click(screen.getByRole("button", { name: /^install$/i }));
+
+    await waitFor(() => expect(installManaged).toHaveBeenCalled());
+    expect(applyToolPlan).not.toHaveBeenCalled();
+    expect(setEnvVar).not.toHaveBeenCalled();
+  });
+
+  it("does not offer install or update for Git", async () => {
+    const listRemoteVersions = vi.fn(async () => [{ version: "2.50.0", downloadBytes: null, installBytes: null }]);
+    const updateCandidates = vi.fn(async () => [{ root: "C:\\Git", current: "2.45.0", latest: "2.50.0" }]);
+    const services = splitEnvarlyApi(
+      fakeToolsRuntime({
+        ...sdkMocks,
+        listRemoteVersions,
+        updateCandidates,
         listToolInstallations: async (tool: string) =>
           tool === "git"
             ? [inst("git", "2.45.0", "C:\\Git", { effective: true, selected: true })]
@@ -184,5 +346,8 @@ describe("desktop shell settings and install", () => {
     await user.click(await screen.findByRole("button", { name: /Git/i }));
     expect(screen.getByText(/switch-only/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^install$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /check for updates/i })).not.toBeInTheDocument();
+    expect(listRemoteVersions).not.toHaveBeenCalled();
+    expect(updateCandidates).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
 import type { WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
-import type { ToolsWriteKind, WriteAdmission, WriteOutcome } from "../../coordination/types";
+import type { InvalidationScope, ToolsWriteKind, WriteAdmission, WriteOutcome } from "../../coordination/types";
 import type { ProfileToolPin, ToolKind, ToolProfile } from "../../types";
 import type { ToolsRuntime } from "./runtime";
 import type { Operation, ToolsIntent, ToolsMsg } from "./messages";
@@ -7,6 +7,26 @@ import { isSingleToolPlan, type ToolsState } from "./model";
 import { canConfirmUninstall } from "./reduce";
 
 const PROFILE_TOOLS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
+
+const SCOPES_AFTER_INSTALL: InvalidationScope[] = [
+  "tools-installations",
+  "tools-profiles",
+  "tools-shell-check",
+  "shell-overview",
+];
+
+/** Notify shell overview and refresh the active tool panel after any install attempt ends. */
+async function afterInstallAttempt(ctx: EffectContext, originTool: ToolKind): Promise<void> {
+  const { coordination } = ctx.runtime;
+  coordination.invalidate(SCOPES_AFTER_INSTALL);
+  const panelTool = ctx.getState().tool;
+  if (panelTool === originTool) {
+    await reload(ctx, originTool);
+  } else if (ctx.getState().install.busy) {
+    // Switched away mid-install: keep footer progress honest without blaming the new tool.
+    ctx.dispatch({ type: "installed" });
+  }
+}
 
 export interface EffectContext {
   /** The state as it was when the intent was dispatched. */
@@ -225,9 +245,20 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     case "install": {
       const chosen = state.install.chosen;
       if (!chosen) return;
-      await tools.installManaged(tool, chosen.version);
-      dispatch({ type: "installed" });
-      return reload(ctx, tool);
+      const originTool = tool;
+      try {
+        await tools.installManaged(originTool, chosen.version);
+        if (ctx.getState().tool === originTool) {
+          dispatch({ type: "installed" });
+        }
+      } catch (e) {
+        if (ctx.getState().tool === originTool) {
+          dispatch({ type: "failed", op: "install", error: String(e) });
+        }
+      } finally {
+        await afterInstallAttempt(ctx, originTool);
+      }
+      return;
     }
 
     case "checkUpdates":

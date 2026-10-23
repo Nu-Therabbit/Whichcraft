@@ -23,3 +23,9 @@
 - **Install:** `?presentation=desktop-shell&install=1` opens `ShellInstallView` with production `InstallSection`; `selectTool` before `openInstallList`. Footer shows `status_installing` while `install.busy`. Git install button disabled / switch-only message.
 - **Coordinator:** Invalidation after install flows through existing `effects.ts` + `subscribeInvalidation` on the single shell tools store; overview reads no longer call `beginToolsRead` (avoids racing settings load).
 - **Windows manual (first-use store/mise, failed/cancel download):** Not run in this agent environment. Leave checkbox open for human QA.
+
+### Review round 1 (Grok 4.7)
+
+- Install success/failure/tool-switch now calls `coordination.invalidate` (`tools-installations`, `shell-overview`, …) and reloads the panel; overview uses `overview-inventory` read keys so tools-store reloads do not cancel in-flight grid reads.
+- `ShellInstallView` skips repeat `openInstallList` when versions are already loaded or install is busy; install errors survive `install=1` navigation via `install.retainErrorOnRefresh`.
+- Tests: `effects.test.ts` (install invalidate paths), `useToolsOverview.test.ts` (read key + revision drop), expanded `desktopShellSettingsInstall.test.tsx` (overview refresh after install, settings fields, Git install/update exclusion, no `applyToolPlan` on install-only).

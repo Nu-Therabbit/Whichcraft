@@ -1,8 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import type { EnvironmentApi } from "../environment/api";
 import type { ToolsApi } from "../tools/api";
 import type { ToolInstallationView } from "../tools/types";
+import { inst } from "../tools/testHarness";
 import { OVERVIEW_TOOL_KINDS } from "./overviewTools";
 import { useToolsOverview } from "./useToolsOverview";
 
@@ -198,6 +200,75 @@ describe("useToolsOverview rescan identity", () => {
       expect(result.current.byTool.java.installations).toEqual([]);
       expect(result.current.byTool.java.error).toMatch(/account read failed on retry/);
       expect(result.current.byTool.java.boundRequestId).toBe(0);
+    });
+  });
+
+  it("does not discard overview inventory when a tools-panel reload starts for the same tool", async () => {
+    const coordination = createWriteCoordinator();
+    let unblockJava!: (value: ToolInstallationView[]) => void;
+    let javaLoads = 0;
+    const listToolInstallations = vi.fn(async (tool: string) => {
+      if (tool === "java") {
+        javaLoads += 1;
+        if (javaLoads === 1) {
+          return new Promise<ToolInstallationView[]>((resolve) => {
+            unblockJava = resolve;
+          });
+        }
+      }
+      return [];
+    });
+    const environment = makeEnvironment({ getSelectedAccount: vi.fn(async () => null) });
+    const toolsApi = makeTools({ listToolInstallations });
+
+    const { result } = renderHook(() => useToolsOverview(toolsApi, environment, coordination));
+
+    await waitFor(() => {
+      expect(result.current.byTool.java.inFlightRequestId).toBe(1);
+    });
+
+    coordination.beginToolsRead("java");
+
+    const fresh = inst("java", "21.0.2", "C:\\jdk21", { effective: true, selected: true });
+    await act(async () => {
+      unblockJava([fresh]);
+    });
+
+    await waitFor(() => {
+      expect(result.current.byTool.java.installations).toEqual([fresh]);
+      expect(result.current.byTool.java.loading).toBe(false);
+    });
+  });
+
+  it("drops overview inventory when tools revision advances before the list returns", async () => {
+    const coordination = createWriteCoordinator();
+    let unblockJava!: (value: ToolInstallationView[]) => void;
+    const listToolInstallations = vi.fn(async (tool: string) => {
+      if (tool === "java") {
+        return new Promise<ToolInstallationView[]>((resolve) => {
+          unblockJava = resolve;
+        });
+      }
+      return [];
+    });
+    const environment = makeEnvironment({ getSelectedAccount: vi.fn(async () => null) });
+    const toolsApi = makeTools({ listToolInstallations });
+
+    const { result } = renderHook(() => useToolsOverview(toolsApi, environment, coordination));
+
+    await waitFor(() => {
+      expect(result.current.byTool.java.inFlightRequestId).toBe(1);
+    });
+
+    coordination.invalidate(["tools-installations", "shell-overview"]);
+
+    await act(async () => {
+      unblockJava([inst("java", "stale", "C:\\stale", { effective: true, selected: true })]);
+    });
+
+    await waitFor(() => {
+      expect(result.current.byTool.java.installations).toEqual([]);
+      expect(result.current.byTool.java.loading).toBe(false);
     });
   });
 

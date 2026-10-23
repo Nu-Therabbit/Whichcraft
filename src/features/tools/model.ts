@@ -62,6 +62,8 @@ export interface ToolsState {
     busy: boolean;
     miseStatus: MiseStatus | null;
     chosen: ChosenVersion | null;
+    /** Keep panel error through the next inventory readback after install failure. */
+    retainErrorOnRefresh: boolean;
   };
   update: { list: UpdateCandidate[] | null; busy: boolean; pending: PendingUpdate | null };
   uninstall: {
@@ -94,7 +96,14 @@ export function initialToolsState(tool: ToolKind = "java"): ToolsState {
     sdks: { android: null, msvc: null },
     shellCheck: null,
     plan: { current: null, building: false, applying: false, undoResult: null, cleanup: null },
-    install: { versions: [], loading: false, busy: false, miseStatus: null, chosen: null },
+    install: {
+      versions: [],
+      loading: false,
+      busy: false,
+      miseStatus: null,
+      chosen: null,
+      retainErrorOnRefresh: false,
+    },
     update: { list: null, busy: false, pending: null },
     uninstall: { plan: null, outcome: null, busy: false, switchPlan: null, defaultReplacement: null },
     profiles: { list: [], current: [], missing: null, busy: false },
