@@ -460,6 +460,80 @@ fn contract_flutter_plugin_stays_on_the_pin_over_time() {
     assert_eq!(git(&["rev-parse", "HEAD"]), VFOX_FLUTTER_PLUGIN_SHA, "Whichcraft puts it back on the pin");
 }
 
+/// The mise an earlier Whichcraft pinned, for the app-update test (SHASUMS256.txt of the release).
+const OLD_MISE: &str = "2026.9.18";
+const OLD_MISE_ZIP_SHA256: &str = "0436007827b3594fb3494164065ddeed87974c68c7e394d09ef87c962fa4c2ac";
+
+/// Ticket 17, I-14, I-15: after an app update, Node installed by the previous pin's mise is
+/// listed; while the new mise is missing, maintenance uses the old one without downloading;
+/// preparing fetches the new one and removes the old; the new one uninstalls what the old installed.
+#[test]
+#[ignore = "contract: downloads two mise versions and Node into temporary folders"]
+fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
+    use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
+    use crate::whichcraft::mise::manager::{mise_status, prepare_mise, ProcessMiseRunner};
+    use crate::whichcraft::mise::pins::MISE_VERSION;
+    use crate::whichcraft::mise::MiseToolManager;
+    use crate::whichcraft::persistence::{load_settings, save_settings, whichcraft_data_dir};
+    use crate::whichcraft::services::elevation::WinElevator;
+    use crate::whichcraft::services::tool_inventory::list_tool_installations;
+    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallOutcome};
+    use sha2::{Digest, Sha256};
+
+    let data = tempfile::tempdir().unwrap();
+    use_test_data_dir(data.path());
+    let store = tempfile::tempdir().unwrap();
+    let mut settings = load_settings().unwrap();
+    settings.install_store = store.path().to_path_buf();
+    save_settings(&settings).unwrap();
+
+    // What an earlier Whichcraft left: its verified mise in its own version folder.
+    let url = format!("https://github.com/jdx/mise/releases/download/v{OLD_MISE}/mise-v{OLD_MISE}-windows-x64.zip");
+    let zip = reqwest::blocking::get(&url).unwrap().bytes().unwrap().to_vec();
+    assert_eq!(format!("{:x}", Sha256::digest(&zip)), OLD_MISE_ZIP_SHA256);
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(zip)).unwrap();
+    let mut exe = Vec::new();
+    std::io::Read::read_to_end(&mut archive.by_name("mise/bin/mise.exe").unwrap(), &mut exe).unwrap();
+    let mise_root = whichcraft_data_dir().unwrap().join("mise");
+    let old_dir = mise_root.join(OLD_MISE);
+    std::fs::create_dir_all(&old_dir).unwrap();
+    std::fs::write(old_dir.join("mise.exe"), exe).unwrap();
+    let pinned_dir = mise_root.join(MISE_VERSION.trim_start_matches('v'));
+
+    let status = mise_status().unwrap();
+    assert!(!status.present);
+    assert_eq!(status.old_versions, vec![OLD_MISE.to_string()]);
+
+    // Installed by the old mise (a maintenance runner uses it while the new one is missing).
+    let root = MiseToolManager::with_runner(ProcessMiseRunner::for_maintenance(store.path()))
+        .install(ToolKind::Node, "22.12.0")
+        .unwrap();
+    assert!(!pinned_dir.exists(), "nothing downloaded: the old mise did the work");
+    assert!(root.join("node.exe").is_file());
+    assert!(list_tool_installations(&WinregBackend, ToolKind::Node, None).unwrap().iter().any(|v| v.installation.root == root));
+
+    // The app update's background step: fetch the new pin, verify it, drop the old one.
+    assert!(prepare_mise().unwrap());
+    assert!(pinned_dir.join("mise.exe").is_file());
+    assert!(!old_dir.exists());
+    assert!(mise_status().unwrap().old_versions.is_empty());
+
+    // The new mise removes what the old one installed.
+    let views = list_tool_installations(&WinregBackend, ToolKind::Node, None).unwrap();
+    let view = views.iter().find(|v| v.installation.root == root).expect("still listed after the update");
+    let stores = settings.all_install_stores();
+    let plan = plan_uninstall(
+        PlanInputs { view, all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[] },
+        &WinUsageProbe,
+    )
+    .unwrap();
+    assert_eq!(
+        uninstall(&plan, None, &WinregBackend, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
+        UninstallOutcome::Removed
+    );
+    assert!(!root.exists());
+}
+
 /// A-2 and U-1 for System scope: the write goes through UAC to the app's elevated helper (two UAC
 /// prompts: apply, then Undo). Needs `cargo build` first so target\debug\whichcraft.exe is current.
 #[test]
