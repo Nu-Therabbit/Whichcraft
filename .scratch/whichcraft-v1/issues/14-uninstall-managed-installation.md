@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] ถอนผ่าน mise ด้วยที่เก็บของการติดตั้งนั้น แล้วโฟลเดอร์ cache และ junction หายครบ (R-1) รวมถึงการติดตั้งในที่เก็บเก่า (S-2) — services/uninstall.rs ใช้ mise ของที่เก็บที่ถือการติดตั้งนั้น รวมที่เก็บเก่า (test managed_installs_are_removed_with_mise_in_their_own_store) แต่ยังไม่ได้ถอนผ่าน mise จริงเพื่อตรวจ cache และ junction
+- [ ] ถอนผ่าน mise ด้วยที่เก็บของการติดตั้งนั้น แล้วโฟลเดอร์ cache และ junction หายครบ (R-1) รวมถึงการติดตั้งในที่เก็บเก่า (S-2) — ถอนผ่าน mise ของที่เก็บนั้นจริงแล้วผ่าน (contract test เดียวกับใบ 10: โฟลเดอร์หายและ inventory ไม่เห็นอีก) แต่ยังไม่ได้ตรวจ cache และ junction แยก และยังไม่ได้ลองกับที่เก็บเก่า
 - [x] ถ้าเป็นการเลือกหรือการติดตั้งที่มีผลจริง ต้องเลือกตัวแทนก่อน แล้ว Apply การสลับก่อนจึงถอน (R-12) — UI ให้เลือกตัวแทน แล้ว Apply การสลับ (ผ่าน UAC ถ้าต้องใช้) ก่อนถอน (test the_selected_jdk_is_switched_away_before_it_is_removed)
 - [x] UsageProbe ตรวจด้วย Restart Manager กับไฟล์หลัก ร่วมกับดูพาธของ exe และลองเปลี่ยนชื่อโฟลเดอร์ไปและกลับ — WinUsageProbe: Restart Manager กับ exe/dll ทั้งโฟลเดอร์ (ลึก 5 ชั้น) และ rename ไปกลับเฉพาะโฟลเดอร์ที่ผู้ใช้เขียนได้ (ไม่อยู่ใต้ Program Files)
 - [x] ถ้ามี java หรือ Gradle daemon ใช้อยู่ แสดงชื่อโปรแกรม แนะนำ `gradlew --stop` และไม่ kill เอง (R-10) — แสดงชื่อโปรแกรมกับ PID และแนะนำ gradlew --stop ไม่ kill เอง
