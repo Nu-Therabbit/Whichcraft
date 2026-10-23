@@ -299,6 +299,47 @@ mod tests {
         Box::leak(s.to_string().into_boxed_str())
     }
 
+    fn fake_jdk(dir: &Path, name: &str, version: &str) -> PathBuf {
+        let jdk = dir.join(name);
+        std::fs::create_dir_all(jdk.join("bin")).unwrap();
+        std::fs::write(jdk.join("release"), format!("IMPLEMENTOR=\"Eclipse Adoptium\"\nJAVA_VERSION=\"{version}\"\n")).unwrap();
+        std::fs::write(jdk.join("bin").join("java.exe"), b"").unwrap();
+        jdk
+    }
+
+    fn java_views(backend: &MemBackend, selected: Option<&Path>) -> Vec<ToolInstallationView> {
+        list_tool_installations_with_options(backend, ToolKind::Java, selected, ToolDiscoveryOptions { include_standard_locations: false })
+            .unwrap()
+    }
+
+    #[test]
+    fn a_jdk_on_path_is_listed_with_its_release_version_and_effective() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        let jdk = fake_jdk(dir.path(), "jdk-21", "21.0.1");
+        let backend = MemBackend::new().with_user([("Path", leak(&jdk.join("bin").to_string_lossy()))]);
+        let views = java_views(&backend, None);
+        assert_eq!(views.len(), 1);
+        assert!(views[0].effective);
+        assert_eq!(views[0].installation.version, "21.0.1");
+    }
+
+    #[test]
+    fn system_path_wins_over_user_for_the_effective_jdk() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        let user_jdk = fake_jdk(dir.path(), "user", "22.0.0");
+        let sys_jdk = fake_jdk(dir.path(), "system", "21.0.0");
+        let backend = MemBackend::new()
+            .with_user([("Path", leak(&user_jdk.join("bin").to_string_lossy()))])
+            .with_system([("Path", leak(&sys_jdk.join("bin").to_string_lossy()))]);
+        let views = java_views(&backend, Some(&user_jdk));
+        assert_eq!(views.iter().find(|v| v.effective).unwrap().installation.version, "21.0.0");
+        let user_view = views.iter().find(|v| v.installation.root == user_jdk).unwrap();
+        assert!(!user_view.effective && user_view.selected);
+        assert!(user_view.mismatch_reason.is_some(), "the selection is shadowed");
+    }
+
     #[test]
     fn lists_node_from_user_path() {
         let dir = tempfile::tempdir().unwrap();

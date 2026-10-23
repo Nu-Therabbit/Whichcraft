@@ -365,7 +365,7 @@ mod tests {
         let user = b.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, jdk.to_string_lossy());
         assert!(user["Path"].value.starts_with(&*jdk.join("bin").to_string_lossy()));
-        let selected = crate::whichcraft::persistence::load_java_selection().unwrap().unwrap();
+        let selected = crate::whichcraft::persistence::load_tool_selection(ToolKind::Java).unwrap().unwrap();
         assert_eq!(selected.root, jdk);
     }
 
@@ -380,7 +380,7 @@ mod tests {
             version: "22.23.4".into(),
         })
         .unwrap();
-        assert!(crate::whichcraft::persistence::load_java_selection().unwrap().is_none());
+        assert!(crate::whichcraft::persistence::load_tool_selection(ToolKind::Java).unwrap().is_none());
     }
 
     #[test]

@@ -8,14 +8,6 @@ use crate::whichcraft::api::ToolKind;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct JavaSelection {
-    pub root: PathBuf,
-    pub vendor: String,
-    pub version: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
 pub struct ToolSelection {
     pub tool: ToolKind,
     pub root: PathBuf,
@@ -25,15 +17,6 @@ pub struct ToolSelection {
 
 fn selection_path() -> Result<PathBuf, EnvarlyError> {
     Ok(whichcraft_data_dir()?.join("selection.json"))
-}
-
-/// The Java entry of the selection file. `None` when only other tools have been selected.
-pub fn load_java_selection() -> Result<Option<JavaSelection>, EnvarlyError> {
-    Ok(load_tool_selection(ToolKind::Java)?.map(|s| JavaSelection {
-        root: s.root,
-        vendor: s.vendor,
-        version: s.version,
-    }))
 }
 
 pub fn load_tool_selection(tool: ToolKind) -> Result<Option<ToolSelection>, EnvarlyError> {

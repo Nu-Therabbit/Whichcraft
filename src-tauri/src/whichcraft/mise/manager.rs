@@ -181,13 +181,6 @@ impl<R: MiseRunner> MiseToolManager<R> {
 }
 
 impl<R: MiseRunner + Send + Sync> ToolManager for MiseToolManager<R> {
-    fn list_installed(&self, tool: ToolKind) -> Result<Vec<String>, EnvarlyError> {
-        Ok(parse_ls(&self.run_ok(&["ls", "--json", mise_tool(tool)?])?)?
-            .into_iter()
-            .map(|entry| display_version(tool, &entry.version))
-            .collect())
-    }
-
     fn list_remote(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError> {
         let name = mise_tool(tool)?;
         if tool == ToolKind::Flutter {
@@ -594,12 +587,6 @@ mod tests {
         let mgr = MiseToolManager::with_runner(FakeRunner::default().reply("ls --json node", ls));
         assert_eq!(mgr.install_path(ToolKind::Node, "22.1.0").unwrap(), PathBuf::from("C:\\n\\22.1.0"));
         assert!(mgr.install_path(ToolKind::Node, "22.1").is_err());
-    }
-
-    #[test]
-    fn list_installed_reads_the_array_for_one_tool() {
-        let mgr = MiseToolManager::with_runner(FakeRunner::default().reply("ls --json java", JAVA_LS));
-        assert_eq!(mgr.list_installed(ToolKind::Java).unwrap(), vec!["21.0.12+101.0.LTS"]);
     }
 
     #[test]

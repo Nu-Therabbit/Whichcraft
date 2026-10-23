@@ -10,6 +10,5 @@ pub struct RemoteVersion {
 }
 
 pub trait ToolManager: Send + Sync {
-    fn list_installed(&self, tool: ToolKind) -> Result<Vec<String>, EnvarlyError>;
     fn list_remote(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError>;
 }

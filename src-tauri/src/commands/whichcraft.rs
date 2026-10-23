@@ -4,12 +4,9 @@ use crate::env_backend::WinregBackend;
 use crate::error::EnvarlyError;
 use crate::whichcraft::ToolKind;
 use crate::whichcraft::mise::MiseToolManager;
-use crate::whichcraft::persistence::{
-    load_java_selection, load_settings, load_tool_selection, save_settings, WhichcraftSettings,
-};
+use crate::whichcraft::persistence::{load_settings, load_tool_selection, save_settings, WhichcraftSettings};
 use crate::whichcraft::ports::tool_manager::ToolManager;
 use crate::whichcraft::services::elevation::WinElevator;
-use crate::whichcraft::services::java_inventory::{list_java_installations, JavaInstallationView};
 use crate::whichcraft::services::path_cleanup::{build_path_cleanup_plan, PathCleanupPlan};
 use crate::whichcraft::services::profiles::{
     apply_profile, load_profiles, missing_pins, profile_status, repoint_profiles, save_profiles as persist_profiles,
@@ -34,7 +31,6 @@ use crate::whichcraft::services::uninstall::{
     dismiss_unfinished_uninstall, plan_uninstall, protected_folders, unfinished_uninstalls, uninstall, PlanInputs,
     UninstallOutcome, UninstallPlan, UninstallRecord,
 };
-use crate::whichcraft::{CoreHealth, WhichcraftCore};
 /// Runs blocking work (UAC prompts, downloads, child processes) off the UI thread. Sync Tauri
 /// commands run on the main thread, so waiting there froze the window.
 async fn off_main<T: Send + 'static>(
@@ -43,18 +39,6 @@ async fn off_main<T: Send + 'static>(
     tauri::async_runtime::spawn_blocking(work)
         .await
         .map_err(|e| EnvarlyError::InvalidInput(format!("background task failed: {e}")))?
-}
-
-#[tauri::command]
-pub fn whichcraft_health() -> CoreHealth {
-    WhichcraftCore::with_fakes().health()
-}
-
-#[tauri::command]
-pub fn whichcraft_list_java() -> Result<Vec<JavaInstallationView>, EnvarlyError> {
-    let backend = WinregBackend;
-    let selected = load_java_selection()?.map(|s| s.root);
-    list_java_installations(&backend, selected.as_deref())
 }
 
 #[tauri::command]
@@ -132,29 +116,6 @@ mod tests {
     }
 }
 
-/// Java goes through the same plan as every other tool (JAVA_HOME + PATH, System shadowing).
-#[tauri::command]
-pub async fn whichcraft_plan_java(root: String) -> Result<ToolApplyPlan, EnvarlyError> {
-    off_main(move || {
-        let backend = WinregBackend;
-        let views = list_java_installations(&backend, None)?;
-        let java = views
-            .into_iter()
-            .find(|v| v.installation.root == PathBuf::from(&root))
-            .map(|v| v.installation)
-            .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown java root: {root}")))?;
-        let installation = crate::whichcraft::ports::installation_probe::ToolInstallation {
-            tool: ToolKind::Java,
-            vendor: java.vendor,
-            version: java.version,
-            root: java.root,
-            managed: java.managed,
-        };
-        create_tool_plan(&backend, &installation)
-    })
-    .await
-}
-
 #[tauri::command]
 pub async fn whichcraft_plan_tool(root: String, tool: ToolKind) -> Result<ToolApplyPlan, EnvarlyError> {
     off_main(move || {
@@ -166,14 +127,6 @@ pub async fn whichcraft_plan_tool(root: String, tool: ToolKind) -> Result<ToolAp
             .map(|v| v.installation)
             .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown {tool:?} root: {root}")))?;
         create_tool_plan(&backend, &installation)
-    })
-    .await
-}
-
-#[tauri::command]
-pub async fn whichcraft_apply_java_plan(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
-    off_main(move || {
-        apply_tool_plan_elevated(&WinregBackend, &WinElevator, &plan)
     })
     .await
 }
@@ -259,12 +212,6 @@ pub async fn whichcraft_roll_back_apply(journal_id: String) -> Result<UndoResult
         roll_back_pending(&WinregBackend, Some(&WinElevator), &journal_id)
     })
     .await
-}
-
-#[tauri::command]
-pub fn whichcraft_get_java_selection(
-) -> Result<Option<crate::whichcraft::persistence::JavaSelection>, EnvarlyError> {
-    load_java_selection()
 }
 
 #[tauri::command]

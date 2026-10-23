@@ -118,9 +118,6 @@ export interface ToolInstallationView {
   mismatchReason: string | null;
 }
 
-/** @deprecated Use ToolInstallationView */
-export type JavaInstallationView = ToolInstallationView;
-
 export interface PlanVariableDiff {
   name: string;
   scope: VarScope;
@@ -129,11 +126,7 @@ export interface PlanVariableDiff {
   valueKind: EnvValueKind;
 }
 
-/** @deprecated Java uses the same plan as every other tool. */
-export type JavaApplyPlan = ToolApplyPlan;
 
-/** @deprecated Java uses the same apply result as every other tool. */
-export type ApplyJavaResult = ApplyToolResult;
 
 export interface ToolInstallationRef {
   tool: ToolKind;

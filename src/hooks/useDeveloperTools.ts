@@ -65,16 +65,7 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
       setError(null);
       setPlan(null);
       try {
-        if (tool === "java") {
-          const javaPlan = await api.planJavaApply(root);
-          setPlan({
-            ...javaPlan,
-            tool: "java",
-            selected: { ...javaPlan.selected, tool: "java" },
-          });
-        } else {
-          setPlan(await api.planToolApply(tool, root));
-        }
+        setPlan(await api.planToolApply(tool, root));
       } catch (e) {
         setError(String(e));
       } finally {
@@ -89,15 +80,9 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     setApplyBusy(true);
     setError(null);
     try {
-      let result: ApplyToolResult;
-      if (plan.requiresUac) {
-        result = await api.applyToolPlanWithUac(plan);
-      } else if (tool === "java") {
-        const javaResult = await api.applyJavaPlan(plan);
-        result = { ...javaResult, needsElevation: false };
-      } else {
-        result = await api.applyToolPlan(plan);
-      }
+      const result: ApplyToolResult = plan.requiresUac
+        ? await api.applyToolPlanWithUac(plan)
+        : await api.applyToolPlan(plan);
       if (result.stale) {
         setError("Environment changed since the plan was created. Refresh and try again.");
         // Only a single-tool plan can be rebuilt from its selection; profile and cleanup plans
@@ -120,7 +105,7 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     } finally {
       setApplyBusy(false);
     }
-  }, [plan, tool, refresh, buildPlan]);
+  }, [plan, refresh, buildPlan]);
 
   const undoLast = useCallback(async () => {
     setApplyBusy(true);

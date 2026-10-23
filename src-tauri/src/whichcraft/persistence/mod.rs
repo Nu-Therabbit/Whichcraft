@@ -7,10 +7,7 @@ pub use journal_store::{
     load_incomplete_journal, load_journal, load_last_completed_apply, new_journal_id, save_journal,
     JournalStatus, MutationRecord, WhichcraftJournal,
 };
-pub use selection_store::{
-    load_java_selection, load_tool_selection, save_tool_selection,
-    JavaSelection, ToolSelection,
-};
+pub use selection_store::{load_tool_selection, save_tool_selection, ToolSelection};
 
 use std::path::PathBuf;
 
