@@ -327,6 +327,93 @@ fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
     assert!(in_b.join("node.exe").is_file(), "store B is untouched");
 }
 
+fn folder_bytes(dir: &std::path::Path) -> u64 {
+    std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| match e.file_type() {
+            Ok(t) if t.is_dir() && !t.is_symlink() => folder_bytes(&e.path()),
+            Ok(t) if t.is_file() => e.metadata().map(|m| m.len()).unwrap_or(0),
+            _ => 0,
+        })
+        .sum()
+}
+
+/// I-1, I-8, I-9, R-1 for Flutter: the vfox plugin is installed at the pinned commit, a stable
+/// Flutter installs into a temporary store, runs, is listed once, and uninstalls cleanly.
+/// Downloads about 1.9 GB and unpacks about 3.3 GB.
+#[test]
+#[ignore = "contract: downloads mise, the vfox-flutter plugin and Flutter (about 1.9 GB) into temporary folders"]
+fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
+    use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
+    use crate::whichcraft::mise::manager::ProcessMiseRunner;
+    use crate::whichcraft::mise::pins::VFOX_FLUTTER_PLUGIN_SHA;
+    use crate::whichcraft::mise::MiseToolManager;
+    use crate::whichcraft::persistence::{load_settings, save_settings};
+    use crate::whichcraft::services::elevation::WinElevator;
+    use crate::whichcraft::services::tool_inventory::list_tool_installations;
+    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallOutcome};
+
+    let data = tempfile::tempdir().unwrap();
+    use_test_data_dir(data.path());
+    let store = tempfile::tempdir().unwrap();
+    let mut settings = load_settings().unwrap();
+    settings.install_store = store.path().to_path_buf();
+    save_settings(&settings).unwrap();
+    let user_before = WinregBackend.read_user().unwrap();
+    let system_before = WinregBackend.read_system().unwrap();
+    let mgr = MiseToolManager::with_runner(ProcessMiseRunner::for_store(store.path()));
+
+    // Listing remote versions installs the plugin first, at the pinned commit.
+    let version = newest_remote(&mgr, ToolKind::Flutter, "3.32.");
+    let plugin = store.path().join("_mise").join("data").join("plugins").join("vfox-jdx-vfox-flutter");
+    let head = std::process::Command::new("git").arg("-C").arg(&plugin).args(["rev-parse", "HEAD"]).output().unwrap();
+    assert_eq!(String::from_utf8_lossy(&head.stdout).trim(), VFOX_FLUTTER_PLUGIN_SHA, "plugin at {}", plugin.display());
+
+    let started = std::time::Instant::now();
+    let root = mgr.install(ToolKind::Flutter, &version).unwrap();
+    println!("Flutter {version} at {} in {:?}, {:.2} GB on disk", root.display(), started.elapsed(), folder_bytes(&root) as f64 / 1e9);
+    let listed_before_first_run = list_tool_installations(&WinregBackend, ToolKind::Flutter, None)
+        .unwrap()
+        .iter()
+        .any(|v| v.installation.root.starts_with(store.path()));
+    println!("listed before Flutter's first run: {listed_before_first_run}");
+
+    let dart = root.join("bin").join("cache").join("dart-sdk").join("bin").join("dart.exe");
+    let out = std::process::Command::new(&dart).arg("--version").output().unwrap();
+    println!("dart: {}", String::from_utf8_lossy(&out.stdout).trim());
+    assert!(out.status.success());
+    let out = std::process::Command::new(root.join("bin").join("flutter.bat"))
+        .args(["--version", "--suppress-analytics"])
+        .output()
+        .unwrap();
+    let said = String::from_utf8_lossy(&out.stdout);
+    println!("flutter: {}", said.lines().next().unwrap_or(""));
+    assert!(out.status.success(), "{said}{}", String::from_utf8_lossy(&out.stderr));
+    assert!(said.contains(version.trim_end_matches("-stable")), "{said}");
+
+    let views = list_tool_installations(&WinregBackend, ToolKind::Flutter, None).unwrap();
+    let ours: Vec<_> = views.iter().filter(|v| v.installation.root.starts_with(store.path())).collect();
+    println!("listed: {:?}", ours.iter().map(|v| &v.installation.version).collect::<Vec<_>>());
+    assert_eq!(ours.len(), 1, "listed once");
+    println!("before uninstall: {:?}", leftovers(store.path(), ToolKind::Flutter));
+
+    let stores = settings.all_install_stores();
+    let plan = plan_uninstall(
+        PlanInputs { view: ours[0], all: &views, catalog: None, stores: &stores, scan_roots: &[], protected: &[], profiles: &[] },
+        &WinUsageProbe,
+    )
+    .unwrap();
+    let outcome = uninstall(&plan, None, &WinregBackend, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+    let left = leftovers(store.path(), ToolKind::Flutter);
+    println!("after uninstall: {outcome:?} {left:?}");
+    assert_eq!(outcome, UninstallOutcome::Removed);
+    assert!(left.iter().all(|p| p.ends_with(".msgpack.z")), "{left:?}");
+    assert!(same_values(&WinregBackend.read_user().unwrap(), &user_before));
+    assert!(same_values(&WinregBackend.read_system().unwrap(), &system_before));
+}
+
 /// A-2 and U-1 for System scope: the write goes through UAC to the app's elevated helper (two UAC
 /// prompts: apply, then Undo). Needs `cargo build` first so target\debug\whichcraft.exe is current.
 #[test]
