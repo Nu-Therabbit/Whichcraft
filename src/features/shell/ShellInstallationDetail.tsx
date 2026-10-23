@@ -1,5 +1,6 @@
 import { PlanDiffList } from "../../components/ToolsPanel/PlanDiffList";
 import { RecoveryBanner } from "../../components/ToolsPanel/RecoveryBanner";
+import { UninstallSection } from "../../components/ToolsPanel/UninstallSection";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import type { ToolsDispatch } from "../tools/useToolsStore";
@@ -15,7 +16,7 @@ interface Props {
 
 export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
   const { t } = useI18n();
-  const { installations, loading, error, plan, recovery } = state;
+  const { installations, loading, error, plan, recovery, uninstall, unfinished } = state;
   const applyBusy = plan.applying;
   const current = plan.current;
 
@@ -39,6 +40,36 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
           onRollBack={() => dispatch({ type: "resolveRecovery", action: "rollBack" })}
         />
       )}
+
+      {unfinished.map((u) => (
+        <div
+          key={u.id}
+          className="text-xs border border-warning/40 rounded-md px-3 py-2 flex flex-col gap-2"
+        >
+          <p className="text-warning">
+            {t("tools.uninstall.unfinished", {
+              name: `${u.installation.vendor} ${u.installation.version}`,
+              path: u.installation.root,
+            })}
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={() => dispatch({ type: "openFolder", path: u.installation.root })}
+            >
+              {t("tools.uninstall.open_folder")}
+            </Button>
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={() => dispatch({ type: "dismissUnfinished", id: u.id })}
+            >
+              {t("tools.uninstall.rescan")}
+            </Button>
+          </div>
+        </div>
+      ))}
 
       {plan.undoResult && (
         <div className="text-xs border border-rim-subtle rounded-md px-3 py-2 space-y-1">
@@ -81,7 +112,9 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
               planRoot={current?.selected.root ?? null}
               building={plan.building}
               applyBusy={applyBusy}
+              uninstallBusy={uninstall.busy}
               onChoose={() => dispatch({ type: "buildPlan", root: item.root })}
+              onUninstall={() => dispatch({ type: "planUninstall", root: item.root })}
             />
           ))}
         </ul>
@@ -111,6 +144,21 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
         </section>
       )}
 
+      <UninstallSection
+        key={uninstall.plan?.installation.root ?? "none"}
+        plan={uninstall.plan}
+        outcome={uninstall.outcome}
+        busy={uninstall.busy}
+        defaultReplacement={uninstall.defaultReplacement}
+        switchPlan={uninstall.switchPlan}
+        onChooseReplacement={(root) => dispatch({ type: "chooseReplacement", root })}
+        onConfirm={(replacementRoot, repoint) =>
+          dispatch({ type: "confirmUninstall", replacementRoot, repoint })
+        }
+        onOpenFolder={(path) => dispatch({ type: "openFolder", path })}
+        onClose={() => dispatch({ type: "closeUninstall" })}
+      />
+
       <div className="flex flex-wrap gap-2 pt-1 border-t border-rim-subtle">
         <Button variant="secondary" size="xs" onClick={() => dispatch({ type: "undoLast" })} disabled={applyBusy}>
           {t("tools.undo_last")}
@@ -125,13 +173,17 @@ function InstallationSwitchRow({
   planRoot,
   building,
   applyBusy,
+  uninstallBusy,
   onChoose,
+  onUninstall,
 }: {
   item: ToolInstallationView;
   planRoot: string | null;
   building: boolean;
   applyBusy: boolean;
+  uninstallBusy: boolean;
   onChoose: () => void;
+  onUninstall: () => void;
 }) {
   const { t } = useI18n();
   const reviewing = planRoot === item.root;
@@ -152,19 +204,25 @@ function InstallationSwitchRow({
       {!item.available && item.mismatchReason && (
         <p className="text-[11px] text-dim mt-1">{item.mismatchReason}</p>
       )}
-      <Button
-        variant={reviewing ? "primary" : "secondary"}
-        size="xs"
-        className="mt-2"
-        disabled={!item.available || building || applyBusy}
-        aria-label={t("desktop_shell.switch_to_installation", {
-          vendor: item.vendor,
-          version: item.version,
-        })}
-        onClick={onChoose}
-      >
-        {reviewing ? t("desktop_shell.reviewing_plan") : t("desktop_shell.use_installation")}
-      </Button>
+      <div className="flex flex-wrap gap-2 mt-2">
+        <Button
+          variant={reviewing ? "primary" : "secondary"}
+          size="xs"
+          disabled={!item.available || building || applyBusy}
+          aria-label={t("desktop_shell.switch_to_installation", {
+            vendor: item.vendor,
+            version: item.version,
+          })}
+          onClick={onChoose}
+        >
+          {reviewing ? t("desktop_shell.reviewing_plan") : t("desktop_shell.use_installation")}
+        </Button>
+        {item.available && (
+          <Button variant="ghost" size="xs" disabled={uninstallBusy} onClick={onUninstall}>
+            {t("tools.uninstall_button")}
+          </Button>
+        )}
+      </div>
     </li>
   );
 }
