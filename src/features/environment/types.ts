@@ -1,4 +1,5 @@
-export type VarScope = "User" | "System" | "OtherUser";
+export type { VarScope } from "../../shared/varScope";
+import type { VarScope } from "../../shared/varScope";
 export type EnvValueKind = "String" | "ExpandString";
 export type EnvValueKindSelection = "Auto" | EnvValueKind;
 

@@ -1,4 +1,4 @@
-import type { VarScope } from "../features/environment/types";
+import type { VarScope } from "./varScope";
 
 export interface UndoConflict {
   name: string;

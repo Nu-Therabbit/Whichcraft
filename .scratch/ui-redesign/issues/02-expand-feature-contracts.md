@@ -32,3 +32,9 @@
 - `resolveLegacyApi` never assigns production over a later `wireLegacyApiFacade`; runtime slices use explicit key picks in `composition/appServices.ts`.
 - Contract types live under feature/platform `api.ts`; shared undo DTOs in `shared/applyUndo.ts`; `contracts/index.ts` is type-only; helpers moved to `composition/`.
 - `useToolsStore` requires an injected `ToolsRuntime`; `appStartup.test.tsx` covers production path via `configureProductionServices`, loading, failure, and legacy facade wiring.
+
+## Review round 2
+
+- Compile-time key-list exhaustiveness via `Exclude<keyof …>` assertions in `composition/apiKeys.ts`.
+- Override `services` wired synchronously (ref-guarded) before children mount; `resolveLegacyApi` re-checks `wiredApi` after production rejection; mount-effect test added.
+- Theme class applied from `main.tsx` and `AppLoading` layout effect; `VarScope` moved to `shared/varScope.ts`; restored `withTimeout` re-export from `api.ts`.

@@ -4,8 +4,11 @@ import App from "./App";
 import { AppServicesProvider } from "./composition/AppServicesContext";
 import { ErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { UndoProvider } from "./contexts/UndoContext";
+import { applyThemeToDocument, getInitialTheme } from "./lib/themeDocument";
 import "./i18n";
 import "./index.css";
+
+applyThemeToDocument(getInitialTheme());
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

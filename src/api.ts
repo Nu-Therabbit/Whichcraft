@@ -3,8 +3,10 @@ import type { LaunchOptions } from "./platform/types";
 import { ENVARLY_API_KEYS } from "./composition/apiKeys";
 import { mergeEnvarlyApi } from "./composition/appServices";
 import { createProductionServices } from "./composition/createProductionServices";
+import { withTimeout } from "./composition/withTimeout";
 
 export type { EnvarlyApi, LaunchOptions };
+export { withTimeout };
 
 let wiredApi: EnvarlyApi | null = null;
 let pendingApi: Promise<EnvarlyApi> | null = null;
@@ -29,9 +31,14 @@ async function resolveLegacyApi(): Promise<EnvarlyApi> {
       return mergeEnvarlyApi(services);
     });
   }
-  const resolved = await pendingApi;
-  if (wiredApi) return wiredApi;
-  return resolved;
+  try {
+    const resolved = await pendingApi;
+    if (wiredApi) return wiredApi;
+    return resolved;
+  } catch (error) {
+    if (wiredApi) return wiredApi;
+    throw error;
+  }
 }
 
 function legacyApiMethod(method: (typeof ENVARLY_API_KEYS)[number]) {

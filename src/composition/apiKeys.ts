@@ -1,3 +1,4 @@
+import type { EnvarlyApi } from "../contracts";
 import type { EnvironmentApi } from "../features/environment/api";
 import type { ToolsApi } from "../features/tools/api";
 import type { PlatformApi, ToolsPlatformSlice } from "../platform/api";
@@ -24,7 +25,14 @@ export const ENVIRONMENT_API_KEYS = [
   "selectAccount",
   "getSelectedAccount",
   "onApplyProgress",
-] as const satisfies readonly (keyof EnvironmentApi)[];
+] as const;
+
+type _MissingEnvironmentApiKeys = Exclude<
+  keyof EnvironmentApi,
+  (typeof ENVIRONMENT_API_KEYS)[number]
+>;
+const _assertEnvironmentApiKeys: _MissingEnvironmentApiKeys extends never ? true : never = true;
+void _assertEnvironmentApiKeys;
 
 export const TOOLS_API_KEYS = [
   "listToolInstallations",
@@ -59,7 +67,11 @@ export const TOOLS_API_KEYS = [
   "getRecoveryStatus",
   "resumeApply",
   "rollBackApply",
-] as const satisfies readonly (keyof ToolsApi)[];
+] as const;
+
+type _MissingToolsApiKeys = Exclude<keyof ToolsApi, (typeof TOOLS_API_KEYS)[number]>;
+const _assertToolsApiKeys: _MissingToolsApiKeys extends never ? true : never = true;
+void _assertToolsApiKeys;
 
 export const PLATFORM_API_KEYS = [
   "getLaunchOptions",
@@ -70,17 +82,34 @@ export const PLATFORM_API_KEYS = [
   "openTerminal",
   "getWhichcraftSettings",
   "saveWhichcraftSettings",
-] as const satisfies readonly (keyof PlatformApi)[];
+] as const;
+
+type _MissingPlatformApiKeys = Exclude<keyof PlatformApi, (typeof PLATFORM_API_KEYS)[number]>;
+const _assertPlatformApiKeys: _MissingPlatformApiKeys extends never ? true : never = true;
+void _assertPlatformApiKeys;
 
 export const TOOLS_PLATFORM_SLICE_KEYS = [
   "getWhichcraftSettings",
   "saveWhichcraftSettings",
   "openTerminal",
   "openFolder",
-] as const satisfies readonly (keyof ToolsPlatformSlice)[];
+] as const;
+
+type _MissingToolsPlatformSliceKeys = Exclude<
+  keyof ToolsPlatformSlice,
+  (typeof TOOLS_PLATFORM_SLICE_KEYS)[number]
+>;
+const _assertToolsPlatformSliceKeys: _MissingToolsPlatformSliceKeys extends never
+  ? true
+  : never = true;
+void _assertToolsPlatformSliceKeys;
 
 export const ENVARLY_API_KEYS = [
   ...ENVIRONMENT_API_KEYS,
   ...TOOLS_API_KEYS,
   ...PLATFORM_API_KEYS,
 ] as const;
+
+type _MissingEnvarlyApiKeys = Exclude<keyof EnvarlyApi, (typeof ENVARLY_API_KEYS)[number]>;
+const _assertEnvarlyApiKeys: _MissingEnvarlyApiKeys extends never ? true : never = true;
+void _assertEnvarlyApiKeys;

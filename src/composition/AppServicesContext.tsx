@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { AppServices } from "../contracts";
 import { AppLoading } from "../components/AppLoading/AppLoading";
 import { createProductionServices } from "./createProductionServices";
@@ -14,14 +14,17 @@ export function AppServicesProvider({
   services?: AppServices;
   children: ReactNode;
 }) {
+  const wiredOverrideRef = useRef<AppServices | null>(null);
+  if (servicesOverride !== undefined && wiredOverrideRef.current !== servicesOverride) {
+    syncLegacyApiFacade(servicesOverride);
+    wiredOverrideRef.current = servicesOverride;
+  }
+
   const [services, setServices] = useState<AppServices | null>(servicesOverride ?? null);
-  const [booting, setBooting] = useState(servicesOverride === undefined);
 
   useEffect(() => {
     if (servicesOverride !== undefined) {
-      syncLegacyApiFacade(servicesOverride);
       setServices(servicesOverride);
-      setBooting(false);
       return;
     }
 
@@ -31,7 +34,6 @@ export function AppServicesProvider({
         if (cancelled) return;
         syncLegacyApiFacade(resolved);
         setServices(resolved);
-        setBooting(false);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -39,7 +41,6 @@ export function AppServicesProvider({
         const fallback = splitEnvarlyApi(createUnavailableEnvarlyApi(message));
         syncLegacyApiFacade(fallback);
         setServices(fallback);
-        setBooting(false);
       });
 
     return () => {
@@ -47,12 +48,8 @@ export function AppServicesProvider({
     };
   }, [servicesOverride]);
 
-  if (booting) {
+  if (services === null) {
     return <AppLoading />;
-  }
-
-  if (!services) {
-    return null;
   }
 
   return <AppServicesContext.Provider value={services}>{children}</AppServicesContext.Provider>;

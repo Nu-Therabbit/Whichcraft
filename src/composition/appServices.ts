@@ -43,6 +43,7 @@ export function createUnavailableEnvarlyApi(message: string): EnvarlyApi {
   const reject = () => Promise.reject(new Error(message));
   return new Proxy({} as EnvarlyApi, {
     get(_target, prop) {
+      if (prop === "then" || typeof prop === "symbol") return undefined;
       if (typeof prop !== "string") return undefined;
       return reject;
     },
