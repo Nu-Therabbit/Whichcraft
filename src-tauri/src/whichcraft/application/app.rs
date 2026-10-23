@@ -345,20 +345,20 @@ mod tests {
 
     #[test]
     fn saving_settings_without_store_history_keeps_it() {
-        let mut current = WhichcraftSettings { install_store: "C:\a".into(), ..Default::default() };
-        current.switch_install_store("C:\b".into());
-        let incoming = WhichcraftSettings { install_store: "C:\b".into(), ..Default::default() };
+        let mut current = WhichcraftSettings { install_store: r"C:\a".into(), ..Default::default() };
+        current.switch_install_store(r"C:\b".into());
+        let incoming = WhichcraftSettings { install_store: r"C:\b".into(), ..Default::default() };
         let merged = merge_settings(current, incoming);
-        assert_eq!(merged.all_install_stores(), vec![PathBuf::from("C:\b"), PathBuf::from("C:\a")]);
+        assert_eq!(merged.all_install_stores(), vec![PathBuf::from(r"C:\b"), PathBuf::from(r"C:\a")]);
     }
 
     #[test]
     fn saving_a_new_store_keeps_the_old_one_listed() {
-        let current = WhichcraftSettings { install_store: "C:\a".into(), ..Default::default() };
-        let incoming = WhichcraftSettings { install_store: "D:\tools".into(), ..Default::default() };
+        let current = WhichcraftSettings { install_store: r"C:\a".into(), ..Default::default() };
+        let incoming = WhichcraftSettings { install_store: r"D:\tools".into(), ..Default::default() };
         let merged = merge_settings(current, incoming);
-        assert_eq!(merged.install_store, PathBuf::from("D:\tools"));
-        assert_eq!(merged.previous_install_stores, vec![PathBuf::from("C:\a")]);
+        assert_eq!(merged.install_store, PathBuf::from(r"D:\tools"));
+        assert_eq!(merged.previous_install_stores, vec![PathBuf::from(r"C:\a")]);
     }
 
     #[test]
