@@ -2,7 +2,7 @@
 
 Date: 2026-10-24
 Status: validated-at-expand-02
-Production baseline observed: `main` at `7dff397`; legacy entry points re-audited on branch `feat/ui-redesign-02-feature-contracts` before contract refactor (2026-10-24).
+Production baseline observed: `main` at `7dff397`; legacy entry points re-audited on branch `feat/ui-redesign-02-feature-contracts` (2026-10-24, review round 1).
 
 This is an early source-based inventory, not a claim of tested production parity. Ticket 02 owns validating/extending the baseline against the implementation starting point before behaviour changes. Tickets that migrate a flow attach verification evidence to its rows. Ticket 18 checks this existing list for candidate cutover; ticket 21 checks it again after removal. Neither late ticket starts the audit from scratch.
 
@@ -10,46 +10,46 @@ Use the current implementation behaviour, the [spec](spec.md), and the original 
 
 ## Observed actions and owners
 
-Ticket 02 re-checked every row against current production source (`App.tsx`, `AppHeader`, `Sidebar`, `DetailPanel`, `ToolsPanel`, `SnapshotPanel*`, `ImportExportPanel`, `CheckCommandPanel`, modals). Legacy entry points remain reachable; migration evidence for new UI homes is still pending on owner tickets. Owners below identify who must preserve the capability, not whether the ticket is unblocked.
+Ticket 02 re-checked every row against current production source before contract refactor. Each evidence cell records a checkable legacy entry (`file:symbol`) plus the acceptance criterion to verify at migration. Post-migration verification remains on owner tickets.
 
 | ID | Existing entry / capability observed in source | New home | Implementation owner | Evidence to attach |
 | --- | --- | --- | --- | --- |
-| UI-01 | AppHeader Refresh; ToolsPanel Refresh and focus refresh | Developer tools command bar; scoped refresh | 07, 04 | 02: legacy refresh in `AppHeader` / `ToolsPanel` confirmed; post-migration TBD |
-| UI-02 | AppHeader Tools entry opens the tool modal | Developer tools overview and inspector | 07 | Six Tool Kinds, roots/ownership/counts, unavailable and mismatch states |
-| UI-03 | Sidebar search, scope, sorting, secrets filter, variable selection | Environment / Variables | 09 | Equivalent filtering/selection and supported account context |
-| UI-04 | Sidebar copy and secret-value display treatment | Environment / Variables | 09 | Correct value copied and existing secret-display behaviour preserved |
-| UI-05 | New-variable action and NewVarModal | Environment / Variables | 09 | Validation and staged creation retain value kind/scope |
-| UI-06 | DetailPanel edit/type/separator/list/PATH editors | Environment / Variables | 09 | String/expand-string/list editing, entry validation/reordering and metadata |
-| UI-07 | DetailPanel stage delete, stage edit, unstage/discard | Environment / Variables | 09 | No Registry writes before explicit apply; no silent loss across navigation |
-| UI-08 | Local editor history and global Ctrl+Z/redo handling | Contextual edit undo/redo | 09 | Editor undo and staged-history semantics remain distinct from tool Apply Undo |
-| UI-09 | AppHeader staged count; StagedModal review, discard and apply | Environment pending-changes review | 09 | Actual diff, progress, error, types, scopes and atomic apply contract |
-| UI-10 | AppHeader external-changes entry and DiffPanel | Environment external-change review/status | 17 | Accepted/reverted changes and fresh baseline preserve external edits |
-| UI-11 | DiagnosticsPanel stage actions | Environment diagnostics | 17 | Findings and action scope, refreshed read models |
-| UI-12 | PathBanner / DetailPanel add-app-directory-to-PATH and dismiss | Environment PATH maintenance | 09, 17 | Applicable account/scope, proposal and explicit staging/dismissal |
-| UI-13 | AppHeader Snapshots toggle; resizable SnapshotPanelDock | Environment / Snapshots | 10 | Capability remains discoverable without requiring the old dock layout |
-| UI-14 | Snapshot save/list/rename/delete | Environment / Snapshots | 10 | Existing saved data and confirmation/error/loading behaviour |
-| UI-15 | Snapshot preview, saved-snapshot comparison and stage restore | Environment / Snapshots | 10 | Value kinds, additions/removals, legacy formats and explicit apply |
-| UI-16 | AppHeader or overflow Import / Export | Environment / Import / Export | 11 | Both entry modes and real file interactions reachable |
-| UI-17 | Import file/text, format, selection, merge/replace, stage | Environment / Import / Export | 11 | Parser, validation, legacy-kind handling and no premature writes |
-| UI-18 | Export All/User/System/Custom, format and secret confirmation | Environment / Import / Export | 11 | All existing formats, produced files, cancellation and confirmations |
-| UI-19 | AppHeader or overflow Check command | Environment / Check command | 12 | Name/full-path/PATHEXT, ordered hits, full-path status and no-match |
-| UI-20 | AppHeader run-as-admin/status and local-account picker | Environment account/permission controls | 09, 18 | Preserve supported account editing; tool UAC remains operation-scoped rather than requiring whole-app elevation |
-| UI-21 | AppHeader theme and language controls, including overflow | Shell preferences / Settings | 07, 18 | Existing supported themes/languages, accessibility and persistence |
-| UI-22 | App update availability/link | Shell status / About or Settings | 18 | Production update status and destination remain reachable |
-| UI-23 | GitHub/upstream link and LicensesPanel | About / source / licences | 18 | Useful product source and inherited attribution remain reachable |
-| UI-24 | Tool tab/installation selection, plan preview, dismiss and apply | Developer tools inspector and plan review | 08 | Exact reviewed plan, stale/cancel/UAC/error paths and actual readback |
-| UI-25 | ToolsPanel Undo last apply | Developer tools / operation status | 08 | Whichcraft-only reversal and conflict handling |
-| UI-26 | ToolsPanel Check in shell and Open terminal | Developer tools command/inspector actions | 12 | Shell Resolution is separate; launched processes get fresh environment |
-| UI-27 | Install version, remote versions, choose version/store and install | Developer tools installation flow | 13 | Download/disk/mise status, first-use confirmation and progress |
-| UI-28 | Check updates, update/repoint and old-installation removal offer | Developer tools update flow | 15 | Same-line install → switch → profile handling → removal offer |
-| UI-29 | Uninstall, choose replacement, confirm, open folder/rescan | Developer tools removal flow | 14 | Actual removal method, refusal/in-use, affected profiles and incomplete/cancelled outcomes |
-| UI-30 | SDK tab and supplemental Python information | Developer tools / Inventory Only details | 07 | Android/MSVC display only; Python launcher/Store stub remain separate |
-| UI-31 | Profile list/create/delete/check-missing/apply/install-missing | Tool profiles | 16 | Partial pins, match status, missing installations and real apply |
-| UI-32 | Tool settings: store, history, Scan Roots and terminal | Settings | 13 | Existing saved settings and old stores remain usable |
-| UI-33 | Plan PATH cleanup and summary | Environment PATH maintenance | 17 | Preview/Apply/Undo; expanded variable entries not falsely removed |
-| UI-34 | RecoveryBanner resume/roll back; unfinished removal notices | App-lifetime operation status and recovery | 17, 14 | Reopen/readback/recovery remains accessible outside a tool modal |
-| UI-35 | Loading, Registry/account errors and apply/install failure status | Owning workspace and shared status | 03, 04, 07, 18 | Failures do not hide behind unmounted panels or leave busy/write admission stuck |
-| UI-36 | Sidebar/dock resizing, keyboard focus and responsive header overflow | Desktop pane/layout and accessible navigation | 07, 18 | Equivalent access at 900×600 and 1200×760, no requirement to retain obsolete dock geometry |
+| UI-01 | AppHeader Refresh; ToolsPanel Refresh and focus refresh | Developer tools command bar; scoped refresh | 07, 04 | 02 audit: `AppHeader.tsx:onRefresh`, `ToolsPanel.tsx` refresh intent; acceptance: Rescan reads real state; external results do not replace another account/tool |
+| UI-02 | AppHeader Tools entry opens the tool modal | Developer tools overview and inspector | 07 | 02 audit: `AppHeader.tsx:onTools`, `App.tsx` tools dialog; acceptance: Six Tool Kinds, roots/ownership/counts, unavailable and mismatch states |
+| UI-03 | Sidebar search, scope, sorting, secrets filter, variable selection | Environment / Variables | 09 | 02 audit: `Sidebar.tsx` filter/selection; acceptance: Equivalent filtering/selection and supported account context |
+| UI-04 | Sidebar copy and secret-value display treatment | Environment / Variables | 09 | 02 audit: `SidebarRow.tsx` copy/secret display; acceptance: Correct value copied and existing secret-display behaviour preserved |
+| UI-05 | New-variable action and NewVarModal | Environment / Variables | 09 | 02 audit: `Sidebar.tsx:onCreateNew`, `NewVarModal.tsx`; acceptance: Validation and staged creation retain value kind/scope |
+| UI-06 | DetailPanel edit/type/separator/list/PATH editors | Environment / Variables | 09 | 02 audit: `DetailPanel.tsx`, `VariableEditor.tsx`, `PathEditor.tsx`; acceptance: String/expand-string/list editing, entry validation/reordering and metadata |
+| UI-07 | DetailPanel stage delete, stage edit, unstage/discard | Environment / Variables | 09 | 02 audit: `DetailPanel.tsx` stage handlers; acceptance: No Registry writes before explicit apply; no silent loss across navigation |
+| UI-08 | Local editor history and global Ctrl+Z/redo handling | Contextual edit undo/redo | 09 | 02 audit: `useLocalUndo.ts`, `useKeyboardShortcuts.ts`, `UndoContext.tsx`; acceptance: Editor undo and staged-history semantics remain distinct from tool Apply Undo |
+| UI-09 | AppHeader staged count; StagedModal review, discard and apply | Environment pending-changes review | 09 | 02 audit: `AppHeader.tsx` staged count, `StagedModal.tsx`; acceptance: Actual diff, progress, error, types, scopes and atomic apply contract |
+| UI-10 | AppHeader external-changes entry and DiffPanel | Environment external-change review/status | 17 | 02 audit: `AppHeader.tsx:onShowChanges`, `useDiff.ts`; acceptance: Accepted/reverted changes and fresh baseline preserve external edits |
+| UI-11 | DiagnosticsPanel stage actions | Environment diagnostics | 17 | 02 audit: `DiagnosticsPanel.tsx`, `useDiagnostics.ts`; acceptance: Findings and action scope, refreshed read models |
+| UI-12 | PathBanner / DetailPanel add-app-directory-to-PATH and dismiss | Environment PATH maintenance | 09, 17 | 02 audit: `PathBanner.tsx`, `usePathStatus.ts`; acceptance: Applicable account/scope, proposal and explicit staging/dismissal |
+| UI-13 | AppHeader Snapshots toggle; resizable SnapshotPanelDock | Environment / Snapshots | 10 | 02 audit: `AppHeader.tsx:onToggleSnapshots`, `SnapshotPanelDock.tsx`; acceptance: Capability remains discoverable without requiring the old dock layout |
+| UI-14 | Snapshot save/list/rename/delete | Environment / Snapshots | 10 | 02 audit: `SnapshotPanel.tsx`, `useSnapshotPanel.ts`; acceptance: Existing saved data and confirmation/error/loading behaviour |
+| UI-15 | Snapshot preview, saved-snapshot comparison and stage restore | Environment / Snapshots | 10 | 02 audit: `SnapshotPreview.tsx`, `SnapshotCompare.tsx`; acceptance: Value kinds, additions/removals, legacy formats and explicit apply |
+| UI-16 | AppHeader or overflow Import / Export | Environment / Import / Export | 11 | 02 audit: `AppHeader.tsx:onImportExport`, `AppModals.tsx`; acceptance: Both entry modes and real file interactions reachable |
+| UI-17 | Import file/text, format, selection, merge/replace, stage | Environment / Import / Export | 11 | 02 audit: `ImportTab.tsx`; acceptance: Parser, validation, legacy-kind handling and no premature writes |
+| UI-18 | Export All/User/System/Custom, format and secret confirmation | Environment / Import / Export | 11 | 02 audit: `ExportTab.tsx`; acceptance: All existing formats, produced files, cancellation and confirmations |
+| UI-19 | AppHeader or overflow Check command | Environment / Check command | 12 | 02 audit: `AppHeader.tsx:onCheckCommand`, `CheckCommandPanel.tsx`; acceptance: Name/full-path/PATHEXT, ordered hits, full-path status and no-match |
+| UI-20 | AppHeader run-as-admin/status and local-account picker | Environment account/permission controls | 09, 18 | 02 audit: `AppHeader.tsx` elevation/account props, `useAccountSwitch.ts`; acceptance: Preserve supported account editing; tool UAC remains operation-scoped rather than requiring whole-app elevation |
+| UI-21 | AppHeader theme and language controls, including overflow | Shell preferences / Settings | 07, 18 | 02 audit: `AppHeader.tsx:onToggleTheme`, `useI18n.ts`; acceptance: Existing supported themes/languages, accessibility and persistence |
+| UI-22 | App update availability/link | Shell status / About or Settings | 18 | 02 audit: `AppHeader.tsx` updateInfo, `useUpdateCheck.ts`; acceptance: Production update status and destination remain reachable |
+| UI-23 | GitHub/upstream link and LicensesPanel | About / source / licences | 18 | 02 audit: `AppHeader.tsx:onLicenses`, `LicensesPanel`; acceptance: Useful product source and inherited attribution remain reachable |
+| UI-24 | Tool tab/installation selection, plan preview, dismiss and apply | Developer tools inspector and plan review | 08 | 02 audit: `ToolsPanel.tsx`, `effects.ts` plan/apply; acceptance: Exact reviewed plan, stale/cancel/UAC/error paths and actual readback |
+| UI-25 | ToolsPanel Undo last apply | Developer tools / operation status | 08 | 02 audit: `ToolsPanel.tsx` undo, `effects.ts:undoLast`; acceptance: Whichcraft-only reversal and conflict handling |
+| UI-26 | ToolsPanel Check in shell and Open terminal | Developer tools command/inspector actions | 12 | 02 audit: `ToolsPanel.tsx` shell/terminal, `effects.ts:checkShell`; acceptance: Shell Resolution is separate; launched processes get fresh environment |
+| UI-27 | Install version, remote versions, choose version/store and install | Developer tools installation flow | 13 | 02 audit: `InstallSection.tsx`, `effects.ts:openInstallList`; acceptance: Download/disk/mise status, first-use confirmation and progress |
+| UI-28 | Check updates, update/repoint and old-installation removal offer | Developer tools update flow | 15 | 02 audit: `UpdateList.tsx`, `effects.ts:update`; acceptance: Same-line install → switch → profile handling → removal offer |
+| UI-29 | Uninstall, choose replacement, confirm, open folder/rescan | Developer tools removal flow | 14 | 02 audit: `UninstallSection.tsx`, `effects.ts:confirmUninstall`; acceptance: Actual removal method, refusal/in-use, affected profiles and incomplete/cancelled outcomes |
+| UI-30 | SDK tab and supplemental Python information | Developer tools / Inventory Only details | 07 | 02 audit: `SupplementalInfo.tsx`, `effects.ts:loadSdks`; acceptance: Android/MSVC display only; Python launcher/Store stub remain separate |
+| UI-31 | Profile list/create/delete/check-missing/apply/install-missing | Tool profiles | 16 | 02 audit: `ProfilesSection.tsx`, `effects.ts:loadProfiles`; acceptance: Partial pins, match status, missing installations and real apply |
+| UI-32 | Tool settings: store, history, Scan Roots and terminal | Settings | 13 | 02 audit: `ToolsSettings.tsx`, `effects.ts:saveSettings`; acceptance: Existing saved settings and old stores remain usable |
+| UI-33 | Plan PATH cleanup and summary | Environment PATH maintenance | 17 | 02 audit: `PathCleanupSummary.tsx`, `effects.ts:planCleanup`; acceptance: Preview/Apply/Undo; expanded variable entries not falsely removed |
+| UI-34 | RecoveryBanner resume/roll back; unfinished removal notices | App-lifetime operation status and recovery | 17, 14 | 02 audit: `RecoveryBanner.tsx`, `effects.ts:resolveRecovery`; acceptance: Reopen/readback/recovery remains accessible outside a tool modal |
+| UI-35 | Loading, Registry/account errors and apply/install failure status | Owning workspace and shared status | 03, 04, 07, 18 | 02 audit: `AppLoading.tsx`, `App.tsx` error banners, `useEnvVars.ts`; acceptance: Failures do not hide behind unmounted panels or leave busy/write admission stuck |
+| UI-36 | Sidebar/dock resizing, keyboard focus and responsive header overflow | Desktop pane/layout and accessible navigation | 07, 18 | 02 audit: `ResizeHandle.tsx`, `SnapshotPanelDock.tsx`, `AppHeader.tsx`; acceptance: Equivalent access at 900×600 and 1200×760, no requirement to retain obsolete dock geometry |
 
 ## How to maintain this baseline
 

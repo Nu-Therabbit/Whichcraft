@@ -1,6 +1,7 @@
 import { vi } from "vitest";
-import type { EnvarlyApi, ToolsRuntime } from "../../contracts";
-import { createToolsRuntime, splitEnvarlyApi } from "../../contracts";
+import type { EnvarlyApi } from "../../contracts";
+import { createToolsRuntime, splitEnvarlyApi } from "../../composition/appServices";
+import type { ToolsRuntime } from "./runtime";
 import type { ToolApplyPlan, ToolInstallationRef, ToolInstallationView, ToolKind } from "../../types";
 import { runEffects } from "./effects";
 import { isIntent, type ToolsIntent, type ToolsMsg } from "./messages";
@@ -25,6 +26,7 @@ export function fakeApi(overrides: Partial<EnvarlyApi>): EnvarlyApi {
   };
   return new Proxy({ ...base, ...overrides } as EnvarlyApi, {
     get(target, key) {
+      if (key === "then") return undefined;
       if (key in target) return target[key as keyof EnvarlyApi];
       return async () => {
         throw new Error(`unexpected api call: ${String(key)}`);

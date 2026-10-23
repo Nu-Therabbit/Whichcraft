@@ -11,6 +11,7 @@ export type {
   EnvVar,
   FullPathStatus,
   LocalAccount,
+  PathStatusView,
   PlanVariableDiff,
   RecoveryItem,
   SnapshotMeta,

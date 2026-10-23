@@ -1,15 +1,9 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { AppServices } from "../contracts";
-import { mergeEnvarlyApi } from "../contracts";
-import { wireLegacyApiFacade } from "../api";
+import { AppLoading } from "../components/AppLoading/AppLoading";
 import { createProductionServices } from "./createProductionServices";
+import { createUnavailableEnvarlyApi, splitEnvarlyApi } from "./appServices";
+import { syncLegacyApiFacade } from "./wireAppServices";
 
 const AppServicesContext = createContext<AppServices | null>(null);
 
@@ -20,35 +14,48 @@ export function AppServicesProvider({
   services?: AppServices;
   children: ReactNode;
 }) {
-  const [services, setServices] = useState<AppServices | null>(() => {
-    if (servicesOverride) {
-      wireLegacyApiFacade(mergeEnvarlyApi(servicesOverride));
-    }
-    return servicesOverride ?? null;
-  });
+  const [services, setServices] = useState<AppServices | null>(servicesOverride ?? null);
+  const [booting, setBooting] = useState(servicesOverride === undefined);
 
   useEffect(() => {
-    if (servicesOverride) {
-      wireLegacyApiFacade(mergeEnvarlyApi(servicesOverride));
+    if (servicesOverride !== undefined) {
+      syncLegacyApiFacade(servicesOverride);
       setServices(servicesOverride);
+      setBooting(false);
       return;
     }
+
     let cancelled = false;
-    void createProductionServices().then((resolved) => {
-      if (cancelled) return;
-      wireLegacyApiFacade(mergeEnvarlyApi(resolved));
-      setServices(resolved);
-    });
+    void createProductionServices()
+      .then((resolved) => {
+        if (cancelled) return;
+        syncLegacyApiFacade(resolved);
+        setServices(resolved);
+        setBooting(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : String(err);
+        const fallback = splitEnvarlyApi(createUnavailableEnvarlyApi(message));
+        syncLegacyApiFacade(fallback);
+        setServices(fallback);
+        setBooting(false);
+      });
+
     return () => {
       cancelled = true;
     };
   }, [servicesOverride]);
 
-  const value = useMemo(() => services, [services]);
+  if (booting) {
+    return <AppLoading />;
+  }
 
-  if (!value) return null;
+  if (!services) {
+    return null;
+  }
 
-  return <AppServicesContext.Provider value={value}>{children}</AppServicesContext.Provider>;
+  return <AppServicesContext.Provider value={services}>{children}</AppServicesContext.Provider>;
 }
 
 export function useAppServices(): AppServices {

@@ -1,8 +1,10 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, resetLegacyApiFacadeForTests, withTimeout } from "./api";
-import { resetProductionServicesForTests } from "./composition/createProductionServices";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AppServices } from "./contracts";
+import { api, resetLegacyApiFacadeForTests, wireLegacyApiFacade } from "./api";
+import { configureProductionServices } from "./composition/createProductionServices";
+import { fakeApi } from "./features/tools/testHarness";
 import type { ApplyProgressEvent } from "./types";
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -12,7 +14,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 describe("api runtime detection", () => {
   beforeEach(() => {
     resetLegacyApiFacadeForTests();
-    resetProductionServicesForTests();
+    configureProductionServices(null);
     vi.mocked(isTauri).mockReturnValue(false);
   });
 
@@ -23,39 +25,10 @@ describe("api runtime detection", () => {
   });
 });
 
-describe("withTimeout", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("resolves with the real value if it arrives before the timeout", async () => {
-    const promise = withTimeout(Promise.resolve("real"), 3000, "fallback");
-    await expect(promise).resolves.toBe("real");
-  });
-
-  it("resolves with the fallback if the promise never settles", async () => {
-    const never = new Promise<string>(() => {});
-    const promise = withTimeout(never, 3000, "fallback");
-
-    await vi.advanceTimersByTimeAsync(3000);
-
-    await expect(promise).resolves.toBe("fallback");
-  });
-
-  it("resolves with the fallback if the promise rejects", async () => {
-    const promise = withTimeout(Promise.reject(new Error("boom")), 3000, "fallback");
-    await expect(promise).resolves.toBe("fallback");
-  });
-});
-
 describe("api.onApplyProgress", () => {
   beforeEach(() => {
     resetLegacyApiFacadeForTests();
-    resetProductionServicesForTests();
+    configureProductionServices(null);
     vi.mocked(isTauri).mockReturnValue(true);
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {
       if (cmd === "get_launch_options") return { demo: false, demoFixture: null };
@@ -87,5 +60,44 @@ describe("api.onApplyProgress", () => {
 
     unsubscribe();
     expect(unlisten).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("resolveLegacyApi", () => {
+  beforeEach(() => {
+    resetLegacyApiFacadeForTests();
+    configureProductionServices(null);
+  });
+
+  it("keeps a wired override when production resolution finishes later", async () => {
+    let resolveProduction!: (services: AppServices) => void;
+    configureProductionServices(
+      new Promise<AppServices>((resolve) => {
+        resolveProduction = resolve;
+      }),
+    );
+
+    const productionGet = vi.fn(async () => [
+      {
+        name: "PROD",
+        value: "x",
+        scope: "User" as const,
+        valueKind: "String" as const,
+        listSeparator: null,
+      },
+    ]);
+    const overrideGet = vi.fn(async () => []);
+
+    const pending = api.getEnvVars();
+    wireLegacyApiFacade(fakeApi({ getEnvVars: overrideGet }));
+    resolveProduction({
+      environment: { getEnvVars: productionGet } as AppServices["environment"],
+      tools: {} as AppServices["tools"],
+      platform: {} as AppServices["platform"],
+    });
+
+    await expect(pending).resolves.toEqual([]);
+    expect(overrideGet).toHaveBeenCalledTimes(1);
+    expect(productionGet).not.toHaveBeenCalled();
   });
 });

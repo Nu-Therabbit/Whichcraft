@@ -1,4 +1,4 @@
-import type { ToolsRuntime } from "../../contracts";
+import type { ToolsRuntime } from "./runtime";
 import type { ProfileToolPin, ToolKind, ToolProfile } from "../../types";
 import type { Operation, ToolsIntent, ToolsMsg } from "./messages";
 import { isSingleToolPlan, type ToolsState } from "./model";
@@ -247,7 +247,8 @@ async function loadProfiles({ runtime, dispatch }: EffectContext): Promise<void>
 }
 
 async function saveProfiles(ctx: EffectContext, next: ToolProfile[]): Promise<void> {
-  await ctx.runtime.tools.saveProfiles(next);
+  const { saveProfiles } = ctx.runtime.tools;
+  await saveProfiles(next);
   await loadProfiles(ctx);
 }
 

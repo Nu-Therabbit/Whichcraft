@@ -1,6 +1,5 @@
-import type { LaunchOptions, UpdateInfo, WhichcraftSettings } from "../platform/types";
+import type { LaunchOptions, UpdateInfo, WhichcraftSettings } from "./types";
 
-/** Type-only contract for app shell, elevation, settings, and OS helpers. */
 export interface PlatformApi {
   getLaunchOptions: () => Promise<LaunchOptions>;
   isElevated: () => Promise<boolean>;
@@ -11,3 +10,8 @@ export interface PlatformApi {
   getWhichcraftSettings: () => Promise<WhichcraftSettings>;
   saveWhichcraftSettings: (settings: WhichcraftSettings) => Promise<void>;
 }
+
+export type ToolsPlatformSlice = Pick<
+  PlatformApi,
+  "getWhichcraftSettings" | "saveWhichcraftSettings" | "openTerminal" | "openFolder"
+>;

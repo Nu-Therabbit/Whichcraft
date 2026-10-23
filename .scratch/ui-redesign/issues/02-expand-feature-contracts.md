@@ -25,3 +25,10 @@
 - **Tools:** `useToolsStore` and `effects` take `ToolsRuntime` (`tools` + narrow `platform` slice); `App.tsx` injects via `useAppServices()` + `createToolsRuntime`.
 - **Tests:** `src/composition/composition.test.tsx` exercises fake `AppServices` through the provider and Tools refresh without Tauri; existing Tools effect/store tests updated to `fakeToolsRuntime`.
 - **Not done (deferred):** Environment hooks and panels still use the legacy `api` singleton; migrating them to `EnvironmentApi` is ticket 03+. No UI or serialized shape changes.
+
+## Review round 1
+
+- Provider shows `AppLoading` during bootstrap; failures wire a rejecting facade and mount `App` so `useEnvVars` still surfaces `app.registry_error` (no blank screen or cached rejection).
+- `resolveLegacyApi` never assigns production over a later `wireLegacyApiFacade`; runtime slices use explicit key picks in `composition/appServices.ts`.
+- Contract types live under feature/platform `api.ts`; shared undo DTOs in `shared/applyUndo.ts`; `contracts/index.ts` is type-only; helpers moved to `composition/`.
+- `useToolsStore` requires an injected `ToolsRuntime`; `appStartup.test.tsx` covers production path via `configureProductionServices`, loading, failure, and legacy facade wiring.

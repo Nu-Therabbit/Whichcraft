@@ -1,4 +1,4 @@
-import type { UndoResult } from "../features/environment/types";
+import type { UndoResult } from "../../shared/applyUndo";
 import type {
   AndroidInventory,
   ApplyToolResult,
@@ -21,9 +21,8 @@ import type {
   UninstallPlan,
   UpdateCandidate,
   UpdateResult,
-} from "../features/tools/types";
+} from "./types";
 
-/** Type-only contract for tool inventory, switching, install/uninstall, and profiles. */
 export interface ToolsApi {
   listToolInstallations: (tool: ToolKind) => Promise<ToolInstallationView[]>;
   planToolApply: (tool: ToolKind, root: string) => Promise<ToolApplyPlan>;

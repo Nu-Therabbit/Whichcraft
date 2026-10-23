@@ -6,12 +6,14 @@ import type {
   EnvValueKind,
   EnvVar,
   LocalAccount,
+  PathStatusView,
   SnapshotMeta,
   UnsupportedEnvValue,
   VarScope,
-} from "../features/environment/types";
+} from "./types";
 
-/** Type-only contract for Environment workflows (variables, snapshots, transfer, lookup). */
+export type { PathStatusView } from "./types";
+
 export interface EnvironmentApi {
   getEnvVars: () => Promise<EnvVar[]>;
   getUnsupportedEnvValues: () => Promise<UnsupportedEnvValue[]>;
@@ -35,13 +37,7 @@ export interface EnvironmentApi {
     format: string,
   ) => Promise<string | null>;
   parseImport: (content: string, format: "json" | "reg") => Promise<EnvSnapshot>;
-  getPathStatus: () => Promise<{
-    installDir: string;
-    userHasEntry: boolean;
-    systemHasEntry: boolean;
-    /** `null` when no other-user account is selected. */
-    otherUserHasEntry: boolean | null;
-  }>;
+  getPathStatus: () => Promise<PathStatusView>;
   getPathProposal: (scope: VarScope) => Promise<string | null>;
   checkCommand: (input: string) => Promise<CheckCommandResult>;
   listLocalAccounts: () => Promise<LocalAccount[]>;

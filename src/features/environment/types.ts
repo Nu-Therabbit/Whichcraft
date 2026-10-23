@@ -90,6 +90,14 @@ export interface CheckCommandResult {
   fullPathStatus: FullPathStatus | null;
 }
 
+export interface PathStatusView {
+  installDir: string;
+  userHasEntry: boolean;
+  systemHasEntry: boolean;
+  /** `null` when no other-user account is selected. */
+  otherUserHasEntry: boolean | null;
+}
+
 export interface PlanVariableDiff {
   name: string;
   scope: VarScope;
@@ -109,13 +117,4 @@ export interface RecoveryItem {
   current: string | null;
 }
 
-export interface UndoConflict {
-  name: string;
-  scope: VarScope;
-  message: string;
-}
-
-export interface UndoResult {
-  conflicts: UndoConflict[];
-  restored: number;
-}
+export type { UndoConflict, UndoResult } from "../../shared/applyUndo";

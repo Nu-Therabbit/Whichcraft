@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { createToolsRuntime, splitEnvarlyApi } from "../contracts";
+import { createToolsRuntime, splitEnvarlyApi } from "./appServices";
 import { fakeToolsRuntime, inst } from "../features/tools/testHarness";
 import { useToolsStore } from "../features/tools/useToolsStore";
 import { AppServicesProvider, useAppServices } from "./AppServicesContext";
@@ -24,18 +25,35 @@ describe("app services composition", () => {
       return <AppServicesProvider services={services}>{children}</AppServicesProvider>;
     }
 
-    const { result } = renderHook(
-      () => {
-        const appServices = useAppServices();
-        return useToolsStore("java", createToolsRuntime(appServices));
-      },
-      { wrapper },
-    );
+    const runtime = createToolsRuntime(services);
+    const { result } = renderHook(() => useToolsStore("java", runtime), { wrapper });
 
     await act(async () => {
       result.current.dispatch({ type: "refresh" });
     });
     await waitFor(() => expect(result.current.state.installations).toEqual([jdk]));
     expect(result.current.state.settings.installStore).toBe("C:\\store");
+  });
+
+  it("exposes the same services object for the hook lifetime", () => {
+    const { api } = fakeToolsRuntime({});
+    const services = splitEnvarlyApi(api);
+
+    function wrapper({ children }: { children: ReactNode }) {
+      return <AppServicesProvider services={services}>{children}</AppServicesProvider>;
+    }
+
+    const { result, rerender } = renderHook(
+      () => {
+        const appServices = useAppServices();
+        const runtime = useMemo(() => createToolsRuntime(appServices), [appServices]);
+        return { appServices, runtime };
+      },
+      { wrapper },
+    );
+
+    const firstRuntime = result.current.runtime;
+    rerender();
+    expect(result.current.runtime).toBe(firstRuntime);
   });
 });

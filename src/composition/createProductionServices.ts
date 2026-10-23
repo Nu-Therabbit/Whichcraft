@@ -1,8 +1,8 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { createDemoApi, loadDemoFixture } from "../demo/createDemoApi";
 import type { AppServices, EnvarlyApi } from "../contracts";
-import { splitEnvarlyApi } from "../contracts";
 import { tauriEnvarlyApi } from "../transport/tauriEnvarlyApi";
+import { splitEnvarlyApi } from "./appServices";
 import { withTimeout } from "./withTimeout";
 
 /** get_launch_options should resolve almost instantly; this bounds how long a
@@ -26,17 +26,23 @@ let productionPromise: Promise<AppServices> | null = null;
 /** Single production composition entry: real Tauri adapter or demo overlay. */
 export function createProductionServices(): Promise<AppServices> {
   if (!productionPromise) {
-    productionPromise = resolveEnvarlyApi().then(splitEnvarlyApi);
+    productionPromise = resolveEnvarlyApi()
+      .then(splitEnvarlyApi)
+      .catch((err) => {
+        productionPromise = null;
+        return Promise.reject(err);
+      });
   }
   return productionPromise;
 }
 
-/** Test seam: replace production resolution (must be called before any API use). */
-export function configureProductionServices(services: AppServices | null): void {
-  productionPromise = services ? Promise.resolve(services) : null;
-}
-
-/** Test-only: allow a fresh production resolution after resetLegacyApiFacadeForTests. */
-export function resetProductionServicesForTests(): void {
-  productionPromise = null;
+/** Test seam: replace production resolution (must be called before provider mount). */
+export function configureProductionServices(
+  services: AppServices | Promise<AppServices> | null,
+): void {
+  if (services === null) {
+    productionPromise = null;
+    return;
+  }
+  productionPromise = services instanceof Promise ? services : Promise.resolve(services);
 }

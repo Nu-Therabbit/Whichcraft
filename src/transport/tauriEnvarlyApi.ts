@@ -7,12 +7,12 @@ import type {
   EnvSnapshot,
   EnvVar,
   LocalAccount,
+  PathStatusView,
   SnapshotMeta,
   UnsupportedEnvValue,
-  UpdateInfo,
-} from "../types";
+} from "../features/environment/types";
+import type { UpdateInfo } from "../platform/types";
 
-/** Production Tauri invoke/listen adapter — not imported by feature policy code. */
 export const tauriEnvarlyApi: EnvarlyApi = {
   getLaunchOptions: () => invoke("get_launch_options"),
   getEnvVars: () => invoke<EnvVar[]>("get_env_vars"),
@@ -32,13 +32,7 @@ export const tauriEnvarlyApi: EnvarlyApi = {
   exportVars: (scope, format) => invoke<string | null>("export_vars", { scope, format }),
   exportCustomVars: (vars, format) => invoke<string | null>("export_custom", { vars, format }),
   parseImport: (content, format) => invoke<EnvSnapshot>("parse_import", { content, format }),
-  getPathStatus: () =>
-    invoke<{
-      installDir: string;
-      userHasEntry: boolean;
-      systemHasEntry: boolean;
-      otherUserHasEntry: boolean | null;
-    }>("get_path_status"),
+  getPathStatus: () => invoke<PathStatusView>("get_path_status"),
   getPathProposal: (scope) => invoke<string | null>("get_path_proposal", { scope }),
   checkCommand: (input) => invoke<CheckCommandResult>("check_command", { input }),
   checkForUpdate: () => invoke<UpdateInfo | null>("check_for_update"),

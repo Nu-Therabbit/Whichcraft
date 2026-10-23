@@ -23,7 +23,7 @@ import { useStaged } from "./hooks/useStaged";
 import { useStagingHandlers } from "./hooks/useStagingHandlers";
 import { useTheme } from "./hooks/useTheme";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
-import { createToolsRuntime } from "./contracts";
+import { createToolsRuntime } from "./composition/appServices";
 import { useAppServices } from "./composition/AppServicesContext";
 import { useToolsStore } from "./features/tools/useToolsStore";
 import { ToolsPanel } from "./components/ToolsPanel/ToolsPanel";

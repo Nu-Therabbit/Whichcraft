@@ -1,0 +1,68 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import { isTauri } from "@tauri-apps/api/core";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import App from "../App";
+import en from "../locales/en.json";
+import { UndoProvider } from "../contexts/UndoContext";
+import { api, resetLegacyApiFacadeForTests } from "../api";
+import { splitEnvarlyApi } from "./appServices";
+import { AppServicesProvider } from "./AppServicesContext";
+import { configureProductionServices } from "./createProductionServices";
+import { fakeToolsRuntime } from "../features/tools/testHarness";
+
+function renderProductionApp() {
+  return render(
+    <UndoProvider>
+      <AppServicesProvider>
+        <App />
+      </AppServicesProvider>
+    </UndoProvider>,
+  );
+}
+
+describe("production app startup", () => {
+  beforeEach(() => {
+    resetLegacyApiFacadeForTests();
+    configureProductionServices(null);
+    vi.mocked(isTauri).mockReturnValue(true);
+  });
+
+  it("loads Environment and fires Tools startup through configured production services", async () => {
+    const getEnvVars = vi.fn(async () => []);
+    const prepareMise = vi.fn(async () => false);
+    const { api: fake } = fakeToolsRuntime({ getEnvVars, prepareMise });
+    configureProductionServices(splitEnvarlyApi(fake));
+
+    renderProductionApp();
+
+    await waitFor(() => expect(getEnvVars).toHaveBeenCalled());
+    await waitFor(() => expect(prepareMise).toHaveBeenCalled());
+
+    await api.getEnvVars();
+    expect(getEnvVars.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows AppLoading while production services are still resolving", async () => {
+    let resolveServices!: (value: ReturnType<typeof splitEnvarlyApi>) => void;
+    const deferred = new Promise<ReturnType<typeof splitEnvarlyApi>>((resolve) => {
+      resolveServices = resolve;
+    });
+    configureProductionServices(deferred);
+
+    renderProductionApp();
+    expect(screen.getByText(en.app.loading)).toBeInTheDocument();
+
+    const { api: fake } = fakeToolsRuntime({});
+    resolveServices(splitEnvarlyApi(fake));
+    await waitFor(() => expect(screen.queryByText(en.app.loading)).not.toBeInTheDocument());
+  });
+
+  it("surfaces the registry error banner when production bootstrap fails", async () => {
+    vi.mocked(isTauri).mockReturnValue(false);
+    renderProductionApp();
+
+    await waitFor(() =>
+      expect(screen.getByText(/Registry error:/)).toHaveTextContent("Tauri runtime unavailable"),
+    );
+  });
+});
