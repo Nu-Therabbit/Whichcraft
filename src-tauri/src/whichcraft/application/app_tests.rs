@@ -170,6 +170,7 @@ fn a_profile_installs_what_it_misses_then_plans_one_switch() {
     w.app.install_missing(&profile).unwrap();
     assert!(w.app.profile_missing(&profile).unwrap().is_empty());
     let plan = w.app.plan_profile(&profile).unwrap();
+    assert_eq!(plan.plan_id, "apply-test-fixed-id");
     assert!(plan.selected.root.starts_with(STORE));
 }
 
@@ -236,6 +237,11 @@ fn mise_status_and_prepare_go_through_the_application_port() {
     let offline = world_with_lifecycle(FakeInstallerLifecycle::offline("2025.3.6"));
     assert!(offline.app.mise_status().is_err());
     assert!(offline.app.prepare_mise().is_err());
+
+    let failed = world_with_lifecycle(FakeInstallerLifecycle::prepare_fails("2025.3.6"));
+    assert!(!failed.app.mise_status().unwrap().present);
+    let err = failed.app.prepare_mise().unwrap_err();
+    assert!(err.to_string().contains("checksum"));
 }
 
 #[test]
@@ -244,7 +250,13 @@ fn app_start_and_install_list_still_see_mise_when_it_is_ready() {
     let status = w.app.mise_status().unwrap();
     assert!(status.present);
     assert!(!status.fetching);
-    assert_eq!(w.app.remote_versions(ToolKind::Node).unwrap().len(), 0);
+    assert!(!w.app.prepare_mise().unwrap(), "nothing left to fetch when mise is already present");
+
+    w.tools.offer(ToolKind::Node, &["22.24.0", "24.1.0"]);
+    let versions = w.app.remote_versions(ToolKind::Node).unwrap();
+    assert_eq!(versions.len(), 2);
+    let offered: Vec<_> = versions.iter().map(|v| v.version.as_str()).collect();
+    assert!(offered.contains(&"22.24.0") && offered.contains(&"24.1.0"));
 }
 
 #[test]

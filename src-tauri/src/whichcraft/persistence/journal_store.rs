@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use chrono::Utc;
 use super::whichcraft_data_dir;
 use crate::error::EnvarlyError;
 use crate::whichcraft::domain::journal::{JournalStatus, WhichcraftJournal};
@@ -85,9 +84,4 @@ pub fn load_last_completed_apply() -> Result<Option<WhichcraftJournal>, EnvarlyE
     }
     completed.sort_by(|a, b| b.created_at.cmp(&a.created_at));
     Ok(completed.into_iter().next())
-}
-
-#[allow(dead_code)] // contract and module tests build plans outside the application seam
-pub fn new_journal_id() -> String {
-    format!("apply-{}", Utc::now().format("%Y%m%dT%H%M%S%.3fZ"))
 }
