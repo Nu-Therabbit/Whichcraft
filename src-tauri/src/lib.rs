@@ -74,6 +74,23 @@ pub fn run() {
             commands::whichcraft::whichcraft_undo_last_apply,
             commands::whichcraft::whichcraft_incomplete_journal,
             commands::whichcraft::whichcraft_get_java_selection,
+            commands::whichcraft::whichcraft_list_tools,
+            commands::whichcraft::whichcraft_get_settings,
+            commands::whichcraft::whichcraft_save_settings,
+            commands::whichcraft::whichcraft_plan_tool,
+            commands::whichcraft::whichcraft_apply_tool_plan,
+            commands::whichcraft::whichcraft_apply_tool_plan_with_uac,
+            commands::whichcraft::whichcraft_plan_path_cleanup,
+            commands::whichcraft::whichcraft_list_remote_versions,
+            commands::whichcraft::whichcraft_install_managed,
+            commands::whichcraft::whichcraft_list_profiles,
+            commands::whichcraft::whichcraft_save_profiles,
+            commands::whichcraft::whichcraft_profile_status,
+            commands::whichcraft::whichcraft_apply_profile,
+            commands::whichcraft::whichcraft_plan_profile,
+            commands::whichcraft::whichcraft_python_supplemental,
+            commands::whichcraft::whichcraft_android_inventory,
+            commands::whichcraft::whichcraft_msvc_inventory,
         ])
         .build(tauri::generate_context!())
         .expect("error while running whichcraft")

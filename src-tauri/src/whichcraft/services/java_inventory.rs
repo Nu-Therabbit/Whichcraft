@@ -7,15 +7,19 @@ use crate::commands::path::{dir_exists, expand_env_vars};
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage::{self, FullPathStatus};
+use crate::whichcraft::api::ToolKind;
 use crate::whichcraft::java::{probe_java_root, JavaInstallation};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JavaInstallationView {
+    pub tool: ToolKind,
     #[serde(flatten)]
     pub installation: JavaInstallation,
     pub effective: bool,
     pub selected: bool,
+    pub available: bool,
+    pub installer_kind: crate::whichcraft::ports::installer_catalog::InstallerKind,
     pub mismatch_reason: Option<String>,
 }
 
@@ -100,10 +104,17 @@ pub fn list_java_installations_with_options<B: EnvBackend>(
             } else {
                 None
             };
+            let root = installation.root.clone();
+            let managed = installation.managed;
+            let installer_kind = installer_kind_for(&root);
+            let available = probe_java_root(&root, managed).is_some();
             JavaInstallationView {
+                tool: ToolKind::Java,
                 installation,
                 effective: effective_match,
                 selected,
+                available,
+                installer_kind,
                 mismatch_reason,
             }
         })
@@ -117,6 +128,19 @@ pub fn list_java_installations_with_options<B: EnvBackend>(
             .then_with(|| a.installation.root.cmp(&b.installation.root))
     });
     Ok(views)
+}
+
+fn installer_kind_for(root: &Path) -> crate::whichcraft::ports::installer_catalog::InstallerKind {
+    #[cfg(windows)]
+    {
+        crate::whichcraft::adapters::win::installer_kind_for_root(root)
+            .unwrap_or(crate::whichcraft::ports::installer_catalog::InstallerKind::FolderOnly)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = root;
+        crate::whichcraft::ports::installer_catalog::InstallerKind::FolderOnly
+    }
 }
 
 fn shadow_reason_for_selection(

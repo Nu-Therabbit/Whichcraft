@@ -67,7 +67,7 @@ pub struct UnsupportedEnvValue {
     pub registry_type: String,
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(
     tag = "changeType",
     rename_all = "camelCase",

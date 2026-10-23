@@ -4,10 +4,20 @@ use serde::{Deserialize, Serialize};
 
 use super::whichcraft_data_dir;
 use crate::error::EnvarlyError;
+use crate::whichcraft::api::ToolKind;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct JavaSelection {
+    pub root: PathBuf,
+    pub vendor: String,
+    pub version: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolSelection {
+    pub tool: ToolKind,
     pub root: PathBuf,
     pub vendor: String,
     pub version: String,
@@ -36,13 +46,66 @@ pub fn load_java_selection() -> Result<Option<JavaSelection>, EnvarlyError> {
 }
 
 pub fn save_java_selection(selection: &JavaSelection) -> Result<(), EnvarlyError> {
+    save_tool_selection(&ToolSelection {
+        tool: ToolKind::Java,
+        root: selection.root.clone(),
+        vendor: selection.vendor.clone(),
+        version: selection.version.clone(),
+    })
+}
+
+pub fn load_tool_selection(tool: ToolKind) -> Result<Option<ToolSelection>, EnvarlyError> {
     let path = selection_path()?;
-    let body = serde_json::json!({ "java": selection });
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let raw = std::fs::read_to_string(&path)
+        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot read selection: {e}")))?;
+    let parsed: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot parse selection: {e}")))?;
+    let key = tool_key(tool);
+    let Some(node) = parsed.get(key) else {
+        return Ok(None);
+    };
+    Ok(Some(
+        serde_json::from_value(node.clone())
+            .map_err(|e| EnvarlyError::Snapshot(format!("Cannot parse tool selection: {e}")))?,
+    ))
+}
+
+pub fn save_tool_selection(selection: &ToolSelection) -> Result<(), EnvarlyError> {
+    let path = selection_path()?;
+    let mut parsed: serde_json::Value = if path.is_file() {
+        let raw = std::fs::read_to_string(&path)
+            .map_err(|e| EnvarlyError::Snapshot(format!("Cannot read selection: {e}")))?;
+        serde_json::from_str(&raw).unwrap_or_else(|_| serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+    let obj = parsed
+        .as_object_mut()
+        .ok_or_else(|| EnvarlyError::Snapshot("selection file must be a JSON object".into()))?;
+    obj.insert(
+        tool_key(selection.tool).into(),
+        serde_json::to_value(selection)
+            .map_err(|e| EnvarlyError::Snapshot(format!("Cannot serialize selection: {e}")))?,
+    );
     std::fs::write(
         &path,
-        serde_json::to_string_pretty(&body)
+        serde_json::to_string_pretty(&parsed)
             .map_err(|e| EnvarlyError::Snapshot(format!("Cannot serialize selection: {e}")))?,
     )
     .map_err(|e| EnvarlyError::Snapshot(format!("Cannot write selection: {e}")))?;
     Ok(())
+}
+
+fn tool_key(tool: ToolKind) -> &'static str {
+    match tool {
+        ToolKind::Java => "java",
+        ToolKind::Node => "node",
+        ToolKind::Python => "python",
+        ToolKind::Go => "go",
+        ToolKind::Flutter => "flutter",
+        ToolKind::Git => "git",
+    }
 }

@@ -23,7 +23,7 @@ import { useStaged } from "./hooks/useStaged";
 import { useStagingHandlers } from "./hooks/useStagingHandlers";
 import { useTheme } from "./hooks/useTheme";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
-import { useJavaTools } from "./hooks/useJavaTools";
+import { useDeveloperTools } from "./hooks/useDeveloperTools";
 import { ToolsPanel } from "./components/ToolsPanel/ToolsPanel";
 import type { DiagnosticAction, EnvironmentDiagnostic } from "./lib/environmentDiagnostics";
 import { stagedToDiff } from "./lib/stagedToDiff";
@@ -120,7 +120,7 @@ export default function App() {
   useKeyboardShortcuts(undo, redo, localUndoRef);
 
   const updateInfo = useUpdateCheck();
-  const javaTools = useJavaTools();
+  const developerTools = useDeveloperTools();
 
   const {
     handleStage,
@@ -285,19 +285,21 @@ export default function App() {
           open={dialog === "tools"}
           onClose={() => {
             setDialog(null);
-            javaTools.clearPlan();
+            developerTools.clearPlan();
           }}
-          installations={javaTools.installations}
-          loading={javaTools.loading}
-          error={javaTools.error}
-          plan={javaTools.plan}
-          planBusy={javaTools.planBusy}
-          applyBusy={javaTools.applyBusy}
-          onRefresh={javaTools.refresh}
-          onSelect={javaTools.buildPlan}
-          onApplyPlan={() => void javaTools.applyPlan()}
-          onUndo={() => void javaTools.undoLast()}
-          onClearPlan={javaTools.clearPlan}
+          tool={developerTools.tool}
+          onToolChange={developerTools.setTool}
+          installations={developerTools.installations}
+          loading={developerTools.loading}
+          error={developerTools.error}
+          plan={developerTools.plan}
+          planBusy={developerTools.planBusy}
+          applyBusy={developerTools.applyBusy}
+          onRefresh={developerTools.refresh}
+          onSelect={developerTools.buildPlan}
+          onApplyPlan={() => void developerTools.applyPlan()}
+          onUndo={() => void developerTools.undoLast()}
+          onClearPlan={developerTools.clearPlan}
         />
 
         <AppModals

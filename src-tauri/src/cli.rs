@@ -96,6 +96,11 @@ enum Command {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Internal: apply System-scope changes from a JSON payload after UAC.
+    #[command(name = "whichcraft-elevated-apply", hide = true)]
+    WhichcraftElevatedApply {
+        payload: std::path::PathBuf,
+    },
 }
 
 #[derive(Clone, ValueEnum, Default)]
@@ -224,6 +229,10 @@ fn execute(command: Command) -> Result<(), crate::error::EnvarlyError> {
 
         Command::PathCleanup { dry_run } => {
             crate::path_manage::cleanup_path(dry_run);
+        }
+
+        Command::WhichcraftElevatedApply { payload } => {
+            crate::whichcraft::services::elevation::apply_elevated_payload(&payload)?;
         }
 
         Command::Export {

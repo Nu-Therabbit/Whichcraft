@@ -71,8 +71,12 @@ export interface EnvarlyApi {
    */
   onApplyProgress: (callback: (event: ApplyProgressEvent) => void) => Promise<() => void>;
   listJavaInstallations: () => Promise<import("./types").JavaInstallationView[]>;
+  listToolInstallations: (tool: import("./types").ToolKind) => Promise<import("./types").ToolInstallationView[]>;
   planJavaApply: (root: string) => Promise<import("./types").JavaApplyPlan>;
+  planToolApply: (tool: import("./types").ToolKind, root: string) => Promise<import("./types").ToolApplyPlan>;
   applyJavaPlan: (plan: import("./types").JavaApplyPlan) => Promise<import("./types").ApplyJavaResult>;
+  applyToolPlan: (plan: import("./types").ToolApplyPlan) => Promise<import("./types").ApplyToolResult>;
+  applyToolPlanWithUac: (plan: import("./types").ToolApplyPlan) => Promise<import("./types").ApplyToolResult>;
   undoLastWhichcraftApply: () => Promise<import("./types").UndoResult>;
 }
 
@@ -111,8 +115,12 @@ const normalApi: EnvarlyApi = {
   onApplyProgress: async (callback) =>
     listen<ApplyProgressEvent>("apply-progress", (event) => callback(event.payload)),
   listJavaInstallations: () => invoke("whichcraft_list_java"),
+  listToolInstallations: (tool) => invoke("whichcraft_list_tools", { tool }),
   planJavaApply: (root) => invoke("whichcraft_plan_java", { root }),
+  planToolApply: (tool, root) => invoke("whichcraft_plan_tool", { tool, root }),
   applyJavaPlan: (plan) => invoke("whichcraft_apply_java_plan", { plan }),
+  applyToolPlan: (plan) => invoke("whichcraft_apply_tool_plan", { plan }),
+  applyToolPlanWithUac: (plan) => invoke("whichcraft_apply_tool_plan_with_uac", { plan }),
   undoLastWhichcraftApply: () => invoke("whichcraft_undo_last_apply"),
 };
 
@@ -182,7 +190,11 @@ export const api: EnvarlyApi = {
   getSelectedAccount: async () => (await getApi()).getSelectedAccount(),
   onApplyProgress: async (callback) => (await getApi()).onApplyProgress(callback),
   listJavaInstallations: async () => (await getApi()).listJavaInstallations(),
+  listToolInstallations: async (tool) => (await getApi()).listToolInstallations(tool),
   planJavaApply: async (root) => (await getApi()).planJavaApply(root),
+  planToolApply: async (tool, root) => (await getApi()).planToolApply(tool, root),
   applyJavaPlan: async (plan) => (await getApi()).applyJavaPlan(plan),
+  applyToolPlan: async (plan) => (await getApi()).applyToolPlan(plan),
+  applyToolPlanWithUac: async (plan) => (await getApi()).applyToolPlanWithUac(plan),
   undoLastWhichcraftApply: async () => (await getApi()).undoLastWhichcraftApply(),
 };

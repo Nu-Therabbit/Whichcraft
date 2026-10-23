@@ -256,6 +256,12 @@ export function createDemoApi(
     getSelectedAccount: async () => null,
     onApplyProgress: async () => () => {},
     listJavaInstallations: async () => [],
+    listToolInstallations: async () => [],
+    planToolApply: async () => {
+      throw new Error("demo");
+    },
+    applyToolPlan: async () => ({ planId: "", stale: false, needsElevation: false }),
+    applyToolPlanWithUac: async () => ({ planId: "", stale: false, needsElevation: false }),
     planJavaApply: async () => {
       throw new Error("Developer tools are unavailable in demo mode");
     },

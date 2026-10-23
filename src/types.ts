@@ -95,15 +95,31 @@ export interface CheckCommandResult {
   fullPathStatus: FullPathStatus | null;
 }
 
-export interface JavaInstallationView {
+export type ToolKind = "java" | "node" | "python" | "go" | "flutter" | "git";
+
+export type InstallerKind =
+  | "msi"
+  | "inno_setup"
+  | "python_install_manager"
+  | "managed_by_other_tool"
+  | "folder_only"
+  | "managed_by_whichcraft";
+
+export interface ToolInstallationView {
+  tool: ToolKind;
   vendor: string;
   version: string;
   root: string;
   managed: boolean;
   effective: boolean;
   selected: boolean;
+  available: boolean;
+  installerKind: InstallerKind;
   mismatchReason: string | null;
 }
+
+/** @deprecated Use ToolInstallationView */
+export type JavaInstallationView = ToolInstallationView;
 
 export interface PlanVariableDiff {
   name: string;
@@ -113,6 +129,7 @@ export interface PlanVariableDiff {
   valueKind: EnvValueKind;
 }
 
+/** Java plan omits `tool` on the wire; the UI normalizes to ToolApplyPlan. */
 export interface JavaApplyPlan {
   planId: string;
   requiresUac: boolean;
@@ -132,6 +149,30 @@ export interface JavaApplyPlan {
 export interface ApplyJavaResult {
   planId: string;
   stale: boolean;
+}
+
+export interface ToolApplyPlan {
+  planId: string;
+  tool: ToolKind;
+  requiresUac: boolean;
+  warnings: string[];
+  limitationNotice: string;
+  userDiffs: PlanVariableDiff[];
+  systemDiffs: PlanVariableDiff[];
+  effectiveAfterUserOnly: boolean;
+  selected: {
+    tool: ToolKind;
+    vendor: string;
+    version: string;
+    root: string;
+    managed: boolean;
+  };
+}
+
+export interface ApplyToolResult {
+  planId: string;
+  stale: boolean;
+  needsElevation: boolean;
 }
 
 export interface UndoConflict {

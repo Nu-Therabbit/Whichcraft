@@ -1,17 +1,21 @@
 import { useEffect } from "react";
 import { useI18n } from "../../hooks/useI18n";
-import type { JavaApplyPlan, JavaInstallationView } from "../../types";
+import type { ToolApplyPlan, ToolInstallationView, ToolKind } from "../../types";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 
+const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
+
 interface Props {
   open: boolean;
   onClose: () => void;
-  installations: JavaInstallationView[];
+  tool: ToolKind;
+  onToolChange: (tool: ToolKind) => void;
+  installations: ToolInstallationView[];
   loading: boolean;
   error: string | null;
-  plan: JavaApplyPlan | null;
+  plan: ToolApplyPlan | null;
   planBusy: boolean;
   applyBusy: boolean;
   onRefresh: () => void;
@@ -24,6 +28,8 @@ interface Props {
 export function ToolsPanel({
   open,
   onClose,
+  tool,
+  onToolChange,
   installations,
   loading,
   error,
@@ -40,7 +46,7 @@ export function ToolsPanel({
 
   useEffect(() => {
     if (open) onRefresh();
-  }, [open, onRefresh]);
+  }, [open, tool, onRefresh]);
 
   return (
     <Modal open={open} onClose={onClose} title={t("tools.title")} size="xl">
@@ -48,6 +54,19 @@ export function ToolsPanel({
         {error && (
           <div className="text-sm text-danger border border-danger/30 rounded-md px-3 py-2">{error}</div>
         )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          {TOOL_KINDS.map((kind) => (
+            <Button
+              key={kind}
+              variant={kind === tool ? "primary" : "secondary"}
+              size="sm"
+              onClick={() => onToolChange(kind)}
+            >
+              {t(`tools.kind.${kind}`)}
+            </Button>
+          ))}
+        </div>
 
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
@@ -58,27 +77,30 @@ export function ToolsPanel({
           </Button>
         </div>
 
-        <p className="text-sm text-muted">{t("tools.java_hint")}</p>
+        <p className="text-sm text-muted">{t("tools.discovery_hint")}</p>
 
         <div className="border border-rim rounded-md divide-y divide-rim max-h-64 overflow-auto">
           {loading && installations.length === 0 ? (
             <div className="p-4 text-sm text-muted">{t("app.loading")}</div>
           ) : installations.length === 0 ? (
-            <div className="p-4 text-sm text-muted">{t("tools.no_java")}</div>
+            <div className="p-4 text-sm text-muted">{t("tools.no_installations")}</div>
           ) : (
             installations.map((item) => (
               <button
                 type="button"
                 key={item.root}
-                className="w-full text-left px-4 py-3 hover:bg-surface/60 flex flex-col gap-1"
+                className="w-full text-left px-4 py-3 hover:bg-surface/60 flex flex-col gap-1 disabled:opacity-50"
                 onClick={() => onSelect(item.root)}
+                disabled={!item.available}
               >
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium">
                     {item.vendor} {item.version}
                   </span>
-              {item.effective && <Badge variant="user">{t("tools.effective")}</Badge>}
-              {item.selected && <Badge variant="muted">{t("tools.selected")}</Badge>}
+                  {item.effective && <Badge variant="user">{t("tools.effective")}</Badge>}
+                  {item.selected && <Badge variant="muted">{t("tools.selected")}</Badge>}
+                  {!item.available && <Badge variant="warn">{t("tools.unavailable")}</Badge>}
+                  <Badge variant="muted">{item.installerKind}</Badge>
                 </div>
                 <span className="text-xs text-muted font-mono break-all">{item.root}</span>
                 {item.mismatchReason && (
@@ -97,6 +119,9 @@ export function ToolsPanel({
                 {t("tools.dismiss_plan")}
               </Button>
             </div>
+            {plan.requiresUac && (
+              <p className="text-xs text-warning">{t("tools.uac_required")}</p>
+            )}
             {plan.warnings.map((w) => (
               <p key={w} className="text-xs text-warning">
                 {w}
@@ -104,9 +129,11 @@ export function ToolsPanel({
             ))}
             <p className="text-xs text-muted">{plan.limitationNotice}</p>
             <ul className="text-sm font-mono space-y-2">
-              {plan.userDiffs.map((d) => (
+              {[...plan.userDiffs, ...plan.systemDiffs].map((d) => (
                 <li key={`${d.scope}-${d.name}`}>
-                  <span className="text-muted">{d.scope} {d.name}</span>
+                  <span className="text-muted">
+                    {d.scope} {d.name}
+                  </span>
                   <div className="text-xs text-danger line-through truncate">{d.before ?? "(empty)"}</div>
                   <div className="text-xs text-success truncate">{d.after}</div>
                 </li>

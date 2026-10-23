@@ -1,7 +1,8 @@
 use crate::error::EnvarlyError;
 use crate::whichcraft::api::ToolKind;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RemoteVersion {
     pub version: String,
     pub download_bytes: Option<u64>,
