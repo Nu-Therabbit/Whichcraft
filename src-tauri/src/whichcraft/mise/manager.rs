@@ -168,6 +168,14 @@ impl<R: MiseRunner> MiseToolManager<R> {
 }
 
 impl<R: MiseRunner + Send + Sync> ToolManager for MiseToolManager<R> {
+    fn install(&self, tool: ToolKind, version: &str) -> Result<PathBuf, EnvarlyError> {
+        MiseToolManager::install(self, tool, version)
+    }
+
+    fn uninstall(&self, tool: ToolKind, version: &str) -> Result<(), EnvarlyError> {
+        MiseToolManager::uninstall(self, tool, version)
+    }
+
     fn list_remote(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError> {
         let name = mise_tool(tool)?;
         if tool == ToolKind::Flutter {

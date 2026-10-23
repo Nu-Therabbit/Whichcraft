@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::error::EnvarlyError;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::mise::manager::{MiseToolManager, ProcessMiseRunner};
+use crate::whichcraft::ports::tool_manager::ToolManager;
 use crate::whichcraft::ports::uninstaller::{RunOutcome, Uninstaller};
 use crate::whichcraft::ports::usage_probe::{UsageProbe, UsageReport};
 
@@ -213,7 +214,8 @@ impl Uninstaller for WinUninstaller {
     }
 
     fn uninstall_managed(&self, store: &Path, tool: ToolKind, mise_version: &str) -> Result<(), EnvarlyError> {
-        MiseToolManager::with_runner(ProcessMiseRunner::for_maintenance(store)).uninstall(tool, mise_version)
+        let manager = MiseToolManager::with_runner(ProcessMiseRunner::for_maintenance(store));
+        ToolManager::uninstall(&manager, tool, mise_version)
     }
 }
 

@@ -6,7 +6,8 @@ use crate::whichcraft::ToolKind;
 use crate::whichcraft::mise::MiseToolManager;
 use crate::whichcraft::domain::settings::{WhichcraftSettings};
 use crate::whichcraft::ports::tool_manager::ToolManager;
-use crate::whichcraft::services::elevation::WinElevator;
+use crate::whichcraft::adapters::win::elevation::WinElevator;
+use crate::whichcraft::adapters::win::sdk::WinSdkProbe;
 use crate::whichcraft::services::path_cleanup::{build_path_cleanup_plan, PathCleanupPlan};
 use crate::whichcraft::services::profiles::{plan_profile_apply, profile_status};
 use crate::whichcraft::domain::profiles::{missing_pins, repoint_profiles, MissingPin, ProfileMatchStatus, ToolProfile};
@@ -255,7 +256,7 @@ pub async fn whichcraft_download_size(tool: ToolKind, version: String) -> Result
 
 /// The mise manager for anything that downloads into the install store. Every install path goes
 /// through here, so none can skip asking where installed tools go (I-5).
-fn installing_manager() -> Result<MiseToolManager<crate::whichcraft::mise::manager::ProcessMiseRunner>, EnvarlyError> {
+fn installing_manager() -> Result<impl ToolManager, EnvarlyError> {
     if !FileStore.settings()?.install_store_confirmed {
         return Err(EnvarlyError::InvalidInput(
             "Choose where Whichcraft keeps the tools it installs before installing".into(),
@@ -306,7 +307,7 @@ pub async fn whichcraft_plan_profile(profile: ToolProfile) -> Result<ToolApplyPl
 #[tauri::command]
 pub async fn whichcraft_python_supplemental() -> Result<PythonSupplementalView, EnvarlyError> {
     off_main(move || {
-        python_supplemental()
+        python_supplemental(&WinSdkProbe)
     })
     .await
 }
@@ -322,7 +323,7 @@ pub async fn whichcraft_android_inventory() -> Result<AndroidInventory, EnvarlyE
 
 #[tauri::command]
 pub fn whichcraft_msvc_inventory() -> MsvcInventory {
-    msvc_inventory()
+    msvc_inventory(&LocalMachine, &WinSdkProbe)
 }
 
 fn build_uninstall_plan(tool: ToolKind, root: &str) -> Result<UninstallPlan, EnvarlyError> {

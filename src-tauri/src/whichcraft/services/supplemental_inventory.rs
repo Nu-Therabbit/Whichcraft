@@ -2,6 +2,7 @@
 //! Python launcher and the Store alias would run. Nothing here can be selected or installed.
 
 use crate::whichcraft::ports::machine::Machine;
+use crate::whichcraft::ports::sdk::SdkProbe;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
@@ -59,16 +60,12 @@ pub fn parse_py_list(output: &str) -> Vec<PythonLauncherLine> {
         .collect()
 }
 
-pub fn python_supplemental() -> Result<PythonSupplementalView, EnvarlyError> {
-    let output = std::process::Command::new("py").arg("-0p").output();
-    let (launcher_installed, launcher_lines) = match output {
-        Ok(o) => (true, parse_py_list(&String::from_utf8_lossy(&o.stdout))),
-        Err(_) => (false, Vec::new()),
+pub fn python_supplemental(sdk: &dyn SdkProbe) -> Result<PythonSupplementalView, EnvarlyError> {
+    let (launcher_installed, launcher_lines) = match sdk.py_launcher_list() {
+        Some(out) => (true, parse_py_list(&out)),
+        None => (false, Vec::new()),
     };
-    let store_stub = std::env::var_os("LOCALAPPDATA")
-        .map(|l| PathBuf::from(l).join("Microsoft").join("WindowsApps").join("python.exe"))
-        .filter(|p| std::fs::symlink_metadata(p).is_ok())
-        .map(|p| p.to_string_lossy().into_owned());
+    let store_stub = sdk.python_store_alias().map(|p| p.to_string_lossy().into_owned());
     Ok(PythonSupplementalView {
         launcher_lines,
         launcher_installed,
@@ -95,38 +92,36 @@ pub struct AndroidInventory {
     pub cmake: Vec<String>,
 }
 
-fn subdirs(dir: &Path) -> Vec<String> {
-    let mut names: Vec<String> = std::fs::read_dir(dir)
-        .map(|r| {
-            r.flatten()
-                .filter(|e| e.path().is_dir())
-                .map(|e| e.file_name().to_string_lossy().into_owned())
-                .collect()
-        })
-        .unwrap_or_default();
+fn subdirs(machine: &dyn Machine, dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = machine
+        .entries(dir)
+        .into_iter()
+        .filter(|p| machine.is_dir(p))
+        .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .collect();
     names.sort();
     names
 }
 
 /// `Pkg.Revision` from an SDK component's `source.properties`.
-fn pkg_revision(component: &Path) -> Option<String> {
-    let text = std::fs::read_to_string(component.join("source.properties")).ok()?;
+fn pkg_revision(machine: &dyn Machine, component: &Path) -> Option<String> {
+    let text = machine.read_text(&component.join("source.properties"))?;
     text.lines()
         .find_map(|l| l.strip_prefix("Pkg.Revision="))
         .map(|v| v.trim().to_string())
 }
 
 /// What is installed under an Android SDK root.
-pub fn read_android_sdk(root: &Path) -> AndroidInventory {
+pub fn read_android_sdk(machine: &dyn Machine, root: &Path) -> AndroidInventory {
     AndroidInventory {
         sdk_root: Some(root.to_string_lossy().into_owned()),
         root_source: None,
-        platforms: subdirs(&root.join("platforms")),
-        build_tools: subdirs(&root.join("build-tools")),
-        ndk: subdirs(&root.join("ndk")),
-        platform_tools: pkg_revision(&root.join("platform-tools")),
-        emulator: pkg_revision(&root.join("emulator")),
-        cmake: subdirs(&root.join("cmake")),
+        platforms: subdirs(machine, &root.join("platforms")),
+        build_tools: subdirs(machine, &root.join("build-tools")),
+        ndk: subdirs(machine, &root.join("ndk")),
+        platform_tools: pkg_revision(machine, &root.join("platform-tools")),
+        emulator: pkg_revision(machine, &root.join("emulator")),
+        cmake: subdirs(machine, &root.join("cmake")),
     }
 }
 
@@ -143,18 +138,18 @@ pub fn android_inventory<B: EnvBackend>(
     for name in ["ANDROID_HOME", "ANDROID_SDK_ROOT"] {
         if let Some(v) = get_var(&user, name).or_else(|| get_var(&system, name)) {
             let root = PathBuf::from(expand(&v.value));
-            if root.is_dir() {
+            if machine.is_dir(&root) {
                 return Ok(AndroidInventory {
                     root_source: Some(name.into()),
-                    ..read_android_sdk(&root)
+                    ..read_android_sdk(machine, &root)
                 });
             }
         }
     }
-    if let Some(root) = local_app_data.map(|l| l.join("Android").join("Sdk")).filter(|r| r.is_dir()) {
+    if let Some(root) = local_app_data.map(|l| l.join("Android").join("Sdk")).filter(|r| machine.is_dir(r)) {
         return Ok(AndroidInventory {
             root_source: Some("default".into()),
-            ..read_android_sdk(&root)
+            ..read_android_sdk(machine, &root)
         });
     }
     Ok(AndroidInventory::default())
@@ -199,33 +194,25 @@ pub fn parse_vswhere(json: &str) -> Vec<(String, String, String)> {
         .collect()
 }
 
-pub fn msvc_toolsets(installation_path: &Path) -> Vec<String> {
-    subdirs(&installation_path.join("VC").join("Tools").join("MSVC"))
+pub fn msvc_toolsets(machine: &dyn Machine, installation_path: &Path) -> Vec<String> {
+    subdirs(machine, &installation_path.join("VC").join("Tools").join("MSVC"))
 }
 
-pub fn windows_sdk_versions(kits_root: &Path) -> Vec<String> {
-    subdirs(&kits_root.join("Include"))
+pub fn windows_sdk_versions(machine: &dyn Machine, kits_root: &Path) -> Vec<String> {
+    subdirs(machine, &kits_root.join("Include"))
         .into_iter()
         .filter(|v| v.starts_with("10."))
         .collect()
 }
 
-pub fn msvc_inventory() -> MsvcInventory {
-    let vswhere = std::env::var_os("ProgramFiles(x86)")
-        .map(|p| PathBuf::from(p).join("Microsoft Visual Studio").join("Installer").join("vswhere.exe"));
-    let instances = vswhere
-        .filter(|p| p.is_file())
-        .and_then(|exe| {
-            std::process::Command::new(exe)
-                .args(["-products", "*", "-format", "json", "-utf8"])
-                .output()
-                .ok()
-        })
-        .map(|o| parse_vswhere(&String::from_utf8_lossy(&o.stdout)))
+pub fn msvc_inventory(machine: &dyn Machine, sdk: &dyn SdkProbe) -> MsvcInventory {
+    let instances = sdk
+        .vswhere_json()
+        .map(|json| parse_vswhere(&json))
         .unwrap_or_default()
         .into_iter()
         .map(|(display_name, version, path)| VisualStudioInstance {
-            msvc_toolsets: msvc_toolsets(Path::new(&path)),
+            msvc_toolsets: msvc_toolsets(machine, Path::new(&path)),
             display_name,
             version,
             path,
@@ -233,24 +220,11 @@ pub fn msvc_inventory() -> MsvcInventory {
         .collect();
     MsvcInventory {
         instances,
-        windows_sdks: windows_kits_root()
-            .map(|r| windows_sdk_versions(&r))
+        windows_sdks: sdk
+            .windows_kits_root()
+            .map(|r| windows_sdk_versions(machine, &r))
             .unwrap_or_default(),
     }
-}
-
-#[cfg(windows)]
-fn windows_kits_root() -> Option<PathBuf> {
-    use winreg::enums::HKEY_LOCAL_MACHINE;
-    let key = winreg::RegKey::predef(HKEY_LOCAL_MACHINE)
-        .open_subkey(r"SOFTWARE\Microsoft\Windows Kits\Installed Roots")
-        .ok()?;
-    key.get_value::<String, _>("KitsRoot10").ok().map(PathBuf::from)
-}
-
-#[cfg(not(windows))]
-fn windows_kits_root() -> Option<PathBuf> {
-    None
 }
 
 #[cfg(test)]
@@ -285,7 +259,7 @@ mod tests {
     fn android_sdk_contents_are_listed() {
         let dir = tempfile::tempdir().unwrap();
         fake_sdk(dir.path());
-        let inv = read_android_sdk(dir.path());
+        let inv = read_android_sdk(&LocalMachine, dir.path());
         assert_eq!(inv.platforms, vec!["android-34", "android-36.1"]);
         assert_eq!(inv.build_tools, vec!["35.0.0"]);
         assert_eq!(inv.ndk, vec!["27.0.12077973"]);
@@ -323,10 +297,10 @@ mod tests {
         );
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("VC/Tools/MSVC/14.44.35207")).unwrap();
-        assert_eq!(msvc_toolsets(dir.path()), vec!["14.44.35207"]);
+        assert_eq!(msvc_toolsets(&LocalMachine, dir.path()), vec!["14.44.35207"]);
         std::fs::create_dir_all(dir.path().join("Include/10.0.26100.0")).unwrap();
         std::fs::create_dir_all(dir.path().join("Include/wdf")).unwrap();
-        assert_eq!(windows_sdk_versions(dir.path()), vec!["10.0.26100.0"]);
+        assert_eq!(windows_sdk_versions(&LocalMachine, dir.path()), vec!["10.0.26100.0"]);
     }
 
     /// Reads this machine (no writes). `cargo test contract_reads_the_survey -- --ignored --nocapture`
@@ -336,9 +310,9 @@ mod tests {
         let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
         let android = android_inventory(&crate::env_backend::WinregBackend, &LocalMachine, local.as_deref()).unwrap();
         println!("{android:#?}");
-        let msvc = msvc_inventory();
+        let msvc = msvc_inventory(&LocalMachine, &crate::whichcraft::adapters::win::sdk::WinSdkProbe);
         println!("{msvc:#?}");
-        println!("{:#?}", python_supplemental().unwrap());
+        println!("{:#?}", python_supplemental(&crate::whichcraft::adapters::win::sdk::WinSdkProbe).unwrap());
         assert!(android.ndk.contains(&"27.0.12077973".to_string()));
         assert!(msvc.windows_sdks.contains(&"10.0.26100.0".to_string()));
     }

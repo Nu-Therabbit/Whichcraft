@@ -13,6 +13,8 @@ pub trait Machine: Send + Sync {
     fn is_file(&self, path: &Path) -> bool;
     /// Everything directly inside `dir`; empty when it cannot be read.
     fn entries(&self, dir: &Path) -> Vec<PathBuf>;
+    /// A small text file's contents, or `None` when it cannot be read.
+    fn read_text(&self, path: &Path) -> Option<String>;
     /// Junctions and symbolic links, which are never treated as installations or removed.
     fn is_reparse_point(&self, path: &Path) -> bool;
     /// A variable of this process's environment, such as ProgramFiles or LOCALAPPDATA.

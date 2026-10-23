@@ -334,6 +334,9 @@ mod tests {
         fn entries(&self, dir: &Path) -> Vec<PathBuf> {
             LocalMachine.entries(dir)
         }
+        fn read_text(&self, path: &Path) -> Option<String> {
+            LocalMachine.read_text(path)
+        }
         fn is_reparse_point(&self, path: &Path) -> bool {
             LocalMachine.is_reparse_point(path)
         }

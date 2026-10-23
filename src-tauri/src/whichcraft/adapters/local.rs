@@ -23,6 +23,9 @@ impl Machine for LocalMachine {
     fn entries(&self, dir: &Path) -> Vec<PathBuf> {
         std::fs::read_dir(dir).map(|read| read.flatten().map(|e| e.path()).collect()).unwrap_or_default()
     }
+    fn read_text(&self, path: &Path) -> Option<String> {
+        std::fs::read_to_string(path).ok()
+    }
     fn is_reparse_point(&self, path: &Path) -> bool {
         crate::whichcraft::tools::fs_util::is_reparse_point(path)
     }

@@ -127,7 +127,7 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
     use crate::whichcraft::mise::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::domain::InstallerKind;
-    use crate::whichcraft::services::elevation::WinElevator;
+    use crate::whichcraft::adapters::win::elevation::WinElevator;
     use crate::whichcraft::services::tool_inventory::list_tool_installations;
     use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
     use crate::whichcraft::domain::uninstall::{UninstallMethod, UninstallOutcome};
@@ -223,7 +223,7 @@ fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
     use crate::whichcraft::mise::manager::ProcessMiseRunner;
     use crate::whichcraft::mise::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings};
-    use crate::whichcraft::services::elevation::WinElevator;
+    use crate::whichcraft::adapters::win::elevation::WinElevator;
     use crate::whichcraft::services::tool_inventory::list_tool_installations;
     use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
     use crate::whichcraft::domain::uninstall::{UninstallOutcome};
@@ -294,7 +294,7 @@ fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
     use crate::whichcraft::mise::manager::ProcessMiseRunner;
     use crate::whichcraft::mise::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings};
-    use crate::whichcraft::services::elevation::WinElevator;
+    use crate::whichcraft::adapters::win::elevation::WinElevator;
     use crate::whichcraft::services::tool_inventory::list_tool_installations;
     use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
     use crate::whichcraft::domain::uninstall::{UninstallMethod, UninstallOutcome};
@@ -357,7 +357,7 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
     use crate::whichcraft::mise::pins::VFOX_FLUTTER_PLUGIN_SHA;
     use crate::whichcraft::mise::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings};
-    use crate::whichcraft::services::elevation::WinElevator;
+    use crate::whichcraft::adapters::win::elevation::WinElevator;
     use crate::whichcraft::services::tool_inventory::list_tool_installations;
     use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
     use crate::whichcraft::domain::uninstall::{UninstallOutcome};
@@ -482,7 +482,7 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
     use crate::whichcraft::mise::pins::MISE_VERSION;
     use crate::whichcraft::mise::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings, whichcraft_data_dir};
-    use crate::whichcraft::services::elevation::WinElevator;
+    use crate::whichcraft::adapters::win::elevation::WinElevator;
     use crate::whichcraft::services::tool_inventory::list_tool_installations;
     use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
     use crate::whichcraft::domain::uninstall::{UninstallOutcome};
@@ -547,7 +547,7 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
 #[test]
 #[ignore = "contract: writes WHICHCRAFT_TEST_SYSTEM to HKLM through two UAC prompts"]
 fn contract_system_apply_through_uac_and_undo_restores_the_key() {
-    use crate::whichcraft::services::elevation::HelperExeElevator;
+    use crate::whichcraft::adapters::win::elevation::HelperExeElevator;
     let data = tempfile::tempdir().unwrap();
     use_test_data_dir(data.path());
     let helper = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target").join("debug").join("whichcraft.exe");
