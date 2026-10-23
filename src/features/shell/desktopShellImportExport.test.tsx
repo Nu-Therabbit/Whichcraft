@@ -166,6 +166,12 @@ describe("desktop shell import export", () => {
     expect(confirmSpy).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument();
 
+    await user.click(screen.getByRole("tab", { name: /^variables$/i }));
+    await user.click(screen.getAllByText("KEEP")[0]);
+    expect(await screen.findByLabelText(/^value$/i)).toHaveValue("pending");
+
+    await user.click(screen.getByRole("tab", { name: /^import \/ export$/i }));
+    await user.click(screen.getByRole("radio", { name: /^import$/i }));
     fireEvent.change(await screen.findByPlaceholderText(/paste file contents/i), {
       target: { value: '{"user":{}}' },
     });

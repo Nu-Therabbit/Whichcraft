@@ -27,3 +27,7 @@
 - **Replace-staged test:** `desktopShellImportExport.test.tsx` mirrors snapshot restore (cancel keeps pending edit; accept replaces with import-only staging). Removing `pendingStagedCount` / confirm fails the test.
 - **Whole-map replace:** `computeStageImport(..., replacePendingStaged)` clears orphan pending edits when the user confirmed replace (`stagingLogic.test.ts`).
 - **Legacy modal:** `AppModals` passes `pendingStagedCount={staged.size}` into `ImportExportPanel`.
+
+### Review round 2 (Grok 4.7)
+
+- **Replace-staged cancel lock:** After a declined import replace confirm, shell test opens KEEP on Variables and asserts staged value `pending` before the accepted second stage — fails if cancel is ignored and import replaces pending work while the count stays at one staged name.
