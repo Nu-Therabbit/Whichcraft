@@ -4,7 +4,7 @@
 
 **Blocked by:** 04: ประสานการเขียนและรีเฟรช Tools กับ Environment; 05: ควบคุมเวลาและ Operation IDs ผ่าน application capability; 07: เปิดภาพรวมเครื่องมือจริงใน desktop shell แบบ A.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / tool write journey
 
@@ -35,3 +35,7 @@
 - **Effective readback:** Fixture uses distinct versions (pre-effective 21.0.1, selection 11.0.28, target 17.0.2, post-apply effective 18.0.2 at new root); assert Effective heading shows **18.0.2** only after apply.
 - **Apply outcomes vs inventory refresh:** `refreshed` clears `error` when `loading` unless error is stale-plan or declined-UAC (`isApplyPlanOutcomeError`); reducer + shell tests assert those messages survive readback-driven refresh.
 - **NIT:** Shell test asserts footer **Building plan…** while `plan.building` (delayed `planToolApply`).
+
+### Review round 2 approval
+
+- Approved. A wrong plan id is dropped by the plan-id check itself. Post-apply Effective must be 18.0.2, not Selection or the switch target. Stale and declined-UAC text survive the follow-up refresh; an inventory-load error still clears. The Windows User-only / mixed-scope checkbox stays open and is not a pass.
