@@ -29,3 +29,7 @@
 - **Legacy dock:** `SnapshotPanelDock` passes `pendingStagedCount={staged.size}` from `LegacyEnvironmentView`.
 - **List/delete errors:** `useSnapshotPanel` surfaces `snapshot.error_list` / `snapshot.error_delete` instead of silent `console.error` + empty list (`SnapshotPanel.test.tsx`).
 - **Restore fixture:** Shell test registry includes removal + value-kind delta; `stagingLogic.test.ts` asserts staged delete and `ExpandString` kind change.
+
+### Review round 2 (Grok 4.7)
+
+- **Profile reload lock:** `ShellToolsProvider` dispatches `loadProfiles` only when invalidation includes `tools-profiles` (installation/overview rescan still follows `environment-*` via existing subscribers). Apply-staged shell test asserts `listProfiles` runs after success, not just scope names in a test-local listener — dropping `tools-profiles` from `readbackScopes` fails while `environment-variables` rescan remains. Background `loadProfiles` no longer clears stale-plan or install-failure errors (`reduce`).

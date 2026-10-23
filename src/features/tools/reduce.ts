@@ -118,6 +118,11 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
     case "loadSdks":
     case "dismissUnfinished":
     case "loadProfiles":
+      return {
+        ...s,
+        error:
+          isApplyPlanOutcomeError(s.error) || s.install.retainErrorOnRefresh ? s.error : null,
+      };
     case "createProfile":
     case "deleteProfile":
       return { ...s, error: null };

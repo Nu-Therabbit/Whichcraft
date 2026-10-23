@@ -217,12 +217,9 @@ describe("desktop shell environment snapshots", () => {
       shellNavigationHref({ page: "environment", envTab: "variables" }),
     );
     const coordination = createWriteCoordinator();
-    const invalidations: string[][] = [];
-    coordination.subscribeInvalidation((scopes) => {
-      invalidations.push([...scopes]);
-    });
     const jdk = inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true });
     const listToolInstallations = vi.fn(async (tool: string) => (tool === "java" ? [jdk] : []));
+    const listProfiles = vi.fn(async () => [{ id: "p1", name: "Work", tools: {} }]);
     const applyEnvChanges = vi.fn(async () => {});
     const onApplyProgress = vi.fn(async (cb: (event: { index: number; total: number }) => void) => {
       cb({ index: 1, total: 1 });
@@ -245,6 +242,7 @@ describe("desktop shell environment snapshots", () => {
         getUnsupportedEnvValues: async () => [],
         validatePaths: async () => [],
         listToolInstallations,
+        listProfiles,
         applyEnvChanges,
         onApplyProgress,
       },
@@ -254,6 +252,7 @@ describe("desktop shell environment snapshots", () => {
     const user = userEvent.setup();
     await waitFor(() => expect(screen.getByText("PATH")).toBeInTheDocument());
     const installsBeforeApply = listToolInstallations.mock.calls.length;
+    const profilesBeforeApply = listProfiles.mock.calls.length;
     await user.click(screen.getByRole("button", { name: /^PATH$/i }));
     const editor = await screen.findByLabelText(/^value$/i);
     await user.clear(editor);
@@ -263,18 +262,11 @@ describe("desktop shell environment snapshots", () => {
     await user.click(await screen.findByRole("button", { name: /apply 1 change to registry/i }));
 
     await waitFor(() => expect(applyEnvChanges).toHaveBeenCalled());
-    await waitFor(() => {
-      expect(
-        invalidations.some(
-          (scopes) =>
-            scopes.includes("tools-profiles") &&
-            scopes.includes("tools-installations") &&
-            scopes.includes("shell-overview"),
-        ),
-      ).toBe(true);
-    });
     await waitFor(() =>
       expect(listToolInstallations.mock.calls.length).toBeGreaterThan(installsBeforeApply),
+    );
+    await waitFor(() =>
+      expect(listProfiles.mock.calls.length).toBeGreaterThan(profilesBeforeApply),
     );
   });
 });

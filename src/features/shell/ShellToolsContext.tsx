@@ -5,7 +5,7 @@ import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext"
 import type { ToolsDispatch } from "../tools/useToolsStore";
 import { useToolsStore } from "../tools/useToolsStore";
 import type { ToolsState } from "../tools/model";
-import { scopesNeedToolsRefresh } from "./useShellToolsWrite";
+import { scopesNeedProfileReload, scopesNeedToolsRefresh } from "./useShellToolsWrite";
 
 type ShellToolsContextValue = {
   state: ToolsState;
@@ -34,6 +34,9 @@ export function ShellToolsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     return coordination.subscribeInvalidation((scopes) => {
+      if (scopesNeedProfileReload(scopes)) {
+        dispatch({ type: "loadProfiles" });
+      }
       if (!scopesNeedToolsRefresh(scopes)) return;
       dispatch({ type: "refresh" });
     });

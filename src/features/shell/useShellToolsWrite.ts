@@ -3,6 +3,10 @@ import type { InvalidationScope } from "../../coordination/types";
 import type { ToolKind } from "../tools/types";
 import { useShellTools } from "./ShellToolsContext";
 
+export function scopesNeedProfileReload(scopes: InvalidationScope[]): boolean {
+  return scopes.includes("tools-profiles");
+}
+
 export function scopesNeedToolsRefresh(scopes: InvalidationScope[]): boolean {
   return scopes.some(
     (scope) =>
