@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Prefactor / installer lifecycle correction
 
@@ -18,3 +18,4 @@
 
 - 2026-10-24: Added `InstallerLifecycle` port with `MiseStatus` DTO, `MiseInstallerLifecycle` adapter, and `FakeInstallerLifecycle`; `whichcraft_mise_status` / `whichcraft_prepare_mise` now call `App` (prepare still uses `off_main`).
 - Review round 1: Added `prepare_fails` fake (checksum) distinct from offline; ready-app test calls `prepare_mise` and lists offered remote versions via fake tool catalog.
+- Review round 2: approved. Failure is distinct from offline, and the ready-app test calls `prepare_mise` then checks the fake catalog versions.

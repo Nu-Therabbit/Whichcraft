@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Prefactor / Rust dependency correction
 
@@ -18,3 +18,4 @@
 
 - 2026-10-24: Added `OperationIds` port, `SystemOperationIds` adapter, and `FakeOperationIds`; wired through `App`, plan/apply/profile/PATH/uninstall use cases, and a production-only dependency scan in `application/mod.rs` tests.
 - Review round 1: Profile seam test asserts `plan_id` uses injected IDs; removed dead `new_journal_id` from persistence; dependency scan strips `pub(crate) mod` test blocks and lives in `layer_tests.rs`.
+- Review round 2: approved. The profile test, dependency scan, and removal of `new_journal_id` match the ticket. No production behaviour change in the fix.
