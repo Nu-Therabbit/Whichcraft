@@ -4,7 +4,7 @@
 
 **Blocked by:** 03: ย้าย Environment workflows เข้า feature controller บนหน้าจอเดิม.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Prefactor / shared orchestration
 
@@ -42,3 +42,7 @@
 - **Uninstall busy:** `toolMutationDropped` clears `uninstall.busy`; dropped `confirmUninstall` returns `"cancel"` (no success invalidation).
 - **Plan building:** Late wrong-tool `planBuilt` clears `plan.building` without applying the plan.
 - **Scopes / tests:** `EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES` shared with controller; screen test asserts exact scopes and that subscriber refresh does not re-call `getRegistrySnapshot`; `isPlanApplyCurrent` tests cover mismatched plan id/tool; duplicate id/tool comparisons removed.
+
+### Review round 3 approval
+
+- Approved. A dropped uninstall clears `uninstall.busy` and returns cancel. A late plan for another tool only clears `plan.building`. The external-diff test checks the scope list and that the registry is not read again.
