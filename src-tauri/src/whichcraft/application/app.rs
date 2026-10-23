@@ -28,6 +28,7 @@ use crate::whichcraft::domain::uninstall::{UninstallOutcome, UninstallRecord};
 use crate::whichcraft::domain::versions::{estimated_disk_bytes, update_candidates, RemoteVersion, UpdateCandidate};
 use crate::whichcraft::domain::{ToolApplyPlan, ToolInstallation, ToolInstallationView, ToolKind};
 use crate::whichcraft::ports::elevator::Elevator;
+use crate::whichcraft::ports::installer_lifecycle::{InstallerLifecycle, MiseStatus};
 use crate::whichcraft::ports::installer_catalog::InstallerCatalogSource;
 use crate::whichcraft::ports::machine::Machine;
 use crate::whichcraft::ports::process::ProcessRunner;
@@ -52,6 +53,7 @@ pub struct App<B: EnvBackend> {
     pub sdk: Box<dyn SdkProbe>,
     pub processes: Box<dyn ProcessRunner>,
     pub ids: Box<dyn OperationIds>,
+    pub installer_lifecycle: Box<dyn InstallerLifecycle>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -75,6 +77,16 @@ pub fn merge_settings(current: WhichcraftSettings, incoming: WhichcraftSettings)
 }
 
 impl<B: EnvBackend> App<B> {
+    // --- pinned mise lifecycle (install page / prepare-on-start) ---
+
+    pub fn mise_status(&self) -> Result<MiseStatus, EnvarlyError> {
+        self.installer_lifecycle.mise_status()
+    }
+
+    pub fn prepare_mise(&self) -> Result<bool, EnvarlyError> {
+        self.installer_lifecycle.prepare_mise()
+    }
+
     // --- inventory and settings ---
 
     /// The installations of `tool`, with the remembered choice shown even if it vanished (D-5).

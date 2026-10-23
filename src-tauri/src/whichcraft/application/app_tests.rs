@@ -11,8 +11,8 @@ use crate::whichcraft::domain::settings::WhichcraftSettings;
 use crate::whichcraft::domain::uninstall::UninstallOutcome;
 use crate::whichcraft::domain::{ToolInstallation, ToolKind};
 use crate::whichcraft::fake::{
-    DeclinesUac, FakeMachine, FakeOperationIds, FakeProcessRunner, FakeToolManagers, FakeTools, FakeUsageProbe,
-    MachineUninstaller, MemStore, NoInstallerEntries, NoSdks,
+    DeclinesUac, FakeInstallerLifecycle, FakeMachine, FakeOperationIds, FakeProcessRunner, FakeToolManagers, FakeTools,
+    FakeUsageProbe, MachineUninstaller, MemStore, NoInstallerEntries, NoSdks,
 };
 
 const STORE: &str = r"C:\Users\me\AppData\Local\Whichcraft\installs";
@@ -53,8 +53,15 @@ fn world(user_path: &'static str, confirmed: bool) -> World {
             "uninstall-test-fixed-id",
             "2025-06-01T12:00:00+00:00",
         )),
+        installer_lifecycle: Box::new(FakeInstallerLifecycle::ready("2025.3.6")),
     };
     World { app, machine, tools, processes }
+}
+
+fn world_with_lifecycle(lifecycle: FakeInstallerLifecycle) -> World {
+    let mut w = world(r"C:\u", true);
+    w.app.installer_lifecycle = Box::new(lifecycle);
+    w
 }
 
 fn node(version: &str, root: &str) -> ToolInstallation {
@@ -216,6 +223,28 @@ fn flutter_downloads_come_with_a_disk_estimate() {
     assert_eq!(size.download_bytes, Some(1_749_058_829));
     assert!(size.disk_bytes.unwrap() > 3_000_000_000);
     assert_eq!(w.app.download_size(ToolKind::Node, "22.24.0").unwrap().disk_bytes, None);
+}
+
+#[test]
+fn mise_status_and_prepare_go_through_the_application_port() {
+    let w = world_with_lifecycle(FakeInstallerLifecycle::needs_download("2025.3.6", 230_000_000));
+    let status = w.app.mise_status().unwrap();
+    assert!(!status.present);
+    assert_eq!(status.download_bytes, 230_000_000);
+    assert!(w.app.prepare_mise().unwrap());
+
+    let offline = world_with_lifecycle(FakeInstallerLifecycle::offline("2025.3.6"));
+    assert!(offline.app.mise_status().is_err());
+    assert!(offline.app.prepare_mise().is_err());
+}
+
+#[test]
+fn app_start_and_install_list_still_see_mise_when_it_is_ready() {
+    let w = world_with_lifecycle(FakeInstallerLifecycle::ready("2025.3.6"));
+    let status = w.app.mise_status().unwrap();
+    assert!(status.present);
+    assert!(!status.fetching);
+    assert_eq!(w.app.remote_versions(ToolKind::Node).unwrap().len(), 0);
 }
 
 #[test]

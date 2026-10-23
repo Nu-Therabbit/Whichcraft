@@ -1,4 +1,5 @@
 pub mod elevator;
+pub mod installer_lifecycle;
 pub mod operation_ids;
 pub mod installer_catalog;
 pub mod machine;
