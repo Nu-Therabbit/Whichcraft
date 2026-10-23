@@ -11,6 +11,8 @@ import { useSnapshotPanel } from "./useSnapshotPanel";
 
 interface Props {
   onStageSnapshot: (snap: EnvSnapshot) => void;
+  /** Pending staged edits in the environment controller (for replace confirmation). */
+  pendingStagedCount?: number;
 }
 
 function formatDate(iso: string) {
@@ -21,7 +23,7 @@ function formatDate(iso: string) {
   }
 }
 
-export function SnapshotPanel({ onStageSnapshot }: Props) {
+export function SnapshotPanel({ onStageSnapshot, pendingStagedCount = 0 }: Props) {
   const { t } = useI18n();
   const {
     snapshots,
@@ -52,7 +54,7 @@ export function SnapshotPanel({ onStageSnapshot }: Props) {
     handleStartCompare,
     handlePickCompareTarget,
     handleCancelCompare,
-  } = useSnapshotPanel(onStageSnapshot);
+  } = useSnapshotPanel(onStageSnapshot, pendingStagedCount);
 
   return (
     <>

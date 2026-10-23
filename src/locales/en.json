@@ -227,6 +227,7 @@
     "resize": "Resize snapshots panel",
     "description": "Save the current state of all environment variables. Preview and restore any snapshot.",
     "confirm_legacy_restore": "This snapshot does not include registry types. Existing variables will keep their current type and new variables will use automatic detection. Continue?",
+    "confirm_replace_staged": "You already have staged environment changes. Restoring this snapshot will replace them. Continue?",
     "label_placeholder": "Snapshot label (optional)…",
     "save": "Save snapshot",
     "saving": "…",

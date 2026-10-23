@@ -224,6 +224,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
             className="flex-1 overflow-y-auto p-4"
           >
             <SnapshotPanel
+              pendingStagedCount={staged.size}
               onStageSnapshot={(snap) => {
                 handleStageSnapshot(snap);
               }}

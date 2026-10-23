@@ -16,7 +16,10 @@ interface Status {
   message: string;
 }
 
-export function useSnapshotPanel(onStageSnapshot: (snap: EnvSnapshot) => void) {
+export function useSnapshotPanel(
+  onStageSnapshot: (snap: EnvSnapshot) => void,
+  pendingStagedCount = 0,
+) {
   const environment = useEnvironmentApi();
   const { t } = useI18n();
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);
@@ -83,6 +86,9 @@ export function useSnapshotPanel(onStageSnapshot: (snap: EnvSnapshot) => void) {
   const handleRestore = () => {
     if (!previewing) return;
     if (previewing.version < 2 && !confirm(t("snapshot.confirm_legacy_restore"))) {
+      return;
+    }
+    if (pendingStagedCount > 0 && !confirm(t("snapshot.confirm_replace_staged"))) {
       return;
     }
     onStageSnapshot(previewing.snapshot);
