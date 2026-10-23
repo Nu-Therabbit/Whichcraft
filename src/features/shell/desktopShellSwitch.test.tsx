@@ -71,18 +71,22 @@ describe("desktop shell switch apply and undo", () => {
 
   it("builds a real plan, applies the reviewed plan id, and readbacks a new effective installation", async () => {
     const beforeEffective = inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: false });
-    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true, effective: false, available: true });
+    const selectedOther = inst("java", "11.0.28", "C:\\jdk11", { selected: true, effective: false });
+    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: false, effective: false, available: true });
     const plan = planFor(target, {
       planId: "reviewed-plan-17",
       userDiffs: [{ name: "JAVA_HOME", scope: "User", kind: "changed", before: "old", after: "C:\\jdk17" }],
       systemDiffs: [{ name: "PATH", scope: "System", kind: "changed", before: "a", after: "b" }],
     });
     let applied = false;
-    const afterEffective = inst("java", "17.0.2", "C:\\jdk17", { effective: true, selected: true });
-    const afterOld = inst("java", "21.0.1", "C:\\jdk21", { effective: false, selected: false });
+    const afterEffective = inst("java", "18.0.2", "C:\\jdk18", { effective: true, selected: false });
+    const afterSelected = inst("java", "11.0.28", "C:\\jdk11", { selected: true, effective: false });
+    const afterTarget = inst("java", "17.0.2", "C:\\jdk17", { selected: false, effective: false });
     const listToolInstallations = vi.fn(async (tool: string) => {
       if (tool !== "java") return [];
-      return applied ? [afterEffective, afterOld] : [beforeEffective, target];
+      return applied
+        ? [afterEffective, afterSelected, afterTarget]
+        : [beforeEffective, selectedOther, target];
     });
     const planToolApply = vi.fn(async () => plan);
     const applyToolPlan = vi.fn(async (reviewed: typeof plan) => {
@@ -103,41 +107,11 @@ describe("desktop shell switch apply and undo", () => {
     await waitFor(() => expect(applyToolPlan).toHaveBeenCalledWith(expect.objectContaining({ planId: plan.planId })));
     await waitFor(() => {
       const block = within(details).getByText(/^Effective installation$/i).closest("div");
-      expect(block).toHaveTextContent("17.0.2");
+      expect(block).toHaveTextContent("18.0.2");
       expect(block).not.toHaveTextContent("21.0.1");
+      expect(block).not.toHaveTextContent("11.0.28");
+      expect(block).not.toHaveTextContent("17.0.2");
     });
-    expect(listToolInstallations.mock.calls.length).toBeGreaterThan(2);
-  });
-
-  it("does not commit apply when the reviewed plan baseline moved before the result returns", async () => {
-    const effective = inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true });
-    const target = inst("java", "17.0.2", "C:\\jdk17");
-    const plan = planFor(target, { planId: "locked-plan-id" });
-    let releaseApply: (v: { planId: string; stale: boolean; needsElevation: boolean }) => void = () => {};
-    const applyToolPlan = vi.fn(
-      () =>
-        new Promise<{ planId: string; stale: boolean; needsElevation: boolean }>((resolve) => {
-          releaseApply = resolve;
-        }),
-    );
-    const coordination = createWriteCoordinator();
-    renderShell(
-      {
-        listToolInstallations: async (tool: string) => (tool === "java" ? [effective, target] : []),
-        planToolApply: vi.fn(async () => plan),
-        applyToolPlan,
-      },
-      coordination,
-    );
-    const user = userEvent.setup();
-    await openJavaDetail(user);
-    await user.click(await screen.findByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/i }));
-    await user.click(await screen.findByRole("button", { name: /^Apply plan$/i }));
-    coordination.invalidate(["environment-variables"]);
-    releaseApply({ planId: plan.planId, stale: false, needsElevation: false });
-    await waitFor(() => expect(applyToolPlan).toHaveBeenCalledWith(expect.objectContaining({ planId: plan.planId })));
-    expect(screen.getByRole("button", { name: /^Apply plan$/i })).toBeInTheDocument();
-    expect(screen.queryByText(/Environment changed since the plan was created/i)).not.toBeInTheDocument();
   });
 
   it("does not allow choosing an unavailable installation", async () => {
@@ -164,8 +138,9 @@ describe("desktop shell switch apply and undo", () => {
       stale: true,
       needsElevation: false,
     }));
+    const listToolInstallations = vi.fn(async (tool: string) => (tool === "java" ? [effective, target] : []));
     renderShell({
-      listToolInstallations: async (tool: string) => (tool === "java" ? [effective, target] : []),
+      listToolInstallations,
       planToolApply,
       applyToolPlan,
     });
@@ -177,6 +152,8 @@ describe("desktop shell switch apply and undo", () => {
       expect(screen.getAllByText(/Environment changed since the plan was created/i).length).toBeGreaterThan(0),
     );
     await waitFor(() => expect(planToolApply).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThan(4));
+    expect(screen.getAllByText(/Environment changed since the plan was created/i).length).toBeGreaterThan(0);
   });
 
   it("reports declined UAC without leaving apply stuck", async () => {
@@ -188,8 +165,9 @@ describe("desktop shell switch apply and undo", () => {
       stale: false,
       needsElevation: true,
     }));
+    const listToolInstallations = vi.fn(async (tool: string) => (tool === "java" ? [effective, target] : []));
     renderShell({
-      listToolInstallations: async (tool: string) => (tool === "java" ? [effective, target] : []),
+      listToolInstallations,
       planToolApply: vi.fn(async () => plan),
       applyToolPlanWithUac,
       applyToolPlan: vi.fn(async () => ({ planId: plan.planId, stale: false, needsElevation: false })),
@@ -203,6 +181,31 @@ describe("desktop shell switch apply and undo", () => {
     );
     expect(applyToolPlanWithUac).toHaveBeenCalledWith(expect.objectContaining({ planId: plan.planId }));
     expect(screen.getByRole("button", { name: /^Apply plan$/i })).toBeEnabled();
+    await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThan(2));
+    expect(screen.getAllByText(/requires UAC approval for System PATH/i).length).toBeGreaterThan(0);
+  });
+
+  it("shows building-plan status while a plan is being built", async () => {
+    const effective = inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17");
+    let releasePlan: (value: ReturnType<typeof planFor>) => void = () => {};
+    const planToolApply = vi.fn(
+      () =>
+        new Promise<ReturnType<typeof planFor>>((resolve) => {
+          releasePlan = resolve;
+        }),
+    );
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [effective, target] : []),
+      planToolApply,
+    });
+    const user = userEvent.setup();
+    await openJavaDetail(user);
+    await user.click(await screen.findByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/i }));
+    expect(screen.getAllByText(/Building plan/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Applying changes/i)).not.toBeInTheDocument();
+    releasePlan(planFor(target));
+    await waitFor(() => expect(screen.queryByText(/Building plan/i)).not.toBeInTheDocument());
   });
 
   it("surfaces failed apply errors", async () => {

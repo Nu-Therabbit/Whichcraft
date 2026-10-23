@@ -4,6 +4,10 @@ import { isSingleToolPlan, type ToolsState } from "./model";
 const STALE = "Environment changed since the plan was created. Refresh and try again.";
 const NEEDS_UAC = "This plan requires UAC approval for System PATH changes.";
 
+export function isApplyPlanOutcomeError(error: string | null): boolean {
+  return error === STALE || error === NEEDS_UAC;
+}
+
 /** The only place the panel's state changes. Pure: no API calls, no time, no randomness. */
 export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
   // A slow result for the tool the panel has since left must not land on the new one.
@@ -36,7 +40,7 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
       return {
         ...s,
         loading: false,
-        error: s.loading ? null : s.error,
+        error: s.loading && !isApplyPlanOutcomeError(s.error) ? null : s.error,
         installations: msg.installations,
         recovery: msg.recovery,
         unfinished: msg.unfinished,

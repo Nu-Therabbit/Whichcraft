@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { UninstallPlan } from "../../types";
 import { initialToolsState, type ToolsState } from "./model";
-import { reduce } from "./reduce";
+import { isApplyPlanOutcomeError, reduce } from "./reduce";
 import { inst, planFor } from "./testHarness";
 
 const jdk17 = inst("java", "17.0.20.1", "C:\\jdk17", { selected: true });
@@ -58,6 +58,25 @@ describe("reduce", () => {
       pythonInfo: null,
     });
     expect(next.error).toContain("Environment changed");
+  });
+
+  it("keeps stale and UAC outcomes when readback refresh completes with loading set", () => {
+    const staleMsg = "Environment changed since the plan was created. Refresh and try again.";
+    const uacMsg = "This plan requires UAC approval for System PATH changes.";
+    expect(isApplyPlanOutcomeError(staleMsg)).toBe(true);
+    for (const error of [staleMsg, uacMsg]) {
+      const s = { ...initialToolsState(), error, loading: true };
+      const next = reduce(s, {
+        type: "refreshed",
+        tool: "java",
+        installations: [jdk17],
+        recovery: null,
+        unfinished: [],
+        settings: initialToolsState().settings,
+        pythonInfo: null,
+      });
+      expect(next.error).toBe(error);
+    }
   });
 
   it("will not confirm an uninstall until the switch for that replacement is on screen", () => {

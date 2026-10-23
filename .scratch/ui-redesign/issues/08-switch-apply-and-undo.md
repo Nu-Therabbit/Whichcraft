@@ -28,3 +28,10 @@
 - **Post-apply readback:** Success test flips Effective only after apply; detail **Effective installation** shows `17.0.2` not pre-apply `21.0.1`.
 - **Errors:** `refreshed` clears `error` only when `loading` was true (inventory refresh); apply stale/UAC messages survive readback. `refresh` intent still does not clear apply errors.
 - **NITs:** `selectTool` clears installations and sets loading; footer distinguishes **Building plan…** vs **Applying changes…**.
+
+### Review round 2 (Grok 4.7)
+
+- **Plan id lock:** Removed shell test that relied on `environment-variables` invalidation (drops via `isToolResultCurrent` before plan check). Added `effects.test.ts` — build plan on-screen, register a different reviewed plan id, `applyPlan` must not commit (`plan.current` unchanged, `applyToolPlan(onScreen)` only).
+- **Effective readback:** Fixture uses distinct versions (pre-effective 21.0.1, selection 11.0.28, target 17.0.2, post-apply effective 18.0.2 at new root); assert Effective heading shows **18.0.2** only after apply.
+- **Apply outcomes vs inventory refresh:** `refreshed` clears `error` when `loading` unless error is stale-plan or declined-UAC (`isApplyPlanOutcomeError`); reducer + shell tests assert those messages survive readback-driven refresh.
+- **NIT:** Shell test asserts footer **Building plan…** while `plan.building` (delayed `planToolApply`).

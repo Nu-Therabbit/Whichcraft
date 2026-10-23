@@ -413,6 +413,28 @@ describe("tools effects", () => {
     expect(h.state.shellCheck?.effectivePath).toBe("newer");
   });
 
+  it("does not commit apply when the on-screen plan id is not the reviewed plan", async () => {
+    const reviewed = planFor(jdk21, { planId: "reviewed-plan-id" });
+    const onScreen = planFor(jdk21new, { planId: "other-plan-id" });
+    const applyToolPlan = vi.fn(async () => ({ planId: onScreen.planId, stale: false, needsElevation: false }));
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async () => [jdk21, jdk21new]),
+      planToolApply: vi.fn(async () => onScreen),
+      applyToolPlan,
+      listProfiles: vi.fn(async () => []),
+      profileStatus: vi.fn(async (p) => ({ profile: p, matches: true })),
+    });
+    const h = harness(runtime, { installations: [jdk21, jdk21new] });
+    h.dispatch({ type: "buildPlan", root: jdk21new.root });
+    await h.settle();
+    runtime.coordination.registerReviewedPlan(reviewed);
+    h.dispatch({ type: "applyPlan" });
+    await h.settle();
+    expect(applyToolPlan).toHaveBeenCalledWith(onScreen);
+    expect(h.state.plan.current?.planId).toBe("other-plan-id");
+    expect(h.state.plan.applying).toBe(false);
+  });
+
   it("blocks tool apply while staged environment edits are pending", async () => {
     const applyToolPlan = vi.fn(async () => ({ planId: "p", stale: false, needsElevation: false }));
     const { runtime, coordination } = fakeToolsRuntime({
