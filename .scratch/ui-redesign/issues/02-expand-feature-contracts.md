@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Prefactor / expand
 
