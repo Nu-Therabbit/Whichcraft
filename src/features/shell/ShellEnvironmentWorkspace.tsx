@@ -240,6 +240,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
             className="flex-1 overflow-y-auto p-4"
           >
             <ImportExportPanel
+              pendingStagedCount={staged.size}
               onStage={(sets, deletes) => {
                 handleStageImport(sets, deletes);
               }}

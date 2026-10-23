@@ -20,6 +20,7 @@ import {
 import { SecretBanner, VarTable } from "./VarTable";
 
 interface ImportTabProps {
+  pendingStagedCount?: number;
   onStage: (
     sets: Array<{
       name: string;
@@ -32,7 +33,7 @@ interface ImportTabProps {
   onStatus: (msg: string | null) => void;
 }
 
-export function ImportTab({ onStage, onStatus }: ImportTabProps) {
+export function ImportTab({ onStage, onStatus, pendingStagedCount = 0 }: ImportTabProps) {
   const environment = useEnvironmentApi();
   const { t } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -94,6 +95,9 @@ export function ImportTab({ onStage, onStatus }: ImportTabProps) {
       selected.some((variable) => variable.valueKind === null) &&
       !confirm(t("import.confirm_legacy_types"))
     ) {
+      return;
+    }
+    if (pendingStagedCount > 0 && !confirm(t("import.confirm_replace_staged"))) {
       return;
     }
     setApplying(true);

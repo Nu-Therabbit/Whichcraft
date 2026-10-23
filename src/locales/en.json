@@ -175,6 +175,7 @@
   "import": {
     "legacy_types": "This import does not include registry types. Existing variables keep their current type; new variables use automatic detection.",
     "confirm_legacy_types": "Some imported variables do not include registry types. Continue with automatic type resolution?",
+    "confirm_replace_staged": "You already have staged environment changes. Staging this import will replace them. Continue?",
     "choose_file": "Choose file…",
     "paste_placeholder": "…or paste file contents here",
     "parse": "Parse",

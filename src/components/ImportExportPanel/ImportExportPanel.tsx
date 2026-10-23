@@ -8,6 +8,7 @@ import { ImportTab } from "./ImportTab";
 import type { Mode } from "./types";
 
 interface Props {
+  pendingStagedCount?: number;
   onStage: (
     sets: Array<{
       name: string;
@@ -19,7 +20,7 @@ interface Props {
   ) => void;
 }
 
-export function ImportExportPanel({ onStage }: Props) {
+export function ImportExportPanel({ onStage, pendingStagedCount = 0 }: Props) {
   const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("export");
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -66,7 +67,11 @@ export function ImportExportPanel({ onStage }: Props) {
         {mode === "export" ? (
           <ExportTab onStatus={handleStatus} />
         ) : (
-          <ImportTab onStage={onStage} onStatus={handleStatus} />
+          <ImportTab
+            onStage={onStage}
+            onStatus={handleStatus}
+            pendingStagedCount={pendingStagedCount}
+          />
         )}
       </div>
     </div>
