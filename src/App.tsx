@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "./components/AppHeader/AppHeader";
 import { AppLoading } from "./components/AppLoading/AppLoading";
 import { AppModals } from "./components/AppModals/AppModals";
@@ -23,7 +23,7 @@ import { useStaged } from "./hooks/useStaged";
 import { useStagingHandlers } from "./hooks/useStagingHandlers";
 import { useTheme } from "./hooks/useTheme";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
-import { useDeveloperTools } from "./hooks/useDeveloperTools";
+import { useToolsStore } from "./features/tools/useToolsStore";
 import { ToolsPanel } from "./components/ToolsPanel/ToolsPanel";
 import type { DiagnosticAction, EnvironmentDiagnostic } from "./lib/environmentDiagnostics";
 import { stagedToDiff } from "./lib/stagedToDiff";
@@ -120,7 +120,13 @@ export default function App() {
   useKeyboardShortcuts(undo, redo, localUndoRef);
 
   const updateInfo = useUpdateCheck();
-  const developerTools = useDeveloperTools();
+  const { state: tools, dispatch: sendTools } = useToolsStore();
+  // Stable, because the panel loads when these change identity (on open, for the open list or tab).
+  const refreshTools = useCallback(() => sendTools({ type: "refresh" }), [sendTools]);
+  const openInstallList = useCallback(() => sendTools({ type: "openInstallList" }), [sendTools]);
+  const loadProfiles = useCallback(() => sendTools({ type: "loadProfiles" }), [sendTools]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the app starts
+  useEffect(() => sendTools({ type: "started" }), []);
 
   const {
     handleStage,
@@ -285,87 +291,87 @@ export default function App() {
           open={dialog === "tools"}
           onClose={() => {
             setDialog(null);
-            developerTools.clearPlan();
+            sendTools({ type: "clearPlan" });
           }}
-          tool={developerTools.tool}
-          onToolChange={developerTools.setTool}
-          installations={developerTools.installations}
-          loading={developerTools.loading}
-          error={developerTools.error}
-          plan={developerTools.plan}
-          planBusy={developerTools.planBusy}
-          applyBusy={developerTools.applyBusy}
-          onRefresh={developerTools.refresh}
-          onSelect={developerTools.buildPlan}
-          onApplyPlan={() => void developerTools.applyPlan()}
-          onUndo={() => void developerTools.undoLast()}
-          onClearPlan={developerTools.clearPlan}
-          recovery={developerTools.recovery}
-          onResumeRecovery={() => void developerTools.resumeRecovery()}
-          onRollBackRecovery={() => void developerTools.rollBackRecovery()}
-          settings={developerTools.settings}
-          onSaveSettings={(next) => void developerTools.saveSettings(next)}
-          pythonInfo={developerTools.pythonInfo}
-          android={developerTools.android}
-          msvc={developerTools.msvc}
-          onLoadSdks={() => void developerTools.loadSdks()}
-          shellCheck={developerTools.shellCheck}
-          onShellCheck={() => void developerTools.runShellCheck()}
-          onOpenTerminal={() => void developerTools.openTerminal()}
+          tool={tools.tool}
+          onToolChange={(tool) => sendTools({ type: "selectTool", tool })}
+          installations={tools.installations}
+          loading={tools.loading}
+          error={tools.error}
+          plan={tools.plan.current}
+          planBusy={tools.plan.building}
+          applyBusy={tools.plan.applying}
+          onRefresh={refreshTools}
+          onSelect={(root) => sendTools({ type: "buildPlan", root })}
+          onApplyPlan={() => sendTools({ type: "applyPlan" })}
+          onUndo={() => sendTools({ type: "undoLast" })}
+          onClearPlan={() => sendTools({ type: "clearPlan" })}
+          recovery={tools.recovery}
+          onResumeRecovery={() => sendTools({ type: "resolveRecovery", action: "resume" })}
+          onRollBackRecovery={() => sendTools({ type: "resolveRecovery", action: "rollBack" })}
+          settings={tools.settings}
+          onSaveSettings={(settings) => sendTools({ type: "saveSettings", settings })}
+          pythonInfo={tools.pythonInfo}
+          android={tools.sdks.android}
+          msvc={tools.sdks.msvc}
+          onLoadSdks={() => sendTools({ type: "loadSdks" })}
+          shellCheck={tools.shellCheck}
+          onShellCheck={() => sendTools({ type: "checkShell" })}
+          onOpenTerminal={() => sendTools({ type: "openTerminal" })}
           install={{
-            versions: developerTools.remoteVersions,
-            loading: developerTools.remoteLoading,
-            busy: developerTools.installBusy,
-            miseStatus: developerTools.miseStatus,
-            chosen: developerTools.chosenVersion,
-            onOpen: developerTools.loadRemoteVersions,
-            onChoose: (version) => void developerTools.chooseVersion(version),
-            onInstall: () => void developerTools.installChosen(),
+            versions: tools.install.versions,
+            loading: tools.install.loading,
+            busy: tools.install.busy,
+            miseStatus: tools.install.miseStatus,
+            chosen: tools.install.chosen,
+            onOpen: openInstallList,
+            onChoose: (version) => sendTools({ type: "chooseVersion", version }),
+            onInstall: () => sendTools({ type: "install" }),
           }}
           updates={{
-            list: developerTools.updates,
-            busy: developerTools.updateBusy,
-            awaitingSwitch: developerTools.replacedRoot !== null,
-            onCheck: () => void developerTools.checkUpdates(),
-            onUpdate: (candidate) => void developerTools.updateTo(candidate),
-            repoint: developerTools.repointOffer && {
-              names: developerTools.repointOffer.names,
-              checked: developerTools.repointOffer.checked,
-              onToggle: developerTools.toggleRepoint,
+            list: tools.update.list,
+            busy: tools.update.busy,
+            awaitingSwitch: tools.update.pending !== null,
+            onCheck: () => sendTools({ type: "checkUpdates" }),
+            onUpdate: (candidate) => sendTools({ type: "update", candidate }),
+            repoint: tools.update.pending?.repoint && {
+              names: tools.update.pending.repoint.names,
+              checked: tools.update.pending.repoint.checked,
+              onToggle: (checked) => sendTools({ type: "toggleRepoint", checked }),
             },
           }}
           unfinishedUninstalls={{
-            list: developerTools.unfinished,
-            onRescan: (id) => void developerTools.dismissUnfinished(id),
-            onOpenFolder: (path) => void developerTools.openFolder(path),
+            list: tools.unfinished,
+            onRescan: (id) => sendTools({ type: "dismissUnfinished", id }),
+            onOpenFolder: (path) => sendTools({ type: "openFolder", path }),
           }}
           pathCleanup={{
-            result: developerTools.cleanup,
-            onPlan: () => void developerTools.planCleanup(),
+            result: tools.plan.cleanup,
+            onPlan: () => sendTools({ type: "planCleanup" }),
           }}
           profiles={{
-            list: developerTools.profiles,
-            current: developerTools.currentPins,
-            missing: developerTools.missing,
-            busy: developerTools.profileBusy,
-            onLoad: developerTools.loadProfiles,
-            onCreate: (name, tools) => void developerTools.createProfile(name, tools),
-            onDelete: (id) => void developerTools.deleteProfile(id),
-            onApply: (profile) => void developerTools.planProfile(profile),
-            onCheckMissing: (profile) => void developerTools.checkMissing(profile),
-            onInstallMissing: (profile) => void developerTools.installMissingThenPlan(profile),
+            list: tools.profiles.list,
+            current: tools.profiles.current,
+            missing: tools.profiles.missing,
+            busy: tools.profiles.busy,
+            onLoad: loadProfiles,
+            onCreate: (name, pins) => sendTools({ type: "createProfile", name, tools: pins }),
+            onDelete: (id) => sendTools({ type: "deleteProfile", id }),
+            onApply: (profile) => sendTools({ type: "planProfile", profile }),
+            onCheckMissing: (profile) => sendTools({ type: "checkMissing", profile }),
+            onInstallMissing: (profile) => sendTools({ type: "installMissing", profile }),
           }}
           uninstall={{
-            plan: developerTools.uninstallPlan,
-            outcome: developerTools.uninstallOutcome,
-            busy: developerTools.uninstallBusy,
-            defaultReplacement: developerTools.updatedRoot,
-            switchPlan: developerTools.replacementPlan,
-            onChooseReplacement: (root) => void developerTools.chooseReplacement(root),
-            onPlan: (root) => void developerTools.planUninstall(root),
-            onConfirm: (replacement, repoint) => void developerTools.confirmUninstall(replacement, repoint),
-            onOpenFolder: (path) => void developerTools.openFolder(path),
-            onClose: developerTools.closeUninstall,
+            plan: tools.uninstall.plan,
+            outcome: tools.uninstall.outcome,
+            busy: tools.uninstall.busy,
+            defaultReplacement: tools.uninstall.defaultReplacement,
+            switchPlan: tools.uninstall.switchPlan,
+            onChooseReplacement: (root) => sendTools({ type: "chooseReplacement", root }),
+            onPlan: (root) => sendTools({ type: "planUninstall", root }),
+            onConfirm: (replacementRoot, repoint) => sendTools({ type: "confirmUninstall", replacementRoot, repoint }),
+            onOpenFolder: (path) => sendTools({ type: "openFolder", path }),
+            onClose: () => sendTools({ type: "closeUninstall" }),
           }}
         />
 

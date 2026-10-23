@@ -33,7 +33,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       // A newly pinned mise is fetched in the background after an app update (ticket 17).
       // Offline, the old one keeps working for uninstall and listing; installing retries.
       api.prepareMise().catch(() => {});
-      return reload(ctx, tool);
+      return;
     case "selectTool":
       return reload(ctx, msg.tool);
     case "refresh":
