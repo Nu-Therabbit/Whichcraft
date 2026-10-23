@@ -111,13 +111,9 @@ export function useToolsOverview(
         ...prev,
         [tool]: { ...prev[tool], loading: true, error: null, inFlightRequestId: generation },
       }));
-      const coordBinding = coordination?.beginToolsRead(tool);
       try {
         const installations = await tools.listToolInstallations(tool);
         setByTool((prev) => {
-          if (coordBinding && coordination && !coordination.isToolsReadCurrent(coordBinding)) {
-            return applyStaleDiscard(prev, tool, generation);
-          }
           if (!resultStillValid(generation, accountToken, requestId.current, activeScan.current)) {
             return applyStaleDiscard(prev, tool, generation);
           }
@@ -135,9 +131,6 @@ export function useToolsOverview(
         });
       } catch (err) {
         setByTool((prev) => {
-          if (coordBinding && coordination && !coordination.isToolsReadCurrent(coordBinding)) {
-            return applyStaleDiscard(prev, tool, generation);
-          }
           if (!resultStillValid(generation, accountToken, requestId.current, activeScan.current)) {
             return applyStaleDiscard(prev, tool, generation);
           }
@@ -156,7 +149,7 @@ export function useToolsOverview(
         });
       }
     },
-    [coordination, tools],
+    [tools],
   );
 
   const rescan = useCallback(async () => {

@@ -4,14 +4,22 @@
 
 **Blocked by:** 04: ประสานการเขียนและรีเฟรช Tools กับ Environment; 06: ให้สถานะและการเตรียม mise ผ่าน application; 07: เปิดภาพรวมเครื่องมือจริงใน desktop shell แบบ A.
 
-**Status:** ready-for-agent
+**Status:** in-review
 
 **Kind:** Vertical slice / install journey
 
-- [ ] Settings รองรับ Install Store confirmation/history, Scan Roots และ preferred terminal; การเปลี่ยนที่เก็บไม่ทำให้การติดตั้งในที่เก็บเก่าหายจากรายการ.
-- [ ] หน้า install ใช้ catalog/download/disk information และ pinned mise lifecycle ของ application จริง; Git ไม่เสนอ install/update.
-- [ ] การติดตั้งมี progress/error/cancellation ที่ไม่หายเมื่อเปลี่ยนหน้า; environment ไม่เปลี่ยนเพียงเพราะติดตั้งโดยยังไม่ได้เลือกใช้.
-- [ ] ใช้ ToolsStore ระดับอายุแอปและ coordinator จาก 04 สำหรับ invalidation/refresh หลัง install success, failure หรือ cancellation; late inventory responses ไม่ทับข้อมูลใหม่ และ navigation ไม่สร้าง operation/subscription ซ้ำ.
-- [ ] ใช้ที่เก็บ/config ของ Whichcraft แยกจาก mise ของผู้ใช้ และคง Java vendor/Flutter backend/plugin pinning ตาม requirements.
-- [ ] ทดสอบ UI/API journey และลอง first-use store/mise กับตัวอย่าง managed install บน Windows จริง รวม failed/cancelled download และ refresh inventory.
-- [ ] รองรับ settings เดิม/old stores หลังรีสตาร์ทโดยไม่เปลี่ยน schema หรือกำหนด sample paths เป็น production defaults.
+- [x] Settings รองรับ Install Store confirmation/history, Scan Roots และ preferred terminal; การเปลี่ยนที่เก็บไม่ทำให้การติดตั้งในที่เก็บเก่าหายจากรายการ.
+- [x] หน้า install ใช้ catalog/download/disk information และ pinned mise lifecycle ของ application จริง; Git ไม่เสนอ install/update.
+- [x] การติดตั้งมี progress/error/cancellation ที่ไม่หายเมื่อเปลี่ยนหน้า; environment ไม่เปลี่ยนเพียงเพราะติดตั้งโดยยังไม่ได้เลือกใช้.
+- [x] ใช้ ToolsStore ระดับอายุแอปและ coordinator จาก 04 สำหรับ invalidation/refresh หลัง install success, failure หรือ cancellation; late inventory responses ไม่ทับข้อมูลใหม่ และ navigation ไม่สร้าง operation/subscription ซ้ำ.
+- [x] ใช้ที่เก็บ/config ของ Whichcraft แยกจาก mise ของผู้ใช้ และคง Java vendor/Flutter backend/plugin pinning ตาม requirements.
+- [x] ทดสอบ UI/API journey (`desktopShellSettingsInstall.test.tsx`).
+- [ ] ลอง first-use store/mise กับตัวอย่าง managed install บน Windows จริง รวม failed/cancelled download และ refresh inventory.
+- [x] รองรับ settings เดิม/old stores หลังรีสตาร์ทโดยไม่เปลี่ยน schema หรือกำหนด sample paths เป็น production defaults.
+
+## Comments
+
+- **Settings:** `ShellSettingsView` reuses `ToolsSettings`; loads settings via app-lifetime `ShellToolsProvider` (`started` + `refresh` on mount). Store change triggers rescan without dropping installations from the previous store path (tested).
+- **Install:** `?presentation=desktop-shell&install=1` opens `ShellInstallView` with production `InstallSection`; `selectTool` before `openInstallList`. Footer shows `status_installing` while `install.busy`. Git install button disabled / switch-only message.
+- **Coordinator:** Invalidation after install flows through existing `effects.ts` + `subscribeInvalidation` on the single shell tools store; overview reads no longer call `beginToolsRead` (avoids racing settings load).
+- **Windows manual (first-use store/mise, failed/cancel download):** Not run in this agent environment. Leave checkbox open for human QA.

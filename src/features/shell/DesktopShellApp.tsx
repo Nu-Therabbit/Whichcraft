@@ -21,6 +21,9 @@ import {
 } from "./toolOverviewModel";
 import { ShellInstallationDetail } from "./ShellInstallationDetail";
 import { ShellEnvironmentWorkspace } from "./ShellEnvironmentWorkspace";
+import { ShellInstallView } from "./ShellInstallView";
+import { ShellSettingsView } from "./ShellSettingsView";
+import { ShellToolsProvider, useShellTools } from "./ShellToolsContext";
 import { useShellNavigation } from "./useShellNavigation";
 import { useShellToolsWrite } from "./useShellToolsWrite";
 import { useToolsOverview } from "./useToolsOverview";
@@ -38,23 +41,29 @@ function scopesNeedShellRescan(scopes: InvalidationScope[]): boolean {
   );
 }
 
-export function DesktopShellApp() {
+function shellStatusLine(
+  t: ReturnType<typeof useI18n>["t"],
+  toolsState: ReturnType<typeof useShellTools>["state"],
+): string {
+  if (toolsState.install.busy) return t("desktop_shell.status_installing");
+  if (toolsState.plan.applying) return t("desktop_shell.status_applying");
+  if (toolsState.plan.building) return t("desktop_shell.status_building_plan");
+  if (toolsState.error) return toolsState.error;
+  return t("desktop_shell.status_ready");
+}
+
+function DesktopShellAppInner() {
   const services = useAppServices();
   const coordination = useWriteCoordinator();
-  const { page, envTab, goPage, goEnvTab } = useShellNavigation();
+  const { page, envTab, installOpen, goPage, goEnvTab, navigate } = useShellNavigation();
+  const shellTools = useShellTools();
   const overview = useToolsOverview(services.tools, services.environment, coordination);
   const toolsWrite = useShellToolsWrite(overview.detailOpen ? overview.selectedTool : null);
   const { theme, toggle: toggleTheme } = useTheme();
   const { t } = useI18n();
 
   const activePage: ShellPage = page === "profiles" ? "profiles" : page;
-  const statusLine = toolsWrite.state.plan.applying
-    ? t("desktop_shell.status_applying")
-    : toolsWrite.state.plan.building
-      ? t("desktop_shell.status_building_plan")
-      : toolsWrite.state.error
-        ? toolsWrite.state.error
-        : t("desktop_shell.status_ready");
+  const statusLine = shellStatusLine(t, shellTools.state);
 
   useEffect(() => {
     return coordination.subscribeInvalidation((scopes) => {
@@ -151,7 +160,20 @@ export function DesktopShellApp() {
                 role="toolbar"
                 aria-label={t("desktop_shell.command_bar")}
               >
-                <Button variant="secondary" size="sm" disabled title={t("desktop_shell.install_legacy_hint")}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    navigate({
+                      page: "tools",
+                      installOpen: !installOpen,
+                    })
+                  }
+                  disabled={overview.selectedTool === "git"}
+                  title={
+                    overview.selectedTool === "git" ? t("desktop_shell.git_switch_only") : undefined
+                  }
+                >
                   <Icon name="plus" size={14} />
                   {t("desktop_shell.install_tool")}
                 </Button>
@@ -176,6 +198,13 @@ export function DesktopShellApp() {
                   />
                 </label>
               </div>
+
+              {installOpen && overview.selectedTool && (
+                <ShellInstallView
+                  tool={overview.selectedTool}
+                  onClose={() => navigate({ installOpen: false })}
+                />
+              )}
 
               {overview.accountError && (
                 <div className="px-5 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0">
@@ -359,9 +388,7 @@ export function DesktopShellApp() {
             <ShellEnvironmentWorkspace envTab={envTab} onEnvTab={goEnvTab} />
           )}
 
-          {activePage === "settings" && (
-            <p className="px-5 py-4 text-sm text-dim">{t("desktop_shell.legacy_entry")}</p>
-          )}
+          {activePage === "settings" && <ShellSettingsView />}
 
           <footer className="shrink-0 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim flex justify-between gap-4">
             <span className="truncate">{statusLine}</span>
@@ -384,5 +411,13 @@ function ToolMark({ tool, small }: { tool: ToolKind; small?: boolean }) {
     >
       {meta.glyph}
     </span>
+  );
+}
+
+export function DesktopShellApp() {
+  return (
+    <ShellToolsProvider>
+      <DesktopShellAppInner />
+    </ShellToolsProvider>
   );
 }

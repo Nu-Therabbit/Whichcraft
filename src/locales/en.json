@@ -703,6 +703,12 @@
     "env_tab_variables": "Variables",
     "env_tab_snapshots": "Snapshots",
     "env_tab_import_export": "Import / Export",
-    "env_tab_check_command": "Check command"
+    "env_tab_check_command": "Check command",
+    "settings_loading": "Loading settings…",
+    "settings_intro": "Install store, scan roots, and terminal preference apply to Whichcraft only (separate from your user mise config).",
+    "status_installing": "Installing…",
+    "install_heading": "Install {{tool}}",
+    "close_install": "Close",
+    "git_switch_only": "Git is switch-only; install and update are not offered."
   }
 }
