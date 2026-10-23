@@ -4,7 +4,7 @@
 
 **Blocked by:** 02: ขยาย feature contracts และจุดประกอบ API แบบรักษาความเข้ากันได้.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Prefactor / migrate consumers
 
@@ -27,3 +27,7 @@
 
 - Extended `environment.behavior.test.tsx` to mount Snapshots, Import/Export, and staged apply through the injected API.
 - Routed `useDiagnostics` through `EnvironmentApi` (`getUnsupportedEnvValues`, `validatePaths`) instead of the legacy facade.
+
+### Review round 2
+
+- Approved. Snapshots, Import/Export, staged apply, and diagnostics go through the injected Environment API.

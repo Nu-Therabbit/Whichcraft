@@ -4,7 +4,7 @@
 
 **Blocked by:** 02: ขยาย feature contracts และจุดประกอบ API แบบรักษาความเข้ากันได้.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / read journey
 
@@ -33,3 +33,7 @@
 ### Review round 2
 
 - Failed/superseded rescans retire `activeScan`, clear `sdkLoading`, and `loadTool` requires current request generation so stale lists cannot commit after account failure (`useToolsOverview.test.ts`).
+
+### Review round 3
+
+- Approved. A failed newer account read retires the scan, and an older in-flight list cannot commit under the error banner. Windows screenshots at 1200×760 and 900×600 were not captured; that checkbox stays open and is not a pass.
