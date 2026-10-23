@@ -2,24 +2,12 @@ import { useEffect, useMemo } from "react";
 import { createToolsRuntime } from "./composition/appServices";
 import { useAppServices } from "./composition/AppServicesContext";
 import { useWriteCoordinator } from "./coordination/WriteCoordinatorContext";
-import type { InvalidationScope } from "./coordination/types";
 import { EnvironmentProvider } from "./features/environment/EnvironmentContext";
 import { LegacyEnvironmentView } from "./features/environment/LegacyEnvironmentView";
 import { DesktopShellApp } from "./features/shell/DesktopShellApp";
+import { scopesNeedToolsRefresh } from "./features/shell/useShellToolsWrite";
 import { useToolsStore } from "./features/tools/useToolsStore";
 import { readAppPresentation } from "./lib/appPresentation";
-
-function scopesNeedToolsRefresh(scopes: InvalidationScope[]): boolean {
-  return scopes.some(
-    (scope) =>
-      scope === "tools-installations" ||
-      scope === "tools-profiles" ||
-      scope === "tools-shell-check" ||
-      scope === "account-context" ||
-      scope.startsWith("environment-") ||
-      scope === "shell-overview",
-  );
-}
 
 function LegacyAppRoot() {
   const services = useAppServices();

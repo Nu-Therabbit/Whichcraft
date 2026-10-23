@@ -9,7 +9,7 @@ import { legacyPresentationHref } from "../../lib/appPresentation";
 import { Icon } from "../../components/ui/Icon";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
-import type { ToolInstallationView, ToolKind } from "../tools/types";
+import type { ToolKind } from "../tools/types";
 import { OVERVIEW_TOOL_KINDS, TOOL_DISPLAY } from "./overviewTools";
 import {
   formatInstallationLabel,
@@ -19,6 +19,8 @@ import {
   toolMatchesQuery,
   unavailableCount,
 } from "./toolOverviewModel";
+import { ShellInstallationDetail } from "./ShellInstallationDetail";
+import { useShellToolsWrite } from "./useShellToolsWrite";
 import { useToolsOverview } from "./useToolsOverview";
 
 type ShellPage = "tools" | "profiles" | "environment" | "settings";
@@ -37,28 +39,6 @@ function ToolMark({ tool, small }: { tool: ToolKind; small?: boolean }) {
   );
 }
 
-function InstallationRow({ item }: { item: ToolInstallationView }) {
-  return (
-    <li
-      className={`rounded border px-3 py-2 text-sm ${item.available ? "border-rim-subtle bg-panel" : "border-warn/40 bg-warn/5 opacity-90"}`}
-    >
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <strong className="font-mono text-xs">{item.version}</strong>
-        <span className="text-dim text-xs">{item.vendor}</span>
-        <span className="text-dim text-xs">
-          {item.managed ? "Managed by Whichcraft" : "External installation"}
-        </span>
-      </div>
-      <code className="block mt-1 text-xs text-muted break-all">{item.root}</code>
-      <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-dim">
-        {item.effective && <span className="text-success">Effective installation</span>}
-        {item.selected && !item.effective && <span className="text-warn">Selected</span>}
-        {!item.available && item.mismatchReason && <span>{item.mismatchReason}</span>}
-      </div>
-    </li>
-  );
-}
-
 function scopesNeedShellRescan(scopes: InvalidationScope[]): boolean {
   return scopes.some(
     (scope) =>
@@ -74,9 +54,16 @@ export function DesktopShellApp() {
   const services = useAppServices();
   const coordination = useWriteCoordinator();
   const overview = useToolsOverview(services.tools, services.environment, coordination);
+  const toolsWrite = useShellToolsWrite(overview.detailOpen ? overview.selectedTool : null);
   const { theme, toggle: toggleTheme } = useTheme();
   const { t } = useI18n();
   const page: ShellPage = "tools";
+  const statusLine =
+    toolsWrite.state.plan.applying || toolsWrite.state.plan.building
+      ? t("desktop_shell.status_busy")
+      : toolsWrite.state.error
+        ? toolsWrite.state.error
+        : t("desktop_shell.status_ready");
 
   useEffect(() => {
     return coordination.subscribeInvalidation((scopes) => {
@@ -345,34 +332,19 @@ export function DesktopShellApp() {
                       {formatInstallationLabel(pickEffective(selectedSlice.installations))}
                     </p>
                   </div>
-                  <div>
-                    <h3 className="text-[11px] uppercase tracking-wide text-dim flex justify-between">
-                      <span>{t("desktop_shell.installations")}</span>
-                      <span>{selectedSlice.installations.length}</span>
-                    </h3>
-                    {selectedSlice.loading && (
-                      <p className="text-xs text-dim py-2">{t("desktop_shell.loading")}</p>
-                    )}
-                    {selectedSlice.error && (
-                      <p className="text-xs text-danger py-2">{selectedSlice.error}</p>
-                    )}
-                    {!selectedSlice.loading && selectedSlice.installations.length === 0 && (
-                      <p className="text-xs text-dim py-2">{t("desktop_shell.no_installations")}</p>
-                    )}
-                    <ul className="space-y-2 mt-2">
-                      {selectedSlice.installations.map((item) => (
-                        <InstallationRow key={item.root} item={item} />
-                      ))}
-                    </ul>
-                  </div>
+                  <ShellInstallationDetail
+                    tool={overview.selectedTool}
+                    state={toolsWrite.state}
+                    dispatch={toolsWrite.dispatch}
+                  />
                 </div>
               </aside>
             )}
           </div>
 
-          <footer className="shrink-0 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim flex justify-between">
-            <span>{t("desktop_shell.read_only_status")}</span>
-            <span>{t("desktop_shell.preview_presentation")}</span>
+          <footer className="shrink-0 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim flex justify-between gap-4">
+            <span className="truncate">{statusLine}</span>
+            <span className="shrink-0">{t("desktop_shell.preview_presentation")}</span>
           </footer>
         </div>
       </div>

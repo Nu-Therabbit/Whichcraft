@@ -685,6 +685,14 @@
     "installations": "Installations",
     "no_installations": "No installations found.",
     "read_only_status": "Read-only desktop shell preview",
-    "preview_presentation": "Add ?presentation=desktop-shell to the URL"
+    "preview_presentation": "Add ?presentation=desktop-shell to the URL",
+    "use_installation": "Use this installation",
+    "reviewing_plan": "Reviewing plan",
+    "switch_to_installation": "Switch to {{vendor}} {{version}}",
+    "status_ready": "Ready",
+    "status_busy": "Applying changes…",
+    "undo_conflicts": "Undo completed with conflicts (external values kept)",
+    "undo_restored": "Undo restored {{count}} variable(s)",
+    "dismiss_undo_result": "Dismiss"
   }
 }

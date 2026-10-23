@@ -25,7 +25,7 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
       // The update list belongs to the tool it was checked for.
       return { ...s, tool: msg.tool, update: { ...s.update, list: null } };
     case "refresh":
-      return { ...s, loading: true, error: null };
+      return { ...s, loading: true };
     case "refreshed":
       return {
         ...s,
