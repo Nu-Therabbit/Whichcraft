@@ -1,6 +1,6 @@
 # ประเมินสถาปัตยกรรม: Clean Architecture + MVI
 
-สถานะ: ตกลงทำทุกขั้น (2026-10-24, ADR-0005) ประเมินจาก `feat/v1-tickets` ที่ `350c441`
+สถานะ: ทำครบทุกขั้นแล้วบน `refactor/clean-architecture-mvi` (2026-10-24, ADR-0005) ดูผลที่ [สิ่งที่ทำจริง](#สิ่งที่ทำจริง) ประเมินจาก `feat/v1-tickets` ที่ `350c441`
 
 ## สรุป
 
@@ -83,7 +83,30 @@ View     component รับ state ส่วนที่ใช้ และ disp
 
 ลำดับที่แนะนำคือ 0 → 1 → 2 → 3 → 4 แล้วค่อย 5 → 8 ฝั่ง React ได้ประโยชน์ทันทีและไม่แตะ Rust ส่วนฝั่ง Rust ใช้งานได้ถูกต้องอยู่แล้ว (contract test ผ่านบนเครื่องจริง) จึงทำทีหลังได้โดยไม่เร่ง
 
-## ข้อที่ต้องตัดสิน
+## สิ่งที่ทำจริง
+
+ทำทุกขั้นตามลำดับ React ก่อนแล้ว Rust commit ละขั้น ขอบของบางขั้นต่างจากแผน:
+
+| ขั้น | commit | ต่างจากแผน |
+|---|---|---|
+| 0, 1 | `436cf34`, `55f0d55` | ตามแผน |
+| 2 | `a616c36` | ไฟล์ชื่อ `model.ts` และ `messages.ts` (intent กับ event รวมเป็น type เดียว แยกด้วย `isIntent`) แทน `state.ts` / `intents.ts` และทำ store ครบทุก flow ในขั้นเดียว พร้อม test ของ reducer |
+| 3 | `5801979` | ต่อ store เข้ากับ panel ทั้งหมดในครั้งเดียวแทนการย้ายทีละส่วน และลบ `useDeveloperTools` ไปในขั้นนี้ |
+| 4 | `8ee1b5a` | `ToolsPanel` รับ `{ open, onClose, state, dispatch }` |
+| 5 | `5f385cf` | ตามแผน มี test ห้าม domain import I/O |
+| 6 | `a78a93e`, `31766f5`, `1057f5b` | แบ่งเป็น 6a–6c และรวม store เล็ก ๆ ที่แผนแยกไว้ (`SettingsStore`, `SelectionStore`, ...) เป็น port `Store` ตัวเดียว ส่วน `InstallationSource` กลายเป็น `Machine` ที่ครอบทั้ง file system, probe และตัวแปรของ process |
+| 7 | `ff0d828`, `adb7248` | `App<B>` ถือ port ทั้งชุดแทน `Deps` และ composition root เป็น `compose::windows_app()` ที่ command เรียกต่อครั้ง ไม่ใช่ Tauri managed state |
+| 8 | `b0e0390` | test ของ use case บน fake ล้วน (`application/app_tests.rs`) ไม่แตะ disk, registry, network หรือ UAC ส่วน test เดิมที่ใช้ tempdir ยังเก็บไว้ |
+
+ข้อที่ยังประนีประนอมอยู่:
+
+- id ของ journal และเวลาที่บันทึกยังสร้างด้วย `chrono` ผ่าน `persistence::new_journal_id` ภายในชั้น application ยังไม่มี port `Clock`
+- `mise_status` และ `prepare_mise` ใน commands ยังเรียก `mise::manager` ตรง ไม่ผ่าน `App`
+- ส่วนที่มาจาก Envarly (`env_store`, `model`, `commands/path`, `path_manage`) คงไว้เป็น adapter ตามที่ตกลง
+
+## ข้อที่ต้องตัดสิน (ตัดสินแล้ว)
+
+ทำทั้งสองฝั่ง คงส่วนของ Envarly เป็น adapter และใช้ `useReducer`
 
 1. ขอบเขต: ทำทั้งสองฝั่ง หรือฝั่ง React ก่อนแล้วค่อยดูผล
 2. ส่วนที่มาจาก Envarly (`env_store`, `model`, `commands/path`, `path_manage`) ให้คงไว้เป็น adapter และ type ภายนอก หรือย้าย type ที่ Whichcraft ใช้ (`EnvSnapshot`, `EnvValue`) เข้า domain ของ Whichcraft แนะนำให้คงไว้และห่อด้วย port เพื่อไม่แตะส่วนที่ fork มา
