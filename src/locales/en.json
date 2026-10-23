@@ -288,7 +288,19 @@
     "dismiss_plan": "Dismiss",
     "apply_plan": "Apply plan",
     "applying": "Applying…",
-    "building_plan": "Building plan…"
+    "building_plan": "Building plan…",
+    "recovery": {
+      "title": "An apply did not finish",
+      "body": "Whichcraft stopped while applying changes started at {{createdAt}}. Each change below shows what the registry holds now.",
+      "state": {
+        "written": "Written",
+        "notWritten": "Not written",
+        "changedElsewhere": "Changed by something else"
+      },
+      "cannot_resume": "A variable was changed by another program, so the apply cannot be finished safely. Roll it back instead.",
+      "resume": "Finish the apply",
+      "roll_back": "Roll back"
+    }
   },
   "check_command": {
     "input_label": "Command or path",

@@ -2,8 +2,8 @@ use crate::env_store::{self, EnvBackend};
 use crate::error::EnvarlyError;
 use crate::model::{EnvChange, VarScope};
 use crate::whichcraft::persistence::{
-    load_incomplete_journal, new_journal_id, save_journal, save_tool_selection, JournalStatus,
-    MutationRecord, ToolSelection, WhichcraftJournal,
+    new_journal_id, save_journal, save_tool_selection, JournalStatus, MutationRecord,
+    ToolSelection, WhichcraftJournal,
 };
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
 use crate::whichcraft::ports::installation_probe::ToolInstallation;
@@ -98,6 +98,16 @@ fn apply_tool_plan_with<B: EnvBackend>(
         created_at: chrono::Utc::now().to_rfc3339(),
         baseline: plan.baseline.clone(),
         mutations,
+        selections: std::iter::once(&plan.selected)
+            .chain(&plan.additional_selections)
+            .filter(|_| plan.records_selection)
+            .map(|i| ToolSelection {
+                tool: i.tool,
+                root: i.root.clone(),
+                vendor: i.vendor.clone(),
+                version: i.version.clone(),
+            })
+            .collect(),
     };
     save_journal(&journal)?;
     let fail = |journal: &mut WhichcraftJournal| {
@@ -159,16 +169,8 @@ fn apply_tool_plan_with<B: EnvBackend>(
         return Err(EnvarlyError::InvalidInput(message));
     }
 
-    let selections = std::iter::once(&plan.selected)
-        .chain(&plan.additional_selections)
-        .filter(|_| plan.records_selection);
-    for installation in selections {
-        save_tool_selection(&ToolSelection {
-            tool: installation.tool,
-            root: installation.root.clone(),
-            vendor: installation.vendor.clone(),
-            version: installation.version.clone(),
-        })?;
+    for selection in &journal.selections {
+        save_tool_selection(selection)?;
     }
 
     journal.status = JournalStatus::Completed;
@@ -212,10 +214,6 @@ fn tool_slug(tool: crate::whichcraft::api::ToolKind) -> &'static str {
         crate::whichcraft::api::ToolKind::Flutter => "flutter",
         crate::whichcraft::api::ToolKind::Git => "git",
     }
-}
-
-pub fn incomplete_apply_journal() -> Result<Option<WhichcraftJournal>, EnvarlyError> {
-    load_incomplete_journal()
 }
 
 #[cfg(test)]

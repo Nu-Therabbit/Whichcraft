@@ -78,6 +78,9 @@ export interface EnvarlyApi {
   applyToolPlan: (plan: import("./types").ToolApplyPlan) => Promise<import("./types").ApplyToolResult>;
   applyToolPlanWithUac: (plan: import("./types").ToolApplyPlan) => Promise<import("./types").ApplyToolResult>;
   undoLastWhichcraftApply: () => Promise<import("./types").UndoResult>;
+  getRecoveryStatus: () => Promise<import("./types").RecoveryView | null>;
+  resumeApply: (journalId: string) => Promise<void>;
+  rollBackApply: (journalId: string) => Promise<import("./types").UndoResult>;
 }
 
 const normalApi: EnvarlyApi = {
@@ -122,6 +125,9 @@ const normalApi: EnvarlyApi = {
   applyToolPlan: (plan) => invoke("whichcraft_apply_tool_plan", { plan }),
   applyToolPlanWithUac: (plan) => invoke("whichcraft_apply_tool_plan_with_uac", { plan }),
   undoLastWhichcraftApply: () => invoke("whichcraft_undo_last_apply"),
+  getRecoveryStatus: () => invoke("whichcraft_recovery_status"),
+  resumeApply: (journalId) => invoke("whichcraft_resume_apply", { journalId }),
+  rollBackApply: (journalId) => invoke("whichcraft_roll_back_apply", { journalId }),
 };
 
 let apiPromise: Promise<EnvarlyApi> | null = null;
@@ -197,4 +203,7 @@ export const api: EnvarlyApi = {
   applyToolPlan: async (plan) => (await getApi()).applyToolPlan(plan),
   applyToolPlanWithUac: async (plan) => (await getApi()).applyToolPlanWithUac(plan),
   undoLastWhichcraftApply: async () => (await getApi()).undoLastWhichcraftApply(),
+  getRecoveryStatus: async () => (await getApi()).getRecoveryStatus(),
+  resumeApply: async (journalId) => (await getApi()).resumeApply(journalId),
+  rollBackApply: async (journalId) => (await getApi()).rollBackApply(journalId),
 };

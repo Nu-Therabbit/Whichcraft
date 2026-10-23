@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { api } from "../api";
 import type {
   ApplyToolResult,
+  RecoveryView,
   ToolApplyPlan,
   ToolInstallationView,
   ToolKind,
@@ -17,11 +18,13 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
   const [planBusy, setPlanBusy] = useState(false);
   const [applyBusy, setApplyBusy] = useState(false);
   const [undoResult, setUndoResult] = useState<UndoResult | null>(null);
+  const [recovery, setRecovery] = useState<RecoveryView | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      setRecovery(await api.getRecoveryStatus());
       setInstallations(await api.listToolInstallations(tool));
     } catch (e) {
       setError(String(e));
@@ -105,6 +108,27 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     }
   }, [refresh]);
 
+  const finishRecovery = useCallback(
+    async (action: "resume" | "rollBack") => {
+      if (!recovery) return;
+      setApplyBusy(true);
+      setError(null);
+      try {
+        if (action === "resume") {
+          await api.resumeApply(recovery.journalId);
+        } else {
+          setUndoResult(await api.rollBackApply(recovery.journalId));
+        }
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setApplyBusy(false);
+      }
+    },
+    [recovery, refresh],
+  );
+
   return {
     tool,
     setTool,
@@ -115,6 +139,9 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     planBusy,
     applyBusy,
     undoResult,
+    recovery,
+    resumeRecovery: () => finishRecovery("resume"),
+    rollBackRecovery: () => finishRecovery("rollBack"),
     refresh,
     buildPlan,
     applyPlan,

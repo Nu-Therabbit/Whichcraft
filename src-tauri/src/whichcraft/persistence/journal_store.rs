@@ -39,6 +39,9 @@ pub struct WhichcraftJournal {
     pub created_at: String,
     pub baseline: EnvSnapshot,
     pub mutations: Vec<MutationRecord>,
+    /// The tool choices this apply records once it completes, so a resumed apply records them too.
+    #[serde(default)]
+    pub selections: Vec<super::ToolSelection>,
 }
 
 fn journal_path(id: &str) -> Result<PathBuf, EnvarlyError> {

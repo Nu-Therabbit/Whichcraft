@@ -1,7 +1,9 @@
 use crate::env_store::{self, EnvBackend};
 use crate::error::EnvarlyError;
 use crate::model::{EnvChange, EnvValueKind, VarScope};
-use crate::whichcraft::persistence::{load_last_completed_apply, save_journal, JournalStatus};
+use crate::whichcraft::persistence::{
+    load_last_completed_apply, save_journal, JournalStatus, WhichcraftJournal,
+};
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
 use crate::whichcraft::services::get_var;
 use crate::whichcraft::services::path_plan::path_entries;
@@ -54,13 +56,22 @@ pub fn undo_last_apply<B: EnvBackend>(
     backend: &B,
     elevator: Option<&dyn Elevator>,
 ) -> Result<UndoResult, EnvarlyError> {
-    let Some(mut journal) = load_last_completed_apply()? else {
-        return Ok(UndoResult {
+    match load_last_completed_apply()? {
+        Some(journal) => revert_journal(backend, elevator, journal),
+        None => Ok(UndoResult {
             conflicts: vec![],
             restored: 0,
-        });
-    };
+        }),
+    }
+}
 
+/// Puts back what `journal` changed and marks it undone. A mutation that was never written
+/// (or already reverted) is skipped, so this also rolls back an interrupted apply.
+pub fn revert_journal<B: EnvBackend>(
+    backend: &B,
+    elevator: Option<&dyn Elevator>,
+    mut journal: WhichcraftJournal,
+) -> Result<UndoResult, EnvarlyError> {
     let mut conflicts = Vec::new();
     // (change, value the variable has right now) per mutation, newest first.
     let mut planned: Vec<(EnvChange, Option<String>)> = Vec::new();
@@ -111,6 +122,9 @@ pub fn undo_last_apply<B: EnvBackend>(
             continue;
         }
 
+        if current == mutation.before.as_ref() {
+            continue; // never written, or already back to its old value
+        }
         if let Some(after) = &mutation.after {
             if current != Some(after) {
                 conflicts.push(UndoConflict {
@@ -138,6 +152,26 @@ pub fn undo_last_apply<B: EnvBackend>(
     }
 
     let restored = planned.len();
+    write_changes(backend, elevator, planned)?;
+
+    // Mark it undone so the next Undo does not pick the same apply again.
+    journal.status = JournalStatus::Undone;
+    save_journal(&journal)?;
+
+    Ok(UndoResult {
+        conflicts,
+        restored,
+    })
+}
+
+/// Writes `(change, value it expects to replace)` pairs: System ones through the elevated helper
+/// unless this process can write HKLM, the rest in process. System goes first so a declined UAC
+/// leaves everything untouched.
+pub(crate) fn write_changes<B: EnvBackend>(
+    backend: &B,
+    elevator: Option<&dyn Elevator>,
+    planned: Vec<(EnvChange, Option<String>)>,
+) -> Result<(), EnvarlyError> {
     let (system, in_process): (Vec<_>, Vec<_>) = planned
         .into_iter()
         .partition(|(c, _)| scope_of(c) == &VarScope::System && !backend.is_elevated());
@@ -145,7 +179,7 @@ pub fn undo_last_apply<B: EnvBackend>(
     if !system.is_empty() {
         let Some(elevator) = elevator else {
             return Err(EnvarlyError::InvalidInput(
-                "undoing System changes needs elevation".into(),
+                "changing System variables needs elevation".into(),
             ));
         };
         let request = ElevatedRequest {
@@ -161,16 +195,16 @@ pub fn undo_last_apply<B: EnvBackend>(
             ElevatedOutcome::Applied => {}
             ElevatedOutcome::Cancelled => {
                 return Err(EnvarlyError::InvalidInput(
-                    "UAC was cancelled; nothing was undone".into(),
+                    "UAC was cancelled; nothing was written".into(),
                 ))
             }
             ElevatedOutcome::Stale => {
                 return Err(EnvarlyError::InvalidInput(
-                    "System environment changed meanwhile; try Undo again".into(),
+                    "System environment changed meanwhile; try again".into(),
                 ))
             }
             ElevatedOutcome::Failed(msg) => {
-                return Err(EnvarlyError::InvalidInput(format!("System undo failed: {msg}")))
+                return Err(EnvarlyError::InvalidInput(format!("System write failed: {msg}")))
             }
         }
     }
@@ -179,15 +213,7 @@ pub fn undo_last_apply<B: EnvBackend>(
     if !changes.is_empty() {
         env_store::apply_changes_with(backend, &changes, |_, _, _, _| {})?;
     }
-
-    // Mark it undone so the next Undo does not pick the same apply again.
-    journal.status = JournalStatus::Undone;
-    save_journal(&journal)?;
-
-    Ok(UndoResult {
-        conflicts,
-        restored,
-    })
+    Ok(())
 }
 
 fn scope_of(change: &EnvChange) -> &VarScope {
@@ -217,6 +243,7 @@ mod tests {
             created_at: "now".into(),
             baseline: crate::env_store::read_snapshot_with(backend).unwrap(),
             mutations,
+            selections: vec![],
         })
         .unwrap();
     }

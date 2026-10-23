@@ -3,6 +3,7 @@ pub mod java_inventory;
 pub mod path_cleanup;
 pub mod path_plan;
 pub mod profiles;
+pub mod recovery;
 pub mod supplemental_inventory;
 pub mod tool_apply;
 pub mod tool_inventory;

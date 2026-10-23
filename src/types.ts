@@ -165,6 +165,26 @@ export interface ApplyToolResult {
   needsElevation: boolean;
 }
 
+export type ChangeState = "written" | "notWritten" | "changedElsewhere";
+
+export interface RecoveryItem {
+  name: string;
+  scope: VarScope;
+  state: ChangeState;
+  before: string | null;
+  after: string | null;
+  current: string | null;
+}
+
+/** An apply that never finished because the app stopped mid-way. */
+export interface RecoveryView {
+  journalId: string;
+  kind: string;
+  createdAt: string;
+  items: RecoveryItem[];
+  canResume: boolean;
+}
+
 export interface UndoConflict {
   name: string;
   scope: VarScope;

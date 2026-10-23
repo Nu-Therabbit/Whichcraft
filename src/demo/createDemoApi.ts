@@ -269,5 +269,8 @@ export function createDemoApi(
       throw new Error("Developer tools are unavailable in demo mode");
     },
     undoLastWhichcraftApply: async () => ({ conflicts: [], restored: 0 }),
+    getRecoveryStatus: async () => null,
+    resumeApply: async () => {},
+    rollBackApply: async () => ({ conflicts: [], restored: 0 }),
   };
 }

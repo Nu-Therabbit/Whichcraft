@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { useI18n } from "../../hooks/useI18n";
-import type { ToolApplyPlan, ToolInstallationView, ToolKind } from "../../types";
+import type { RecoveryView, ToolApplyPlan, ToolInstallationView, ToolKind } from "../../types";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
+import { RecoveryBanner } from "./RecoveryBanner";
 
 const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
 
@@ -23,6 +24,9 @@ interface Props {
   onApplyPlan: () => void;
   onUndo: () => void;
   onClearPlan: () => void;
+  recovery?: RecoveryView | null;
+  onResumeRecovery?: () => void;
+  onRollBackRecovery?: () => void;
 }
 
 export function ToolsPanel({
@@ -41,18 +45,31 @@ export function ToolsPanel({
   onApplyPlan,
   onUndo,
   onClearPlan,
+  recovery,
+  onResumeRecovery,
+  onRollBackRecovery,
 }: Props) {
   const { t } = useI18n();
 
+  // onRefresh changes identity whenever the selected tool changes, so this also refreshes on tool switch.
   useEffect(() => {
     if (open) onRefresh();
-  }, [open, tool, onRefresh]);
+  }, [open, onRefresh]);
 
   return (
     <Modal open={open} onClose={onClose} title={t("tools.title")} size="xl">
       <div className="flex flex-col gap-4">
         {error && (
           <div className="text-sm text-danger border border-danger/30 rounded-md px-3 py-2">{error}</div>
+        )}
+
+        {recovery && onResumeRecovery && onRollBackRecovery && (
+          <RecoveryBanner
+            recovery={recovery}
+            busy={applyBusy}
+            onResume={onResumeRecovery}
+            onRollBack={onRollBackRecovery}
+          />
         )}
 
         <div className="flex flex-wrap items-center gap-2">

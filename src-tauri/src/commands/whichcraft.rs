@@ -20,8 +20,10 @@ use crate::whichcraft::services::supplemental_inventory::{
     ReadOnlyInventorySection,
 };
 use crate::whichcraft::services::tool_apply::{
-    apply_tool_plan, apply_tool_plan_elevated, create_tool_plan, incomplete_apply_journal,
-    ApplyToolResult,
+    apply_tool_plan, apply_tool_plan_elevated, create_tool_plan, ApplyToolResult,
+};
+use crate::whichcraft::services::recovery::{
+    inspect_pending, resume_pending, roll_back_pending, RecoveryView,
 };
 use crate::whichcraft::services::tool_inventory::{list_tool_installations, ToolInstallationView};
 use crate::whichcraft::services::tool_plan::ToolApplyPlan;
@@ -147,10 +149,20 @@ pub fn whichcraft_undo_last_apply() -> Result<UndoResult, EnvarlyError> {
     undo_last_apply(&WinregBackend, Some(&WinElevator))
 }
 
+/// An apply that never finished (the app stopped mid-way), with each change's real state.
 #[tauri::command]
-pub fn whichcraft_incomplete_journal(
-) -> Result<Option<crate::whichcraft::persistence::WhichcraftJournal>, EnvarlyError> {
-    incomplete_apply_journal()
+pub fn whichcraft_recovery_status() -> Result<Option<RecoveryView>, EnvarlyError> {
+    inspect_pending(&WinregBackend)
+}
+
+#[tauri::command]
+pub fn whichcraft_resume_apply(journal_id: String) -> Result<(), EnvarlyError> {
+    resume_pending(&WinregBackend, Some(&WinElevator), &journal_id)
+}
+
+#[tauri::command]
+pub fn whichcraft_roll_back_apply(journal_id: String) -> Result<UndoResult, EnvarlyError> {
+    roll_back_pending(&WinregBackend, Some(&WinElevator), &journal_id)
 }
 
 #[tauri::command]

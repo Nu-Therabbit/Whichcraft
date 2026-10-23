@@ -300,6 +300,9 @@ export default function App() {
           onApplyPlan={() => void developerTools.applyPlan()}
           onUndo={() => void developerTools.undoLast()}
           onClearPlan={developerTools.clearPlan}
+          recovery={developerTools.recovery}
+          onResumeRecovery={() => void developerTools.resumeRecovery()}
+          onRollBackRecovery={() => void developerTools.rollBackRecovery()}
         />
 
         <AppModals
