@@ -1,0 +1,15 @@
+# 12: ตรวจคำสั่ง ผลใน shell และเปิด Terminal จริง
+
+**What to build:** ใช้ Environment → Check command เพื่อดู PATH hits และใช้เครื่องมือ → Check shell/Open terminal เพื่อเทียบผลกับ process ใหม่หลังสลับได้.
+
+**Blocked by:** 08: สลับการติดตั้งผ่านแผนจริงและ Undo; 09: แก้ Environment variables ผ่าน workspace ใหม่.
+
+**Status:** ready-for-agent
+
+**Kind:** Vertical slice / resolution journey
+
+- [ ] Check command รองรับชื่อ/extension/full path, PATHEXT, ordered System/User hits, shadowed/no-match และ full-path status ตาม API เดิม โดยไม่รันคำสั่งที่ตรวจ.
+- [ ] Check shell แสดง Shell Resolution เทียบกับ Effective Installation หลัง shell profile และแยกคำอธิบายจาก Check command; invalidate ผลเก่าเมื่อ Environment เปลี่ยน.
+- [ ] เปิด Windows Terminal/PowerShell/cmd ตาม settings ด้วย fresh non-inherited environment รวมกรณี Terminal เดิมเปิดค้างและพาธมีอักขระที่ต้อง escape.
+- [ ] navigation, keyboard submit, pending writes และ error/cancel states ทำงานใน shell ใหม่โดยไม่อาศัย singleton หรือ fixture result.
+- [ ] app-level tests และ Windows checks เปรียบเทียบ executable paths/versions จริง ทั้ง profile ปกติและ profile ที่เปลี่ยน PATH/alias; บันทึก shell variants ที่ต้องใช้เครื่องอื่น.
