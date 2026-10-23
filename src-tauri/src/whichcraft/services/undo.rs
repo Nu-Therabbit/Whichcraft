@@ -1,9 +1,8 @@
 use crate::env_store::{self, EnvBackend};
 use crate::error::EnvarlyError;
 use crate::model::{EnvChange, EnvValueKind, VarScope};
-use crate::whichcraft::persistence::{
-    load_last_completed_apply, save_journal, JournalStatus, WhichcraftJournal,
-};
+use crate::whichcraft::domain::journal::{JournalStatus, WhichcraftJournal};
+use crate::whichcraft::ports::store::Store;
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::domain::path::path_entries;
@@ -54,10 +53,11 @@ fn restore_path_value(
 /// process can write HKLM itself.
 pub fn undo_last_apply<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     elevator: Option<&dyn Elevator>,
 ) -> Result<UndoResult, EnvarlyError> {
-    match load_last_completed_apply()? {
-        Some(journal) => revert_journal(backend, elevator, journal),
+    match store.last_completed_apply()? {
+        Some(journal) => revert_journal(backend, store, elevator, journal),
         None => Ok(UndoResult {
             conflicts: vec![],
             restored: 0,
@@ -69,6 +69,7 @@ pub fn undo_last_apply<B: EnvBackend>(
 /// (or already reverted) is skipped, so this also rolls back an interrupted apply.
 pub fn revert_journal<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     elevator: Option<&dyn Elevator>,
     mut journal: WhichcraftJournal,
 ) -> Result<UndoResult, EnvarlyError> {
@@ -156,7 +157,7 @@ pub fn revert_journal<B: EnvBackend>(
 
     // Mark it undone so the next Undo does not pick the same apply again.
     journal.status = JournalStatus::Undone;
-    save_journal(&journal)?;
+    store.save_journal(&journal)?;
 
     Ok(UndoResult {
         conflicts,
@@ -225,9 +226,12 @@ fn scope_of(change: &EnvChange) -> &VarScope {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::whichcraft::persistence::save_journal;
+    use crate::whichcraft::persistence::FileStore;
     use crate::env_store::MemBackend;
     use crate::model::EnvValue;
-    use crate::whichcraft::persistence::{use_test_data_dir, MutationRecord, WhichcraftJournal};
+    use crate::whichcraft::persistence::{use_test_data_dir};
+    use crate::whichcraft::domain::journal::{MutationRecord, WhichcraftJournal};
     use crate::whichcraft::domain::path::{compute_prepend, path_entry_diff};
     use crate::whichcraft::services::tool_apply::test_support::FakeElevator;
 
@@ -268,7 +272,7 @@ mod tests {
         let backend = MemBackend::new().with_user([("Path", leak(after.clone()))]);
         save_completed(vec![path_mutation(VarScope::User, "C:\\old", &after)], &backend);
 
-        let result = undo_last_apply(&backend, None).expect("undo");
+        let result = undo_last_apply(&backend, &FileStore, None).expect("undo");
         assert!(result.conflicts.is_empty());
         assert_eq!(backend.read_user().unwrap()["Path"].value, "C:\\old");
     }
@@ -282,7 +286,7 @@ mod tests {
         let backend = MemBackend::new().with_user([("Path", "C:\\jdk\\bin;C:\\old;C:\\installer")]);
         save_completed(vec![path_mutation(VarScope::User, "C:\\old", after)], &backend);
 
-        let result = undo_last_apply(&backend, None).expect("undo");
+        let result = undo_last_apply(&backend, &FileStore, None).expect("undo");
         assert!(result.conflicts.is_empty());
         assert_eq!(backend.read_user().unwrap()["Path"].value, "C:\\old;C:\\installer");
     }
@@ -304,7 +308,7 @@ mod tests {
             &backend,
         );
 
-        let result = undo_last_apply(&backend, None).expect("undo");
+        let result = undo_last_apply(&backend, &FileStore, None).expect("undo");
         assert_eq!(result.conflicts.len(), 1);
         assert_eq!(backend.read_user().unwrap()["JAVA_HOME"].value, "C:\\jdk21-by-installer");
     }
@@ -316,12 +320,12 @@ mod tests {
         let backend = MemBackend::new().with_user([("Path", "C:\\jdk\\bin;C:\\old")]);
         save_completed(vec![path_mutation(VarScope::User, "C:\\old", "C:\\jdk\\bin;C:\\old")], &backend);
 
-        assert_eq!(undo_last_apply(&backend, None).unwrap().restored, 1);
+        assert_eq!(undo_last_apply(&backend, &FileStore, None).unwrap().restored, 1);
         // The user re-adds the JDK by hand; a second Undo must not remove it again.
         backend
             .write_user("Path", &EnvValue::typed("C:\\jdk\\bin;C:\\old".into(), EnvValueKind::ExpandString))
             .unwrap();
-        assert_eq!(undo_last_apply(&backend, None).unwrap().restored, 0);
+        assert_eq!(undo_last_apply(&backend, &FileStore, None).unwrap().restored, 0);
         assert_eq!(backend.read_user().unwrap()["Path"].value, "C:\\jdk\\bin;C:\\old");
     }
 
@@ -338,7 +342,7 @@ mod tests {
         );
         let elevator = FakeElevator::new(&backend, vec![]);
 
-        undo_last_apply(&backend, Some(&elevator)).expect("undo");
+        undo_last_apply(&backend, &FileStore, Some(&elevator)).expect("undo");
         assert_eq!(
             backend.read_system().unwrap()["Path"].value,
             "C:\\Windows;C:\\Program Files\\nodejs\\"
@@ -353,7 +357,7 @@ mod tests {
         let backend = MemBackend::new().with_user([("PATH", "C:\\jdk\\bin;C:\\old")]);
         save_completed(vec![path_mutation(VarScope::User, "C:\\old", "C:\\jdk\\bin;C:\\old")], &backend);
 
-        undo_last_apply(&backend, None).expect("undo");
+        undo_last_apply(&backend, &FileStore, None).expect("undo");
         let user = backend.read_user().unwrap();
         assert_eq!(get_var(&user, "Path").unwrap().value, "C:\\old");
     }

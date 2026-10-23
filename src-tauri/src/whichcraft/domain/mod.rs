@@ -3,9 +3,12 @@
 
 pub mod env;
 pub mod installation;
+pub mod journal;
 pub mod path;
 pub mod plan;
 pub mod profiles;
+pub mod selection;
+pub mod settings;
 pub mod tool;
 pub mod uninstall;
 pub mod versions;

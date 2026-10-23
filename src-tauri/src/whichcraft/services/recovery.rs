@@ -9,10 +9,8 @@ use serde::Serialize;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::model::{EnvChange, EnvValueKind, VarScope};
-use crate::whichcraft::persistence::{
-    load_incomplete_journal, load_journal, save_journal, save_tool_selection, JournalStatus,
-    MutationRecord, WhichcraftJournal,
-};
+use crate::whichcraft::domain::journal::{JournalStatus, MutationRecord, WhichcraftJournal};
+use crate::whichcraft::ports::store::Store;
 use crate::whichcraft::ports::elevator::Elevator;
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::services::undo::{revert_journal, write_changes, UndoResult};
@@ -97,15 +95,15 @@ fn view_of<B: EnvBackend>(backend: &B, journal: &WhichcraftJournal) -> Result<Re
 }
 
 /// The newest apply that never finished, with the real state of each of its changes.
-pub fn inspect_pending<B: EnvBackend>(backend: &B) -> Result<Option<RecoveryView>, EnvarlyError> {
-    match load_incomplete_journal()? {
+pub fn inspect_pending<B: EnvBackend>(backend: &B, store: &dyn Store) -> Result<Option<RecoveryView>, EnvarlyError> {
+    match store.incomplete_journal()? {
         Some(journal) => Ok(Some(view_of(backend, &journal)?)),
         None => Ok(None),
     }
 }
 
-fn load_pending(journal_id: &str) -> Result<WhichcraftJournal, EnvarlyError> {
-    let journal = load_journal(journal_id)?;
+fn load_pending(store: &dyn Store, journal_id: &str) -> Result<WhichcraftJournal, EnvarlyError> {
+    let journal = store.journal(journal_id)?;
     if journal.status != JournalStatus::Pending {
         return Err(EnvarlyError::InvalidInput(format!(
             "journal {journal_id} is not an unfinished apply"
@@ -117,10 +115,11 @@ fn load_pending(journal_id: &str) -> Result<WhichcraftJournal, EnvarlyError> {
 /// Writes the changes the interrupted apply had not written yet, then records its selections.
 pub fn resume_pending<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     elevator: Option<&dyn Elevator>,
     journal_id: &str,
 ) -> Result<(), EnvarlyError> {
-    let mut journal = load_pending(journal_id)?;
+    let mut journal = load_pending(store, journal_id)?;
     let view = view_of(backend, &journal)?;
     if !view.can_resume {
         return Err(EnvarlyError::InvalidInput(
@@ -150,31 +149,32 @@ pub fn resume_pending<B: EnvBackend>(
         .collect();
     write_changes(backend, elevator, planned)?;
     for selection in &journal.selections {
-        save_tool_selection(selection)?;
+        store.save_selection(selection)?;
     }
     journal.status = JournalStatus::Completed;
-    save_journal(&journal)
+    store.save_journal(&journal)
 }
 
 /// Puts back whatever the interrupted apply had written, with the same rules as Undo.
 pub fn roll_back_pending<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     elevator: Option<&dyn Elevator>,
     journal_id: &str,
 ) -> Result<UndoResult, EnvarlyError> {
-    revert_journal(backend, elevator, load_pending(journal_id)?)
+    revert_journal(backend, store, elevator, load_pending(store, journal_id)?)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::whichcraft::persistence::save_journal;
+    use crate::whichcraft::persistence::FileStore;
     use crate::env_store::MemBackend;
     use crate::model::EnvValue;
     use crate::whichcraft::domain::ToolKind;
-    use crate::whichcraft::persistence::{
-        load_incomplete_journal, load_last_completed_apply, load_tool_selection, use_test_data_dir,
-        ToolSelection,
-    };
+    use crate::whichcraft::persistence::{load_incomplete_journal, load_last_completed_apply, load_tool_selection, use_test_data_dir};
+    use crate::whichcraft::domain::selection::{ToolSelection};
     use crate::whichcraft::domain::path::path_entry_diff;
     use crate::whichcraft::services::tool_apply::test_support::FakeElevator;
 
@@ -232,7 +232,7 @@ mod tests {
         let b = half_written();
         pending_java_apply(&b);
 
-        let view = inspect_pending(&b).unwrap().expect("pending apply found");
+        let view = inspect_pending(&b, &FileStore).unwrap().expect("pending apply found");
         assert_eq!(view.journal_id, "apply-interrupted");
         assert_eq!(view.items[0].state, ChangeState::Written);
         assert_eq!(view.items[1].state, ChangeState::NotWritten);
@@ -246,7 +246,7 @@ mod tests {
         let b = half_written();
         pending_java_apply(&b);
 
-        resume_pending(&b, None, "apply-interrupted").unwrap();
+        resume_pending(&b, &FileStore, None, "apply-interrupted").unwrap();
         let user = b.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, "C:\\jdk17");
         assert_eq!(user["Path"].value, "C:\\jdk17\\bin;C:\\u");
@@ -262,7 +262,7 @@ mod tests {
         let b = half_written();
         pending_java_apply(&b);
 
-        let result = roll_back_pending(&b, None, "apply-interrupted").unwrap();
+        let result = roll_back_pending(&b, &FileStore, None, "apply-interrupted").unwrap();
         assert!(result.conflicts.is_empty());
         let user = b.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, "C:\\jdk11");
@@ -279,12 +279,12 @@ mod tests {
         let b = MemBackend::new().with_user([("JAVA_HOME", "C:\\jdk17"), ("Path", "C:\\u;C:\\installer")]);
         pending_java_apply(&b);
 
-        let view = inspect_pending(&b).unwrap().unwrap();
+        let view = inspect_pending(&b, &FileStore).unwrap().unwrap();
         assert_eq!(view.items[1].state, ChangeState::ChangedElsewhere);
         assert!(!view.can_resume);
-        assert!(resume_pending(&b, None, "apply-interrupted").is_err());
+        assert!(resume_pending(&b, &FileStore, None, "apply-interrupted").is_err());
 
-        roll_back_pending(&b, None, "apply-interrupted").unwrap();
+        roll_back_pending(&b, &FileStore, None, "apply-interrupted").unwrap();
         let user = b.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, "C:\\jdk11");
         assert_eq!(user["Path"].value, "C:\\u;C:\\installer");
@@ -317,7 +317,7 @@ mod tests {
         .unwrap();
         let elevator = FakeElevator::new(&b, vec![]);
 
-        resume_pending(&b, Some(&elevator), "apply-system").unwrap();
+        resume_pending(&b, &FileStore, Some(&elevator), "apply-system").unwrap();
         assert_eq!(b.read_system().unwrap()["Path"].value, "C:\\Windows");
         assert_eq!(elevator.requests.lock().unwrap().len(), 1);
     }
@@ -330,8 +330,8 @@ mod tests {
         let mut journal = pending_java_apply(&b);
         journal.status = JournalStatus::Completed;
         save_journal(&journal).unwrap();
-        assert!(resume_pending(&b, None, "apply-interrupted").is_err());
-        assert!(roll_back_pending(&b, None, "apply-interrupted").is_err());
-        assert!(inspect_pending(&b).unwrap().is_none());
+        assert!(resume_pending(&b, &FileStore, None, "apply-interrupted").is_err());
+        assert!(roll_back_pending(&b, &FileStore, None, "apply-interrupted").is_err());
+        assert!(inspect_pending(&b, &FileStore).unwrap().is_none());
     }
 }

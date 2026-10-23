@@ -4,11 +4,11 @@ use crate::env_backend::WinregBackend;
 use crate::error::EnvarlyError;
 use crate::whichcraft::ToolKind;
 use crate::whichcraft::mise::MiseToolManager;
-use crate::whichcraft::persistence::{load_settings, load_tool_selection, save_settings, WhichcraftSettings};
+use crate::whichcraft::domain::settings::{WhichcraftSettings};
 use crate::whichcraft::ports::tool_manager::ToolManager;
 use crate::whichcraft::services::elevation::WinElevator;
 use crate::whichcraft::services::path_cleanup::{build_path_cleanup_plan, PathCleanupPlan};
-use crate::whichcraft::services::profiles::{apply_profile, load_profiles, profile_status, save_profiles as persist_profiles, plan_profile_apply};
+use crate::whichcraft::services::profiles::{plan_profile_apply, profile_status};
 use crate::whichcraft::domain::profiles::{missing_pins, repoint_profiles, MissingPin, ProfileMatchStatus, ToolProfile};
 use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::services::supplemental_inventory::{
@@ -27,8 +27,10 @@ use crate::whichcraft::domain::ToolApplyPlan;
 use crate::whichcraft::services::undo::{undo_last_apply, UndoResult};
 use crate::whichcraft::services::update::{install_and_plan, UpdateResult};
 use crate::whichcraft::domain::versions::{update_candidates, UpdateCandidate};
-use crate::whichcraft::services::uninstall::{dismiss_unfinished_uninstall, plan_uninstall, protected_folders, unfinished_uninstalls, uninstall, PlanInputs, UninstallPlan, UninstallRecord};
-use crate::whichcraft::domain::uninstall::{UninstallOutcome};
+use crate::whichcraft::services::uninstall::{dismiss_unfinished_uninstall, plan_uninstall, protected_folders, unfinished_uninstalls, uninstall, PlanInputs, UninstallPlan};
+use crate::whichcraft::domain::uninstall::{UninstallOutcome, UninstallRecord};
+use crate::whichcraft::ports::store::Store;
+use crate::whichcraft::persistence::FileStore;
 /// Runs blocking work (UAC prompts, downloads, child processes) off the UI thread. Sync Tauri
 /// commands run on the main thread, so waiting there froze the window.
 async fn off_main<T: Send + 'static>(
@@ -43,8 +45,8 @@ async fn off_main<T: Send + 'static>(
 pub async fn whichcraft_list_tools(tool: ToolKind) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
     off_main(move || {
         let backend = WinregBackend;
-        let selection = load_tool_selection(tool)?;
-        let views = list_tool_installations(&backend, tool, selection.as_ref().map(|s| s.root.as_path()))?;
+        let selection = FileStore.selection(tool)?;
+        let views = list_tool_installations(&backend, &FileStore, tool, selection.as_ref().map(|s| s.root.as_path()))?;
         Ok(crate::whichcraft::services::tool_inventory::with_missing_selection(views, selection.as_ref()))
     })
     .await
@@ -52,12 +54,12 @@ pub async fn whichcraft_list_tools(tool: ToolKind) -> Result<Vec<ToolInstallatio
 
 #[tauri::command]
 pub fn whichcraft_get_settings() -> Result<WhichcraftSettings, EnvarlyError> {
-    load_settings()
+    FileStore.settings()
 }
 
 #[tauri::command]
 pub fn whichcraft_save_settings(settings: WhichcraftSettings) -> Result<(), EnvarlyError> {
-    save_settings(&merge_settings(load_settings()?, settings))
+    FileStore.save_settings(&merge_settings(FileStore.settings()?, settings))
 }
 
 /// Takes the caller's settings but keeps the store history on disk: a changed store is
@@ -99,7 +101,7 @@ mod tests {
         crate::whichcraft::persistence::use_test_data_dir(dir.path());
         let err = installing_manager().err().expect("refused before confirming");
         assert!(err.to_string().contains("Choose where"));
-        save_settings(&WhichcraftSettings { install_store_confirmed: true, ..load_settings().unwrap() }).unwrap();
+        FileStore.save_settings(&WhichcraftSettings { install_store_confirmed: true, ..FileStore.settings().unwrap() }).unwrap();
         assert!(installing_manager().is_ok());
     }
 
@@ -118,7 +120,7 @@ mod tests {
 pub async fn whichcraft_plan_tool(root: String, tool: ToolKind) -> Result<ToolApplyPlan, EnvarlyError> {
     off_main(move || {
         let backend = WinregBackend;
-        let views = list_tool_installations(&backend, tool, None)?;
+        let views = list_tool_installations(&backend, &FileStore, tool, None)?;
         let installation = views
             .into_iter()
             .find(|v| v.installation.root == PathBuf::from(&root))
@@ -132,7 +134,7 @@ pub async fn whichcraft_plan_tool(root: String, tool: ToolKind) -> Result<ToolAp
 #[tauri::command]
 pub async fn whichcraft_apply_tool_plan(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
     off_main(move || {
-        apply_tool_plan(&WinregBackend, &plan)
+        apply_tool_plan(&WinregBackend, &FileStore, &plan)
     })
     .await
 }
@@ -140,7 +142,7 @@ pub async fn whichcraft_apply_tool_plan(plan: ToolApplyPlan) -> Result<ApplyTool
 #[tauri::command]
 pub async fn whichcraft_apply_tool_plan_with_uac(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
     off_main(move || {
-        apply_tool_plan_elevated(&WinregBackend, &WinElevator, &plan)
+        apply_tool_plan_elevated(&WinregBackend, &FileStore, &WinElevator, &plan)
     })
     .await
 }
@@ -153,7 +155,7 @@ pub fn whichcraft_plan_path_cleanup() -> Result<PathCleanupPlan, EnvarlyError> {
 #[tauri::command]
 pub async fn whichcraft_undo_last_apply() -> Result<UndoResult, EnvarlyError> {
     off_main(move || {
-        undo_last_apply(&WinregBackend, Some(&WinElevator))
+        undo_last_apply(&WinregBackend, &FileStore, Some(&WinElevator))
     })
     .await
 }
@@ -166,7 +168,7 @@ fn home_dir() -> PathBuf {
 #[tauri::command]
 pub fn whichcraft_open_terminal() -> Result<(), EnvarlyError> {
     use crate::whichcraft::adapters::win::process::{fresh_environment, WinProcessRunner};
-    let kind = load_settings()?.terminal;
+    let kind = FileStore.settings()?.terminal;
     crate::whichcraft::services::terminal::open_terminal(&WinProcessRunner, kind, &home_dir(), fresh_environment()?)
 }
 
@@ -177,7 +179,7 @@ pub async fn whichcraft_shell_check(
 ) -> Result<crate::whichcraft::services::terminal::ShellCheck, EnvarlyError> {
     off_main(move || {
         use crate::whichcraft::adapters::win::process::{fresh_environment, WinProcessRunner};
-        let kind = load_settings()?.terminal;
+        let kind = FileStore.settings()?.terminal;
         crate::whichcraft::services::terminal::shell_check(
             &WinregBackend,
             &WinProcessRunner,
@@ -193,13 +195,13 @@ pub async fn whichcraft_shell_check(
 /// An apply that never finished (the app stopped mid-way), with each change's real state.
 #[tauri::command]
 pub fn whichcraft_recovery_status() -> Result<Option<RecoveryView>, EnvarlyError> {
-    inspect_pending(&WinregBackend)
+    inspect_pending(&WinregBackend, &FileStore)
 }
 
 #[tauri::command]
 pub async fn whichcraft_resume_apply(journal_id: String) -> Result<(), EnvarlyError> {
     off_main(move || {
-        resume_pending(&WinregBackend, Some(&WinElevator), &journal_id)
+        resume_pending(&WinregBackend, &FileStore, Some(&WinElevator), &journal_id)
     })
     .await
 }
@@ -207,7 +209,7 @@ pub async fn whichcraft_resume_apply(journal_id: String) -> Result<(), EnvarlyEr
 #[tauri::command]
 pub async fn whichcraft_roll_back_apply(journal_id: String) -> Result<UndoResult, EnvarlyError> {
     off_main(move || {
-        roll_back_pending(&WinregBackend, Some(&WinElevator), &journal_id)
+        roll_back_pending(&WinregBackend, &FileStore, Some(&WinElevator), &journal_id)
     })
     .await
 }
@@ -252,7 +254,7 @@ pub async fn whichcraft_download_size(tool: ToolKind, version: String) -> Result
 /// The mise manager for anything that downloads into the install store. Every install path goes
 /// through here, so none can skip asking where installed tools go (I-5).
 fn installing_manager() -> Result<MiseToolManager<crate::whichcraft::mise::manager::ProcessMiseRunner>, EnvarlyError> {
-    if !load_settings()?.install_store_confirmed {
+    if !FileStore.settings()?.install_store_confirmed {
         return Err(EnvarlyError::InvalidInput(
             "Choose where Whichcraft keeps the tools it installs before installing".into(),
         ));
@@ -275,26 +277,18 @@ pub async fn whichcraft_install_managed(
 
 #[tauri::command]
 pub fn whichcraft_list_profiles() -> Result<Vec<ToolProfile>, EnvarlyError> {
-    load_profiles()
+    FileStore.profiles()
 }
 
 #[tauri::command]
 pub fn whichcraft_save_profiles(profiles: Vec<ToolProfile>) -> Result<(), EnvarlyError> {
-    persist_profiles(&profiles)
+    FileStore.save_profiles(&profiles)
 }
 
 #[tauri::command]
 pub async fn whichcraft_profile_status(profile: ToolProfile) -> Result<ProfileMatchStatus, EnvarlyError> {
     off_main(move || {
-        profile_status(&WinregBackend, &profile)
-    })
-    .await
-}
-
-#[tauri::command]
-pub async fn whichcraft_apply_profile(profile: ToolProfile) -> Result<ApplyToolResult, EnvarlyError> {
-    off_main(move || {
-        apply_profile(&WinregBackend, Some(&WinElevator), &profile)
+        profile_status(&WinregBackend, &FileStore, &profile)
     })
     .await
 }
@@ -302,7 +296,7 @@ pub async fn whichcraft_apply_profile(profile: ToolProfile) -> Result<ApplyToolR
 #[tauri::command]
 pub async fn whichcraft_plan_profile(profile: ToolProfile) -> Result<ToolApplyPlan, EnvarlyError> {
     off_main(move || {
-        plan_profile_apply(&WinregBackend, &profile)
+        plan_profile_apply(&WinregBackend, &FileStore, &profile)
     })
     .await
 }
@@ -334,9 +328,9 @@ fn build_uninstall_plan(tool: ToolKind, root: &str) -> Result<UninstallPlan, Env
     use crate::whichcraft::adapters::win::uninstall::WinUsageProbe;
     use crate::whichcraft::ports::installer_catalog::InstallerCatalog;
     let backend = WinregBackend;
-    let selection = load_tool_selection(tool)?;
+    let selection = FileStore.selection(tool)?;
     let views = crate::whichcraft::services::tool_inventory::with_missing_selection(
-        list_tool_installations(&backend, tool, selection.as_ref().map(|s| s.root.as_path()))?,
+        list_tool_installations(&backend, &FileStore, tool, selection.as_ref().map(|s| s.root.as_path()))?,
         selection.as_ref(),
     );
     let root = PathBuf::from(root);
@@ -345,13 +339,13 @@ fn build_uninstall_plan(tool: ToolKind, root: &str) -> Result<UninstallPlan, Env
         .find(|v| v.installation.root == root)
         .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown {tool:?} root: {}", root.display())))?;
     let catalog = WinInstallerCatalog::load()?.entries_for_root(&root)?.into_iter().next();
-    let settings = load_settings()?;
+    let settings = FileStore.settings()?;
     // Only a plain folder (no registered uninstaller) needs every other tool's roots for Q26.
     let mut other_tool_roots = Vec::new();
     if catalog.is_none() {
         for other in [ToolKind::Java, ToolKind::Node, ToolKind::Python, ToolKind::Go, ToolKind::Flutter, ToolKind::Git] {
             if other != tool {
-                other_tool_roots.extend(list_tool_installations(&backend, other, None)?.into_iter().map(|v| v.installation.root));
+                other_tool_roots.extend(list_tool_installations(&backend, &FileStore, other, None)?.into_iter().map(|v| v.installation.root));
             }
         }
     }
@@ -363,7 +357,7 @@ fn build_uninstall_plan(tool: ToolKind, root: &str) -> Result<UninstallPlan, Env
             stores: &settings.all_install_stores(),
             scan_roots: &settings.scan_roots,
             protected: &protected_folders(),
-            profiles: &load_profiles()?,
+            profiles: &FileStore.profiles()?,
             other_tool_roots: &other_tool_roots,
         },
         &WinUsageProbe,
@@ -387,7 +381,7 @@ pub async fn whichcraft_uninstall(
     use crate::whichcraft::adapters::win::uninstall::{WinUninstaller, WinUsageProbe};
     off_main(move || {
         let plan = build_uninstall_plan(tool, &root)?;
-        uninstall(&plan, replacement.as_ref(), &WinregBackend, &WinElevator, &WinUsageProbe, &WinUninstaller)
+        uninstall(&plan, replacement.as_ref(), &WinregBackend, &FileStore, &WinElevator, &WinUsageProbe, &WinUninstaller)
     })
     .await
 }
@@ -396,7 +390,7 @@ pub async fn whichcraft_uninstall(
 #[tauri::command]
 pub async fn whichcraft_update_candidates(tool: ToolKind) -> Result<Vec<UpdateCandidate>, EnvarlyError> {
     off_main(move || {
-        let views = list_tool_installations(&WinregBackend, tool, None)?;
+        let views = list_tool_installations(&WinregBackend, &FileStore, tool, None)?;
         let remote = MiseToolManager::new()?.list_remote(tool)?;
         Ok(update_candidates(tool, &views, &remote))
     })
@@ -421,7 +415,7 @@ pub async fn whichcraft_prepare_mise() -> Result<bool, EnvarlyError> {
 }
 
 fn missing_for(profile: &ToolProfile) -> Result<Vec<MissingPin>, EnvarlyError> {
-    let status = profile_status(&WinregBackend, profile)?;
+    let status = profile_status(&WinregBackend, &FileStore, profile)?;
     if status.unavailable.is_empty() {
         return Ok(Vec::new());
     }
@@ -471,16 +465,16 @@ pub async fn whichcraft_install_missing(profile: ToolProfile) -> Result<(), Enva
 /// Names of the profiles that use this installation, offered for repointing when it is updated (F-5).
 #[tauri::command]
 pub fn whichcraft_profiles_using(installation: ToolInstallation) -> Result<Vec<String>, EnvarlyError> {
-    Ok(crate::whichcraft::domain::profiles::profiles_using(&load_profiles()?, &installation))
+    Ok(crate::whichcraft::domain::profiles::profiles_using(&FileStore.profiles()?, &installation))
 }
 
 /// Points the profiles that use `from` at `to` (F-5); returns the names that changed.
 #[tauri::command]
 pub fn whichcraft_repoint_profiles(from: ToolInstallation, to: ToolInstallation) -> Result<Vec<String>, EnvarlyError> {
-    let mut profiles = load_profiles()?;
+    let mut profiles = FileStore.profiles()?;
     let changed = repoint_profiles(&mut profiles, &from, &to);
     if !changed.is_empty() {
-        persist_profiles(&profiles)?;
+        FileStore.save_profiles(&profiles)?;
     }
     Ok(changed)
 }
@@ -488,13 +482,13 @@ pub fn whichcraft_repoint_profiles(from: ToolInstallation, to: ToolInstallation)
 /// Uninstalls that started but were never seen to finish.
 #[tauri::command]
 pub fn whichcraft_unfinished_uninstalls() -> Result<Vec<UninstallRecord>, EnvarlyError> {
-    unfinished_uninstalls()
+    unfinished_uninstalls(&FileStore)
 }
 
 /// Records what the disk shows now for an uninstall that was cut short.
 #[tauri::command]
 pub fn whichcraft_dismiss_unfinished_uninstall(id: String) -> Result<(), EnvarlyError> {
-    dismiss_unfinished_uninstall(&id)
+    dismiss_unfinished_uninstall(&FileStore, &id)
 }
 
 /// Opens a folder in Explorer, e.g. what an uninstaller left behind.

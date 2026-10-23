@@ -1,52 +1,25 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 use crate::env_store::{EnvBackend, MemBackend};
 use crate::error::EnvarlyError;
 use crate::model::{EnvValue, VarScope};
 use crate::whichcraft::domain::ToolKind;
-use crate::whichcraft::persistence::{new_journal_id, whichcraft_data_dir};
-use crate::whichcraft::ports::elevator::Elevator;
+use crate::whichcraft::persistence::new_journal_id;
+use crate::whichcraft::ports::store::Store;
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::domain::PlanVariableDiff;
-use crate::whichcraft::services::tool_apply::{
-    apply_tool_plan, apply_tool_plan_elevated, create_tool_plan, ApplyToolResult,
-};
+use crate::whichcraft::services::tool_apply::create_tool_plan;
 use crate::whichcraft::services::tool_inventory::{list_tool_installations};
 use crate::whichcraft::domain::ToolInstallationView;
 use crate::whichcraft::domain::ToolApplyPlan;
 use crate::whichcraft::domain::profiles::{resolve_pin, ProfileMatchStatus, ToolProfile};
 
-fn profiles_path() -> Result<PathBuf, EnvarlyError> {
-    Ok(whichcraft_data_dir()?.join("profiles.json"))
-}
-
-pub fn load_profiles() -> Result<Vec<ToolProfile>, EnvarlyError> {
-    let path = profiles_path()?;
-    if !path.is_file() {
-        return Ok(Vec::new());
-    }
-    let raw = std::fs::read_to_string(&path)
-        .map_err(|e| EnvarlyError::Snapshot(format!("read profiles: {e}")))?;
-    serde_json::from_str(&raw).map_err(|e| EnvarlyError::Snapshot(format!("parse profiles: {e}")))
-}
-
-pub fn save_profiles(profiles: &[ToolProfile]) -> Result<(), EnvarlyError> {
-    let path = profiles_path()?;
-    std::fs::write(
-        &path,
-        serde_json::to_string_pretty(profiles)
-            .map_err(|e| EnvarlyError::Snapshot(format!("serialize profiles: {e}")))?,
-    )
-    .map_err(|e| EnvarlyError::Snapshot(format!("write profiles: {e}")))?;
-    Ok(())
-}
-
 pub fn profile_status<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     profile: &ToolProfile,
 ) -> Result<ProfileMatchStatus, EnvarlyError> {
-    profile_status_with(profile, |tool| list_tool_installations(backend, tool, None))
+    profile_status_with(profile, |tool| list_tool_installations(backend, store, tool, None))
 }
 
 fn profile_status_with(
@@ -71,11 +44,10 @@ fn profile_status_with(
 /// One plan for the whole profile, so every tool lands in a single apply, journal and UAC prompt.
 pub fn plan_profile_apply<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     profile: &ToolProfile,
 ) -> Result<ToolApplyPlan, EnvarlyError> {
-    plan_profile_apply_with(backend, profile, |tool| {
-        list_tool_installations(backend, tool, None)
-    })
+    plan_profile_apply_with(backend, profile, |tool| list_tool_installations(backend, store, tool, None))
 }
 
 fn plan_profile_apply_with<B: EnvBackend>(
@@ -173,21 +145,12 @@ fn plan_profile_apply_with<B: EnvBackend>(
     })
 }
 
-pub fn apply_profile<B: EnvBackend>(
-    backend: &B,
-    elevator: Option<&dyn Elevator>,
-    profile: &ToolProfile,
-) -> Result<ApplyToolResult, EnvarlyError> {
-    let plan = plan_profile_apply(backend, profile)?;
-    match elevator {
-        Some(elevator) => apply_tool_plan_elevated(backend, elevator, &plan),
-        None => apply_tool_plan(backend, &plan),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+    use crate::whichcraft::services::tool_apply::apply_tool_plan;
+    use crate::whichcraft::persistence::FileStore;
     use crate::whichcraft::persistence::{load_last_completed_apply, load_tool_selection, use_test_data_dir};
     use crate::whichcraft::domain::profiles::ProfileToolPin;
     use crate::whichcraft::domain::{InstallerKind, ToolInstallation};
@@ -278,7 +241,7 @@ mod tests {
         let find = |tool: ToolKind| Ok(if tool == ToolKind::Java { vec![jdk.clone()] } else { vec![node.clone()] });
 
         let plan = plan_profile_apply_with(&backend, &p, find).unwrap();
-        let result = apply_tool_plan(&backend, &plan).unwrap();
+        let result = apply_tool_plan(&backend, &FileStore, &plan).unwrap();
         assert!(!result.stale);
 
         let user = backend.read_user().unwrap();
@@ -309,9 +272,9 @@ mod tests {
             pin(ToolKind::Java, "Eclipse Adoptium", "17.0.20.1", None),
             pin(ToolKind::Node, "Node.js", "20.19.0", None),
         ]);
-        apply_tool_plan(&backend, &plan_profile_apply_with(&backend, &a, find).unwrap()).unwrap();
+        apply_tool_plan(&backend, &FileStore, &plan_profile_apply_with(&backend, &a, find).unwrap()).unwrap();
         let b = profile(vec![pin(ToolKind::Java, "Eclipse Adoptium", "21.0.12", None)]);
-        apply_tool_plan(&backend, &plan_profile_apply_with(&backend, &b, find).unwrap()).unwrap();
+        apply_tool_plan(&backend, &FileStore, &plan_profile_apply_with(&backend, &b, find).unwrap()).unwrap();
 
         let user = backend.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, jdk21.installation.root.to_string_lossy());
@@ -343,7 +306,7 @@ mod tests {
         let plan = plan_profile_apply_with(&backend, &p, find).unwrap();
         assert!(plan.requires_uac);
         let elevator = FakeElevator::new(&backend, vec![]);
-        apply_tool_plan_elevated(&backend, &elevator, &plan).unwrap();
+        apply_tool_plan_elevated(&backend, &FileStore, &elevator, &plan).unwrap();
 
         assert_eq!(elevator.requests.lock().unwrap().len(), 1);
         assert!(!backend.read_system().unwrap()["Path"].value.contains("program-files-nodejs"));

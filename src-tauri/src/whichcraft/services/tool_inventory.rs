@@ -7,7 +7,7 @@ use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage;
 use crate::whichcraft::domain::ToolKind;
-use crate::whichcraft::persistence::load_settings;
+use crate::whichcraft::ports::store::Store;
 use crate::whichcraft::domain::InstallerKind;
 use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::tools::{
@@ -30,19 +30,21 @@ impl Default for ToolDiscoveryOptions {
 
 pub fn list_tool_installations<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     tool: ToolKind,
     selected_root: Option<&Path>,
 ) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
-    list_tool_installations_with_options(backend, tool, selected_root, ToolDiscoveryOptions::default())
+    list_tool_installations_with_options(backend, store, tool, selected_root, ToolDiscoveryOptions::default())
 }
 
 pub fn list_tool_installations_with_options<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     tool: ToolKind,
     selected_root: Option<&Path>,
     options: ToolDiscoveryOptions,
 ) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
-    let settings = load_settings()?;
+    let settings = store.settings()?;
     let user = backend.read_user()?;
     let system = backend.read_system()?;
     let user_path = user.get("Path").map(|v| v.value.as_str()).unwrap_or("");
@@ -174,7 +176,7 @@ pub(crate) fn installer_kinds() -> Box<dyn Fn(&Path) -> InstallerKind> {
 /// rather than silently dropped as if it had been uninstalled.
 pub fn with_missing_selection(
     mut views: Vec<ToolInstallationView>,
-    selection: Option<&crate::whichcraft::persistence::ToolSelection>,
+    selection: Option<&crate::whichcraft::domain::selection::ToolSelection>,
 ) -> Vec<ToolInstallationView> {
     let Some(sel) = selection else {
         return views;
@@ -281,6 +283,7 @@ fn append_managed_roots(tool: ToolKind, store: &Path, out: &mut HashSet<PathBuf>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::whichcraft::persistence::FileStore;
     use crate::env_store::MemBackend;
 
     fn leak(s: &str) -> &'static str {
@@ -296,7 +299,7 @@ mod tests {
     }
 
     fn java_views(backend: &MemBackend, selected: Option<&Path>) -> Vec<ToolInstallationView> {
-        list_tool_installations_with_options(backend, ToolKind::Java, selected, ToolDiscoveryOptions { include_standard_locations: false })
+        list_tool_installations_with_options(backend, &FileStore, ToolKind::Java, selected, ToolDiscoveryOptions { include_standard_locations: false })
             .unwrap()
     }
 
@@ -340,7 +343,7 @@ mod tests {
         let backend = MemBackend::new().with_user([(leak("Path"), path_val)]);
         let views = list_tool_installations_with_options(
             &backend,
-            ToolKind::Node,
+            &FileStore, ToolKind::Node,
             None,
             ToolDiscoveryOptions {
                 include_standard_locations: false,
@@ -375,7 +378,7 @@ mod tests {
 
         let views = list_tool_installations_with_options(
             &MemBackend::new(),
-            ToolKind::Node,
+            &FileStore, ToolKind::Node,
             None,
             ToolDiscoveryOptions { include_standard_locations: false },
         )
@@ -399,7 +402,7 @@ mod tests {
         crate::whichcraft::persistence::save_settings(&settings).unwrap();
         let backend = crate::env_backend::WinregBackend;
         for tool in [ToolKind::Java, ToolKind::Node, ToolKind::Python, ToolKind::Go, ToolKind::Flutter, ToolKind::Git] {
-            for v in list_tool_installations(&backend, tool, None).unwrap() {
+            for v in list_tool_installations(&backend, &FileStore, tool, None).unwrap() {
                 println!(
                     "{tool:?}\t{} {}\teffective={}\t{:?}\t{}",
                     v.installation.vendor,
@@ -410,7 +413,7 @@ mod tests {
                 );
             }
         }
-        let temurin = list_tool_installations(&backend, ToolKind::Java, None)
+        let temurin = list_tool_installations(&backend, &FileStore, ToolKind::Java, None)
             .unwrap()
             .into_iter()
             .filter(|v| v.installation.vendor == "Eclipse Adoptium")
@@ -430,7 +433,7 @@ mod tests {
 
         let views = list_tool_installations_with_options(
             &backend,
-            ToolKind::Java,
+            &FileStore, ToolKind::Java,
             None,
             ToolDiscoveryOptions { include_standard_locations: false },
         )
@@ -442,7 +445,7 @@ mod tests {
 
     #[test]
     fn a_selected_installation_whose_folder_vanished_is_listed_as_unavailable() {
-        let selection = crate::whichcraft::persistence::ToolSelection {
+        let selection = crate::whichcraft::domain::selection::ToolSelection {
             tool: ToolKind::Node,
             root: "C:\\gone\\node20".into(),
             vendor: "Node.js".into(),
@@ -469,7 +472,7 @@ mod tests {
 
         let views = list_tool_installations_with_options(
             &MemBackend::new(),
-            ToolKind::Node,
+            &FileStore, ToolKind::Node,
             None,
             ToolDiscoveryOptions { include_standard_locations: false },
         )
@@ -479,7 +482,7 @@ mod tests {
 
     #[test]
     fn switching_back_and_forth_keeps_each_store_once() {
-        let mut settings = crate::whichcraft::persistence::WhichcraftSettings {
+        let mut settings = crate::whichcraft::domain::settings::WhichcraftSettings {
             install_store: "C:\\a".into(),
             ..Default::default()
         };

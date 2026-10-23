@@ -282,6 +282,7 @@ pub fn plan_to_mutations(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::whichcraft::persistence::FileStore;
     use crate::env_store::MemBackend;
 
     fn leak(s: String) -> &'static str {
@@ -330,10 +331,10 @@ mod tests {
         let backend = MemBackend::new().with_user([("Path", before)]).with_system([("PATHEXT", ".EXE")]);
 
         let plan = crate::whichcraft::services::tool_apply::create_tool_plan(&backend, &new).unwrap();
-        crate::whichcraft::services::tool_apply::apply_tool_plan(&backend, &plan).unwrap();
+        crate::whichcraft::services::tool_apply::apply_tool_plan(&backend, &FileStore, &plan).unwrap();
         assert!(!backend.read_user().unwrap()["Path"].value.contains("jdk17"));
 
-        let undo = crate::whichcraft::services::undo::undo_last_apply(&backend, None).unwrap();
+        let undo = crate::whichcraft::services::undo::undo_last_apply(&backend, &FileStore, None).unwrap();
         assert!(undo.conflicts.is_empty());
         assert_eq!(backend.read_user().unwrap()["Path"].value, before);
     }

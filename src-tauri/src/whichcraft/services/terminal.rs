@@ -15,7 +15,7 @@ use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage;
 use crate::whichcraft::domain::ToolKind;
-use crate::whichcraft::persistence::TerminalKind;
+use crate::whichcraft::domain::settings::TerminalKind;
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::tools::command_name;
 

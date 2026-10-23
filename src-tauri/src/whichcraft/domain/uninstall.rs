@@ -4,6 +4,8 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use super::installation::ToolInstallation;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum UninstallMethod {
@@ -57,6 +59,23 @@ pub fn product_code(command: &str) -> Option<String> {
     let start = command.find('{')?;
     let end = start + command[start..].find('}')?;
     Some(command[start..=end].to_string())
+}
+
+/// The journal entry of one uninstall. Kept apart from env applies (in `journal/uninstalls`), so
+/// Undo and recovery, which read every apply in `journal`, never mistake it for one.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct UninstallRecord {
+    pub id: String,
+    pub started_at: String,
+    /// `None` while the uninstaller runs; still `None` afterwards means the app did not see it end.
+    pub finished_at: Option<String>,
+    pub installation: ToolInstallation,
+    pub method: UninstallMethod,
+    /// The journal of the switch applied first, when the installation was selected or effective.
+    pub switch_plan_id: Option<String>,
+    pub outcome: Option<UninstallOutcome>,
+    pub error: Option<String>,
 }
 
 #[cfg(test)]

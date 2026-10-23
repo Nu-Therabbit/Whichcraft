@@ -1,13 +1,12 @@
 mod config_store;
+mod file_store;
 mod journal_store;
 mod selection_store;
 
-pub use config_store::{load_settings, save_settings, TerminalKind, WhichcraftSettings};
-pub use journal_store::{
-    load_incomplete_journal, load_journal, load_last_completed_apply, new_journal_id, save_journal,
-    JournalStatus, MutationRecord, WhichcraftJournal,
-};
-pub use selection_store::{load_tool_selection, save_tool_selection, ToolSelection};
+pub use config_store::{load_settings, save_settings};
+pub use journal_store::{load_incomplete_journal, load_journal, load_last_completed_apply, new_journal_id, save_journal};
+pub use file_store::FileStore;
+pub use selection_store::{load_tool_selection, save_tool_selection};
 
 use std::path::PathBuf;
 

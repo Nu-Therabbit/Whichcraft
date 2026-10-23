@@ -87,7 +87,6 @@ pub fn run() {
             commands::whichcraft::whichcraft_list_profiles,
             commands::whichcraft::whichcraft_save_profiles,
             commands::whichcraft::whichcraft_profile_status,
-            commands::whichcraft::whichcraft_apply_profile,
             commands::whichcraft::whichcraft_plan_profile,
             commands::whichcraft::whichcraft_python_supplemental,
             commands::whichcraft::whichcraft_android_inventory,

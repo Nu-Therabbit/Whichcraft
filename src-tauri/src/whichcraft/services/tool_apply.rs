@@ -1,10 +1,10 @@
 use crate::env_store::{self, EnvBackend};
 use crate::error::EnvarlyError;
 use crate::model::{EnvChange, VarScope};
-use crate::whichcraft::persistence::{
-    new_journal_id, save_journal, save_tool_selection, JournalStatus, MutationRecord,
-    ToolSelection, WhichcraftJournal,
-};
+use crate::whichcraft::domain::journal::{JournalStatus, MutationRecord, WhichcraftJournal};
+use crate::whichcraft::domain::selection::ToolSelection;
+use crate::whichcraft::persistence::new_journal_id;
+use crate::whichcraft::ports::store::Store;
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
 use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::domain::env::get_var;
@@ -30,22 +30,25 @@ pub fn create_tool_plan<B: EnvBackend>(
 /// Applies a plan in this process. A plan that touches System needs this process to be elevated.
 pub fn apply_tool_plan<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     plan: &ToolApplyPlan,
 ) -> Result<ApplyToolResult, EnvarlyError> {
-    apply_tool_plan_with(backend, None, plan)
+    apply_tool_plan_with(backend, store, None, plan)
 }
 
 /// Applies a plan, writing the System part through a UAC-elevated helper when needed.
 pub fn apply_tool_plan_elevated<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     elevator: &dyn Elevator,
     plan: &ToolApplyPlan,
 ) -> Result<ApplyToolResult, EnvarlyError> {
-    apply_tool_plan_with(backend, Some(elevator), plan)
+    apply_tool_plan_with(backend, store, Some(elevator), plan)
 }
 
 fn apply_tool_plan_with<B: EnvBackend>(
     backend: &B,
+    store: &dyn Store,
     elevator: Option<&dyn Elevator>,
     plan: &ToolApplyPlan,
 ) -> Result<ApplyToolResult, EnvarlyError> {
@@ -108,10 +111,10 @@ fn apply_tool_plan_with<B: EnvBackend>(
             })
             .collect(),
     };
-    save_journal(&journal)?;
+    store.save_journal(&journal)?;
     let fail = |journal: &mut WhichcraftJournal| {
         journal.status = JournalStatus::Failed;
-        let _ = save_journal(journal);
+        let _ = store.save_journal(journal);
     };
 
     // System first: if UAC is declined or the plan went stale, nothing has been written yet.
@@ -169,11 +172,11 @@ fn apply_tool_plan_with<B: EnvBackend>(
     }
 
     for selection in &journal.selections {
-        save_tool_selection(selection)?;
+        store.save_selection(selection)?;
     }
 
     journal.status = JournalStatus::Completed;
-    save_journal(&journal)?;
+    store.save_journal(&journal)?;
     Ok(result(false, false))
 }
 
@@ -298,6 +301,7 @@ pub(crate) mod test_support {
 #[cfg(test)]
 mod tests {
     use super::test_support::{FakeElevator, Script};
+    use crate::whichcraft::persistence::{save_tool_selection, FileStore};
     use super::*;
     use crate::env_store::MemBackend;
     use crate::model::EnvValueKind;
@@ -359,7 +363,7 @@ mod tests {
         let b = MemBackend::new().with_user([("Path", "C:\\old")]);
 
         let plan = create_tool_plan(&b, &installation).unwrap();
-        assert!(!apply_tool_plan(&b, &plan).unwrap().stale);
+        assert!(!apply_tool_plan(&b, &FileStore, &plan).unwrap().stale);
 
         let user = b.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, jdk.to_string_lossy());
@@ -392,7 +396,7 @@ mod tests {
         let b = MemBackend::new().with_user([("Path", path)]);
 
         let cleanup = crate::whichcraft::services::path_cleanup::build_path_cleanup_plan(&b).unwrap();
-        apply_tool_plan(&b, &cleanup.inner).unwrap();
+        apply_tool_plan(&b, &FileStore, &cleanup.inner).unwrap();
 
         assert_eq!(b.read_user().unwrap()["Path"].value, keep.to_string_lossy());
         assert!(crate::whichcraft::persistence::load_tool_selection(ToolKind::Node).unwrap().is_none());
@@ -420,7 +424,7 @@ mod tests {
         use_test_data_dir(dir.path());
         let b = backend();
         let elevator = FakeElevator::new(&b, vec![]);
-        let result = apply_tool_plan_elevated(&b, &elevator, &shadowed_node_plan(&b)).unwrap();
+        let result = apply_tool_plan_elevated(&b, &FileStore, &elevator, &shadowed_node_plan(&b)).unwrap();
         assert!(!result.stale && !result.needs_elevation);
         assert_eq!(path(&b.read_system().unwrap()), "C:\\Windows");
         assert_eq!(path(&b.read_user().unwrap()), "C:\\node22;C:\\u");
@@ -435,7 +439,7 @@ mod tests {
         use_test_data_dir(dir.path());
         let b = backend();
         let elevator = FakeElevator::new(&b, vec![Script::Cancel]);
-        assert!(apply_tool_plan_elevated(&b, &elevator, &shadowed_node_plan(&b)).is_err());
+        assert!(apply_tool_plan_elevated(&b, &FileStore, &elevator, &shadowed_node_plan(&b)).is_err());
         assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
         assert_eq!(path(&b.read_system().unwrap()), "C:\\Windows;C:\\Program Files\\nodejs\\");
         assert!(load_last_completed_apply().unwrap().is_none());
@@ -449,7 +453,7 @@ mod tests {
         let plan = shadowed_node_plan(&b);
         let moved = "C:\\Windows;C:\\Program Files\\nodejs\\;C:\\new";
         let elevator = FakeElevator::new(&b, vec![Script::ChangeSystemPathFirst(moved)]);
-        let result = apply_tool_plan_elevated(&b, &elevator, &plan).unwrap();
+        let result = apply_tool_plan_elevated(&b, &FileStore, &elevator, &plan).unwrap();
         assert!(result.stale);
         assert_eq!(path(&b.read_system().unwrap()), moved);
         assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
@@ -461,7 +465,7 @@ mod tests {
         use_test_data_dir(dir.path());
         let b = backend();
         let elevator = FakeElevator::new(&b, vec![]);
-        apply_tool_plan_elevated(&b, &elevator, &shadowed_node_plan(&b)).unwrap();
+        apply_tool_plan_elevated(&b, &FileStore, &elevator, &shadowed_node_plan(&b)).unwrap();
         let requests = elevator.requests.lock().unwrap();
         assert_eq!(requests.len(), 1);
         assert!(requests[0].changes.iter().all(|c| matches!(
@@ -504,7 +508,7 @@ mod tests {
         let inner = backend();
         let b = UserWritesFail(&inner);
         let elevator = FakeElevator::new(&inner, vec![]);
-        assert!(apply_tool_plan_elevated(&b, &elevator, &shadowed_node_plan(&inner)).is_err());
+        assert!(apply_tool_plan_elevated(&b, &FileStore, &elevator, &shadowed_node_plan(&inner)).is_err());
         assert_eq!(path(&inner.read_system().unwrap()), "C:\\Windows;C:\\Program Files\\nodejs\\");
         assert_eq!(path(&inner.read_user().unwrap()), "C:\\u");
         // One request to apply, one to revert.
@@ -517,7 +521,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
         let b = backend();
-        let result = apply_tool_plan(&b, &shadowed_node_plan(&b)).unwrap();
+        let result = apply_tool_plan(&b, &FileStore, &shadowed_node_plan(&b)).unwrap();
         assert!(result.needs_elevation);
         assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
     }

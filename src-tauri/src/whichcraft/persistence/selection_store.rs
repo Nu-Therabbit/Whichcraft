@@ -1,19 +1,9 @@
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
-
 use super::whichcraft_data_dir;
 use crate::error::EnvarlyError;
+use crate::whichcraft::domain::selection::ToolSelection;
 use crate::whichcraft::domain::ToolKind;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ToolSelection {
-    pub tool: ToolKind,
-    pub root: PathBuf,
-    pub vendor: String,
-    pub version: String,
-}
 
 fn selection_path() -> Result<PathBuf, EnvarlyError> {
     Ok(whichcraft_data_dir()?.join("selection.json"))

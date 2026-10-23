@@ -84,7 +84,7 @@ impl ProcessRunner for WinProcessRunner {
 mod tests {
     use super::*;
     use crate::whichcraft::domain::ToolKind;
-    use crate::whichcraft::persistence::TerminalKind;
+    use crate::whichcraft::domain::settings::TerminalKind;
     use crate::whichcraft::services::terminal::shell_check;
 
     /// Reads the registry and runs hidden shells (no writes). `cargo test contract_shell -- --ignored --nocapture`

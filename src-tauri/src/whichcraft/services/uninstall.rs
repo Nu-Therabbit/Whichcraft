@@ -8,12 +8,14 @@
 
 use std::path::{Path, PathBuf};
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::ports::elevator::Elevator;
+use crate::whichcraft::ports::store::Store;
+use crate::whichcraft::domain::uninstall::UninstallRecord;
 use crate::whichcraft::ports::installer_catalog::{CatalogEntry};
 use crate::whichcraft::domain::{InstallerKind};
 use crate::whichcraft::ports::uninstaller::{RunOutcome, Uninstaller};
@@ -22,7 +24,6 @@ use crate::whichcraft::domain::profiles::ToolProfile;
 use crate::whichcraft::services::tool_apply::apply_tool_plan_elevated;
 use crate::whichcraft::domain::ToolInstallationView;
 use crate::whichcraft::domain::ToolApplyPlan;
-use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::tools::probe_tool_root;
 use crate::whichcraft::domain::uninstall::{product_code, split_command_line, UninstallMethod, UninstallOutcome};
 
@@ -169,6 +170,7 @@ pub fn uninstall<B: EnvBackend>(
     plan: &UninstallPlan,
     replacement: Option<&ToolApplyPlan>,
     backend: &B,
+    store: &dyn Store,
     elevator: &dyn Elevator,
     usage: &dyn UsageProbe,
     uninstaller: &dyn Uninstaller,
@@ -193,7 +195,7 @@ pub fn uninstall<B: EnvBackend>(
         let Some(switch) = replacement else {
             return Ok(UninstallOutcome::Blocked { reason: "choose a replacement first".into() });
         };
-        let result = apply_tool_plan_elevated(backend, elevator, switch)?;
+        let result = apply_tool_plan_elevated(backend, store, elevator, switch)?;
         if result.stale {
             return Ok(UninstallOutcome::Blocked {
                 reason: "the environment changed; review the switch again".into(),
@@ -212,14 +214,14 @@ pub fn uninstall<B: EnvBackend>(
         outcome: None,
         error: None,
     };
-    save_uninstall_record(&record)?;
+    store.save_uninstall_record(&record)?;
     let result = run_method(plan, uninstaller);
     record.finished_at = Some(chrono::Utc::now().to_rfc3339());
     match &result {
         Ok(outcome) => record.outcome = Some(outcome.clone()),
         Err(e) => record.error = Some(e.to_string()),
     }
-    save_uninstall_record(&record)?;
+    store.save_uninstall_record(&record)?;
     result
 }
 
@@ -243,45 +245,15 @@ fn run_method(plan: &UninstallPlan, uninstaller: &dyn Uninstaller) -> Result<Uni
     Ok(UninstallOutcome::Removed)
 }
 
-/// The journal entry of one uninstall. Kept apart from env applies (in `journal/uninstalls`), so
-/// Undo and recovery, which read every apply in `journal`, never mistake it for one.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct UninstallRecord {
-    pub id: String,
-    pub started_at: String,
-    /// `None` while the uninstaller runs; still `None` afterwards means the app did not see it end.
-    pub finished_at: Option<String>,
-    pub installation: ToolInstallation,
-    pub method: UninstallMethod,
-    /// The journal of the switch applied first, when the installation was selected or effective.
-    pub switch_plan_id: Option<String>,
-    pub outcome: Option<UninstallOutcome>,
-    pub error: Option<String>,
-}
-
-fn uninstall_dir() -> Result<PathBuf, EnvarlyError> {
-    let dir = crate::whichcraft::persistence::whichcraft_data_dir()?.join("journal").join("uninstalls");
-    std::fs::create_dir_all(&dir).map_err(|e| EnvarlyError::Snapshot(format!("create uninstall journal dir: {e}")))?;
-    Ok(dir)
-}
-
-fn save_uninstall_record(record: &UninstallRecord) -> Result<(), EnvarlyError> {
-    let text = serde_json::to_string_pretty(record)
-        .map_err(|e| EnvarlyError::Snapshot(format!("serialize uninstall record: {e}")))?;
-    std::fs::write(uninstall_dir()?.join(format!("{}.json", record.id)), text)
-        .map_err(|e| EnvarlyError::Snapshot(format!("write uninstall record: {e}")))
-}
-
 /// Uninstalls that started but were never seen to end (the app closed or crashed meanwhile);
 /// the UI asks the user to rescan, since only the disk says what happened.
-pub fn unfinished_uninstalls() -> Result<Vec<UninstallRecord>, EnvarlyError> {
-    Ok(load_uninstall_records()?.into_iter().filter(|r| r.finished_at.is_none()).collect())
+pub fn unfinished_uninstalls(store: &dyn Store) -> Result<Vec<UninstallRecord>, EnvarlyError> {
+    Ok(store.uninstall_records()?.into_iter().filter(|r| r.finished_at.is_none()).collect())
 }
 
 /// Marks an unfinished uninstall as seen, with what a rescan found.
-pub fn dismiss_unfinished_uninstall(id: &str) -> Result<(), EnvarlyError> {
-    let Some(mut record) = load_uninstall_records()?.into_iter().find(|r| r.id == id) else {
+pub fn dismiss_unfinished_uninstall(store: &dyn Store, id: &str) -> Result<(), EnvarlyError> {
+    let Some(mut record) = store.uninstall_records()?.into_iter().find(|r| r.id == id) else {
         return Ok(());
     };
     let root = &record.installation.root;
@@ -291,23 +263,13 @@ pub fn dismiss_unfinished_uninstall(id: &str) -> Result<(), EnvarlyError> {
     } else {
         UninstallOutcome::Removed
     });
-    save_uninstall_record(&record)
-}
-
-/// Every recorded uninstall, newest first.
-pub fn load_uninstall_records() -> Result<Vec<UninstallRecord>, EnvarlyError> {
-    let mut records: Vec<UninstallRecord> = std::fs::read_dir(uninstall_dir()?)
-        .map_err(|e| EnvarlyError::Snapshot(format!("read uninstall journal: {e}")))?
-        .flatten()
-        .filter_map(|e| serde_json::from_str(&std::fs::read_to_string(e.path()).ok()?).ok())
-        .collect();
-    records.sort_by(|a, b| b.started_at.cmp(&a.started_at));
-    Ok(records)
+    store.save_uninstall_record(&record)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::whichcraft::fake::MemStore;
     use crate::env_store::MemBackend;
     use crate::whichcraft::fake::{FakeUninstaller, FakeUsageProbe};
     use crate::whichcraft::persistence::use_test_data_dir;
@@ -404,13 +366,14 @@ mod tests {
 
     #[test]
     fn a_plain_jdk_folder_goes_to_the_recycle_bin() {
+        let store = MemStore::default();
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
         let v = jdk(dir.path(), "jdk-zip", "21.0.1");
         let plan = plan_uninstall(inputs(&v, &[v.clone()], None), &FakeUsageProbe::default()).unwrap();
         assert_eq!(plan.method, UninstallMethod::RecycleFolder);
         let un = FakeUninstaller::default();
-        let out = uninstall(&plan, None, &MemBackend::new(), &FakeElevator::new(&MemBackend::new(), vec![]), &FakeUsageProbe::default(), &un).unwrap();
+        let out = uninstall(&plan, None, &MemBackend::new(), &store, &FakeElevator::new(&MemBackend::new(), vec![]), &FakeUsageProbe::default(), &un).unwrap();
         assert_eq!(out, UninstallOutcome::Removed);
         assert_eq!(*un.recycled.lock().unwrap(), vec![v.installation.root.clone()]);
     }
@@ -455,13 +418,14 @@ mod tests {
 
     #[test]
     fn an_installation_in_use_is_never_removed() {
+        let store = MemStore::default();
         let dir = tempfile::tempdir().unwrap();
         let v = jdk(dir.path(), "jdk-zip", "21.0.1");
         let busy = FakeUsageProbe { report: UsageReport { processes: vec!["OpenJDK Platform binary".into()], folder_locked: false } };
         let plan = plan_uninstall(inputs(&v, &[v.clone()], None), &busy).unwrap();
         assert!(plan.gradle_hint);
         let un = FakeUninstaller::default();
-        let out = uninstall(&plan, None, &MemBackend::new(), &FakeElevator::new(&MemBackend::new(), vec![]), &busy, &un).unwrap();
+        let out = uninstall(&plan, None, &MemBackend::new(), &store, &FakeElevator::new(&MemBackend::new(), vec![]), &busy, &un).unwrap();
         assert!(matches!(out, UninstallOutcome::Blocked { reason } if reason.contains("OpenJDK")));
         assert!(un.recycled.lock().unwrap().is_empty());
         assert!(v.installation.root.exists());
@@ -469,16 +433,18 @@ mod tests {
 
     #[test]
     fn a_terminal_inside_the_folder_blocks_removal() {
+        let store = MemStore::default();
         let dir = tempfile::tempdir().unwrap();
         let v = jdk(dir.path(), "jdk-zip", "21.0.1");
         let locked = FakeUsageProbe { report: UsageReport { processes: vec![], folder_locked: true } };
         let plan = plan_uninstall(inputs(&v, &[v.clone()], None), &FakeUsageProbe::default()).unwrap();
-        let out = uninstall(&plan, None, &MemBackend::new(), &FakeElevator::new(&MemBackend::new(), vec![]), &locked, &FakeUninstaller::default()).unwrap();
+        let out = uninstall(&plan, None, &MemBackend::new(), &store, &FakeElevator::new(&MemBackend::new(), vec![]), &locked, &FakeUninstaller::default()).unwrap();
         assert!(matches!(out, UninstallOutcome::Blocked { reason } if reason.contains("folder open")));
     }
 
     #[test]
     fn the_selected_jdk_is_switched_away_before_it_is_removed() {
+        let store = MemStore::default();
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
         let mut old = jdk(dir.path(), "jdk17", "17.0.20.1");
@@ -493,18 +459,19 @@ mod tests {
         let elevator = FakeElevator::new(&backend, vec![]);
         let un = FakeUninstaller::default();
         // Without a replacement nothing happens.
-        let blocked = uninstall(&plan, None, &backend, &elevator, &FakeUsageProbe::default(), &un).unwrap();
+        let blocked = uninstall(&plan, None, &backend, &store, &elevator, &FakeUsageProbe::default(), &un).unwrap();
         assert!(matches!(blocked, UninstallOutcome::Blocked { .. }));
         assert!(old.installation.root.exists());
 
         let switch = create_tool_plan(&backend, &new.installation).unwrap();
-        let out = uninstall(&plan, Some(&switch), &backend, &elevator, &FakeUsageProbe::default(), &un).unwrap();
+        let out = uninstall(&plan, Some(&switch), &backend, &store, &elevator, &FakeUsageProbe::default(), &un).unwrap();
         assert_eq!(out, UninstallOutcome::Removed);
         assert_eq!(backend.read_user().unwrap()["JAVA_HOME"].value, new.installation.root.to_string_lossy());
     }
 
     #[test]
     fn each_uninstall_is_journaled_and_undo_still_reverts_the_switch() {
+        let store = MemStore::default();
         let dir = tempfile::tempdir().unwrap();
         let mut old = jdk(dir.path(), "jdk17", "17.0.20.1");
         old.selected = true;
@@ -514,10 +481,10 @@ mod tests {
         let plan = plan_uninstall(inputs(&old, &all, None), &FakeUsageProbe::default()).unwrap();
         let switch = create_tool_plan(&backend, &new.installation).unwrap();
         let elevator = FakeElevator::new(&backend, vec![]);
-        let out = uninstall(&plan, Some(&switch), &backend, &elevator, &FakeUsageProbe::default(), &FakeUninstaller::default()).unwrap();
+        let out = uninstall(&plan, Some(&switch), &backend, &store, &elevator, &FakeUsageProbe::default(), &FakeUninstaller::default()).unwrap();
         assert_eq!(out, UninstallOutcome::Removed);
 
-        let records = load_uninstall_records().unwrap();
+        let records = store.uninstall_records().unwrap();
         assert_eq!(records.len(), 1);
         let r = &records[0];
         assert_eq!(r.installation.root, old.installation.root);
@@ -526,13 +493,14 @@ mod tests {
         assert!(r.finished_at.is_some());
 
         // The uninstall record is not an env apply: Undo goes back to the switch.
-        let undo = crate::whichcraft::services::undo::undo_last_apply(&backend, Some(&elevator)).unwrap();
+        let undo = crate::whichcraft::services::undo::undo_last_apply(&backend, &store, Some(&elevator)).unwrap();
         assert!(undo.conflicts.is_empty());
         assert!(!backend.read_user().unwrap().contains_key("JAVA_HOME"));
     }
 
     #[test]
     fn an_uninstall_cut_short_is_reported_until_dismissed() {
+        let store = MemStore::default();
         let dir = tempfile::tempdir().unwrap();
         let v = jdk(dir.path(), "jdk17", "17.0.20.1");
         let record = UninstallRecord {
@@ -545,12 +513,12 @@ mod tests {
             outcome: None,
             error: None,
         };
-        save_uninstall_record(&record).unwrap();
-        assert_eq!(unfinished_uninstalls().unwrap(), vec![record]);
-        dismiss_unfinished_uninstall("uninstall-x").unwrap();
-        assert!(unfinished_uninstalls().unwrap().is_empty());
+        store.save_uninstall_record(&record).unwrap();
+        assert_eq!(unfinished_uninstalls(&store).unwrap(), vec![record]);
+        dismiss_unfinished_uninstall(&store, "uninstall-x").unwrap();
+        assert!(unfinished_uninstalls(&store).unwrap().is_empty());
         assert_eq!(
-            load_uninstall_records().unwrap()[0].outcome,
+            store.uninstall_records().unwrap()[0].outcome,
             Some(UninstallOutcome::Incomplete { remaining: v.installation.root.clone() }),
             "the folder is still there, so the rescan says incomplete"
         );
@@ -558,6 +526,7 @@ mod tests {
 
     #[test]
     fn a_failing_uninstaller_is_journaled_with_its_error() {
+        let store = MemStore::default();
         struct Broken;
         impl Uninstaller for Broken {
             fn run_uninstaller(&self, _: &str, _: &[String]) -> Result<RunOutcome, EnvarlyError> {
@@ -574,14 +543,15 @@ mod tests {
         let v = jdk(dir.path(), "jdk17", "17.0.20.1");
         let plan = plan_uninstall(inputs(&v, &[v.clone()], Some(msi_entry(&v.installation.root))), &FakeUsageProbe::default()).unwrap();
         let backend = MemBackend::new();
-        assert!(uninstall(&plan, None, &backend, &FakeElevator::new(&backend, vec![]), &FakeUsageProbe::default(), &Broken).is_err());
-        let r = &load_uninstall_records().unwrap()[0];
+        assert!(uninstall(&plan, None, &backend, &store, &FakeElevator::new(&backend, vec![]), &FakeUsageProbe::default(), &Broken).is_err());
+        let r = &store.uninstall_records().unwrap()[0];
         assert_eq!(r.outcome, None);
         assert!(r.error.as_deref().unwrap().contains("msiexec"));
     }
 
     #[test]
     fn a_cancelled_uninstaller_keeps_the_switch_and_the_installation() {
+        let store = MemStore::default();
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
         let mut old = jdk(dir.path(), "jdk17", "17.0.20.1");
@@ -592,7 +562,7 @@ mod tests {
         let plan = plan_uninstall(inputs(&old, &all, Some(msi_entry(&old.installation.root))), &FakeUsageProbe::default()).unwrap();
         let switch = create_tool_plan(&backend, &new.installation).unwrap();
         let un = FakeUninstaller { outcome: RunOutcome::Cancelled, ..Default::default() };
-        let out = uninstall(&plan, Some(&switch), &backend, &FakeElevator::new(&backend, vec![]), &FakeUsageProbe::default(), &un).unwrap();
+        let out = uninstall(&plan, Some(&switch), &backend, &store, &FakeElevator::new(&backend, vec![]), &FakeUsageProbe::default(), &un).unwrap();
         assert_eq!(out, UninstallOutcome::Cancelled);
         assert!(old.installation.root.exists());
         assert_eq!(backend.read_user().unwrap()["JAVA_HOME"].value, new.installation.root.to_string_lossy());
@@ -600,17 +570,19 @@ mod tests {
 
     #[test]
     fn a_folder_left_behind_by_the_uninstaller_is_reported() {
+        let store = MemStore::default();
         let dir = tempfile::tempdir().unwrap();
         let v = jdk(dir.path(), "jdk17", "17.0.20.1");
         let plan = plan_uninstall(inputs(&v, &[v.clone()], Some(msi_entry(&v.installation.root))), &FakeUsageProbe::default()).unwrap();
         let un = FakeUninstaller { leaves_folder: true, ..Default::default() };
-        let out = uninstall(&plan, None, &MemBackend::new(), &FakeElevator::new(&MemBackend::new(), vec![]), &FakeUsageProbe::default(), &un).unwrap();
+        let out = uninstall(&plan, None, &MemBackend::new(), &store, &FakeElevator::new(&MemBackend::new(), vec![]), &FakeUsageProbe::default(), &un).unwrap();
         assert_eq!(out, UninstallOutcome::Incomplete { remaining: v.installation.root.clone() });
         assert_eq!(un.ran.lock().unwrap()[0], "msiexec.exe /x {E8C508F2-9798-43CA-84B4-B25D1274380B}");
     }
 
     #[test]
     fn managed_installs_are_removed_with_mise_in_their_own_store() {
+        let store = MemStore::default();
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
         let store_a = dir.path().join("store-a");
@@ -630,7 +602,7 @@ mod tests {
         assert_eq!(plan.method, UninstallMethod::Managed { store: store_a.clone(), mise_version: "temurin-21.0.12+101.0.LTS".into() });
         let un = FakeUninstaller::default();
         *un.removes.lock().unwrap() = Some(root.clone());
-        let out = uninstall(&plan, None, &MemBackend::new(), &FakeElevator::new(&MemBackend::new(), vec![]), &FakeUsageProbe::default(), &un).unwrap();
+        let out = uninstall(&plan, None, &MemBackend::new(), &store, &FakeElevator::new(&MemBackend::new(), vec![]), &FakeUsageProbe::default(), &un).unwrap();
         assert_eq!(out, UninstallOutcome::Removed);
         assert_eq!(un.managed.lock().unwrap()[0].0, store_a);
     }
