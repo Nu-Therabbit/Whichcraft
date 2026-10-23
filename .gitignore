@@ -1,0 +1,11 @@
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Spike artifacts that are large or reproducible (see each spike's RESULT.md)
+spikes/03-mise/bin-extract/
+spikes/03-mise/stores/
+spikes/04-envarly/envarly/
+spikes/02-terminal/out/
+
+# Full dumps of this machine's User/System environment taken before registry tests
+spikes/*/backup/
