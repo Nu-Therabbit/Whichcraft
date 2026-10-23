@@ -309,6 +309,9 @@ export default function App() {
           android={developerTools.android}
           msvc={developerTools.msvc}
           onLoadSdks={() => void developerTools.loadSdks()}
+          shellCheck={developerTools.shellCheck}
+          onShellCheck={() => void developerTools.runShellCheck()}
+          onOpenTerminal={() => void developerTools.openTerminal()}
         />
 
         <AppModals

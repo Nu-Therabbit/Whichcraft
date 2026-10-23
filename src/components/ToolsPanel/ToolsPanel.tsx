@@ -5,6 +5,7 @@ import type {
   MsvcInventory,
   PythonSupplementalView,
   RecoveryView,
+  ShellCheck,
   ToolApplyPlan,
   ToolInstallationView,
   ToolKind,
@@ -14,6 +15,7 @@ import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { RecoveryBanner } from "./RecoveryBanner";
+import { ShellCheckResult } from "./ShellCheckResult";
 import { PythonLauncherInfo, SdkInventory } from "./SupplementalInfo";
 import { ToolsSettings } from "./ToolsSettings";
 
@@ -44,6 +46,9 @@ interface Props {
   android?: AndroidInventory | null;
   msvc?: MsvcInventory | null;
   onLoadSdks?: () => void;
+  shellCheck?: ShellCheck | null;
+  onShellCheck?: () => void;
+  onOpenTerminal?: () => void;
 }
 
 export function ToolsPanel({
@@ -71,6 +76,9 @@ export function ToolsPanel({
   android,
   msvc,
   onLoadSdks,
+  shellCheck,
+  onShellCheck,
+  onOpenTerminal,
 }: Props) {
   const { t } = useI18n();
   const [showSettings, setShowSettings] = useState(false);
@@ -142,6 +150,16 @@ export function ToolsPanel({
           <Button variant="ghost" size="sm" onClick={onUndo} disabled={applyBusy}>
             {t("tools.undo_last")}
           </Button>
+          {onShellCheck && (
+            <Button variant="ghost" size="sm" onClick={onShellCheck} disabled={loading}>
+              {t("tools.check_in_shell")}
+            </Button>
+          )}
+          {onOpenTerminal && (
+            <Button variant="ghost" size="sm" onClick={onOpenTerminal}>
+              {t("tools.open_terminal")}
+            </Button>
+          )}
           {settings && onSaveSettings && (
             <Button variant="ghost" size="sm" onClick={() => setShowSettings((v) => !v)}>
               {showSettings ? t("tools.hide_settings") : t("tools.show_settings")}
@@ -188,6 +206,8 @@ export function ToolsPanel({
             ))
           )}
         </div>
+
+        {shellCheck && shellCheck.tool === tool && <ShellCheckResult check={shellCheck} />}
 
         {tool === "python" && pythonInfo && <PythonLauncherInfo info={pythonInfo} />}
 

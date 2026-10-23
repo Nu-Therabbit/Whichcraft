@@ -298,6 +298,15 @@
       "managed_by_whichcraft": "Installed by Whichcraft"
     },
     "sdks_tab": "Android & MSVC",
+    "open_terminal": "Open terminal",
+    "check_in_shell": "Check in shell",
+    "shell_check": {
+      "matches": "{{shell}} runs the effective installation.",
+      "differs": "{{shell}} runs something else after loading its profile, which probably changes PATH.",
+      "effective": "Effective (registry):",
+      "in_shell": "In {{shell}}:",
+      "none": "not found"
+    },
     "python": {
       "title": "py launcher and Store alias",
       "no_launcher": "The py launcher is not installed.",

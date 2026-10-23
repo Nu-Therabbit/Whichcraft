@@ -150,6 +150,35 @@ pub fn whichcraft_undo_last_apply() -> Result<UndoResult, EnvarlyError> {
     undo_last_apply(&WinregBackend, Some(&WinElevator))
 }
 
+fn home_dir() -> PathBuf {
+    std::env::var_os("USERPROFILE").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("C:\\"))
+}
+
+/// Opens the configured terminal with the environment a new process gets from the registry.
+#[tauri::command]
+pub fn whichcraft_open_terminal() -> Result<(), EnvarlyError> {
+    use crate::whichcraft::adapters::win::process::{fresh_environment, WinProcessRunner};
+    let kind = load_settings()?.terminal;
+    crate::whichcraft::services::terminal::open_terminal(&WinProcessRunner, kind, &home_dir(), fresh_environment()?)
+}
+
+/// What the configured shell runs for `tool` after loading its profile, next to the effective one.
+#[tauri::command]
+pub fn whichcraft_shell_check(
+    tool: ToolKind,
+) -> Result<crate::whichcraft::services::terminal::ShellCheck, EnvarlyError> {
+    use crate::whichcraft::adapters::win::process::{fresh_environment, WinProcessRunner};
+    let kind = load_settings()?.terminal;
+    crate::whichcraft::services::terminal::shell_check(
+        &WinregBackend,
+        &WinProcessRunner,
+        kind,
+        tool,
+        fresh_environment()?,
+        &home_dir(),
+    )
+}
+
 /// An apply that never finished (the app stopped mid-way), with each change's real state.
 #[tauri::command]
 pub fn whichcraft_recovery_status() -> Result<Option<RecoveryView>, EnvarlyError> {

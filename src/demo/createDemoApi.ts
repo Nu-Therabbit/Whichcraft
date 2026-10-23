@@ -269,6 +269,16 @@ export function createDemoApi(
       throw new Error("Developer tools are unavailable in demo mode");
     },
     undoLastWhichcraftApply: async () => ({ conflicts: [], restored: 0 }),
+    openTerminal: async () => {
+      throw new Error("Opening a terminal is unavailable in demo mode");
+    },
+    shellCheck: async (tool) => ({
+      tool,
+      shell: "windows_terminal",
+      effectivePath: null,
+      shellPath: null,
+      matches: true,
+    }),
     getPythonLauncherInfo: async () => ({ launcherLines: [], launcherInstalled: false, storeStub: null, note: "" }),
     getAndroidInventory: async () => ({
       sdkRoot: null,

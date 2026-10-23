@@ -72,6 +72,8 @@ pub fn run() {
             commands::whichcraft::whichcraft_plan_java,
             commands::whichcraft::whichcraft_apply_java_plan,
             commands::whichcraft::whichcraft_undo_last_apply,
+            commands::whichcraft::whichcraft_open_terminal,
+            commands::whichcraft::whichcraft_shell_check,
             commands::whichcraft::whichcraft_recovery_status,
             commands::whichcraft::whichcraft_resume_apply,
             commands::whichcraft::whichcraft_roll_back_apply,

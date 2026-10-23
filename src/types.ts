@@ -204,6 +204,15 @@ export interface MsvcInventory {
   windowsSdks: string[];
 }
 
+/** What the configured shell runs after its profile, next to what the registry makes effective. */
+export interface ShellCheck {
+  tool: ToolKind;
+  shell: TerminalKind;
+  effectivePath: string | null;
+  shellPath: string | null;
+  matches: boolean;
+}
+
 export type ChangeState = "written" | "notWritten" | "changedElsewhere";
 
 export interface RecoveryItem {

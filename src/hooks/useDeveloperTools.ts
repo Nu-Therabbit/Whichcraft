@@ -6,6 +6,7 @@ import type {
   MsvcInventory,
   PythonSupplementalView,
   RecoveryView,
+  ShellCheck,
   ToolApplyPlan,
   ToolInstallationView,
   ToolKind,
@@ -152,6 +153,27 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     [refresh],
   );
 
+  const [shellCheck, setShellCheck] = useState<ShellCheck | null>(null);
+
+  const runShellCheck = useCallback(async () => {
+    setError(null);
+    setShellCheck(null);
+    try {
+      setShellCheck(await api.shellCheck(tool));
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [tool]);
+
+  const openTerminal = useCallback(async () => {
+    setError(null);
+    try {
+      await api.openTerminal();
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
+
   const loadSdks = useCallback(async () => {
     setError(null);
     try {
@@ -170,6 +192,9 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     android,
     msvc,
     loadSdks,
+    shellCheck,
+    runShellCheck,
+    openTerminal,
     setTool,
     installations,
     loading,
