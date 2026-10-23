@@ -213,7 +213,7 @@ impl Uninstaller for WinUninstaller {
     }
 
     fn uninstall_managed(&self, store: &Path, tool: ToolKind, mise_version: &str) -> Result<(), EnvarlyError> {
-        MiseToolManager::with_runner(ProcessMiseRunner::for_store(store)).uninstall(tool, mise_version)
+        MiseToolManager::with_runner(ProcessMiseRunner::for_maintenance(store)).uninstall(tool, mise_version)
     }
 }
 

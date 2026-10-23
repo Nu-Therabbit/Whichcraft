@@ -13,6 +13,7 @@ import type {
   ToolKind,
   UninstallOutcome,
   UninstallPlan,
+  UpdateCandidate,
   WhichcraftSettings,
 } from "../../types";
 import { Badge } from "../ui/Badge";
@@ -24,6 +25,7 @@ import { ShellCheckResult } from "./ShellCheckResult";
 import { PythonLauncherInfo, SdkInventory } from "./SupplementalInfo";
 import { ToolsSettings } from "./ToolsSettings";
 import { UninstallSection } from "./UninstallSection";
+import { UpdateList } from "./UpdateList";
 
 const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
 
@@ -65,6 +67,13 @@ interface Props {
     onChoose: (version: string) => void;
     onInstall: () => void;
   };
+  updates?: {
+    list: UpdateCandidate[] | null;
+    busy: boolean;
+    awaitingSwitch: boolean;
+    onCheck: () => void;
+    onUpdate: (candidate: UpdateCandidate) => void;
+  };
   uninstall?: {
     plan: UninstallPlan | null;
     outcome: UninstallOutcome | null;
@@ -105,6 +114,7 @@ export function ToolsPanel({
   onShellCheck,
   onOpenTerminal,
   install,
+  updates,
   uninstall,
 }: Props) {
   const { t } = useI18n();
@@ -205,6 +215,11 @@ export function ToolsPanel({
               {t("tools.install_version")}
             </Button>
           )}
+          {canInstall && updates && (
+            <Button variant="ghost" size="sm" onClick={updates.onCheck} disabled={updates.busy}>
+              {t("tools.check_updates")}
+            </Button>
+          )}
           {settings && onSaveSettings && (
             <Button variant="ghost" size="sm" onClick={() => setShowSettings((v) => !v)}>
               {showSettings ? t("tools.hide_settings") : t("tools.show_settings")}
@@ -278,6 +293,15 @@ export function ToolsPanel({
             onChoose={install.onChoose}
             onConfirmStore={(store) => onSaveSettings({ ...settings, installStore: store, installStoreConfirmed: true })}
             onInstall={install.onInstall}
+          />
+        )}
+
+        {canInstall && updates?.list && (
+          <UpdateList
+            updates={updates.list}
+            busy={updates.busy}
+            awaitingSwitch={updates.awaitingSwitch}
+            onUpdate={updates.onUpdate}
           />
         )}
 

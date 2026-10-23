@@ -104,7 +104,10 @@ export function InstallSection({
           ) : (
             <p className="text-xs text-muted">{t("tools.install.into", { store: settings.installStore })}</p>
           )}
-          <Button variant="primary" disabled={busy || !storeConfirmed} onClick={onInstall}>
+          {miseStatus?.fetching && (
+            <p className="text-xs text-warning">{t("tools.install.wait_for_mise", { version: miseStatus.version })}</p>
+          )}
+          <Button variant="primary" disabled={busy || !storeConfirmed || !!miseStatus?.fetching} onClick={onInstall}>
             {busy ? t("tools.install.installing") : t("tools.install.install")}
           </Button>
         </div>

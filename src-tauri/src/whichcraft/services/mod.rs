@@ -10,6 +10,7 @@ pub mod tool_apply;
 pub mod tool_inventory;
 pub mod tool_plan;
 pub mod undo;
+pub mod update;
 pub mod uninstall;
 
 use std::collections::HashMap;

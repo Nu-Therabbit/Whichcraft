@@ -19,7 +19,7 @@ const base = {
   ],
   loading: false,
   busy: false,
-  miseStatus: { version: "2026.10.17", present: false, downloadBytes: 81_189_867 },
+  miseStatus: { version: "2026.10.17", present: false, downloadBytes: 81_189_867, oldVersions: [], fetching: false },
   settings,
   onChoose: vi.fn(),
   onConfirmStore: vi.fn(),
@@ -27,6 +27,20 @@ const base = {
 };
 
 describe("InstallSection", () => {
+  it("waits for the new mise while it downloads in the background", () => {
+    const fetching = { ...base.miseStatus, fetching: true, oldVersions: ["2026.9.2"] };
+    render(
+      <InstallSection
+        {...base}
+        miseStatus={fetching}
+        settings={{ ...settings, installStoreConfirmed: true }}
+        chosen={{ version: "22.23.4", downloadBytes: null }}
+      />,
+    );
+    expect(screen.getByText(/being downloaded/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Install" })).toBeDisabled();
+  });
+
   it("lists the newest versions first and reports the choice", async () => {
     const onChoose = vi.fn();
     render(<InstallSection {...base} chosen={null} onChoose={onChoose} />);

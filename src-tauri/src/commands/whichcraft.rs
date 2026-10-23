@@ -28,6 +28,7 @@ use crate::whichcraft::services::recovery::{
 use crate::whichcraft::services::tool_inventory::{list_tool_installations, ToolInstallationView};
 use crate::whichcraft::services::tool_plan::ToolApplyPlan;
 use crate::whichcraft::services::undo::{undo_last_apply, UndoResult};
+use crate::whichcraft::services::update::{install_and_plan, update_candidates, UpdateCandidate, UpdateResult};
 use crate::whichcraft::services::uninstall::{
     plan_uninstall, protected_folders, uninstall, PlanInputs, UninstallOutcome, UninstallPlan,
 };
@@ -404,6 +405,34 @@ pub async fn whichcraft_uninstall(
         uninstall(&plan, replacement.as_ref(), &WinregBackend, &WinElevator, &WinUsageProbe, &WinUninstaller)
     })
     .await
+}
+
+/// Newer releases in the same line as the installations of `tool` (ticket 16).
+#[tauri::command]
+pub async fn whichcraft_update_candidates(tool: ToolKind) -> Result<Vec<UpdateCandidate>, EnvarlyError> {
+    off_main(move || {
+        let views = list_tool_installations(&WinregBackend, tool, None)?;
+        let remote = MiseToolManager::new()?.list_remote(tool)?;
+        Ok(update_candidates(tool, &views, &remote))
+    })
+    .await
+}
+
+/// Installs the newer release beside the old one and returns the plan to switch to it.
+#[tauri::command]
+pub async fn whichcraft_update_installation(tool: ToolKind, version: String) -> Result<UpdateResult, EnvarlyError> {
+    off_main(move || {
+        let mgr = MiseToolManager::new()?;
+        install_and_plan(&WinregBackend, tool, &version, |tool, version| mgr.install(tool, version))
+    })
+    .await
+}
+
+/// Started once when the app opens: fetches a newly pinned mise in the background when an older
+/// one is on disk, then removes the older one (ticket 17).
+#[tauri::command]
+pub async fn whichcraft_prepare_mise() -> Result<bool, EnvarlyError> {
+    off_main(crate::whichcraft::mise::manager::prepare_mise).await
 }
 
 /// Opens a folder in Explorer, e.g. what an uninstaller left behind.

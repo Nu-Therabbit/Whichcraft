@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import type {
   AndroidInventory,
@@ -15,6 +15,7 @@ import type {
   UndoResult,
   UninstallOutcome,
   UninstallPlan,
+  UpdateCandidate,
   WhichcraftSettings,
 } from "../types";
 
@@ -277,6 +278,66 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     }
   }, []);
 
+  const [updates, setUpdates] = useState<UpdateCandidate[] | null>(null);
+  const [updateBusy, setUpdateBusy] = useState(false);
+  /** The installation an update replaces; offered for uninstall once the switch is applied. */
+  const [replacedRoot, setReplacedRoot] = useState<string | null>(null);
+
+  const checkUpdates = useCallback(async () => {
+    setError(null);
+    setUpdateBusy(true);
+    try {
+      setUpdates(await api.updateCandidates(tool));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setUpdateBusy(false);
+    }
+  }, [tool]);
+
+  const updateTo = useCallback(
+    async (candidate: UpdateCandidate) => {
+      setError(null);
+      setUpdateBusy(true);
+      try {
+        const result = await api.updateInstallation(tool, candidate.latest);
+        setUpdates((list) => list?.filter((u) => u.root !== candidate.root) ?? null);
+        setReplacedRoot(candidate.root);
+        setPlan(result.plan);
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setUpdateBusy(false);
+      }
+    },
+    [tool, refresh],
+  );
+
+  /** Applies the plan; after an update's switch, goes on to offer uninstalling the old one. */
+  const applyPlanThenOffer = useCallback(async () => {
+    const result = await applyPlan();
+    if (result && !result.stale && !result.needsElevation && replacedRoot) {
+      const old = replacedRoot;
+      setReplacedRoot(null);
+      await planUninstall(old);
+    }
+    return result;
+  }, [applyPlan, replacedRoot, planUninstall]);
+
+  // The list belongs to the tool it was checked for.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clearing is the point when the tool changes
+  useEffect(() => {
+    setUpdates(null);
+  }, [tool]);
+
+  // A newly pinned mise is fetched in the background after an app update (ticket 17).
+  useEffect(() => {
+    api.prepareMise().catch(() => {
+      // Offline: the old mise keeps working for uninstall and listing; installing retries the download.
+    });
+  }, []);
+
   const loadSdks = useCallback(async () => {
     setError(null);
     try {
@@ -329,9 +390,17 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     rollBackRecovery: () => finishRecovery("rollBack"),
     refresh,
     buildPlan,
-    applyPlan,
+    applyPlan: applyPlanThenOffer,
+    updates,
+    updateBusy,
+    replacedRoot,
+    checkUpdates,
+    updateTo,
     undoLast,
-    clearPlan: () => setPlan(null),
+    clearPlan: () => {
+      setPlan(null);
+      setReplacedRoot(null);
+    },
     clearUndoResult: () => setUndoResult(null),
   };
 }

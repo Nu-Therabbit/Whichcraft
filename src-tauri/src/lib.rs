@@ -100,6 +100,9 @@ pub fn run() {
             commands::whichcraft::whichcraft_plan_uninstall,
             commands::whichcraft::whichcraft_uninstall,
             commands::whichcraft::whichcraft_open_folder,
+            commands::whichcraft::whichcraft_update_candidates,
+            commands::whichcraft::whichcraft_update_installation,
+            commands::whichcraft::whichcraft_prepare_mise,
         ])
         .build(tauri::generate_context!())
         .expect("error while running whichcraft")

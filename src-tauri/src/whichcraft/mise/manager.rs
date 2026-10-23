@@ -28,6 +28,8 @@ pub trait MiseRunner {
 /// Spawns the pinned mise.exe with every mise dir pointed into the active install store.
 pub struct ProcessMiseRunner {
     store: PathBuf,
+    /// Uninstalling and listing may run with an older mise still on disk (I-14, I-15).
+    maintenance: bool,
 }
 
 impl ProcessMiseRunner {
@@ -40,6 +42,16 @@ impl ProcessMiseRunner {
     pub fn for_store(install_store: &Path) -> Self {
         Self {
             store: install_store.join("_mise"),
+            maintenance: false,
+        }
+    }
+
+    /// Like `for_store`, but uses the mise an earlier Whichcraft pinned when the current pin is
+    /// not downloaded yet, so removing works offline right after an app update.
+    pub fn for_maintenance(install_store: &Path) -> Self {
+        Self {
+            maintenance: true,
+            ..Self::for_store(install_store)
         }
     }
 }
@@ -60,7 +72,7 @@ pub fn mise_installs_dir(install_store: &Path, tool: ToolKind) -> Option<PathBuf
 
 impl MiseRunner for ProcessMiseRunner {
     fn run(&self, args: &[&str]) -> Result<MiseOutput, EnvarlyError> {
-        let exe = ensure_mise()?;
+        let exe = if self.maintenance { maintenance_mise()? } else { ensure_mise()? };
         let mut cmd = Command::new(&exe);
         for (k, v) in mise_env(&self.store) {
             cmd.env(k, v);
@@ -264,14 +276,87 @@ pub struct MiseStatus {
     pub version: String,
     pub present: bool,
     pub download_bytes: u64,
+    /// Versions an earlier Whichcraft pinned that are still on disk, newest first.
+    pub old_versions: Vec<String>,
+    /// The pinned mise is being downloaded in the background; installs wait for it.
+    pub fetching: bool,
 }
 
 pub fn mise_status() -> Result<MiseStatus, EnvarlyError> {
     Ok(MiseStatus {
-        version: MISE_VERSION.trim_start_matches('v').to_string(),
+        version: pinned_version().to_string(),
         present: mise_store_dir()?.join("mise.exe").is_file(),
         download_bytes: pins::MISE_WINDOWS_X64_ZIP_BYTES,
+        old_versions: older_mise(&mise_root()?, pinned_version()).into_iter().map(|(v, _)| v).collect(),
+        fetching: FETCHING.load(std::sync::atomic::Ordering::SeqCst),
     })
+}
+
+static FETCHING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn pinned_version() -> &'static str {
+    MISE_VERSION.trim_start_matches('v')
+}
+
+fn version_key(version: &str) -> Vec<u64> {
+    version.split('.').map(|p| p.parse().unwrap_or(0)).collect()
+}
+
+/// Version folders under `root` (`<data>\mise`) other than `pinned` that still hold a mise.exe,
+/// newest first.
+fn older_mise(root: &Path, pinned: &str) -> Vec<(String, PathBuf)> {
+    let Ok(entries) = std::fs::read_dir(root) else { return Vec::new() };
+    let mut found: Vec<(String, PathBuf)> = entries
+        .flatten()
+        .filter_map(|e| {
+            let name = e.file_name().to_string_lossy().into_owned();
+            let exe = e.path().join("mise.exe");
+            (name != pinned && exe.is_file()).then_some((name, exe))
+        })
+        .collect();
+    found.sort_by(|a, b| version_key(&b.0).cmp(&version_key(&a.0)));
+    found
+}
+
+/// The mise to uninstall or list with: the pinned one once it is on disk, otherwise the newest
+/// one an earlier Whichcraft left (written only after its own hash check), otherwise none.
+fn maintenance_choice(root: &Path, pinned: &str) -> Option<PathBuf> {
+    if root.join(pinned).join("mise.exe").is_file() {
+        return None;
+    }
+    older_mise(root, pinned).into_iter().next().map(|(_, exe)| exe)
+}
+
+fn maintenance_mise() -> Result<PathBuf, EnvarlyError> {
+    match maintenance_choice(&mise_root()?, pinned_version()) {
+        Some(old) => Ok(old),
+        None => ensure_mise(),
+    }
+}
+
+/// After an app update that pins a newer mise: fetch it if an older one shows that managed
+/// installations exist, and remove the older ones once the new one has passed its hash check.
+/// Returns whether anything was fetched.
+fn prepare_in(root: &Path, pinned: &str, fetch: impl FnOnce() -> Result<PathBuf, EnvarlyError>) -> Result<bool, EnvarlyError> {
+    let old = older_mise(root, pinned);
+    if old.is_empty() {
+        return Ok(false);
+    }
+    let fetched = !root.join(pinned).join("mise.exe").is_file();
+    fetch()?;
+    for (version, _) in old {
+        // A copy still running (an uninstall in progress) stays until the next start.
+        let _ = std::fs::remove_dir_all(root.join(version));
+    }
+    Ok(fetched)
+}
+
+pub fn prepare_mise() -> Result<bool, EnvarlyError> {
+    use std::sync::atomic::Ordering;
+    FETCHING.store(true, Ordering::SeqCst);
+    let result = prepare_in(&mise_root()?, pinned_version(), ensure_mise);
+    FETCHING.store(false, Ordering::SeqCst);
+    result
 }
 
 /// The pinned hashes a mise.exe must match before it is run.
@@ -288,6 +373,12 @@ const PINNED: MisePins<'static> = MisePins {
 fn ensure_mise() -> Result<PathBuf, EnvarlyError> {
     // Hashing 230 MB costs about a second, so check once per process.
     static VERIFIED: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    // The background fetch and an install started meanwhile must not download twice.
+    static DOWNLOAD: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    if let Some(exe) = VERIFIED.get() {
+        return Ok(exe.clone());
+    }
+    let _guard = DOWNLOAD.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(exe) = VERIFIED.get() {
         return Ok(exe.clone());
     }
@@ -295,10 +386,12 @@ fn ensure_mise() -> Result<PathBuf, EnvarlyError> {
     Ok(VERIFIED.get_or_init(|| exe).clone())
 }
 
+fn mise_root() -> Result<PathBuf, EnvarlyError> {
+    Ok(crate::whichcraft::persistence::whichcraft_data_dir()?.join("mise"))
+}
+
 fn mise_store_dir() -> Result<PathBuf, EnvarlyError> {
-    Ok(crate::whichcraft::persistence::whichcraft_data_dir()?
-        .join("mise")
-        .join(MISE_VERSION.trim_start_matches('v')))
+    Ok(mise_root()?.join(pinned_version()))
 }
 
 fn download_mise_zip() -> Result<Vec<u8>, EnvarlyError> {
@@ -413,6 +506,45 @@ mod tests {
             *mgr.runner.calls.lock().unwrap(),
             vec!["install node@22.23.4".to_string(), "uninstall node@22.23.4".to_string()]
         );
+    }
+
+    fn put_mise(root: &Path, version: &str) -> PathBuf {
+        let dir = root.join(version);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("mise.exe"), version).unwrap();
+        dir.join("mise.exe")
+    }
+
+    #[test]
+    fn maintenance_uses_the_newest_old_mise_until_the_pinned_one_arrives() {
+        let dir = tempfile::tempdir().unwrap();
+        put_mise(dir.path(), "2026.2.1");
+        let newest_old = put_mise(dir.path(), "2026.10.3");
+        put_mise(dir.path(), "2026.9.30");
+        assert_eq!(maintenance_choice(dir.path(), "2026.11.0"), Some(newest_old));
+        put_mise(dir.path(), "2026.11.0");
+        assert_eq!(maintenance_choice(dir.path(), "2026.11.0"), None, "the pinned one is used once present");
+    }
+
+    #[test]
+    fn old_mise_is_removed_only_after_the_new_one_verifies() {
+        let dir = tempfile::tempdir().unwrap();
+        let old = put_mise(dir.path(), "2026.10.3");
+        let err = prepare_in(dir.path(), "2026.11.0", || Err(EnvarlyError::InvalidInput("offline".into())));
+        assert!(err.is_err());
+        assert!(old.exists(), "offline: the old mise stays usable for uninstall and listing");
+
+        let fetched = prepare_in(dir.path(), "2026.11.0", || Ok(put_mise(dir.path(), "2026.11.0"))).unwrap();
+        assert!(fetched);
+        assert!(!old.exists());
+        assert_eq!(maintenance_choice(dir.path(), "2026.11.0"), None);
+    }
+
+    #[test]
+    fn nothing_is_fetched_when_no_earlier_mise_was_ever_used() {
+        let dir = tempfile::tempdir().unwrap();
+        let fetched = prepare_in(dir.path(), "2026.11.0", || panic!("must not download")).unwrap();
+        assert!(!fetched);
     }
 
     #[test]

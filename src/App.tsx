@@ -322,6 +322,13 @@ export default function App() {
             onChoose: (version) => void developerTools.chooseVersion(version),
             onInstall: () => void developerTools.installChosen(),
           }}
+          updates={{
+            list: developerTools.updates,
+            busy: developerTools.updateBusy,
+            awaitingSwitch: developerTools.replacedRoot !== null,
+            onCheck: () => void developerTools.checkUpdates(),
+            onUpdate: (candidate) => void developerTools.updateTo(candidate),
+          }}
           uninstall={{
             plan: developerTools.uninstallPlan,
             outcome: developerTools.uninstallOutcome,

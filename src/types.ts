@@ -178,6 +178,21 @@ export interface MiseStatus {
   version: string;
   present: boolean;
   downloadBytes: number;
+  /** Versions an earlier Whichcraft pinned that are still on disk. */
+  oldVersions: string[];
+  /** The pinned mise is downloading in the background; installs wait for it. */
+  fetching: boolean;
+}
+
+export interface UpdateCandidate {
+  root: string;
+  current: string;
+  latest: string;
+}
+
+export interface UpdateResult {
+  installation: ToolInstallationRef;
+  plan: ToolApplyPlan;
 }
 
 export interface WhichcraftSettings {

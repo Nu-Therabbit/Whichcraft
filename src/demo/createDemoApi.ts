@@ -270,7 +270,13 @@ export function createDemoApi(
     },
     undoLastWhichcraftApply: async () => ({ conflicts: [], restored: 0 }),
     listRemoteVersions: async () => [],
-    getMiseStatus: async () => ({ version: "2026.10.17", present: false, downloadBytes: 81_189_867 }),
+    getMiseStatus: async () => ({
+      version: "2026.10.17",
+      present: false,
+      downloadBytes: 81_189_867,
+      oldVersions: [],
+      fetching: false,
+    }),
     downloadSize: async () => null,
     installManaged: async () => {
       throw new Error("Installing is unavailable in demo mode");
@@ -282,6 +288,11 @@ export function createDemoApi(
       throw new Error("Uninstalling is unavailable in demo mode");
     },
     openFolder: async () => {},
+    updateCandidates: async () => [],
+    updateInstallation: async () => {
+      throw new Error("Updating is unavailable in demo mode");
+    },
+    prepareMise: async () => false,
     openTerminal: async () => {
       throw new Error("Opening a terminal is unavailable in demo mode");
     },
