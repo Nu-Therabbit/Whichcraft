@@ -33,6 +33,7 @@ function LegacyAppRoot() {
     return coordination.subscribeInvalidation((scopes) => {
       if (!scopesNeedToolsRefresh(scopes)) return;
       sendTools({ type: "refresh" });
+      sendTools({ type: "loadProfiles" });
       if (scopes.includes("tools-shell-check") && tools.shellCheck) {
         sendTools({ type: "checkShell" });
       }

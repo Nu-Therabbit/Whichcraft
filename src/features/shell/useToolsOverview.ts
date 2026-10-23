@@ -172,6 +172,7 @@ export function useToolsOverview(
         return;
       }
       accountToken = selected?.sid ?? "local";
+      coordination?.notifyAccountContextChanged(selected?.sid ?? null);
     } catch (err) {
       if (generation !== requestId.current) return;
       const message = String(err);
@@ -227,7 +228,7 @@ export function useToolsOverview(
 
     await Promise.all(OVERVIEW_TOOL_KINDS.map((tool) => loadTool(tool, generation, accountToken)));
     if (generation === requestId.current) setRescanning(false);
-  }, [environment, loadTool, tools]);
+  }, [coordination, environment, loadTool, tools]);
 
   useEffect(() => {
     void rescan();

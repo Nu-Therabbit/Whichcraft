@@ -12,30 +12,35 @@ interface UseDiffResult {
   handleDiffDismiss: () => void;
   applyBusy: boolean;
   applyError: string | null;
+  setApplyError: (message: string | null) => void;
 }
 
-export function useDiff(environment: EnvironmentApi, refresh: () => Promise<void>): UseDiffResult {
+export function useDiff(
+  environment: EnvironmentApi,
+  refresh: () => Promise<void>,
+  onExternalDiffDetected?: () => void,
+): UseDiffResult {
   const baselineRef = useRef<EnvSnapshot | null>(null);
   const [diffEntries, setDiffEntries] = useState<DiffEntry[]>([]);
   const [applyBusy, setApplyBusy] = useState(false);
-  const [applyError, setApplyError] = useState<string | null>(null);
+  const [applyError, setApplyErrorState] = useState<string | null>(null);
 
   const checkForExternalChanges = useCallback(async () => {
     if (!baselineRef.current) return;
     try {
       const current = await environment.getRegistrySnapshot();
-      setDiffEntries(
-        snapshotsEqual(baselineRef.current, current)
-          ? []
-          : computeDiff(baselineRef.current, current),
-      );
+      const entries = snapshotsEqual(baselineRef.current, current)
+        ? []
+        : computeDiff(baselineRef.current, current);
+      setDiffEntries(entries);
+      if (entries.length > 0) onExternalDiffDetected?.();
     } catch {}
-  }, [environment]);
+  }, [environment, onExternalDiffDetected]);
 
   const handleDiffApply = useCallback(
     async (accepted: DiffEntry[], reverted: DiffEntry[]) => {
       setApplyBusy(true);
-      setApplyError(null);
+      setApplyErrorState(null);
       try {
         for (const entry of reverted) {
           const scope = entry.scope as VarScope;
@@ -51,7 +56,7 @@ export function useDiff(environment: EnvironmentApi, refresh: () => Promise<void
         return true;
       } catch (err) {
         console.error("Failed to apply diff", err);
-        setApplyError(String(err));
+        setApplyErrorState(String(err));
         return false;
       } finally {
         setApplyBusy(false);
@@ -60,10 +65,12 @@ export function useDiff(environment: EnvironmentApi, refresh: () => Promise<void
     [environment, refresh],
   );
 
+  const setApplyError = useCallback((message: string | null) => setApplyErrorState(message), []);
+
   const handleDiffDismiss = useCallback(() => {
     if (baselineRef.current) baselineRef.current = applyAccepted(baselineRef.current, diffEntries);
     setDiffEntries([]);
-    setApplyError(null);
+    setApplyErrorState(null);
   }, [diffEntries]);
 
   return {
@@ -74,5 +81,6 @@ export function useDiff(environment: EnvironmentApi, refresh: () => Promise<void
     handleDiffDismiss,
     applyBusy,
     applyError,
+    setApplyError,
   };
 }

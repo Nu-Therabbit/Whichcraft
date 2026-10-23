@@ -51,7 +51,11 @@ export function fakeToolsRuntime(
 
 /** Runs the reducer and effects the way useToolsStore does, and waits for all effects. */
 export function harness(runtime: ToolsRuntime, start: Partial<ToolsState> = {}) {
-  let state: ToolsState = { ...initialToolsState(), ...start };
+  const initial = { ...initialToolsState(), ...start };
+  if (initial.plan.current) {
+    runtime.coordination.registerReviewedPlan(initial.plan.current);
+  }
+  let state: ToolsState = initial;
   const log: ToolsMsg[] = [];
   const pending = new Set<Promise<void>>();
   const dispatch = (msg: ToolsMsg) => {
@@ -64,6 +68,7 @@ export function harness(runtime: ToolsRuntime, start: Partial<ToolsState> = {}) 
       void p.finally(() => pending.delete(p));
     }
   };
+
   return {
     get state() {
       return state;

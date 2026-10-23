@@ -43,7 +43,7 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
     unstage,
     clearStaged,
     restoreStaged,
-  } = useStaged(vars);
+  } = useStaged(vars, coordination.setEnvironmentPending);
 
   const { push, undo, redo } = useUndo();
   const { localUndoRef, handleRegisterLocalUndo } = useLocalUndo();
@@ -66,7 +66,18 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
     handleDiffDismiss,
     applyBusy,
     applyError,
-  } = useDiff(environment, refresh);
+    setApplyError: setDiffApplyError,
+  } = useDiff(environment, refresh, () => {
+    coordination.invalidate([
+      "environment-external-diff",
+      "environment-variables",
+      "environment-diagnostics",
+      "tools-installations",
+      "tools-profiles",
+      "tools-shell-check",
+      "shell-overview",
+    ]);
+  });
 
   const [elevated, setElevated] = useState(false);
 
@@ -84,10 +95,6 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
     },
     [coordination, environment, refresh, checkForExternalChanges, refreshPathStatus],
   );
-
-  useEffect(() => {
-    coordination.setEnvironmentPending(staged.size > 0);
-  }, [coordination, staged.size]);
 
   useEffect(() => {
     return coordination.subscribeInvalidation((scopes) => {
@@ -169,7 +176,10 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
   const handleDiffApply = useCallback(
     async (...args: Parameters<typeof handleDiffApplyRaw>) => {
       const gate = coordination.tryBeginEnvironmentWrite("apply-external-diff");
-      if (!gate.ok) return false;
+      if (!gate.ok) {
+        setDiffApplyError(gate.reason);
+        return false;
+      }
       try {
         const ok = await handleDiffApplyRaw(...args);
         coordination.endEnvironmentWrite(gate.admission, ok ? "success" : "failure");
@@ -179,7 +189,7 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
         throw err;
       }
     },
-    [coordination, handleDiffApplyRaw],
+    [coordination, handleDiffApplyRaw, setDiffApplyError],
   );
 
   return {

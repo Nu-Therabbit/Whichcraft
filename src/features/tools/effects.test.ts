@@ -16,6 +16,8 @@ function updateRuntime(overrides = {}) {
     applyToolPlan: vi.fn(async () => applied),
     repointProfiles: vi.fn(async () => ["Android work"]),
     planUninstall: vi.fn(async () => uninstallPlanFor(jdk21)),
+    listProfiles: vi.fn(async () => []),
+    profileStatus: vi.fn(async (profile) => ({ profile, matches: true })),
     ...overrides,
   });
 }
@@ -180,6 +182,94 @@ describe("tools effects", () => {
     await h.settle();
     expect(h.state.tool).toBe("node");
     expect(h.state.installations).toEqual([node22]);
+  });
+
+  it("drops a slower inventory reload superseded by a newer refresh", async () => {
+    const jdkOld = inst("java", "21.0.11", "C:\\old", { selected: true, effective: true });
+    const jdkNew = inst("java", "21.0.12", "C:\\new", { selected: true, effective: true });
+    let releaseFirst: (value: typeof jdkOld[]) => void = () => {};
+    const listToolInstallations = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseFirst = resolve;
+          }),
+      )
+      .mockResolvedValueOnce([jdkNew]);
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations,
+      getRecoveryStatus: vi.fn(async () => null),
+      unfinishedUninstalls: vi.fn(async () => []),
+      listProfiles: vi.fn(async () => []),
+      profileStatus: vi.fn(async (profile) => ({ profile, matches: true })),
+    });
+    const h = harness(runtime, { installations: [jdkOld] });
+    h.dispatch({ type: "refresh" });
+    await vi.waitFor(() => expect(listToolInstallations).toHaveBeenCalledTimes(1));
+    h.dispatch({ type: "refresh" });
+    releaseFirst([jdkOld]);
+    await h.settle();
+    expect(h.state.installations[0]?.root).toBe("C:\\new");
+  });
+
+  it("does not apply a late tool result after switching tools", async () => {
+    const jdk = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
+    const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });
+    let releaseApply: (value: { planId: string; stale: boolean; needsElevation: boolean }) => void = () => {};
+    const applyToolPlan = vi.fn(
+      () =>
+        new Promise<{ planId: string; stale: boolean; needsElevation: boolean }>((resolve) => {
+          releaseApply = resolve;
+        }),
+    );
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async (tool: string) => (tool === "java" ? [jdk] : [node])),
+      planToolApply: vi.fn(async () => planFor(jdk)),
+      applyToolPlan,
+    });
+    const h = harness(runtime, {
+      tool: "java",
+      installations: [jdk],
+      plan: { ...initialToolsState().plan, current: planFor(jdk) },
+    });
+    h.dispatch({ type: "applyPlan" });
+    h.dispatch({ type: "selectTool", tool: "node" });
+    releaseApply({ planId: "p", stale: false, needsElevation: false });
+    await h.settle();
+    expect(h.state.tool).toBe("node");
+    expect(h.state.plan.current?.selected.root).toBe("C:\\jdk21");
+  });
+
+  it("keeps the newer shell check when an older response returns later", async () => {
+    const jdk = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
+    const shellPayload = (path: string) => ({
+      tool: "java" as const,
+      shell: "windows_terminal" as const,
+      effectivePath: path,
+      shellPath: path,
+      matches: path === "newer",
+    });
+    let releaseFirst: (value: ReturnType<typeof shellPayload>) => void = () => {};
+    const shellCheck = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseFirst = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(shellPayload("newer"));
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async () => [jdk]),
+      shellCheck,
+    });
+    const h = harness(runtime, { installations: [jdk] });
+    h.dispatch({ type: "checkShell" });
+    h.dispatch({ type: "checkShell" });
+    releaseFirst(shellPayload("older"));
+    await h.settle();
+    expect(h.state.shellCheck?.effectivePath).toBe("newer");
   });
 
   it("blocks tool apply while staged environment edits are pending", async () => {

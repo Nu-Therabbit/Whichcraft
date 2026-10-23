@@ -40,6 +40,14 @@ describe("createWriteCoordinator", () => {
     expect(coordination.isToolsReadCurrent(binding)).toBe(false);
   });
 
+  it("drops a slower inventory read superseded at the same revision", () => {
+    const coordination = createWriteCoordinator();
+    const first = coordination.beginToolsRead("java");
+    const second = coordination.beginToolsRead("java");
+    expect(coordination.isToolsReadCurrent(first)).toBe(false);
+    expect(coordination.isToolsReadCurrent(second)).toBe(true);
+  });
+
   it("notifies invalidation subscribers and bumps plan binding on account change", () => {
     const coordination = createWriteCoordinator();
     const listener = vi.fn();

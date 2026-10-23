@@ -43,7 +43,11 @@ describe("reduce", () => {
   it("keeps a stale single-tool plan to rebuild it, and drops a stale profile plan", () => {
     const base = initialToolsState();
     const single = { ...base, plan: { ...base.plan, current: planFor(jdk21), applying: true } };
-    const stale = { type: "applyFinished" as const, result: { planId: "p", stale: true, needsElevation: false } };
+    const stale = {
+      type: "applyFinished" as const,
+      tool: "java" as const,
+      result: { planId: "p", stale: true, needsElevation: false },
+    };
     const afterSingle = reduce(single, stale);
     expect(afterSingle.plan.current).not.toBeNull();
     expect(afterSingle.error).toMatch(/Environment changed/);

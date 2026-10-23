@@ -77,9 +77,9 @@ export type ToolsEvent =
     }
   | { type: "planBuilt"; plan: ToolApplyPlan }
   | { type: "cleanupPlanned"; plan: ToolApplyPlan | null; duplicates: string[]; missing: string[] }
-  | { type: "applyFinished"; result: ApplyToolResult }
-  | { type: "undone"; result: UndoResult }
-  | { type: "recoveryResolved"; result: UndoResult | null }
+  | { type: "applyFinished"; tool: ToolKind; result: ApplyToolResult }
+  | { type: "undone"; tool: ToolKind; result: UndoResult }
+  | { type: "recoveryResolved"; tool: ToolKind; result: UndoResult | null }
   | { type: "shellChecked"; tool: ToolKind; check: ShellCheck }
   | { type: "sdksLoaded"; android: AndroidInventory; msvc: MsvcInventory }
   | { type: "versionsLoaded"; tool: ToolKind; miseStatus: MiseStatus; versions: RemoteVersion[] }

@@ -13,8 +13,16 @@ import {
 export type { StagedChange, StagedKind } from "./stagingLogic";
 export { stagedKey } from "./stagingLogic";
 
-export function useStaged(registryVars: EnvVar[]) {
+export function useStaged(registryVars: EnvVar[], onPendingChange?: (pending: boolean) => void) {
   const [staged, setStaged] = useState<Map<StagedKey, StagedChange>>(new Map());
+
+  const publishPending = useCallback(
+    (next: Map<StagedKey, StagedChange>) => {
+      onPendingChange?.(next.size > 0);
+      return next;
+    },
+    [onPendingChange],
+  );
 
   const registryByKey = useMemo(
     () => new Map(registryVars.map((v) => [stagedKey(v.name, v.scope), v])),
@@ -30,18 +38,18 @@ export function useStaged(registryVars: EnvVar[]) {
       valueKindSelection: EnvValueKindSelection = "Auto",
     ) => {
       setStaged((prev) =>
-        computeStageSet(registryByKey, prev, name, scope, newValue, valueKindSelection),
+        publishPending(computeStageSet(registryByKey, prev, name, scope, newValue, valueKindSelection)),
       );
     },
-    [registryByKey],
+    [registryByKey, publishPending],
   );
 
   /** Stage a deletion for a single variable. */
   const stageDelete = useCallback(
     (name: string, scope: VarScope) => {
-      setStaged((prev) => computeStageDelete(registryByKey, prev, name, scope));
+      setStaged((prev) => publishPending(computeStageDelete(registryByKey, prev, name, scope)));
     },
-    [registryByKey],
+    [registryByKey, publishPending],
   );
 
   /** Stage a batch of changes from Import (with optional deletions for Replace strategy). */
@@ -55,17 +63,17 @@ export function useStaged(registryVars: EnvVar[]) {
       }>,
       deletes: Array<{ name: string; scope: VarScope }> = [],
     ) => {
-      setStaged((prev) => computeStageImport(registryByKey, prev, sets, deletes));
+      setStaged((prev) => publishPending(computeStageImport(registryByKey, prev, sets, deletes)));
     },
-    [registryByKey],
+    [registryByKey, publishPending],
   );
 
   /** Stage all changes needed to make the registry match a snapshot. */
   const stageSnapshot = useCallback(
     (snap: EnvSnapshot) => {
-      setStaged((prev) => computeStageSnapshot(registryByKey, registryVars, prev, snap));
+      setStaged((prev) => publishPending(computeStageSnapshot(registryByKey, registryVars, prev, snap)));
     },
-    [registryByKey, registryVars],
+    [registryByKey, registryVars, publishPending],
   );
 
   /** Remove a single staged change (revert to registry state). */
@@ -74,17 +82,20 @@ export function useStaged(registryVars: EnvVar[]) {
     setStaged((prev) => {
       const next = new Map(prev);
       next.delete(k);
-      return next;
+      return publishPending(next);
     });
-  }, []);
+  }, [publishPending]);
 
   /** Clear all staged changes. */
-  const clearStaged = useCallback(() => setStaged(new Map()), []);
+  const clearStaged = useCallback(() => setStaged(() => publishPending(new Map())), [publishPending]);
 
   /** Restore staged map to a previously captured snapshot (used for undo). */
-  const restoreStaged = useCallback((map: Map<string, StagedChange>) => {
-    setStaged(new Map(map));
-  }, []);
+  const restoreStaged = useCallback(
+    (map: Map<string, StagedChange>) => {
+      setStaged(() => publishPending(new Map(map)));
+    },
+    [publishPending],
+  );
 
   const effectiveVars = useMemo(
     () => computeEffectiveVars(registryVars, staged),
