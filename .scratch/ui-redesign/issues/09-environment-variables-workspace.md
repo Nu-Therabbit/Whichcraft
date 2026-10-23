@@ -4,7 +4,7 @@
 
 **Blocked by:** 04: ประสานการเขียนและรีเฟรช Tools กับ Environment; 07: เปิดภาพรวมเครื่องมือจริงใน desktop shell แบบ A.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / environment edit journey
 
@@ -27,3 +27,7 @@
 - **Modal state:** `ShellEnvironmentUiProvider` keeps `AppModals` mounted across shell pages; reopens staged dialog while `stagedBusy` / `stagedError`.
 - **DetailHeader:** `restartAsAdmin` uses injected `platform.restartAsAdmin()` via `useAppServices`.
 - **Inventory UI-03–09:** Evidence cells distinguish production wiring vs what `desktopShellEnvironment.test.tsx` actually exercises.
+
+### Review round 1 approval
+
+- Approved. The apply-progress test fails if the subscribe catch or admission release is removed. The staged error stays visible after leaving Environment. Restart-as-administrator uses the injected platform API. The Windows Registry checkbox stays open and is not a pass.
