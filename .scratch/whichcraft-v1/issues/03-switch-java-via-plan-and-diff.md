@@ -13,4 +13,4 @@
 - [x] ถ้าเขียนสำเร็จบางรายการแล้วล้มเหลว ย้อนรายการที่เขียนไปแล้ว ถ้าย้อนไม่ได้ให้รายงานทีละรายการ (A-4) — ใช้ rollback ของ Envarly
 - [x] ก่อนเขียน เทียบค่าปัจจุบันกับค่าที่บันทึกตอนสร้างแผน ถ้าเปลี่ยนไปแล้ว ไม่เขียนอะไรเลย แล้วแสดงแผนและ diff ใหม่ให้ยืนยันอีกครั้ง (A-9)
 - [x] แสดงข้อจำกัดว่าโปรแกรมที่เปิดอยู่และ IDE ที่ตั้ง SDK เองจะไม่เปลี่ยนตาม
-- [ ] มี test ที่ core ด้วยของปลอม และมี adapter contract test ที่ Apply กับ registry จริง แล้วเทียบกับไฟล์สำรองหลังจบ — unit tests มีแล้ว; contract test ยังเป็น placeholder
+- [x] มี test ที่ core ด้วยของปลอม และมี adapter contract test ที่ Apply กับ registry จริง แล้วเทียบกับไฟล์สำรองหลังจบ — contract_user_apply_reaches_new_processes_and_undo_restores_the_key: Apply และ Undo ผ่านแผน/Journal จริงบน HKCU ด้วยตัวแปร WHICHCRAFT_TEST_USER แล้ว reg export เทียบกับไฟล์สำรองตรงกันทุกไบต์ (2026-10-23)

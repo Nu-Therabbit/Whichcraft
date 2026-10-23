@@ -96,19 +96,38 @@ pub struct WinElevator;
 
 impl Elevator for WinElevator {
     fn apply_system(&self, request: &ElevatedRequest) -> Result<ElevatedOutcome, EnvarlyError> {
-        let (bytes, hash) = encode_request(request)?;
-        let path = crate::whichcraft::persistence::whichcraft_data_dir()?
-            .join(format!("elevation-{}.json", &hash[..16]));
-        std::fs::write(&path, &bytes)
-            .map_err(|e| EnvarlyError::Snapshot(format!("write elevation request: {e}")))?;
-        let outcome = run_elevated_and_wait(&path, &hash);
-        let _ = std::fs::remove_file(&path);
-        outcome
+        let exe = std::env::current_exe()
+            .map_err(|e| EnvarlyError::InvalidInput(format!("current_exe: {e}")))?;
+        elevate_with(&exe, request)
     }
+}
+
+/// Like `WinElevator`, but runs a given Whichcraft exe as the helper. Contract tests use it,
+/// since the test binary itself has no `whichcraft-elevated-apply` command.
+#[cfg(test)]
+pub struct HelperExeElevator(pub std::path::PathBuf);
+
+#[cfg(test)]
+impl Elevator for HelperExeElevator {
+    fn apply_system(&self, request: &ElevatedRequest) -> Result<ElevatedOutcome, EnvarlyError> {
+        elevate_with(&self.0, request)
+    }
+}
+
+fn elevate_with(exe: &std::path::Path, request: &ElevatedRequest) -> Result<ElevatedOutcome, EnvarlyError> {
+    let (bytes, hash) = encode_request(request)?;
+    let path = crate::whichcraft::persistence::whichcraft_data_dir()?
+        .join(format!("elevation-{}.json", &hash[..16]));
+    std::fs::write(&path, &bytes)
+        .map_err(|e| EnvarlyError::Snapshot(format!("write elevation request: {e}")))?;
+    let outcome = run_elevated_and_wait(exe, &path, &hash);
+    let _ = std::fs::remove_file(&path);
+    outcome
 }
 
 #[cfg(windows)]
 fn run_elevated_and_wait(
+    exe: &std::path::Path,
     payload: &std::path::Path,
     hash: &str,
 ) -> Result<ElevatedOutcome, EnvarlyError> {
@@ -125,8 +144,6 @@ fn run_elevated_and_wait(
         s.encode_wide().chain(std::iter::once(0)).collect()
     }
 
-    let exe = std::env::current_exe()
-        .map_err(|e| EnvarlyError::InvalidInput(format!("current_exe: {e}")))?;
     let verb = wide(OsStr::new("runas"));
     let file = wide(exe.as_os_str());
     let params = wide(OsStr::new(&format!(
@@ -163,6 +180,7 @@ fn run_elevated_and_wait(
 
 #[cfg(not(windows))]
 fn run_elevated_and_wait(
+    _exe: &std::path::Path,
     _payload: &std::path::Path,
     _hash: &str,
 ) -> Result<ElevatedOutcome, EnvarlyError> {
