@@ -26,3 +26,7 @@
 - **Plan-id / baseline gate:** `chooseReplacement` calls `registerReviewedPlan`; `confirmUninstall` uses `beginPlanApply` + `isPlanApplyCurrent` before `uninstall` and in `shouldCommitToolMutation`. Stale baseline rebuilds via `chooseReplacement` (`effects.test.ts`, `desktopShellUninstall.test.tsx`).
 - **Coordinator refresh:** Shell test asserts `listToolInstallations` reloads after successful confirm (fails if `readbackToolsState` / write completion path drops refresh).
 - **Branch coverage:** Shell fakes for in-use, folder lock, affected profiles/repoint, cancelled, and incomplete outcomes (`UninstallSection` paths).
+
+### Review round 2 (Grok 4.7)
+
+- **Coordinator invalidate lock:** Success shell test subscribes to `subscribeInvalidation` and asserts `tools-installations` or `shell-overview` is published after confirm — fails if `endToolsWrite` drops tools-scope invalidation while `readbackToolsState` still lists installations directly.

@@ -6,6 +6,7 @@ import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { createWriteCoordinator, type WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
+import type { InvalidationScope } from "../../coordination/types";
 import type { UninstallPlan } from "../../types";
 import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
@@ -140,23 +141,39 @@ describe("desktop shell uninstall", () => {
     const listToolInstallations = vi.fn(async (tool: string) =>
       tool === "java" ? [effective, replacement] : [],
     );
-    renderShell({
-      listToolInstallations,
-      planUninstall,
-      planToolApply,
-      uninstall,
-    });
+    const coordination = createWriteCoordinator();
+    const invalidations: InvalidationScope[][] = [];
+    coordination.subscribeInvalidation((scopes) => invalidations.push([...scopes]));
+    renderShell(
+      {
+        listToolInstallations,
+        planUninstall,
+        planToolApply,
+        uninstall,
+      },
+      coordination,
+    );
     const user = userEvent.setup();
     const details = await openJavaDetail(user);
     await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThan(0));
     const installsBeforeConfirm = listToolInstallations.mock.calls.length;
     await planUninstallForRoot(user, details, "C:\\jdk21");
     await waitFor(() => expect(planUninstall).toHaveBeenCalled());
+    const invalidationsBeforeConfirm = invalidations.length;
     await confirmReplacementUninstall(user);
     await waitFor(() => expect(uninstall).toHaveBeenCalledWith("java", "C:\\jdk21", shown));
     await waitFor(() =>
       expect(listToolInstallations.mock.calls.length).toBeGreaterThan(installsBeforeConfirm),
     );
+    await waitFor(() => {
+      const afterConfirm = invalidations.slice(invalidationsBeforeConfirm);
+      expect(
+        afterConfirm.some(
+          (scopes) =>
+            scopes.includes("tools-installations") || scopes.includes("shell-overview"),
+        ),
+      ).toBe(true);
+    });
   });
 
   it("does not call uninstall when the reviewed switch plan baseline went stale", async () => {
