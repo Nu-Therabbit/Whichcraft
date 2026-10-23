@@ -269,6 +269,18 @@ export function createDemoApi(
       throw new Error("Developer tools are unavailable in demo mode");
     },
     undoLastWhichcraftApply: async () => ({ conflicts: [], restored: 0 }),
+    getPythonLauncherInfo: async () => ({ launcherLines: [], launcherInstalled: false, storeStub: null, note: "" }),
+    getAndroidInventory: async () => ({
+      sdkRoot: null,
+      rootSource: null,
+      platforms: [],
+      buildTools: [],
+      ndk: [],
+      platformTools: null,
+      emulator: null,
+      cmake: [],
+    }),
+    getMsvcInventory: async () => ({ instances: [], windowsSdks: [] }),
     getWhichcraftSettings: async () => ({
       installStore: "C:\\Users\\demo\\AppData\\Local\\Whichcraft\\installs",
       scanRoots: [],

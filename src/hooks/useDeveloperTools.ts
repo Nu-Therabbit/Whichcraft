@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
 import { api } from "../api";
 import type {
+  AndroidInventory,
   ApplyToolResult,
+  MsvcInventory,
+  PythonSupplementalView,
   RecoveryView,
   ToolApplyPlan,
   ToolInstallationView,
@@ -21,6 +24,9 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
   const [undoResult, setUndoResult] = useState<UndoResult | null>(null);
   const [recovery, setRecovery] = useState<RecoveryView | null>(null);
   const [settings, setSettings] = useState<WhichcraftSettings | null>(null);
+  const [pythonInfo, setPythonInfo] = useState<PythonSupplementalView | null>(null);
+  const [android, setAndroid] = useState<AndroidInventory | null>(null);
+  const [msvc, setMsvc] = useState<MsvcInventory | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -29,6 +35,7 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
       setRecovery(await api.getRecoveryStatus());
       setSettings(await api.getWhichcraftSettings());
       setInstallations(await api.listToolInstallations(tool));
+      setPythonInfo(tool === "python" ? await api.getPythonLauncherInfo() : null);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -145,10 +152,24 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     [refresh],
   );
 
+  const loadSdks = useCallback(async () => {
+    setError(null);
+    try {
+      setAndroid(await api.getAndroidInventory());
+      setMsvc(await api.getMsvcInventory());
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
+
   return {
     tool,
     settings,
     saveSettings,
+    pythonInfo,
+    android,
+    msvc,
+    loadSdks,
     setTool,
     installations,
     loading,

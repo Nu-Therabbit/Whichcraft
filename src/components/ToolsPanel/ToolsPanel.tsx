@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
 import type {
+  AndroidInventory,
+  MsvcInventory,
+  PythonSupplementalView,
   RecoveryView,
   ToolApplyPlan,
   ToolInstallationView,
@@ -11,6 +14,7 @@ import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { RecoveryBanner } from "./RecoveryBanner";
+import { PythonLauncherInfo, SdkInventory } from "./SupplementalInfo";
 import { ToolsSettings } from "./ToolsSettings";
 
 const TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
@@ -36,6 +40,10 @@ interface Props {
   onRollBackRecovery?: () => void;
   settings?: WhichcraftSettings | null;
   onSaveSettings?: (settings: WhichcraftSettings) => void;
+  pythonInfo?: PythonSupplementalView | null;
+  android?: AndroidInventory | null;
+  msvc?: MsvcInventory | null;
+  onLoadSdks?: () => void;
 }
 
 export function ToolsPanel({
@@ -59,9 +67,14 @@ export function ToolsPanel({
   onRollBackRecovery,
   settings,
   onSaveSettings,
+  pythonInfo,
+  android,
+  msvc,
+  onLoadSdks,
 }: Props) {
   const { t } = useI18n();
   const [showSettings, setShowSettings] = useState(false);
+  const [showSdks, setShowSdks] = useState(false);
 
   // onRefresh changes identity whenever the selected tool changes, so this also refreshes on tool switch.
   useEffect(() => {
@@ -96,14 +109,31 @@ export function ToolsPanel({
           {TOOL_KINDS.map((kind) => (
             <Button
               key={kind}
-              variant={kind === tool ? "primary" : "secondary"}
+              variant={kind === tool && !showSdks ? "primary" : "secondary"}
               size="sm"
-              onClick={() => onToolChange(kind)}
+              onClick={() => {
+                setShowSdks(false);
+                onToolChange(kind);
+              }}
             >
               {t(`tools.kind.${kind}`)}
             </Button>
           ))}
+          {onLoadSdks && (
+            <Button
+              variant={showSdks ? "primary" : "secondary"}
+              size="sm"
+              onClick={() => {
+                setShowSdks(true);
+                onLoadSdks();
+              }}
+            >
+              {t("tools.sdks_tab")}
+            </Button>
+          )}
         </div>
+
+        {showSdks && <SdkInventory android={android ?? null} msvc={msvc ?? null} />}
 
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
@@ -158,6 +188,8 @@ export function ToolsPanel({
             ))
           )}
         </div>
+
+        {tool === "python" && pythonInfo && <PythonLauncherInfo info={pythonInfo} />}
 
         {plan && (
           <div className="border border-rim rounded-md p-4 flex flex-col gap-3 bg-surface/40">

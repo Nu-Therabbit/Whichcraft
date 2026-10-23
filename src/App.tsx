@@ -305,6 +305,10 @@ export default function App() {
           onRollBackRecovery={() => void developerTools.rollBackRecovery()}
           settings={developerTools.settings}
           onSaveSettings={(next) => void developerTools.saveSettings(next)}
+          pythonInfo={developerTools.pythonInfo}
+          android={developerTools.android}
+          msvc={developerTools.msvc}
+          onLoadSdks={() => void developerTools.loadSdks()}
         />
 
         <AppModals

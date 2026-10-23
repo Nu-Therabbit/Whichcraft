@@ -16,8 +16,8 @@ use crate::whichcraft::services::profiles::{
     ProfileMatchStatus, ToolProfile,
 };
 use crate::whichcraft::services::supplemental_inventory::{
-    android_read_only, msvc_read_only, python_supplemental, PythonSupplementalView,
-    ReadOnlyInventorySection,
+    android_inventory, msvc_inventory, python_supplemental, AndroidInventory, MsvcInventory,
+    PythonSupplementalView,
 };
 use crate::whichcraft::services::tool_apply::{
     apply_tool_plan, apply_tool_plan_elevated, create_tool_plan, ApplyToolResult,
@@ -231,11 +231,12 @@ pub fn whichcraft_python_supplemental() -> Result<PythonSupplementalView, Envarl
 }
 
 #[tauri::command]
-pub fn whichcraft_android_inventory() -> ReadOnlyInventorySection {
-    android_read_only()
+pub fn whichcraft_android_inventory() -> Result<AndroidInventory, EnvarlyError> {
+    let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
+    android_inventory(&WinregBackend, local.as_deref())
 }
 
 #[tauri::command]
-pub fn whichcraft_msvc_inventory() -> ReadOnlyInventorySection {
-    msvc_read_only()
+pub fn whichcraft_msvc_inventory() -> MsvcInventory {
+    msvc_inventory()
 }

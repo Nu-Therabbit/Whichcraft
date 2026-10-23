@@ -297,6 +297,27 @@
       "folder_only": "Folder only",
       "managed_by_whichcraft": "Installed by Whichcraft"
     },
+    "sdks_tab": "Android & MSVC",
+    "python": {
+      "title": "py launcher and Store alias",
+      "no_launcher": "The py launcher is not installed.",
+      "default": "default",
+      "store_stub": "The Microsoft Store alias {{path}} is on PATH; typing python may open the Store instead of running an interpreter."
+    },
+    "sdks": {
+      "read_only": "Shown for reference only. Use Android Studio or the Visual Studio Installer to change these.",
+      "android": "Android SDK",
+      "android_missing": "No Android SDK found (ANDROID_HOME, ANDROID_SDK_ROOT or %LOCALAPPDATA%\\Android\\Sdk).",
+      "sdk_root": "SDK folder",
+      "platforms": "Platforms",
+      "build_tools": "Build tools",
+      "ndk": "NDK",
+      "platform_tools": "Platform tools",
+      "emulator": "Emulator",
+      "cmake": "CMake",
+      "msvc": "MSVC and Windows SDK",
+      "windows_sdk": "Windows SDK"
+    },
     "show_settings": "Settings",
     "hide_settings": "Hide settings",
     "settings": {

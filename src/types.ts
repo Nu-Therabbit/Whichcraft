@@ -175,6 +175,35 @@ export interface WhichcraftSettings {
   terminal: TerminalKind;
 }
 
+export interface PythonLauncherLine {
+  tag: string;
+  path: string;
+  isDefault: boolean;
+}
+
+export interface PythonSupplementalView {
+  launcherLines: PythonLauncherLine[];
+  launcherInstalled: boolean;
+  storeStub: string | null;
+  note: string;
+}
+
+export interface AndroidInventory {
+  sdkRoot: string | null;
+  rootSource: string | null;
+  platforms: string[];
+  buildTools: string[];
+  ndk: string[];
+  platformTools: string | null;
+  emulator: string | null;
+  cmake: string[];
+}
+
+export interface MsvcInventory {
+  instances: { displayName: string; version: string; path: string; msvcToolsets: string[] }[];
+  windowsSdks: string[];
+}
+
 export type ChangeState = "written" | "notWritten" | "changedElsewhere";
 
 export interface RecoveryItem {
