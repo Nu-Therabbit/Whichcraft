@@ -10,4 +10,4 @@
 - [x] ติดตั้งที่ A แล้วเปลี่ยนเป็น B ต้องเห็นการติดตั้งทั้งใน A และ B (S-1) — test: managed_installs_in_current_and_earlier_stores_are_listed
 - [ ] การดูรายการเรียก mise ด้วยโฟลเดอร์ข้อมูลของแต่ละที่เก็บ — inventory อ่านโฟลเดอร์ของทุกที่เก็บโดยตรง ไม่ได้เรียก mise ต่อที่เก็บ
 - [x] ไม่ย้ายการติดตั้งเดิมตามไปที่เก็บใหม่ (Q17) — switch_install_store ไม่ย้ายไฟล์
-- [ ] มี test ที่ core ด้วยของปลอม และมี adapter contract test กับ mise จริงในที่เก็บสองที่
+- [ ] มี test ที่ core ด้วยของปลอม และมี adapter contract test กับ mise จริงในที่เก็บสองที่ — test ที่ core มีแล้ว; contract test กับ mise จริงในสองที่เก็บยังไม่มี

@@ -86,6 +86,7 @@ pub fn run() {
             commands::whichcraft::whichcraft_apply_tool_plan_with_uac,
             commands::whichcraft::whichcraft_plan_path_cleanup,
             commands::whichcraft::whichcraft_list_remote_versions,
+            commands::whichcraft::whichcraft_mise_status,
             commands::whichcraft::whichcraft_download_size,
             commands::whichcraft::whichcraft_install_managed,
             commands::whichcraft::whichcraft_list_profiles,

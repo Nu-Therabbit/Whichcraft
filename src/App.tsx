@@ -312,6 +312,16 @@ export default function App() {
           shellCheck={developerTools.shellCheck}
           onShellCheck={() => void developerTools.runShellCheck()}
           onOpenTerminal={() => void developerTools.openTerminal()}
+          install={{
+            versions: developerTools.remoteVersions,
+            loading: developerTools.remoteLoading,
+            busy: developerTools.installBusy,
+            miseStatus: developerTools.miseStatus,
+            chosen: developerTools.chosenVersion,
+            onOpen: () => void developerTools.loadRemoteVersions(),
+            onChoose: (version) => void developerTools.chooseVersion(version),
+            onInstall: () => void developerTools.installChosen(),
+          }}
         />
 
         <AppModals

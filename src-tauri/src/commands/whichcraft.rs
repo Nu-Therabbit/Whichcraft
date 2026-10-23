@@ -29,6 +29,15 @@ use crate::whichcraft::services::tool_inventory::{list_tool_installations, ToolI
 use crate::whichcraft::services::tool_plan::ToolApplyPlan;
 use crate::whichcraft::services::undo::{undo_last_apply, UndoResult};
 use crate::whichcraft::{CoreHealth, WhichcraftCore};
+/// Runs blocking work (UAC prompts, downloads, child processes) off the UI thread. Sync Tauri
+/// commands run on the main thread, so waiting there froze the window.
+async fn off_main<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, EnvarlyError> + Send + 'static,
+) -> Result<T, EnvarlyError> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|e| EnvarlyError::InvalidInput(format!("background task failed: {e}")))?
+}
 
 #[tauri::command]
 pub fn whichcraft_health() -> CoreHealth {
@@ -43,11 +52,14 @@ pub fn whichcraft_list_java() -> Result<Vec<JavaInstallationView>, EnvarlyError>
 }
 
 #[tauri::command]
-pub fn whichcraft_list_tools(tool: ToolKind) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
-    let backend = WinregBackend;
-    let selection = load_tool_selection(tool)?;
-    let views = list_tool_installations(&backend, tool, selection.as_ref().map(|s| s.root.as_path()))?;
-    Ok(crate::whichcraft::services::tool_inventory::with_missing_selection(views, selection.as_ref()))
+pub async fn whichcraft_list_tools(tool: ToolKind) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
+    off_main(move || {
+        let backend = WinregBackend;
+        let selection = load_tool_selection(tool)?;
+        let views = list_tool_installations(&backend, tool, selection.as_ref().map(|s| s.root.as_path()))?;
+        Ok(crate::whichcraft::services::tool_inventory::with_missing_selection(views, selection.as_ref()))
+    })
+    .await
 }
 
 #[tauri::command]
@@ -64,6 +76,7 @@ pub fn whichcraft_save_settings(settings: WhichcraftSettings) -> Result<(), Enva
 /// switched to (the old one stays listed), and a missing history is not taken as "forget it".
 fn merge_settings(current: WhichcraftSettings, incoming: WhichcraftSettings) -> WhichcraftSettings {
     let mut merged = current;
+    merged.install_store_confirmed |= incoming.install_store_confirmed;
     merged.switch_install_store(incoming.install_store);
     merged.scan_roots = incoming.scan_roots;
     merged.terminal = incoming.terminal;
@@ -91,53 +104,78 @@ mod tests {
         assert_eq!(merged.install_store, PathBuf::from("D:\\tools"));
         assert_eq!(merged.previous_install_stores, vec![PathBuf::from("C:\\a")]);
     }
+
+    #[test]
+    fn a_confirmed_install_folder_stays_confirmed() {
+        let current = WhichcraftSettings { install_store_confirmed: true, ..Default::default() };
+        let incoming = WhichcraftSettings::default();
+        assert!(merge_settings(current, incoming).install_store_confirmed);
+        let unconfirmed = WhichcraftSettings::default();
+        let confirming = WhichcraftSettings { install_store_confirmed: true, ..Default::default() };
+        assert!(merge_settings(unconfirmed, confirming).install_store_confirmed);
+    }
 }
 
 /// Java goes through the same plan as every other tool (JAVA_HOME + PATH, System shadowing).
 #[tauri::command]
-pub fn whichcraft_plan_java(root: String) -> Result<ToolApplyPlan, EnvarlyError> {
-    let backend = WinregBackend;
-    let views = list_java_installations(&backend, None)?;
-    let java = views
-        .into_iter()
-        .find(|v| v.installation.root == PathBuf::from(&root))
-        .map(|v| v.installation)
-        .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown java root: {root}")))?;
-    let installation = crate::whichcraft::ports::installation_probe::ToolInstallation {
-        tool: ToolKind::Java,
-        vendor: java.vendor,
-        version: java.version,
-        root: java.root,
-        managed: java.managed,
-    };
-    create_tool_plan(&backend, &installation)
+pub async fn whichcraft_plan_java(root: String) -> Result<ToolApplyPlan, EnvarlyError> {
+    off_main(move || {
+        let backend = WinregBackend;
+        let views = list_java_installations(&backend, None)?;
+        let java = views
+            .into_iter()
+            .find(|v| v.installation.root == PathBuf::from(&root))
+            .map(|v| v.installation)
+            .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown java root: {root}")))?;
+        let installation = crate::whichcraft::ports::installation_probe::ToolInstallation {
+            tool: ToolKind::Java,
+            vendor: java.vendor,
+            version: java.version,
+            root: java.root,
+            managed: java.managed,
+        };
+        create_tool_plan(&backend, &installation)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn whichcraft_plan_tool(root: String, tool: ToolKind) -> Result<ToolApplyPlan, EnvarlyError> {
-    let backend = WinregBackend;
-    let views = list_tool_installations(&backend, tool, None)?;
-    let installation = views
-        .into_iter()
-        .find(|v| v.installation.root == PathBuf::from(&root))
-        .map(|v| v.installation)
-        .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown {tool:?} root: {root}")))?;
-    create_tool_plan(&backend, &installation)
+pub async fn whichcraft_plan_tool(root: String, tool: ToolKind) -> Result<ToolApplyPlan, EnvarlyError> {
+    off_main(move || {
+        let backend = WinregBackend;
+        let views = list_tool_installations(&backend, tool, None)?;
+        let installation = views
+            .into_iter()
+            .find(|v| v.installation.root == PathBuf::from(&root))
+            .map(|v| v.installation)
+            .ok_or_else(|| EnvarlyError::InvalidInput(format!("unknown {tool:?} root: {root}")))?;
+        create_tool_plan(&backend, &installation)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn whichcraft_apply_java_plan(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
-    apply_tool_plan_elevated(&WinregBackend, &WinElevator, &plan)
+pub async fn whichcraft_apply_java_plan(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
+    off_main(move || {
+        apply_tool_plan_elevated(&WinregBackend, &WinElevator, &plan)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn whichcraft_apply_tool_plan(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
-    apply_tool_plan(&WinregBackend, &plan)
+pub async fn whichcraft_apply_tool_plan(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
+    off_main(move || {
+        apply_tool_plan(&WinregBackend, &plan)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn whichcraft_apply_tool_plan_with_uac(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
-    apply_tool_plan_elevated(&WinregBackend, &WinElevator, &plan)
+pub async fn whichcraft_apply_tool_plan_with_uac(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
+    off_main(move || {
+        apply_tool_plan_elevated(&WinregBackend, &WinElevator, &plan)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -146,8 +184,11 @@ pub fn whichcraft_plan_path_cleanup() -> Result<PathCleanupPlan, EnvarlyError> {
 }
 
 #[tauri::command]
-pub fn whichcraft_undo_last_apply() -> Result<UndoResult, EnvarlyError> {
-    undo_last_apply(&WinregBackend, Some(&WinElevator))
+pub async fn whichcraft_undo_last_apply() -> Result<UndoResult, EnvarlyError> {
+    off_main(move || {
+        undo_last_apply(&WinregBackend, Some(&WinElevator))
+    })
+    .await
 }
 
 fn home_dir() -> PathBuf {
@@ -164,19 +205,22 @@ pub fn whichcraft_open_terminal() -> Result<(), EnvarlyError> {
 
 /// What the configured shell runs for `tool` after loading its profile, next to the effective one.
 #[tauri::command]
-pub fn whichcraft_shell_check(
+pub async fn whichcraft_shell_check(
     tool: ToolKind,
 ) -> Result<crate::whichcraft::services::terminal::ShellCheck, EnvarlyError> {
-    use crate::whichcraft::adapters::win::process::{fresh_environment, WinProcessRunner};
-    let kind = load_settings()?.terminal;
-    crate::whichcraft::services::terminal::shell_check(
-        &WinregBackend,
-        &WinProcessRunner,
-        kind,
-        tool,
-        fresh_environment()?,
-        &home_dir(),
-    )
+    off_main(move || {
+        use crate::whichcraft::adapters::win::process::{fresh_environment, WinProcessRunner};
+        let kind = load_settings()?.terminal;
+        crate::whichcraft::services::terminal::shell_check(
+            &WinregBackend,
+            &WinProcessRunner,
+            kind,
+            tool,
+            fresh_environment()?,
+            &home_dir(),
+        )
+    })
+    .await
 }
 
 /// An apply that never finished (the app stopped mid-way), with each change's real state.
@@ -186,13 +230,19 @@ pub fn whichcraft_recovery_status() -> Result<Option<RecoveryView>, EnvarlyError
 }
 
 #[tauri::command]
-pub fn whichcraft_resume_apply(journal_id: String) -> Result<(), EnvarlyError> {
-    resume_pending(&WinregBackend, Some(&WinElevator), &journal_id)
+pub async fn whichcraft_resume_apply(journal_id: String) -> Result<(), EnvarlyError> {
+    off_main(move || {
+        resume_pending(&WinregBackend, Some(&WinElevator), &journal_id)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn whichcraft_roll_back_apply(journal_id: String) -> Result<UndoResult, EnvarlyError> {
-    roll_back_pending(&WinregBackend, Some(&WinElevator), &journal_id)
+pub async fn whichcraft_roll_back_apply(journal_id: String) -> Result<UndoResult, EnvarlyError> {
+    off_main(move || {
+        roll_back_pending(&WinregBackend, Some(&WinElevator), &journal_id)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -202,31 +252,46 @@ pub fn whichcraft_get_java_selection(
 }
 
 #[tauri::command]
-pub fn whichcraft_list_remote_versions(
+pub async fn whichcraft_list_remote_versions(
     tool: ToolKind,
 ) -> Result<Vec<crate::whichcraft::ports::tool_manager::RemoteVersion>, EnvarlyError> {
-    let mgr = MiseToolManager::new()?;
-    mgr.list_remote(tool)
+    off_main(move || {
+        let mgr = MiseToolManager::new()?;
+        mgr.list_remote(tool)
+    })
+    .await
+}
+
+/// Whether the pinned mise still has to be downloaded before the first install, and its size.
+#[tauri::command]
+pub fn whichcraft_mise_status() -> Result<crate::whichcraft::mise::manager::MiseStatus, EnvarlyError> {
+    crate::whichcraft::mise::manager::mise_status()
 }
 
 /// Download size in bytes for one version, or `None` when it cannot be known before installing.
 #[tauri::command]
-pub fn whichcraft_download_size(tool: ToolKind, version: String) -> Result<Option<u64>, EnvarlyError> {
-    crate::whichcraft::mise::sizes::download_size(
-        tool,
-        &version,
-        crate::whichcraft::mise::sizes::http_content_length,
-    )
+pub async fn whichcraft_download_size(tool: ToolKind, version: String) -> Result<Option<u64>, EnvarlyError> {
+    off_main(move || {
+        crate::whichcraft::mise::sizes::download_size(
+            tool,
+            &version,
+            crate::whichcraft::mise::sizes::http_content_length,
+        )
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn whichcraft_install_managed(
+pub async fn whichcraft_install_managed(
     tool: ToolKind,
     version: String,
 ) -> Result<String, EnvarlyError> {
-    let mgr = MiseToolManager::new()?;
-    let path = mgr.install(tool, &version)?;
-    Ok(path.to_string_lossy().into_owned())
+    off_main(move || {
+        let mgr = MiseToolManager::new()?;
+        let path = mgr.install(tool, &version)?;
+        Ok(path.to_string_lossy().into_owned())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -240,29 +305,44 @@ pub fn whichcraft_save_profiles(profiles: Vec<ToolProfile>) -> Result<(), Envarl
 }
 
 #[tauri::command]
-pub fn whichcraft_profile_status(profile: ToolProfile) -> Result<ProfileMatchStatus, EnvarlyError> {
-    profile_status(&WinregBackend, &profile)
+pub async fn whichcraft_profile_status(profile: ToolProfile) -> Result<ProfileMatchStatus, EnvarlyError> {
+    off_main(move || {
+        profile_status(&WinregBackend, &profile)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn whichcraft_apply_profile(profile: ToolProfile) -> Result<ApplyToolResult, EnvarlyError> {
-    apply_profile(&WinregBackend, Some(&WinElevator), &profile)
+pub async fn whichcraft_apply_profile(profile: ToolProfile) -> Result<ApplyToolResult, EnvarlyError> {
+    off_main(move || {
+        apply_profile(&WinregBackend, Some(&WinElevator), &profile)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn whichcraft_plan_profile(profile: ToolProfile) -> Result<ToolApplyPlan, EnvarlyError> {
-    plan_profile_apply(&WinregBackend, &profile)
+pub async fn whichcraft_plan_profile(profile: ToolProfile) -> Result<ToolApplyPlan, EnvarlyError> {
+    off_main(move || {
+        plan_profile_apply(&WinregBackend, &profile)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn whichcraft_python_supplemental() -> Result<PythonSupplementalView, EnvarlyError> {
-    python_supplemental()
+pub async fn whichcraft_python_supplemental() -> Result<PythonSupplementalView, EnvarlyError> {
+    off_main(move || {
+        python_supplemental()
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn whichcraft_android_inventory() -> Result<AndroidInventory, EnvarlyError> {
-    let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
-    android_inventory(&WinregBackend, local.as_deref())
+pub async fn whichcraft_android_inventory() -> Result<AndroidInventory, EnvarlyError> {
+    off_main(move || {
+        let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
+        android_inventory(&WinregBackend, local.as_deref())
+    })
+    .await
 }
 
 #[tauri::command]

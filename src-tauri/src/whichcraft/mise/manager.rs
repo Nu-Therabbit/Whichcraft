@@ -123,7 +123,11 @@ impl<R: MiseRunner> MiseToolManager<R> {
             self.ensure_flutter_plugin()?;
         }
         let spec = format!("{name}@{}", mise_version(tool, version));
-        self.run_ok(&["install", &spec])?;
+        if let Err(err) = self.run_ok(&["install", &spec]) {
+            // Leave nothing half-installed in the store for the inventory to pick up (I-8).
+            let _ = self.runner.run(&["uninstall", &spec]);
+            return Err(err);
+        }
         self.install_path(tool, version)
     }
 
@@ -247,6 +251,23 @@ fn plugin_ref(listing: &str, name: &str) -> Option<String> {
     })
 }
 
+/// Whether the pinned mise is already on disk, and what the first install would download.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MiseStatus {
+    pub version: String,
+    pub present: bool,
+    pub download_bytes: u64,
+}
+
+pub fn mise_status() -> Result<MiseStatus, EnvarlyError> {
+    Ok(MiseStatus {
+        version: MISE_VERSION.trim_start_matches('v').to_string(),
+        present: mise_store_dir()?.join("mise.exe").is_file(),
+        download_bytes: pins::MISE_WINDOWS_X64_ZIP_BYTES,
+    })
+}
+
 /// The pinned hashes a mise.exe must match before it is run.
 struct MisePins<'a> {
     zip_sha256: &'a str,
@@ -349,11 +370,18 @@ mod tests {
     struct FakeRunner {
         calls: std::sync::Mutex<Vec<String>>,
         replies: HashMap<String, String>,
+        /// Commands (joined args) that fail, like a dropped connection mid-download.
+        failing: Vec<String>,
     }
 
     impl FakeRunner {
         fn reply(mut self, args: &str, stdout: &str) -> Self {
             self.replies.insert(args.into(), stdout.into());
+            self
+        }
+
+        fn fail(mut self, args: &str) -> Self {
+            self.failing.push(args.into());
             self
         }
     }
@@ -363,11 +391,22 @@ mod tests {
             let key = args.join(" ");
             self.calls.lock().unwrap().push(key.clone());
             Ok(MiseOutput {
-                success: true,
+                success: !self.failing.contains(&key),
                 stdout: self.replies.get(&key).cloned().unwrap_or_default().into_bytes(),
-                stderr: Vec::new(),
+                stderr: b"network unreachable".to_vec(),
             })
         }
+    }
+
+    #[test]
+    fn a_failed_install_is_cleaned_out_of_the_store() {
+        let mgr = MiseToolManager::with_runner(FakeRunner::default().fail("install node@22.23.4"));
+        let err = mgr.install(ToolKind::Node, "22.23.4").unwrap_err();
+        assert!(err.to_string().contains("network unreachable"));
+        assert_eq!(
+            *mgr.runner.calls.lock().unwrap(),
+            vec!["install node@22.23.4".to_string(), "uninstall node@22.23.4".to_string()]
+        );
     }
 
     // Shape of `mise ls --json java` as seen in spike 3.

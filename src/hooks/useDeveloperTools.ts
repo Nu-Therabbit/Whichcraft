@@ -3,9 +3,11 @@ import { api } from "../api";
 import type {
   AndroidInventory,
   ApplyToolResult,
+  MiseStatus,
   MsvcInventory,
   PythonSupplementalView,
   RecoveryView,
+  RemoteVersion,
   ShellCheck,
   ToolApplyPlan,
   ToolInstallationView,
@@ -174,6 +176,55 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     }
   }, []);
 
+  const [remoteVersions, setRemoteVersions] = useState<RemoteVersion[]>([]);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [miseStatus, setMiseStatus] = useState<MiseStatus | null>(null);
+  const [chosenVersion, setChosenVersion] = useState<{ version: string; downloadBytes: number | null } | null>(
+    null,
+  );
+  const [installBusy, setInstallBusy] = useState(false);
+
+  const loadRemoteVersions = useCallback(async () => {
+    setError(null);
+    setRemoteLoading(true);
+    setChosenVersion(null);
+    try {
+      setMiseStatus(await api.getMiseStatus());
+      setRemoteVersions(await api.listRemoteVersions(tool));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setRemoteLoading(false);
+    }
+  }, [tool]);
+
+  const chooseVersion = useCallback(
+    async (version: string) => {
+      setChosenVersion({ version, downloadBytes: null });
+      try {
+        setChosenVersion({ version, downloadBytes: await api.downloadSize(tool, version) });
+      } catch {
+        // The size is informative only; installing still works without it.
+      }
+    },
+    [tool],
+  );
+
+  const installChosen = useCallback(async () => {
+    if (!chosenVersion) return;
+    setInstallBusy(true);
+    setError(null);
+    try {
+      await api.installManaged(tool, chosenVersion.version);
+      setChosenVersion(null);
+      await refresh();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setInstallBusy(false);
+    }
+  }, [tool, chosenVersion, refresh]);
+
   const loadSdks = useCallback(async () => {
     setError(null);
     try {
@@ -192,6 +243,14 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     android,
     msvc,
     loadSdks,
+    remoteVersions,
+    remoteLoading,
+    miseStatus,
+    chosenVersion,
+    installBusy,
+    loadRemoteVersions,
+    chooseVersion,
+    installChosen,
     shellCheck,
     runShellCheck,
     openTerminal,

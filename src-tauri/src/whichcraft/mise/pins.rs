@@ -1,4 +1,6 @@
 pub const MISE_VERSION: &str = "v2026.10.17";
+/// Size of the pinned zip, shown before the first install downloads it (I-10).
+pub const MISE_WINDOWS_X64_ZIP_BYTES: u64 = 81_189_867;
 pub const MISE_WINDOWS_X64_SHA256: &str =
     "32bcfda5f72bf7cb189e18ba93c2798bffcb4a678fd004e3127780363f2d8c8c";
 /// SHA-256 of the `mise.exe` inside that zip, so an extracted copy can be re-checked later.

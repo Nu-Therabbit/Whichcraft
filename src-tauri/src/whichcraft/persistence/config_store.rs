@@ -14,6 +14,9 @@ pub struct WhichcraftSettings {
     /// until they are empty (Q28).
     #[serde(default)]
     pub previous_install_stores: Vec<PathBuf>,
+    /// Whether the user has confirmed the install folder; the first install asks until then (I-5).
+    #[serde(default)]
+    pub install_store_confirmed: bool,
     #[serde(default)]
     pub scan_roots: Vec<PathBuf>,
     #[serde(default = "default_terminal")]
@@ -45,6 +48,7 @@ impl Default for WhichcraftSettings {
         Self {
             install_store: default_install_store(),
             previous_install_stores: Vec::new(),
+            install_store_confirmed: false,
             scan_roots: Vec::new(),
             terminal: TerminalKind::WindowsTerminal,
         }

@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
 import type {
   AndroidInventory,
+  MiseStatus,
   MsvcInventory,
   PythonSupplementalView,
   RecoveryView,
+  RemoteVersion,
   ShellCheck,
   ToolApplyPlan,
   ToolInstallationView,
@@ -14,6 +16,7 @@ import type {
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
+import { InstallSection } from "./InstallSection";
 import { RecoveryBanner } from "./RecoveryBanner";
 import { ShellCheckResult } from "./ShellCheckResult";
 import { PythonLauncherInfo, SdkInventory } from "./SupplementalInfo";
@@ -49,6 +52,16 @@ interface Props {
   shellCheck?: ShellCheck | null;
   onShellCheck?: () => void;
   onOpenTerminal?: () => void;
+  install?: {
+    versions: RemoteVersion[];
+    loading: boolean;
+    busy: boolean;
+    miseStatus: MiseStatus | null;
+    chosen: { version: string; downloadBytes: number | null } | null;
+    onOpen: () => void;
+    onChoose: (version: string) => void;
+    onInstall: () => void;
+  };
 }
 
 export function ToolsPanel({
@@ -79,10 +92,20 @@ export function ToolsPanel({
   shellCheck,
   onShellCheck,
   onOpenTerminal,
+  install,
 }: Props) {
   const { t } = useI18n();
   const [showSettings, setShowSettings] = useState(false);
   const [showSdks, setShowSdks] = useState(false);
+  const [showInstall, setShowInstall] = useState(false);
+  // Git is switch-only in v1 (Q14).
+  const canInstall = tool !== "git" && !!install;
+  const loadInstallable = install?.onOpen;
+
+  // Switching tools while the install list is open lists the new tool's versions.
+  useEffect(() => {
+    if (showInstall && tool !== "git") loadInstallable?.();
+  }, [tool, showInstall, loadInstallable]);
 
   // onRefresh changes identity whenever the selected tool changes, so this also refreshes on tool switch.
   useEffect(() => {
@@ -160,6 +183,15 @@ export function ToolsPanel({
               {t("tools.open_terminal")}
             </Button>
           )}
+          {canInstall && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowInstall((v) => !v)}
+            >
+              {t("tools.install_version")}
+            </Button>
+          )}
           {settings && onSaveSettings && (
             <Button variant="ghost" size="sm" onClick={() => setShowSettings((v) => !v)}>
               {showSettings ? t("tools.hide_settings") : t("tools.show_settings")}
@@ -208,6 +240,21 @@ export function ToolsPanel({
         </div>
 
         {shellCheck && shellCheck.tool === tool && <ShellCheckResult check={shellCheck} />}
+
+        {showInstall && canInstall && install && settings && onSaveSettings && (
+          <InstallSection
+            tool={tool}
+            versions={install.versions}
+            loading={install.loading}
+            busy={install.busy}
+            miseStatus={install.miseStatus}
+            settings={settings}
+            chosen={install.chosen}
+            onChoose={install.onChoose}
+            onConfirmStore={(store) => onSaveSettings({ ...settings, installStore: store, installStoreConfirmed: true })}
+            onInstall={install.onInstall}
+          />
+        )}
 
         {tool === "python" && pythonInfo && <PythonLauncherInfo info={pythonInfo} />}
 

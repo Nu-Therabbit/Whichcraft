@@ -167,10 +167,25 @@ export interface ApplyToolResult {
 
 export type TerminalKind = "windows_terminal" | "power_shell" | "cmd";
 
+export interface RemoteVersion {
+  version: string;
+  downloadBytes: number | null;
+  installBytes: number | null;
+}
+
+/** The pinned mise Whichcraft installs tools with; downloaded on the first install. */
+export interface MiseStatus {
+  version: string;
+  present: boolean;
+  downloadBytes: number;
+}
+
 export interface WhichcraftSettings {
   installStore: string;
   /** Earlier stores; their installations stay listed until empty. */
   previousInstallStores?: string[];
+  /** False until the user confirms the install folder before the first install. */
+  installStoreConfirmed?: boolean;
   scanRoots: string[];
   terminal: TerminalKind;
 }

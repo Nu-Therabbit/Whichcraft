@@ -73,7 +73,7 @@ export function ToolsSettings({ settings, busy, onSave }: Props) {
             variant="secondary"
             size="sm"
             disabled={busy || !store.trim() || store.trim() === settings.installStore}
-            onClick={() => save({ installStore: store.trim() })}
+            onClick={() => save({ installStore: store.trim(), installStoreConfirmed: true })}
           >
             {t("tools.settings.save")}
           </Button>

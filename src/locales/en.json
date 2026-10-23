@@ -298,6 +298,20 @@
       "managed_by_whichcraft": "Installed by Whichcraft"
     },
     "sdks_tab": "Android & MSVC",
+    "install_version": "Install a version",
+    "install": {
+      "title": "Install {{tool}}",
+      "filter": "Filter versions",
+      "chosen": "Version {{version}}.",
+      "size": "Download: {{size}}.",
+      "size_unknown": "Download size is not known before installing.",
+      "mise_first": "The first install also downloads Whichcraft's pinned installer (mise {{version}}, {{size}}) and checks its hash.",
+      "confirm_store": "Choose where Whichcraft keeps the tools it installs. You can change it later; tools already installed stay where they are.",
+      "use_folder": "Use this folder",
+      "into": "Installs into {{store}}. Nothing on PATH changes until you select it.",
+      "install": "Install",
+      "installing": "Installing…"
+    },
     "open_terminal": "Open terminal",
     "check_in_shell": "Check in shell",
     "shell_check": {

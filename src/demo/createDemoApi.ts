@@ -269,6 +269,12 @@ export function createDemoApi(
       throw new Error("Developer tools are unavailable in demo mode");
     },
     undoLastWhichcraftApply: async () => ({ conflicts: [], restored: 0 }),
+    listRemoteVersions: async () => [],
+    getMiseStatus: async () => ({ version: "2026.10.17", present: false, downloadBytes: 81_189_867 }),
+    downloadSize: async () => null,
+    installManaged: async () => {
+      throw new Error("Installing is unavailable in demo mode");
+    },
     openTerminal: async () => {
       throw new Error("Opening a terminal is unavailable in demo mode");
     },
