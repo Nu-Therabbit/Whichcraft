@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn apply_java_plan_writes_java_home_and_prepends_path() {
         let dir = tempfile::tempdir().unwrap();
-        std::env::set_var("LOCALAPPDATA", dir.path());
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
 
         let jdk = dir.path().join("jdk");
         std::fs::create_dir_all(jdk.join("bin")).unwrap();

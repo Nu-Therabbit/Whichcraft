@@ -62,6 +62,7 @@ pub fn build_path_cleanup_plan<B: EnvBackend>(
                 root: std::path::PathBuf::from("."),
                 managed: true,
             },
+            additional_selections: Vec::new(),
             effective_after_user_only: true,
         },
         removed_duplicates,

@@ -10,3 +10,16 @@ pub mod tool_apply;
 pub mod tool_inventory;
 pub mod tool_plan;
 pub mod undo;
+
+use std::collections::HashMap;
+
+use crate::model::EnvValue;
+
+/// Looks up an environment variable the way Windows does: names are case-insensitive.
+pub fn get_var<'a>(map: &'a HashMap<String, EnvValue>, name: &str) -> Option<&'a EnvValue> {
+    map.get(name).or_else(|| {
+        map.iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case(name))
+            .map(|(_, v)| v)
+    })
+}

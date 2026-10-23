@@ -22,6 +22,9 @@ pub struct ToolApplyPlan {
     pub system_diffs: Vec<PlanVariableDiff>,
     pub baseline: EnvSnapshot,
     pub selected: ToolInstallation,
+    /// Other tools this plan also selects (a profile applies several tools as one plan).
+    #[serde(default)]
+    pub additional_selections: Vec<ToolInstallation>,
     pub effective_after_user_only: bool,
 }
 
@@ -189,6 +192,7 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
         system_diffs,
         baseline,
         selected: installation.clone(),
+        additional_selections: Vec::new(),
         effective_after_user_only: effective_after_user,
     })
 }

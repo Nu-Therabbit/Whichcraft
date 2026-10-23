@@ -13,6 +13,8 @@ pub enum JournalStatus {
     Pending,
     Completed,
     Failed,
+    /// A completed apply that has since been undone; Undo skips it.
+    Undone,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

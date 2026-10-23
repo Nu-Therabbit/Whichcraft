@@ -100,6 +100,8 @@ enum Command {
     #[command(name = "whichcraft-elevated-apply", hide = true)]
     WhichcraftElevatedApply {
         payload: std::path::PathBuf,
+        /// SHA-256 of the payload, chosen by the non-elevated app.
+        sha256: String,
     },
 }
 
@@ -231,8 +233,10 @@ fn execute(command: Command) -> Result<(), crate::error::EnvarlyError> {
             crate::path_manage::cleanup_path(dry_run);
         }
 
-        Command::WhichcraftElevatedApply { payload } => {
-            crate::whichcraft::services::elevation::apply_elevated_payload(&payload)?;
+        Command::WhichcraftElevatedApply { payload, sha256 } => {
+            std::process::exit(crate::whichcraft::services::elevation::elevated_helper_main(
+                &payload, &sha256,
+            ));
         }
 
         Command::Export {

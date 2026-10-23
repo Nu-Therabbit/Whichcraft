@@ -137,7 +137,7 @@ pub fn plan_is_stale(plan: &JavaApplyPlan, backend: &dyn EnvBackend) -> Result<b
                 current.other_user.as_ref().unwrap_or(&current.user)
             }
         };
-        let live = map.get(&diff.name).map(|v| v.value.as_str());
+        let live = crate::whichcraft::services::get_var(map, &diff.name).map(|v| v.value.as_str());
         let expected = diff.before.as_deref();
         if live != expected {
             return Ok(true);

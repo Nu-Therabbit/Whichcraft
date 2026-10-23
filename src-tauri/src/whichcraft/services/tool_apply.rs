@@ -5,7 +5,10 @@ use crate::whichcraft::persistence::{
     load_incomplete_journal, new_journal_id, save_journal, save_tool_selection, JournalStatus,
     MutationRecord, ToolSelection, WhichcraftJournal,
 };
+use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
 use crate::whichcraft::ports::installation_probe::ToolInstallation;
+use crate::whichcraft::services::get_var;
+use crate::whichcraft::services::java_plan::PlanVariableDiff;
 use crate::whichcraft::services::tool_plan::{
     build_tool_apply_plan, diff_to_env_value, plan_to_mutations, tool_plan_is_stale, ToolApplyPlan,
 };
@@ -25,29 +28,43 @@ pub fn create_tool_plan<B: EnvBackend>(
     build_tool_apply_plan(backend, installation, new_journal_id())
 }
 
+/// Applies a plan in this process. A plan that touches System needs this process to be elevated.
 pub fn apply_tool_plan<B: EnvBackend>(
     backend: &B,
     plan: &ToolApplyPlan,
 ) -> Result<ApplyToolResult, EnvarlyError> {
-    if tool_plan_is_stale(plan, backend)? {
-        return Ok(ApplyToolResult {
-            plan_id: plan.plan_id.clone(),
-            stale: true,
-            needs_elevation: false,
-        });
-    }
+    apply_tool_plan_with(backend, None, plan)
+}
 
-    if plan.requires_uac && !backend.is_elevated() {
-        return Ok(ApplyToolResult {
-            plan_id: plan.plan_id.clone(),
-            stale: false,
-            needs_elevation: true,
-        });
+/// Applies a plan, writing the System part through a UAC-elevated helper when needed.
+pub fn apply_tool_plan_elevated<B: EnvBackend>(
+    backend: &B,
+    elevator: &dyn Elevator,
+    plan: &ToolApplyPlan,
+) -> Result<ApplyToolResult, EnvarlyError> {
+    apply_tool_plan_with(backend, Some(elevator), plan)
+}
+
+fn apply_tool_plan_with<B: EnvBackend>(
+    backend: &B,
+    elevator: Option<&dyn Elevator>,
+    plan: &ToolApplyPlan,
+) -> Result<ApplyToolResult, EnvarlyError> {
+    let result = |stale, needs_elevation| ApplyToolResult {
+        plan_id: plan.plan_id.clone(),
+        stale,
+        needs_elevation,
+    };
+    if tool_plan_is_stale(plan, backend)? {
+        return Ok(result(true, false));
+    }
+    let via_helper = !plan.system_diffs.is_empty() && !backend.is_elevated();
+    if via_helper && elevator.is_none() {
+        return Ok(result(false, true));
     }
 
     let mut mutations = Vec::new();
-    let mut changes = Vec::new();
-
+    let mut in_process = Vec::new();
     for (diff, (path_added, path_removed)) in plan_to_mutations(plan) {
         let map = match diff.scope {
             VarScope::User => backend.read_user()?,
@@ -56,57 +73,127 @@ pub fn apply_tool_plan<B: EnvBackend>(
                 .read_other_user()?
                 .ok_or_else(|| EnvarlyError::InvalidInput("no other-user account selected".into()))?,
         };
-        let before = map.get(&diff.name).cloned();
-        let after_value = diff_to_env_value(&diff);
         mutations.push(MutationRecord {
             name: diff.name.clone(),
             scope: diff.scope.clone(),
-            before: before.clone(),
-            after: Some(after_value.clone()),
+            before: get_var(&map, &diff.name).cloned(),
+            after: Some(diff_to_env_value(&diff)),
             path_added,
             path_removed,
         });
-        changes.push(EnvChange::Set {
-            name: diff.name,
-            value: diff.after,
-            value_kind: diff.value_kind,
-            scope: diff.scope,
-        });
+        if !(via_helper && diff.scope == VarScope::System) {
+            in_process.push(set_change(&diff));
+        }
     }
 
-    let journal = WhichcraftJournal {
+    // Journal every mutation, System included, before anything is written.
+    let mut journal = WhichcraftJournal {
         id: plan.plan_id.clone(),
         status: JournalStatus::Pending,
         kind: format!("{}_apply", tool_slug(plan.selected.tool)),
         created_at: chrono::Utc::now().to_rfc3339(),
         baseline: plan.baseline.clone(),
-        mutations: mutations.clone(),
+        mutations,
     };
     save_journal(&journal)?;
+    let mut fail = |journal: &mut WhichcraftJournal| {
+        journal.status = JournalStatus::Failed;
+        let _ = save_journal(journal);
+    };
 
-    if let Err(err) = env_store::apply_changes_with(backend, &changes, |_, _, _, _| {}) {
-        let mut failed = journal;
-        failed.status = JournalStatus::Failed;
-        let _ = save_journal(&failed);
-        return Err(err);
+    // System first: if UAC is declined or the plan went stale, nothing has been written yet.
+    let helper = elevator.filter(|_| via_helper);
+    if let Some(elevator) = helper {
+        let request = ElevatedRequest {
+            changes: plan
+                .system_diffs
+                .iter()
+                .map(|d| ExpectedChange {
+                    expected_before: d.before.clone(),
+                    change: set_change(d),
+                })
+                .collect(),
+        };
+        match elevator.apply_system(&request) {
+            Ok(ElevatedOutcome::Applied) => {}
+            Ok(ElevatedOutcome::Stale) => {
+                fail(&mut journal);
+                return Ok(result(true, false));
+            }
+            Ok(ElevatedOutcome::Cancelled) => {
+                fail(&mut journal);
+                return Err(EnvarlyError::InvalidInput(
+                    "UAC was cancelled; nothing was written".into(),
+                ));
+            }
+            Ok(ElevatedOutcome::Failed(msg)) => {
+                fail(&mut journal);
+                return Err(EnvarlyError::InvalidInput(format!("System write failed: {msg}")));
+            }
+            Err(e) => {
+                fail(&mut journal);
+                return Err(e);
+            }
+        }
     }
 
-    save_tool_selection(&ToolSelection {
-        tool: plan.selected.tool,
-        root: plan.selected.root.clone(),
-        vendor: plan.selected.vendor.clone(),
-        version: plan.selected.version.clone(),
-    })?;
+    if let Err(err) = env_store::apply_changes_with(backend, &in_process, |_, _, _, _| {}) {
+        // Envarly rolled back the in-process writes; undo the System part the helper wrote.
+        let mut message = err.to_string();
+        if let Some(elevator) = helper {
+            let revert = ElevatedRequest {
+                changes: plan.system_diffs.iter().map(revert_change).collect(),
+            };
+            if !matches!(elevator.apply_system(&revert), Ok(ElevatedOutcome::Applied)) {
+                message.push_str(&format!(
+                    "; System changes could not be reverted, journal {} records them",
+                    journal.id
+                ));
+            }
+        }
+        fail(&mut journal);
+        return Err(EnvarlyError::InvalidInput(message));
+    }
 
-    let mut completed = journal;
-    completed.status = JournalStatus::Completed;
-    save_journal(&completed)?;
+    for installation in std::iter::once(&plan.selected).chain(&plan.additional_selections) {
+        save_tool_selection(&ToolSelection {
+            tool: installation.tool,
+            root: installation.root.clone(),
+            vendor: installation.vendor.clone(),
+            version: installation.version.clone(),
+        })?;
+    }
 
-    Ok(ApplyToolResult {
-        plan_id: plan.plan_id.clone(),
-        stale: false,
-        needs_elevation: false,
-    })
+    journal.status = JournalStatus::Completed;
+    save_journal(&journal)?;
+    Ok(result(false, false))
+}
+
+fn set_change(diff: &PlanVariableDiff) -> EnvChange {
+    EnvChange::Set {
+        name: diff.name.clone(),
+        value: diff.after.clone(),
+        value_kind: diff.value_kind,
+        scope: diff.scope.clone(),
+    }
+}
+
+fn revert_change(diff: &PlanVariableDiff) -> ExpectedChange {
+    ExpectedChange {
+        expected_before: Some(diff.after.clone()),
+        change: match &diff.before {
+            Some(before) => EnvChange::Set {
+                name: diff.name.clone(),
+                value: before.clone(),
+                value_kind: diff.value_kind,
+                scope: diff.scope.clone(),
+            },
+            None => EnvChange::Delete {
+                name: diff.name.clone(),
+                scope: diff.scope.clone(),
+            },
+        },
+    }
 }
 
 fn tool_slug(tool: crate::whichcraft::api::ToolKind) -> &'static str {
@@ -122,4 +209,249 @@ fn tool_slug(tool: crate::whichcraft::api::ToolKind) -> &'static str {
 
 pub fn incomplete_apply_journal() -> Result<Option<WhichcraftJournal>, EnvarlyError> {
     load_incomplete_journal()
+}
+
+#[cfg(test)]
+pub(crate) mod test_support {
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+
+    use crate::env_store::{EnvBackend, MemBackend};
+    use crate::error::EnvarlyError;
+    use crate::model::EnvValue;
+    use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator};
+    use crate::whichcraft::services::elevation::{encode_request, run_elevated_request};
+
+    /// The System hive as the elevated helper sees it: same maps, but allowed to write.
+    struct ElevatedView<'a>(&'a MemBackend);
+
+    impl EnvBackend for ElevatedView<'_> {
+        fn read_user(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+            self.0.read_user()
+        }
+        fn read_system(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+            self.0.read_system()
+        }
+        fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+            self.0.write_user(name, value)
+        }
+        fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+            self.0.system.lock().unwrap().insert(name.into(), value.clone());
+            Ok(())
+        }
+        fn delete_user(&self, name: &str) -> Result<(), EnvarlyError> {
+            self.0.delete_user(name)
+        }
+        fn delete_system(&self, name: &str) -> Result<(), EnvarlyError> {
+            self.0.system.lock().unwrap().remove(name);
+            Ok(())
+        }
+        fn is_elevated(&self) -> bool {
+            true
+        }
+    }
+
+    pub enum Script {
+        /// Run the real helper logic against the backend's System hive.
+        Helper,
+        Cancel,
+        /// Something edits System PATH between planning and the helper running.
+        ChangeSystemPathFirst(&'static str),
+    }
+
+    pub struct FakeElevator<'a> {
+        pub backend: &'a MemBackend,
+        pub script: Mutex<Vec<Script>>,
+        pub requests: Mutex<Vec<ElevatedRequest>>,
+    }
+
+    impl<'a> FakeElevator<'a> {
+        pub fn new(backend: &'a MemBackend, script: Vec<Script>) -> Self {
+            Self { backend, script: Mutex::new(script), requests: Mutex::new(Vec::new()) }
+        }
+    }
+
+    impl Elevator for FakeElevator<'_> {
+        fn apply_system(&self, request: &ElevatedRequest) -> Result<ElevatedOutcome, EnvarlyError> {
+            self.requests.lock().unwrap().push(request.clone());
+            let step = {
+                let mut script = self.script.lock().unwrap();
+                if script.is_empty() { Script::Helper } else { script.remove(0) }
+            };
+            if let Script::Cancel = step {
+                return Ok(ElevatedOutcome::Cancelled);
+            }
+            if let Script::ChangeSystemPathFirst(value) = step {
+                ElevatedView(self.backend)
+                    .write_system("Path", &EnvValue::typed(value.into(), crate::model::EnvValueKind::ExpandString))?;
+            }
+            let (bytes, hash) = encode_request(request)?;
+            Ok(run_elevated_request(&ElevatedView(self.backend), &bytes, &hash))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_support::{FakeElevator, Script};
+    use super::*;
+    use crate::env_store::MemBackend;
+    use crate::model::EnvValueKind;
+    use crate::whichcraft::api::ToolKind;
+    use crate::whichcraft::persistence::{load_last_completed_apply, use_test_data_dir};
+
+    /// A plan that adds C:\node22 to User PATH and removes C:\Program Files\nodejs\ from System PATH.
+    fn shadowed_node_plan(backend: &MemBackend) -> ToolApplyPlan {
+        let snapshot = env_store::read_snapshot_with(backend).unwrap();
+        ToolApplyPlan {
+            plan_id: new_journal_id(),
+            tool: ToolKind::Node,
+            requires_uac: true,
+            warnings: vec![],
+            limitation_notice: String::new(),
+            user_diffs: vec![PlanVariableDiff {
+                name: "Path".into(),
+                scope: VarScope::User,
+                before: Some("C:\\u".into()),
+                after: "C:\\node22;C:\\u".into(),
+                value_kind: EnvValueKind::ExpandString,
+            }],
+            system_diffs: vec![PlanVariableDiff {
+                name: "Path".into(),
+                scope: VarScope::System,
+                before: Some("C:\\Windows;C:\\Program Files\\nodejs\\".into()),
+                after: "C:\\Windows".into(),
+                value_kind: EnvValueKind::ExpandString,
+            }],
+            baseline: snapshot,
+            selected: ToolInstallation {
+                tool: ToolKind::Node,
+                vendor: "Node.js".into(),
+                version: "22.23.4".into(),
+                root: "C:\\node22".into(),
+                managed: true,
+            },
+            additional_selections: vec![],
+            effective_after_user_only: false,
+        }
+    }
+
+    fn backend() -> MemBackend {
+        MemBackend::new()
+            .with_user([("Path", "C:\\u")])
+            .with_system([("Path", "C:\\Windows;C:\\Program Files\\nodejs\\")])
+            .with_elevated(false)
+    }
+
+    fn path(map: &std::collections::HashMap<String, crate::model::EnvValue>) -> String {
+        map["Path"].value.clone()
+    }
+
+    #[test]
+    fn writes_system_through_the_helper_then_user_and_journals_both() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let b = backend();
+        let elevator = FakeElevator::new(&b, vec![]);
+        let result = apply_tool_plan_elevated(&b, &elevator, &shadowed_node_plan(&b)).unwrap();
+        assert!(!result.stale && !result.needs_elevation);
+        assert_eq!(path(&b.read_system().unwrap()), "C:\\Windows");
+        assert_eq!(path(&b.read_user().unwrap()), "C:\\node22;C:\\u");
+        let journal = load_last_completed_apply().unwrap().expect("completed journal");
+        assert!(journal.mutations.iter().any(|m| m.scope == VarScope::System));
+        assert!(journal.mutations.iter().any(|m| m.scope == VarScope::User));
+    }
+
+    #[test]
+    fn cancelled_uac_writes_nothing_at_all() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let b = backend();
+        let elevator = FakeElevator::new(&b, vec![Script::Cancel]);
+        assert!(apply_tool_plan_elevated(&b, &elevator, &shadowed_node_plan(&b)).is_err());
+        assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
+        assert_eq!(path(&b.read_system().unwrap()), "C:\\Windows;C:\\Program Files\\nodejs\\");
+        assert!(load_last_completed_apply().unwrap().is_none());
+    }
+
+    #[test]
+    fn plan_gone_stale_while_waiting_for_uac_writes_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let b = backend();
+        let plan = shadowed_node_plan(&b);
+        let moved = "C:\\Windows;C:\\Program Files\\nodejs\\;C:\\new";
+        let elevator = FakeElevator::new(&b, vec![Script::ChangeSystemPathFirst(moved)]);
+        let result = apply_tool_plan_elevated(&b, &elevator, &plan).unwrap();
+        assert!(result.stale);
+        assert_eq!(path(&b.read_system().unwrap()), moved);
+        assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
+    }
+
+    #[test]
+    fn helper_only_ever_receives_system_scope() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let b = backend();
+        let elevator = FakeElevator::new(&b, vec![]);
+        apply_tool_plan_elevated(&b, &elevator, &shadowed_node_plan(&b)).unwrap();
+        let requests = elevator.requests.lock().unwrap();
+        assert_eq!(requests.len(), 1);
+        assert!(requests[0].changes.iter().all(|c| matches!(
+            &c.change,
+            EnvChange::Set { scope: VarScope::System, .. }
+        )));
+    }
+
+    /// Lets System through to the inner backend but refuses every User write.
+    struct UserWritesFail<'a>(&'a MemBackend);
+
+    impl crate::env_store::EnvBackend for UserWritesFail<'_> {
+        fn read_user(&self) -> Result<std::collections::HashMap<String, crate::model::EnvValue>, EnvarlyError> {
+            self.0.read_user()
+        }
+        fn read_system(&self) -> Result<std::collections::HashMap<String, crate::model::EnvValue>, EnvarlyError> {
+            self.0.read_system()
+        }
+        fn write_user(&self, _: &str, _: &crate::model::EnvValue) -> Result<(), EnvarlyError> {
+            Err(EnvarlyError::InvalidInput("user hive locked".into()))
+        }
+        fn write_system(&self, name: &str, value: &crate::model::EnvValue) -> Result<(), EnvarlyError> {
+            self.0.write_system(name, value)
+        }
+        fn delete_user(&self, _: &str) -> Result<(), EnvarlyError> {
+            Err(EnvarlyError::InvalidInput("user hive locked".into()))
+        }
+        fn delete_system(&self, name: &str) -> Result<(), EnvarlyError> {
+            self.0.delete_system(name)
+        }
+        fn is_elevated(&self) -> bool {
+            false
+        }
+    }
+
+    #[test]
+    fn a_failed_user_write_reverts_what_the_helper_wrote_to_system() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let inner = backend();
+        let b = UserWritesFail(&inner);
+        let elevator = FakeElevator::new(&inner, vec![]);
+        assert!(apply_tool_plan_elevated(&b, &elevator, &shadowed_node_plan(&inner)).is_err());
+        assert_eq!(path(&inner.read_system().unwrap()), "C:\\Windows;C:\\Program Files\\nodejs\\");
+        assert_eq!(path(&inner.read_user().unwrap()), "C:\\u");
+        // One request to apply, one to revert.
+        assert_eq!(elevator.requests.lock().unwrap().len(), 2);
+        assert!(load_last_completed_apply().unwrap().is_none());
+    }
+
+    #[test]
+    fn without_an_elevator_a_system_plan_asks_for_elevation() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let b = backend();
+        let result = apply_tool_plan(&b, &shadowed_node_plan(&b)).unwrap();
+        assert!(result.needs_elevation);
+        assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
+    }
 }

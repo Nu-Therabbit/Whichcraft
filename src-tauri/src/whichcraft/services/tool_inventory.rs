@@ -264,7 +264,7 @@ mod tests {
     #[test]
     fn lists_node_from_user_path() {
         let dir = tempfile::tempdir().unwrap();
-        std::env::set_var("LOCALAPPDATA", dir.path());
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
         let node_root = dir.path().join("nodejs");
         std::fs::create_dir_all(&node_root).unwrap();
         std::fs::write(node_root.join("node.exe"), b"").unwrap();
