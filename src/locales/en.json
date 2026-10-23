@@ -695,6 +695,14 @@
     "status_building_plan": "Building plan…",
     "undo_conflicts": "Undo completed with conflicts (external values kept)",
     "undo_restored": "Undo restored {{count}} variable(s)",
-    "dismiss_undo_result": "Dismiss"
+    "dismiss_undo_result": "Dismiss",
+    "page_environment": "Environment",
+    "page_settings": "Settings",
+    "environment_toolbar": "Environment actions",
+    "env_tabs_label": "Environment workflows",
+    "env_tab_variables": "Variables",
+    "env_tab_snapshots": "Snapshots",
+    "env_tab_import_export": "Import / Export",
+    "env_tab_check_command": "Check command"
   }
 }

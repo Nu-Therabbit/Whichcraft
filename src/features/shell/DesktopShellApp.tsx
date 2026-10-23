@@ -5,7 +5,7 @@ import { ThemeContext } from "../../context/ThemeContext";
 import { useAppServices } from "../../composition/AppServicesContext";
 import { useI18n } from "../../hooks/useI18n";
 import { useTheme } from "../../hooks/useTheme";
-import { legacyPresentationHref } from "../../lib/appPresentation";
+import { legacyPresentationHref, shellNavigationHref } from "../../lib/appPresentation";
 import { Icon } from "../../components/ui/Icon";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
@@ -20,24 +20,12 @@ import {
   unavailableCount,
 } from "./toolOverviewModel";
 import { ShellInstallationDetail } from "./ShellInstallationDetail";
+import { ShellEnvironmentWorkspace } from "./ShellEnvironmentWorkspace";
+import { useShellNavigation } from "./useShellNavigation";
 import { useShellToolsWrite } from "./useShellToolsWrite";
 import { useToolsOverview } from "./useToolsOverview";
 
 type ShellPage = "tools" | "profiles" | "environment" | "settings";
-
-function ToolMark({ tool, small }: { tool: ToolKind; small?: boolean }) {
-  const meta = TOOL_DISPLAY[tool];
-  return (
-    <span
-      className={`inline-flex items-center justify-center rounded-md font-semibold shrink-0 ${
-        small ? "size-8 text-xs" : "size-10 text-sm"
-      } bg-surface text-fg border border-rim-subtle`}
-      aria-hidden
-    >
-      {meta.glyph}
-    </span>
-  );
-}
 
 function scopesNeedShellRescan(scopes: InvalidationScope[]): boolean {
   return scopes.some(
@@ -53,11 +41,13 @@ function scopesNeedShellRescan(scopes: InvalidationScope[]): boolean {
 export function DesktopShellApp() {
   const services = useAppServices();
   const coordination = useWriteCoordinator();
+  const { page, envTab, goPage, goEnvTab } = useShellNavigation();
   const overview = useToolsOverview(services.tools, services.environment, coordination);
   const toolsWrite = useShellToolsWrite(overview.detailOpen ? overview.selectedTool : null);
   const { theme, toggle: toggleTheme } = useTheme();
   const { t } = useI18n();
-  const page: ShellPage = "tools";
+
+  const activePage: ShellPage = page === "profiles" ? "profiles" : page;
   const statusLine = toolsWrite.state.plan.applying
     ? t("desktop_shell.status_applying")
     : toolsWrite.state.plan.building
@@ -81,6 +71,17 @@ export function DesktopShellApp() {
   );
 
   const selectedSlice = overview.selectedTool ? overview.byTool[overview.selectedTool] : null;
+  const pageTitle =
+    activePage === "environment"
+      ? t("desktop_shell.page_environment")
+      : activePage === "settings"
+        ? t("desktop_shell.page_settings")
+        : t("desktop_shell.page_tools");
+
+  const navHref = (id: ShellPage) => {
+    if (id === "profiles") return legacyPresentationHref();
+    return shellNavigationHref({ page: id });
+  };
 
   return (
     <ThemeContext.Provider value={theme}>
@@ -99,14 +100,19 @@ export function DesktopShellApp() {
           ).map(([id, label]) => (
             <a
               key={id}
-              href={id === "tools" ? undefined : legacyPresentationHref()}
+              href={navHref(id)}
+              onClick={(e) => {
+                if (id === "profiles") return;
+                e.preventDefault();
+                goPage(id);
+              }}
               className={`mx-2 px-3 py-2 rounded text-sm text-left ${
-                page === id ? "bg-surface text-fg font-medium" : "text-muted hover:bg-hover"
+                activePage === id ? "bg-surface text-fg font-medium" : "text-muted hover:bg-hover"
               }`}
-              aria-current={page === id ? "page" : undefined}
+              aria-current={activePage === id ? "page" : undefined}
             >
               {label}
-              {id !== "tools" && (
+              {id === "profiles" && (
                 <span className="block text-[11px] text-dim font-normal">
                   {t("desktop_shell.legacy_entry")}
                 </span>
@@ -121,10 +127,10 @@ export function DesktopShellApp() {
         </nav>
 
         <div
-          className={`flex flex-1 flex-col min-w-0 ${overview.detailOpen ? "max-w-[calc(100%-22rem)]" : ""}`}
+          className={`flex flex-1 flex-col min-w-0 ${activePage === "tools" && overview.detailOpen ? "max-w-[calc(100%-22rem)]" : ""}`}
         >
           <header className="flex items-center justify-between px-5 py-3 border-b border-rim-subtle shrink-0">
-            <h1 className="text-lg font-semibold">{t("desktop_shell.page_tools")}</h1>
+            <h1 className="text-lg font-semibold">{pageTitle}</h1>
             <div className="flex items-center gap-3 text-xs text-dim">
               <span className="inline-flex items-center gap-1">
                 <span className="size-2 rounded-full bg-success" aria-hidden />
@@ -138,210 +144,224 @@ export function DesktopShellApp() {
             </div>
           </header>
 
-          <div
-            className="flex items-center gap-2 px-4 py-2 border-b border-rim-subtle shrink-0 flex-wrap"
-            role="toolbar"
-            aria-label={t("desktop_shell.command_bar")}
-          >
-            <Button variant="secondary" size="sm" disabled title={t("desktop_shell.install_legacy_hint")}>
-              <Icon name="plus" size={14} />
-              {t("desktop_shell.install_tool")}
-            </Button>
-            <span className="w-px h-5 bg-rim-subtle" aria-hidden />
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => void overview.rescan()}
-              disabled={overview.rescanning}
-            >
-              <Icon name="refresh" size={14} />
-              {overview.rescanning ? t("desktop_shell.rescanning") : t("desktop_shell.rescan")}
-            </Button>
-            <label className="ml-auto flex items-center gap-2 text-sm min-w-[12rem] flex-1 max-w-md">
-              <span className="sr-only">{t("desktop_shell.search_label")}</span>
-              <input
-                type="search"
-                value={overview.query}
-                onChange={(e) => overview.setQuery(e.target.value)}
-                placeholder={t("desktop_shell.search_placeholder")}
-                className="w-full bg-surface border border-rim-subtle rounded px-2 py-1 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              />
-            </label>
-          </div>
-
-          {overview.accountError && (
-            <div className="px-5 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0">
-              {overview.accountError}
-            </div>
-          )}
-
-          <div className="flex flex-1 min-h-0">
-            <main className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-              <div>
-                <h2 className="text-sm font-semibold">{t("desktop_shell.installed_tools")}</h2>
-                <p className="text-xs text-dim">{t("desktop_shell.effective_subtitle")}</p>
+          {activePage === "tools" && (
+            <>
+              <div
+                className="flex items-center gap-2 px-4 py-2 border-b border-rim-subtle shrink-0 flex-wrap"
+                role="toolbar"
+                aria-label={t("desktop_shell.command_bar")}
+              >
+                <Button variant="secondary" size="sm" disabled title={t("desktop_shell.install_legacy_hint")}>
+                  <Icon name="plus" size={14} />
+                  {t("desktop_shell.install_tool")}
+                </Button>
+                <span className="w-px h-5 bg-rim-subtle" aria-hidden />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void overview.rescan()}
+                  disabled={overview.rescanning}
+                >
+                  <Icon name="refresh" size={14} />
+                  {overview.rescanning ? t("desktop_shell.rescanning") : t("desktop_shell.rescan")}
+                </Button>
+                <label className="ml-auto flex items-center gap-2 text-sm min-w-[12rem] flex-1 max-w-md">
+                  <span className="sr-only">{t("desktop_shell.search_label")}</span>
+                  <input
+                    type="search"
+                    value={overview.query}
+                    onChange={(e) => overview.setQuery(e.target.value)}
+                    placeholder={t("desktop_shell.search_placeholder")}
+                    className="w-full bg-surface border border-rim-subtle rounded px-2 py-1 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  />
+                </label>
               </div>
 
-              <div className="grid gap-2 @xl:grid-cols-2">
-                {visibleTools.map((tool) => {
-                  const slice = overview.byTool[tool];
-                  const meta = TOOL_DISPLAY[tool];
-                  const effective = pickEffective(slice.installations);
-                  const differs = selectionDiffers(slice.installations);
-                  return (
-                    <button
-                      type="button"
-                      key={tool}
-                      className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors ${
-                        overview.selectedTool === tool
-                          ? "border-accent bg-surface"
-                          : "border-rim-subtle bg-panel hover:bg-hover"
-                      }`}
-                      aria-pressed={overview.selectedTool === tool}
-                      aria-label={
-                        slice.loading
-                          ? t("desktop_shell.tool_card_scanning_label", { name: meta.title })
-                          : t("desktop_shell.tool_card_label", {
-                              name: meta.title,
-                              effective: formatInstallationLabel(effective),
-                              count: slice.installations.length,
-                            })
-                      }
-                      onClick={() => overview.selectTool(tool)}
-                    >
-                      <ToolMark tool={tool} small />
-                      <span className="flex-1 min-w-0">
-                        <strong className="block text-sm">{meta.title}</strong>
-                        <span className="flex items-center gap-1 text-xs font-mono text-muted">
-                          <span
-                            className={`size-1.5 rounded-full ${differs ? "bg-warn" : "bg-success"}`}
-                            aria-hidden
-                          />
-                          {slice.loading ? t("desktop_shell.loading") : formatInstallationLabel(effective)}
-                        </span>
-                        <small className="text-[11px] text-dim">
-                          {slice.loading
-                            ? t("desktop_shell.scanning_installations")
-                            : slice.error
-                              ? t("desktop_shell.load_error")
-                              : t("desktop_shell.installation_count", {
-                                  count: slice.installations.length,
-                                })}
-                          {meta.switchOnly ? ` · ${t("desktop_shell.switch_only")}` : ""}
-                          {unavailableCount(slice.installations) > 0
-                            ? ` · ${t("desktop_shell.unavailable_count", {
-                                count: unavailableCount(slice.installations),
-                              })}`
-                            : ""}
-                        </small>
-                      </span>
-                      <span className="text-dim text-lg" aria-hidden>
-                        ›
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {visibleTools.length === 0 && (
-                <p className="text-sm text-dim text-center py-8">{t("desktop_shell.search_empty")}</p>
+              {overview.accountError && (
+                <div className="px-5 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0">
+                  {overview.accountError}
+                </div>
               )}
 
-              <section aria-labelledby="sdk-heading">
-                <h2 id="sdk-heading" className="text-sm font-semibold">
-                  {t("desktop_shell.other_sdks")}
-                </h2>
-                <p className="text-xs text-dim mb-2">{t("desktop_shell.inventory_only")}</p>
-                {overview.sdkLoading && <p className="text-xs text-dim">{t("desktop_shell.loading")}</p>}
-                {overview.sdkError && <p className="text-xs text-warn">{overview.sdkError}</p>}
-                <ul className="space-y-2">
-                  {overview.sdks.android && (
-                    <li className="rounded border border-rim-subtle px-3 py-2 text-sm bg-panel">
-                      <strong>{t("desktop_shell.android_sdk")}</strong>
-                      <div className="text-xs text-dim mt-1 font-mono break-all">
-                        {overview.sdks.android.sdkRoot ?? t("desktop_shell.not_detected")}
-                      </div>
-                    </li>
-                  )}
-                  {overview.sdks.msvc && (
-                    <li className="rounded border border-rim-subtle px-3 py-2 text-sm bg-panel">
-                      <strong>{t("desktop_shell.msvc")}</strong>
-                      <div className="text-xs text-dim mt-1">
-                        {overview.sdks.msvc.instances.length > 0
-                          ? overview.sdks.msvc.instances
-                              .map((item) => item.displayName)
-                              .join(", ")
-                          : t("desktop_shell.not_detected")}
-                      </div>
-                    </li>
-                  )}
-                  {overview.pythonInfo && (
-                    <li className="rounded border border-rim-subtle px-3 py-2 text-sm bg-panel">
-                      <strong>{t("desktop_shell.python_supplemental")}</strong>
-                      <div className="text-xs text-dim mt-1 space-y-1">
-                        {overview.pythonInfo.launcherLines.length > 0 && (
-                          <div>
-                            {t("desktop_shell.python_launcher")}:{" "}
-                            <code className="font-mono">
-                              {overview.pythonInfo.launcherLines.map((line) => line.path).join("; ")}
-                            </code>
-                          </div>
-                        )}
-                        {overview.pythonInfo.storeStub && (
-                          <div>
-                            {t("desktop_shell.python_store_stub")}: {overview.pythonInfo.storeStub}
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  )}
-                </ul>
-              </section>
-            </main>
+              <div className="flex flex-1 min-h-0">
+                <main className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+                  <div>
+                    <h2 className="text-sm font-semibold">{t("desktop_shell.installed_tools")}</h2>
+                    <p className="text-xs text-dim">{t("desktop_shell.effective_subtitle")}</p>
+                  </div>
 
-            {overview.detailOpen && overview.selectedTool && selectedSlice && (
-              <aside
-                className="w-[22rem] shrink-0 border-l border-rim-subtle bg-panel flex flex-col overflow-hidden"
-                aria-label={t("desktop_shell.installation_details")}
-              >
-                <div className="flex items-start gap-2 px-4 py-3 border-b border-rim-subtle">
-                  <ToolMark tool={overview.selectedTool} />
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-base font-semibold">{TOOL_DISPLAY[overview.selectedTool].title}</h2>
-                    <p className="text-xs text-dim">{TOOL_DISPLAY[overview.selectedTool].description}</p>
+                  <div className="grid gap-2 @xl:grid-cols-2">
+                    {visibleTools.map((tool) => {
+                      const slice = overview.byTool[tool];
+                      const meta = TOOL_DISPLAY[tool];
+                      const effective = pickEffective(slice.installations);
+                      const differs = selectionDiffers(slice.installations);
+                      return (
+                        <button
+                          type="button"
+                          key={tool}
+                          className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors ${
+                            overview.selectedTool === tool
+                              ? "border-accent bg-surface"
+                              : "border-rim-subtle bg-panel hover:bg-hover"
+                          }`}
+                          aria-pressed={overview.selectedTool === tool}
+                          aria-label={
+                            slice.loading
+                              ? t("desktop_shell.tool_card_scanning_label", { name: meta.title })
+                              : t("desktop_shell.tool_card_label", {
+                                  name: meta.title,
+                                  effective: formatInstallationLabel(effective),
+                                  count: slice.installations.length,
+                                })
+                          }
+                          onClick={() => overview.selectTool(tool)}
+                        >
+                          <ToolMark tool={tool} small />
+                          <span className="flex-1 min-w-0">
+                            <strong className="block text-sm">{meta.title}</strong>
+                            <span className="flex items-center gap-1 text-xs font-mono text-muted">
+                              <span
+                                className={`size-1.5 rounded-full ${differs ? "bg-warn" : "bg-success"}`}
+                                aria-hidden
+                              />
+                              {slice.loading
+                                ? t("desktop_shell.loading")
+                                : formatInstallationLabel(effective)}
+                            </span>
+                            <small className="text-[11px] text-dim">
+                              {slice.loading
+                                ? t("desktop_shell.scanning_installations")
+                                : slice.error
+                                  ? t("desktop_shell.load_error")
+                                  : t("desktop_shell.installation_count", {
+                                      count: slice.installations.length,
+                                    })}
+                              {meta.switchOnly ? ` · ${t("desktop_shell.switch_only")}` : ""}
+                              {unavailableCount(slice.installations) > 0
+                                ? ` · ${t("desktop_shell.unavailable_count", {
+                                    count: unavailableCount(slice.installations),
+                                  })}`
+                                : ""}
+                            </small>
+                          </span>
+                          <span className="text-dim text-lg" aria-hidden>
+                            ›
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <IconButton
-                    aria-label={t("desktop_shell.close_details")}
-                    icon="x"
-                    onClick={overview.closeDetail}
-                  />
-                </div>
-                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-                  <div>
-                    <h3 className="text-[11px] uppercase tracking-wide text-dim">
-                      {t("desktop_shell.selection")}
-                    </h3>
-                    <p className="text-sm font-mono mt-1">
-                      {formatInstallationLabel(pickSelected(selectedSlice.installations))}
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="text-[11px] uppercase tracking-wide text-dim">
-                      {t("desktop_shell.effective_installation")}
-                    </h3>
-                    <p className="text-sm font-mono mt-1">
-                      {formatInstallationLabel(pickEffective(selectedSlice.installations))}
-                    </p>
-                  </div>
-                  <ShellInstallationDetail
-                    tool={overview.selectedTool}
-                    state={toolsWrite.state}
-                    dispatch={toolsWrite.dispatch}
-                  />
-                </div>
-              </aside>
-            )}
-          </div>
+
+                  {visibleTools.length === 0 && (
+                    <p className="text-sm text-dim text-center py-8">{t("desktop_shell.search_empty")}</p>
+                  )}
+
+                  <section aria-labelledby="sdk-heading">
+                    <h2 id="sdk-heading" className="text-sm font-semibold">
+                      {t("desktop_shell.other_sdks")}
+                    </h2>
+                    <p className="text-xs text-dim mb-2">{t("desktop_shell.inventory_only")}</p>
+                    {overview.sdkLoading && <p className="text-xs text-dim">{t("desktop_shell.loading")}</p>}
+                    {overview.sdkError && <p className="text-xs text-warn">{overview.sdkError}</p>}
+                    <ul className="space-y-2">
+                      {overview.sdks.android && (
+                        <li className="rounded border border-rim-subtle px-3 py-2 text-sm bg-panel">
+                          <strong>{t("desktop_shell.android_sdk")}</strong>
+                          <div className="text-xs text-dim mt-1 font-mono break-all">
+                            {overview.sdks.android.sdkRoot ?? t("desktop_shell.not_detected")}
+                          </div>
+                        </li>
+                      )}
+                      {overview.sdks.msvc && (
+                        <li className="rounded border border-rim-subtle px-3 py-2 text-sm bg-panel">
+                          <strong>{t("desktop_shell.msvc")}</strong>
+                          <div className="text-xs text-dim mt-1">
+                            {overview.sdks.msvc.instances.length > 0
+                              ? overview.sdks.msvc.instances
+                                  .map((item) => item.displayName)
+                                  .join(", ")
+                              : t("desktop_shell.not_detected")}
+                          </div>
+                        </li>
+                      )}
+                      {overview.pythonInfo && (
+                        <li className="rounded border border-rim-subtle px-3 py-2 text-sm bg-panel">
+                          <strong>{t("desktop_shell.python_supplemental")}</strong>
+                          <div className="text-xs text-dim mt-1 space-y-1">
+                            {overview.pythonInfo.launcherLines.length > 0 && (
+                              <div>
+                                {t("desktop_shell.python_launcher")}:{" "}
+                                <code className="font-mono">
+                                  {overview.pythonInfo.launcherLines.map((line) => line.path).join("; ")}
+                                </code>
+                              </div>
+                            )}
+                            {overview.pythonInfo.storeStub && (
+                              <div>
+                                {t("desktop_shell.python_store_stub")}: {overview.pythonInfo.storeStub}
+                              </div>
+                            )}
+                          </div>
+                        </li>
+                      )}
+                    </ul>
+                  </section>
+                </main>
+
+                {overview.detailOpen && overview.selectedTool && selectedSlice && (
+                  <aside
+                    className="w-[22rem] shrink-0 border-l border-rim-subtle bg-panel flex flex-col overflow-hidden"
+                    aria-label={t("desktop_shell.installation_details")}
+                  >
+                    <div className="flex items-start gap-2 px-4 py-3 border-b border-rim-subtle">
+                      <ToolMark tool={overview.selectedTool} />
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-base font-semibold">{TOOL_DISPLAY[overview.selectedTool].title}</h2>
+                        <p className="text-xs text-dim">{TOOL_DISPLAY[overview.selectedTool].description}</p>
+                      </div>
+                      <IconButton
+                        aria-label={t("desktop_shell.close_details")}
+                        icon="x"
+                        onClick={overview.closeDetail}
+                      />
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+                      <div>
+                        <h3 className="text-[11px] uppercase tracking-wide text-dim">
+                          {t("desktop_shell.selection")}
+                        </h3>
+                        <p className="text-sm font-mono mt-1">
+                          {formatInstallationLabel(pickSelected(selectedSlice.installations))}
+                        </p>
+                      </div>
+                      <div>
+                        <h3 className="text-[11px] uppercase tracking-wide text-dim">
+                          {t("desktop_shell.effective_installation")}
+                        </h3>
+                        <p className="text-sm font-mono mt-1">
+                          {formatInstallationLabel(pickEffective(selectedSlice.installations))}
+                        </p>
+                      </div>
+                      <ShellInstallationDetail
+                        tool={overview.selectedTool}
+                        state={toolsWrite.state}
+                        dispatch={toolsWrite.dispatch}
+                      />
+                    </div>
+                  </aside>
+                )}
+              </div>
+            </>
+          )}
+
+          {activePage === "environment" && (
+            <ShellEnvironmentWorkspace envTab={envTab} onEnvTab={goEnvTab} />
+          )}
+
+          {activePage === "settings" && (
+            <p className="px-5 py-4 text-sm text-dim">{t("desktop_shell.legacy_entry")}</p>
+          )}
 
           <footer className="shrink-0 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim flex justify-between gap-4">
             <span className="truncate">{statusLine}</span>
@@ -350,5 +370,19 @@ export function DesktopShellApp() {
         </div>
       </div>
     </ThemeContext.Provider>
+  );
+}
+
+function ToolMark({ tool, small }: { tool: ToolKind; small?: boolean }) {
+  const meta = TOOL_DISPLAY[tool];
+  return (
+    <span
+      className={`inline-flex items-center justify-center rounded-md font-semibold shrink-0 ${
+        small ? "size-8 text-xs" : "size-10 text-sm"
+      } bg-surface text-fg border border-rim-subtle`}
+      aria-hidden
+    >
+      {meta.glyph}
+    </span>
   );
 }

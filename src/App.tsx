@@ -38,7 +38,11 @@ function LegacyAppRoot() {
 export default function App() {
   const presentation = readAppPresentation();
   if (presentation === "desktop-shell") {
-    return <DesktopShellApp />;
+    return (
+      <EnvironmentProvider>
+        <DesktopShellApp />
+      </EnvironmentProvider>
+    );
   }
   return <LegacyAppRoot />;
 }
