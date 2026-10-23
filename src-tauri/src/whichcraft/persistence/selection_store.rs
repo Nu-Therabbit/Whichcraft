@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::whichcraft_data_dir;
 use crate::error::EnvarlyError;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

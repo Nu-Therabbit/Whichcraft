@@ -1,6 +1,6 @@
 //! Whichcraft: discovering, switching, installing and removing developer tools.
 
-mod api;
+pub mod domain;
 #[cfg(test)]
 pub mod fake;
 pub mod java;
@@ -13,4 +13,4 @@ pub mod services;
 #[cfg(windows)]
 pub mod adapters;
 
-pub use api::ToolKind;
+pub use domain::ToolKind;

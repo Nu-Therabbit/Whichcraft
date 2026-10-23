@@ -2,7 +2,7 @@
 //! read from the archive's own download URL with a HEAD request.
 
 use crate::error::EnvarlyError;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 
 /// The archive mise downloads for a version, when its URL can be predicted. Temurin and
 /// python-build-standalone names carry build numbers and dates that the version alone does not

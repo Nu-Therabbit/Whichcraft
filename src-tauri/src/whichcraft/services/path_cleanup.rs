@@ -6,11 +6,11 @@ use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::model::VarScope;
 use crate::whichcraft::persistence::new_journal_id;
-use crate::whichcraft::services::tool_plan::PlanVariableDiff;
-use crate::whichcraft::services::path_plan::path_entries;
-use crate::whichcraft::services::tool_plan::ToolApplyPlan;
+use crate::whichcraft::domain::PlanVariableDiff;
+use crate::whichcraft::domain::path::path_entries;
+use crate::whichcraft::domain::ToolApplyPlan;
 use crate::whichcraft::ToolKind;
-use crate::whichcraft::ports::installation_probe::ToolInstallation;
+use crate::whichcraft::domain::ToolInstallation;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -4,10 +4,11 @@ use std::process::Command;
 use sha2::{Digest, Sha256};
 
 use crate::error::EnvarlyError;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::mise::pins::{self, MISE_VERSION};
 use crate::whichcraft::persistence::load_settings;
-use crate::whichcraft::ports::tool_manager::{RemoteVersion, ToolManager};
+use crate::whichcraft::ports::tool_manager::{ToolManager};
+use crate::whichcraft::domain::versions::{RemoteVersion};
 
 const FLUTTER_PLUGIN_NAME: &str = "vfox-jdx-vfox-flutter";
 const FLUTTER_PLUGIN_URL: &str = "https://github.com/jdx/vfox-flutter";

@@ -5,8 +5,8 @@ use crate::whichcraft::persistence::{
     load_last_completed_apply, save_journal, JournalStatus, WhichcraftJournal,
 };
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
-use crate::whichcraft::services::get_var;
-use crate::whichcraft::services::path_plan::path_entries;
+use crate::whichcraft::domain::env::get_var;
+use crate::whichcraft::domain::path::path_entries;
 
 #[derive(Debug, Clone, serde::Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -228,7 +228,7 @@ mod tests {
     use crate::env_store::MemBackend;
     use crate::model::EnvValue;
     use crate::whichcraft::persistence::{use_test_data_dir, MutationRecord, WhichcraftJournal};
-    use crate::whichcraft::services::path_plan::{compute_prepend, path_entry_diff};
+    use crate::whichcraft::domain::path::{compute_prepend, path_entry_diff};
     use crate::whichcraft::services::tool_apply::test_support::FakeElevator;
 
     fn leak(s: String) -> &'static str {

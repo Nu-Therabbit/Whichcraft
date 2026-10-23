@@ -1,87 +1,15 @@
-use serde::{Deserialize, Serialize};
 
 use crate::commands::path::dir_exists;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
-use crate::model::{EnvSnapshot, EnvValue, EnvValueKind, VarScope};
+use crate::model::{EnvValue, EnvValueKind, VarScope};
 use crate::path_manage;
-use crate::whichcraft::api::ToolKind;
-use crate::whichcraft::ports::installation_probe::ToolInstallation;
-use crate::whichcraft::services::get_var;
-use crate::whichcraft::services::path_plan::{compute_prepend, path_entries, path_entry_diff};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PlanVariableDiff {
-    pub name: String,
-    pub scope: VarScope,
-    pub before: Option<String>,
-    pub after: String,
-    pub value_kind: EnvValueKind,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ToolApplyPlan {
-    pub plan_id: String,
-    pub tool: ToolKind,
-    pub requires_uac: bool,
-    pub warnings: Vec<String>,
-    pub limitation_notice: String,
-    pub user_diffs: Vec<PlanVariableDiff>,
-    pub system_diffs: Vec<PlanVariableDiff>,
-    pub baseline: EnvSnapshot,
-    pub selected: ToolInstallation,
-    /// Other tools this plan also selects (a profile applies several tools as one plan).
-    #[serde(default)]
-    pub additional_selections: Vec<ToolInstallation>,
-    /// False for plans that are not a tool choice (PATH cleanup); applying them leaves the
-    /// remembered selections alone.
-    #[serde(default = "records_selection_default")]
-    pub records_selection: bool,
-    pub effective_after_user_only: bool,
-}
-
-fn records_selection_default() -> bool {
-    true
-}
-
-pub fn path_dirs_for_tool(installation: &ToolInstallation) -> Vec<String> {
-    match installation.tool {
-        ToolKind::Java => vec![
-            installation.root.join("bin").to_string_lossy().into_owned(),
-        ],
-        ToolKind::Node | ToolKind::Python => {
-            vec![installation.root.to_string_lossy().into_owned()]
-        }
-        ToolKind::Go => vec![
-            installation
-                .root
-                .join("bin")
-                .to_string_lossy()
-                .into_owned(),
-        ],
-        ToolKind::Flutter => vec![
-            installation
-                .root
-                .join("bin")
-                .to_string_lossy()
-                .into_owned(),
-        ],
-        ToolKind::Git => vec![
-            installation
-                .root
-                .join("cmd")
-                .to_string_lossy()
-                .into_owned(),
-            installation
-                .root
-                .join("bin")
-                .to_string_lossy()
-                .into_owned(),
-        ],
-    }
-}
+use crate::whichcraft::domain::ToolKind;
+use crate::whichcraft::domain::ToolInstallation;
+use crate::whichcraft::domain::env::get_var;
+use crate::whichcraft::domain::path::{compute_prepend, path_entries, path_entry_diff};
+use crate::whichcraft::domain::plan::path_dirs_for_tool;
+use crate::whichcraft::domain::{PlanVariableDiff, ToolApplyPlan};
 
 pub fn build_tool_apply_plan<B: EnvBackend>(
     backend: &B,

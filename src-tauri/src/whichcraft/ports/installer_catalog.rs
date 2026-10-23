@@ -1,19 +1,8 @@
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
 
 use crate::error::EnvarlyError;
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum InstallerKind {
-    Msi,
-    InnoSetup,
-    PythonInstallManager,
-    ManagedByOtherTool,
-    FolderOnly,
-    ManagedByWhichcraft,
-}
+use crate::whichcraft::domain::InstallerKind;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CatalogEntry {

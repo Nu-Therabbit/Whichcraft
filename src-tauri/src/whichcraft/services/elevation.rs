@@ -12,7 +12,7 @@ use crate::env_store::{self, EnvBackend};
 use crate::error::EnvarlyError;
 use crate::model::{EnvChange, VarScope};
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator};
-use crate::whichcraft::services::get_var;
+use crate::whichcraft::domain::env::get_var;
 
 pub const EXIT_APPLIED: i32 = 0;
 pub const EXIT_FAILED: i32 = 1;

@@ -15,7 +15,7 @@ pub(crate) fn discover_java_roots(
     let mut roots = Vec::new();
     let expand = crate::whichcraft::services::registry_expander(user_vars, system_vars);
     for vars in [user_vars, system_vars] {
-        if let Some(home) = crate::whichcraft::services::get_var(vars, "JAVA_HOME") {
+        if let Some(home) = crate::whichcraft::domain::env::get_var(vars, "JAVA_HOME") {
             roots.push(PathBuf::from(expand(&home.value)));
         }
     }

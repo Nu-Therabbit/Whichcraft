@@ -8,11 +8,9 @@ use crate::whichcraft::persistence::{load_settings, load_tool_selection, save_se
 use crate::whichcraft::ports::tool_manager::ToolManager;
 use crate::whichcraft::services::elevation::WinElevator;
 use crate::whichcraft::services::path_cleanup::{build_path_cleanup_plan, PathCleanupPlan};
-use crate::whichcraft::services::profiles::{
-    apply_profile, load_profiles, missing_pins, profile_status, repoint_profiles, save_profiles as persist_profiles,
-    plan_profile_apply, MissingPin, ProfileMatchStatus, ToolProfile,
-};
-use crate::whichcraft::ports::installation_probe::ToolInstallation;
+use crate::whichcraft::services::profiles::{apply_profile, load_profiles, profile_status, save_profiles as persist_profiles, plan_profile_apply};
+use crate::whichcraft::domain::profiles::{missing_pins, repoint_profiles, MissingPin, ProfileMatchStatus, ToolProfile};
+use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::services::supplemental_inventory::{
     android_inventory, msvc_inventory, python_supplemental, AndroidInventory, MsvcInventory,
     PythonSupplementalView,
@@ -23,14 +21,14 @@ use crate::whichcraft::services::tool_apply::{
 use crate::whichcraft::services::recovery::{
     inspect_pending, resume_pending, roll_back_pending, RecoveryView,
 };
-use crate::whichcraft::services::tool_inventory::{list_tool_installations, ToolInstallationView};
-use crate::whichcraft::services::tool_plan::ToolApplyPlan;
+use crate::whichcraft::services::tool_inventory::{list_tool_installations};
+use crate::whichcraft::domain::{ToolInstallationView};
+use crate::whichcraft::domain::ToolApplyPlan;
 use crate::whichcraft::services::undo::{undo_last_apply, UndoResult};
-use crate::whichcraft::services::update::{install_and_plan, update_candidates, UpdateCandidate, UpdateResult};
-use crate::whichcraft::services::uninstall::{
-    dismiss_unfinished_uninstall, plan_uninstall, protected_folders, unfinished_uninstalls, uninstall, PlanInputs,
-    UninstallOutcome, UninstallPlan, UninstallRecord,
-};
+use crate::whichcraft::services::update::{install_and_plan, UpdateResult};
+use crate::whichcraft::domain::versions::{update_candidates, UpdateCandidate};
+use crate::whichcraft::services::uninstall::{dismiss_unfinished_uninstall, plan_uninstall, protected_folders, unfinished_uninstalls, uninstall, PlanInputs, UninstallPlan, UninstallRecord};
+use crate::whichcraft::domain::uninstall::{UninstallOutcome};
 /// Runs blocking work (UAC prompts, downloads, child processes) off the UI thread. Sync Tauri
 /// commands run on the main thread, so waiting there froze the window.
 async fn off_main<T: Send + 'static>(
@@ -217,7 +215,7 @@ pub async fn whichcraft_roll_back_apply(journal_id: String) -> Result<UndoResult
 #[tauri::command]
 pub async fn whichcraft_list_remote_versions(
     tool: ToolKind,
-) -> Result<Vec<crate::whichcraft::ports::tool_manager::RemoteVersion>, EnvarlyError> {
+) -> Result<Vec<crate::whichcraft::domain::versions::RemoteVersion>, EnvarlyError> {
     off_main(move || {
         let mgr = MiseToolManager::new()?;
         mgr.list_remote(tool)
@@ -473,7 +471,7 @@ pub async fn whichcraft_install_missing(profile: ToolProfile) -> Result<(), Enva
 /// Names of the profiles that use this installation, offered for repointing when it is updated (F-5).
 #[tauri::command]
 pub fn whichcraft_profiles_using(installation: ToolInstallation) -> Result<Vec<String>, EnvarlyError> {
-    Ok(crate::whichcraft::services::profiles::profiles_using(&load_profiles()?, &installation))
+    Ok(crate::whichcraft::domain::profiles::profiles_using(&load_profiles()?, &installation))
 }
 
 /// Points the profiles that use `from` at `to` (F-5); returns the names that changed.

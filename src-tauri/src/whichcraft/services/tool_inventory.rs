@@ -1,31 +1,19 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
 
 use crate::commands::path::dir_exists;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::persistence::load_settings;
-use crate::whichcraft::ports::installer_catalog::InstallerKind;
-use crate::whichcraft::ports::installation_probe::ToolInstallation;
+use crate::whichcraft::domain::InstallerKind;
+use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::tools::{
     command_name, command_search_dirs, infer_root_from_command_dir, paths_equal, probe_tool_root,
 };
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ToolInstallationView {
-    #[serde(flatten)]
-    pub installation: ToolInstallation,
-    pub effective: bool,
-    pub selected: bool,
-    pub available: bool,
-    pub installer_kind: InstallerKind,
-    pub mismatch_reason: Option<String>,
-}
+use crate::whichcraft::domain::ToolInstallationView;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ToolDiscoveryOptions {

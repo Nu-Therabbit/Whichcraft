@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use crate::whichcraft::api::ToolKind;
-use crate::whichcraft::ports::installation_probe::ToolInstallation;
+use crate::whichcraft::domain::ToolKind;
+use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::tools::fs_util::is_reparse_point;
 
 pub fn probe_tool_root(tool: ToolKind, root: &Path, managed: bool) -> Option<ToolInstallation> {

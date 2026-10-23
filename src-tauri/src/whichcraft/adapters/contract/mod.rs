@@ -13,11 +13,11 @@ use crate::env_backend::WinregBackend;
 use crate::env_store::{read_snapshot_with, EnvBackend};
 use crate::model::{EnvValue, EnvValueKind, VarScope};
 use crate::whichcraft::adapters::win::process::fresh_environment;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::persistence::{new_journal_id, use_test_data_dir};
-use crate::whichcraft::ports::installation_probe::ToolInstallation;
+use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::services::tool_apply::{apply_tool_plan, apply_tool_plan_elevated};
-use crate::whichcraft::services::tool_plan::{PlanVariableDiff, ToolApplyPlan};
+use crate::whichcraft::domain::plan::{PlanVariableDiff, ToolApplyPlan};
 use crate::whichcraft::services::undo::undo_last_apply;
 
 /// A plan that sets one variable, shaped like any tool plan so it takes the same path through
@@ -28,7 +28,7 @@ fn set_variable_plan(scope: VarScope, name: &str, value: &str) -> ToolApplyPlan 
     let diff = PlanVariableDiff {
         name: name.into(),
         scope: scope.clone(),
-        before: crate::whichcraft::services::get_var(map, name).map(|v| v.value.clone()),
+        before: crate::whichcraft::domain::env::get_var(map, name).map(|v| v.value.clone()),
         after: value.into(),
         value_kind: EnvValueKind::String,
     };
@@ -123,10 +123,11 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
     use crate::whichcraft::mise::manager::ProcessMiseRunner;
     use crate::whichcraft::mise::MiseToolManager;
     use crate::whichcraft::persistence::{load_settings, save_settings};
-    use crate::whichcraft::ports::installer_catalog::InstallerKind;
+    use crate::whichcraft::domain::InstallerKind;
     use crate::whichcraft::services::elevation::WinElevator;
     use crate::whichcraft::services::tool_inventory::list_tool_installations;
-    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallMethod, UninstallOutcome};
+    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::domain::uninstall::{UninstallMethod, UninstallOutcome};
 
     const VERSION: &str = "22.12.0";
     let data = tempfile::tempdir().unwrap();
@@ -189,7 +190,7 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
 /// Newest release of `line` that mise offers, e.g. the newest Temurin 21.
 fn newest_remote(mgr: &crate::whichcraft::mise::MiseToolManager<crate::whichcraft::mise::manager::ProcessMiseRunner>, tool: ToolKind, line: &str) -> String {
     use crate::whichcraft::ports::tool_manager::ToolManager;
-    use crate::whichcraft::services::update::release_numbers;
+    use crate::whichcraft::domain::versions::release_numbers;
     mgr.list_remote(tool)
         .unwrap()
         .into_iter()
@@ -221,7 +222,8 @@ fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::services::elevation::WinElevator;
     use crate::whichcraft::services::tool_inventory::list_tool_installations;
-    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallOutcome};
+    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::domain::uninstall::{UninstallOutcome};
 
     let data = tempfile::tempdir().unwrap();
     use_test_data_dir(data.path());
@@ -291,7 +293,8 @@ fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::services::elevation::WinElevator;
     use crate::whichcraft::services::tool_inventory::list_tool_installations;
-    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallMethod, UninstallOutcome};
+    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::domain::uninstall::{UninstallMethod, UninstallOutcome};
 
     let data = tempfile::tempdir().unwrap();
     use_test_data_dir(data.path());
@@ -353,7 +356,8 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::services::elevation::WinElevator;
     use crate::whichcraft::services::tool_inventory::list_tool_installations;
-    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallOutcome};
+    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::domain::uninstall::{UninstallOutcome};
 
     let data = tempfile::tempdir().unwrap();
     use_test_data_dir(data.path());
@@ -477,7 +481,8 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
     use crate::whichcraft::persistence::{load_settings, save_settings, whichcraft_data_dir};
     use crate::whichcraft::services::elevation::WinElevator;
     use crate::whichcraft::services::tool_inventory::list_tool_installations;
-    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallOutcome};
+    use crate::whichcraft::services::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::domain::uninstall::{UninstallOutcome};
     use sha2::{Digest, Sha256};
 
     let data = tempfile::tempdir().unwrap();

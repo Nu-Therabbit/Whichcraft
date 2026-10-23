@@ -83,7 +83,7 @@ impl ProcessRunner for WinProcessRunner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::whichcraft::api::ToolKind;
+    use crate::whichcraft::domain::ToolKind;
     use crate::whichcraft::persistence::TerminalKind;
     use crate::whichcraft::services::terminal::shell_check;
 

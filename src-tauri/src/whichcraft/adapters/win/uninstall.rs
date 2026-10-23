@@ -5,7 +5,7 @@ use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
 use crate::error::EnvarlyError;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::mise::manager::{MiseToolManager, ProcessMiseRunner};
 use crate::whichcraft::ports::uninstaller::{RunOutcome, Uninstaller};
 use crate::whichcraft::ports::usage_probe::{UsageProbe, UsageReport};

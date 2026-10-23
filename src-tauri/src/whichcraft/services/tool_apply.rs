@@ -6,12 +6,11 @@ use crate::whichcraft::persistence::{
     ToolSelection, WhichcraftJournal,
 };
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
-use crate::whichcraft::ports::installation_probe::ToolInstallation;
-use crate::whichcraft::services::get_var;
-use crate::whichcraft::services::tool_plan::PlanVariableDiff;
-use crate::whichcraft::services::tool_plan::{
-    build_tool_apply_plan, diff_to_env_value, plan_to_mutations, tool_plan_is_stale, ToolApplyPlan,
-};
+use crate::whichcraft::domain::ToolInstallation;
+use crate::whichcraft::domain::env::get_var;
+use crate::whichcraft::domain::PlanVariableDiff;
+use crate::whichcraft::services::tool_plan::{build_tool_apply_plan, diff_to_env_value, plan_to_mutations, tool_plan_is_stale};
+use crate::whichcraft::domain::plan::{ToolApplyPlan};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -205,14 +204,14 @@ fn revert_change(diff: &PlanVariableDiff) -> ExpectedChange {
     }
 }
 
-fn tool_slug(tool: crate::whichcraft::api::ToolKind) -> &'static str {
+fn tool_slug(tool: crate::whichcraft::domain::ToolKind) -> &'static str {
     match tool {
-        crate::whichcraft::api::ToolKind::Java => "java",
-        crate::whichcraft::api::ToolKind::Node => "node",
-        crate::whichcraft::api::ToolKind::Python => "python",
-        crate::whichcraft::api::ToolKind::Go => "go",
-        crate::whichcraft::api::ToolKind::Flutter => "flutter",
-        crate::whichcraft::api::ToolKind::Git => "git",
+        crate::whichcraft::domain::ToolKind::Java => "java",
+        crate::whichcraft::domain::ToolKind::Node => "node",
+        crate::whichcraft::domain::ToolKind::Python => "python",
+        crate::whichcraft::domain::ToolKind::Go => "go",
+        crate::whichcraft::domain::ToolKind::Flutter => "flutter",
+        crate::whichcraft::domain::ToolKind::Git => "git",
     }
 }
 
@@ -302,7 +301,7 @@ mod tests {
     use super::*;
     use crate::env_store::MemBackend;
     use crate::model::EnvValueKind;
-    use crate::whichcraft::api::ToolKind;
+    use crate::whichcraft::domain::ToolKind;
     use crate::whichcraft::persistence::{load_last_completed_apply, use_test_data_dir};
 
     /// A plan that adds C:\node22 to User PATH and removes C:\Program Files\nodejs\ from System PATH.

@@ -5,7 +5,8 @@ use winreg::enums::*;
 use winreg::RegKey;
 
 use crate::error::EnvarlyError;
-use crate::whichcraft::ports::installer_catalog::{CatalogEntry, InstallerCatalog, InstallerKind};
+use crate::whichcraft::ports::installer_catalog::{CatalogEntry, InstallerCatalog};
+use crate::whichcraft::domain::{InstallerKind};
 
 pub struct WinInstallerCatalog {
     index: Vec<UninstallRow>,

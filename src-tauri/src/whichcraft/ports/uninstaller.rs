@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::error::EnvarlyError;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 
 /// How a vendor uninstaller ended.
 #[derive(Debug, Clone, PartialEq, Eq)]

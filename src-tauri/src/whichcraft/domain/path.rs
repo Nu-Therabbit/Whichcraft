@@ -1,3 +1,5 @@
+//! PATH as text: entries, prepending, and what changed between two values.
+
 /// Returns a new PATH with `dir` prepended, or `None` if already present (anywhere).
 pub fn compute_prepend(current: &str, dir: &str) -> Option<String> {
     let dir_norm = dir.trim().trim_end_matches(['\\', '/']).to_lowercase();

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use crate::error::EnvarlyError;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::ports::uninstaller::{RunOutcome, Uninstaller};
 
 /// Records what it was asked to do. Removing really deletes the folder (tests use temp dirs) so

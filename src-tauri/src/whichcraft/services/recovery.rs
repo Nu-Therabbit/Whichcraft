@@ -14,7 +14,7 @@ use crate::whichcraft::persistence::{
     MutationRecord, WhichcraftJournal,
 };
 use crate::whichcraft::ports::elevator::Elevator;
-use crate::whichcraft::services::get_var;
+use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::services::undo::{revert_journal, write_changes, UndoResult};
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -170,12 +170,12 @@ mod tests {
     use super::*;
     use crate::env_store::MemBackend;
     use crate::model::EnvValue;
-    use crate::whichcraft::api::ToolKind;
+    use crate::whichcraft::domain::ToolKind;
     use crate::whichcraft::persistence::{
         load_incomplete_journal, load_last_completed_apply, load_tool_selection, use_test_data_dir,
         ToolSelection,
     };
-    use crate::whichcraft::services::path_plan::path_entry_diff;
+    use crate::whichcraft::domain::path::path_entry_diff;
     use crate::whichcraft::services::tool_apply::test_support::FakeElevator;
 
     fn ev(v: &str, kind: EnvValueKind) -> Option<EnvValue> {

@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::error::EnvarlyError;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 
 /// Who is using an installation (spike 7).
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]

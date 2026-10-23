@@ -14,9 +14,9 @@ use crate::commands::path::dir_exists;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::persistence::TerminalKind;
-use crate::whichcraft::services::get_var;
+use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::tools::command_name;
 
 /// A process to start: program, arguments, the complete environment it gets, and its folder.

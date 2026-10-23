@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
-use crate::whichcraft::services::get_var;
+use crate::whichcraft::domain::env::get_var;
 
 // ---------------------------------------------------------------------------
 // Python launcher

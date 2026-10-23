@@ -12,30 +12,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
-use crate::whichcraft::api::ToolKind;
+use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::ports::elevator::Elevator;
-use crate::whichcraft::ports::installer_catalog::{CatalogEntry, InstallerKind};
+use crate::whichcraft::ports::installer_catalog::{CatalogEntry};
+use crate::whichcraft::domain::{InstallerKind};
 use crate::whichcraft::ports::uninstaller::{RunOutcome, Uninstaller};
 use crate::whichcraft::ports::usage_probe::{UsageProbe, UsageReport};
-use crate::whichcraft::services::profiles::ToolProfile;
+use crate::whichcraft::domain::profiles::ToolProfile;
 use crate::whichcraft::services::tool_apply::apply_tool_plan_elevated;
-use crate::whichcraft::services::tool_inventory::ToolInstallationView;
-use crate::whichcraft::services::tool_plan::ToolApplyPlan;
-use crate::whichcraft::ports::installation_probe::ToolInstallation;
+use crate::whichcraft::domain::ToolInstallationView;
+use crate::whichcraft::domain::ToolApplyPlan;
+use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::tools::probe_tool_root;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
-pub enum UninstallMethod {
-    /// `mise uninstall` in the store that holds the installation.
-    Managed { store: PathBuf, mise_version: String },
-    /// The registered uninstaller, run with its normal UI.
-    Uninstaller { program: String, args: Vec<String> },
-    /// Move the folder to the Recycle Bin.
-    RecycleFolder,
-    /// Not offered, with the reason shown to the user.
-    Refused { reason: String },
-}
+use crate::whichcraft::domain::uninstall::{product_code, split_command_line, UninstallMethod, UninstallOutcome};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,48 +43,6 @@ pub struct UninstallPlan {
     /// The registered uninstaller removes without asking (Python install manager), so the
     /// confirmation in the app is the only one (R-4).
     pub no_confirmation: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase", tag = "status")]
-pub enum UninstallOutcome {
-    Removed,
-    /// The user cancelled the uninstaller; any switch already applied stays (R-13).
-    Cancelled,
-    /// The uninstaller finished but the folder is still there (R-5).
-    Incomplete { remaining: PathBuf },
-    Blocked { reason: String },
-    Failed { code: i32 },
-}
-
-/// Splits a registered command line into program and arguments, honouring double quotes.
-pub fn split_command_line(command: &str) -> Option<(String, Vec<String>)> {
-    let mut parts = Vec::new();
-    let mut current = String::new();
-    let mut quoted = false;
-    for ch in command.chars() {
-        match ch {
-            '"' => quoted = !quoted,
-            c if c.is_whitespace() && !quoted => {
-                if !current.is_empty() {
-                    parts.push(std::mem::take(&mut current));
-                }
-            }
-            c => current.push(c),
-        }
-    }
-    if !current.is_empty() {
-        parts.push(current);
-    }
-    let mut iter = parts.into_iter();
-    let program = iter.next()?;
-    Some((program, iter.collect()))
-}
-
-fn product_code(command: &str) -> Option<String> {
-    let start = command.find('{')?;
-    let end = start + command[start..].find('}')?;
-    Some(command[start..=end].to_string())
 }
 
 /// Why a plain folder must not be moved to the Recycle Bin, or `None` when it may (Q26 rules 1-4;
@@ -202,7 +149,7 @@ pub fn plan_uninstall(inputs: PlanInputs, usage: &dyn UsageProbe) -> Result<Unin
         .filter(|v| v.available && v.installation.root != inst.root)
         .cloned()
         .collect();
-    let affected_profiles = crate::whichcraft::services::profiles::profiles_using(inputs.profiles, inst);
+    let affected_profiles = crate::whichcraft::domain::profiles::profiles_using(inputs.profiles, inst);
 
     Ok(UninstallPlan {
         gradle_hint: inst.tool == ToolKind::Java && !report.processes.is_empty(),
@@ -364,8 +311,8 @@ mod tests {
     use crate::env_store::MemBackend;
     use crate::whichcraft::fake::{FakeUninstaller, FakeUsageProbe};
     use crate::whichcraft::persistence::use_test_data_dir;
-    use crate::whichcraft::ports::installation_probe::ToolInstallation;
-    use crate::whichcraft::services::profiles::ProfileToolPin;
+    use crate::whichcraft::domain::ToolInstallation;
+    use crate::whichcraft::domain::profiles::ProfileToolPin;
     use crate::whichcraft::services::tool_apply::{create_tool_plan, test_support::FakeElevator};
 
     fn jdk(dir: &Path, name: &str, version: &str) -> ToolInstallationView {
@@ -409,18 +356,6 @@ mod tests {
                 program: "msiexec.exe".into(),
                 args: vec!["/x".into(), "{E8C508F2-9798-43CA-84B4-B25D1274380B}".into()]
             }
-        );
-    }
-
-    #[test]
-    fn registered_command_lines_keep_their_quoted_parts() {
-        assert_eq!(
-            split_command_line("\"C:\\Program Files\\Git\\unins001.exe\""),
-            Some(("C:\\Program Files\\Git\\unins001.exe".into(), vec![]))
-        );
-        assert_eq!(
-            split_command_line("\"C:\\x\\pymanager.exe\" uninstall --yes --by-id \"pythoncore-3.14-64\""),
-            Some(("C:\\x\\pymanager.exe".into(), vec!["uninstall".into(), "--yes".into(), "--by-id".into(), "pythoncore-3.14-64".into()]))
         );
     }
 

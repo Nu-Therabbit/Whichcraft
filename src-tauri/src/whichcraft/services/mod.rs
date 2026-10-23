@@ -1,7 +1,6 @@
 pub mod elevation;
 pub mod java_inventory;
 pub mod path_cleanup;
-pub mod path_plan;
 pub mod profiles;
 pub mod recovery;
 pub mod supplemental_inventory;
@@ -16,6 +15,7 @@ pub mod uninstall;
 use std::collections::HashMap;
 
 use crate::model::EnvValue;
+use crate::whichcraft::domain::env::{expand_vars, get_var};
 
 /// Expands `%NAME%` the way a new process would: from the registry values (User over System, as
 /// Windows builds the environment), then this process for names the registry does not hold
@@ -31,34 +31,6 @@ pub fn registry_expander<'a>(
             .map(|v| v.value.clone())
             .or_else(|| std::env::var(name).ok())
     }, 0)
-}
-
-fn expand_vars(raw: &str, lookup: &dyn Fn(&str) -> Option<String>, depth: u8) -> String {
-    let mut out = String::new();
-    let mut rest = raw;
-    while let Some(start) = rest.find('%') {
-        out.push_str(&rest[..start]);
-        let after = &rest[start + 1..];
-        let Some(end) = after.find('%') else {
-            out.push('%');
-            rest = after;
-            continue;
-        };
-        let name = &after[..end];
-        match lookup(name).filter(|_| !name.is_empty()) {
-            // A value can itself hold variables (REG_EXPAND_SZ); a few levels is plenty and stops loops.
-            Some(value) if depth < 4 => out.push_str(&expand_vars(&value, lookup, depth + 1)),
-            Some(value) => out.push_str(&value),
-            None => {
-                out.push('%');
-                out.push_str(name);
-                out.push('%');
-            }
-        }
-        rest = &after[end + 1..];
-    }
-    out.push_str(rest);
-    out
 }
 
 #[cfg(test)]
@@ -81,11 +53,3 @@ mod tests {
     }
 }
 
-/// Looks up an environment variable the way Windows does: names are case-insensitive.
-pub fn get_var<'a>(map: &'a HashMap<String, EnvValue>, name: &str) -> Option<&'a EnvValue> {
-    map.get(name).or_else(|| {
-        map.iter()
-            .find(|(k, _)| k.eq_ignore_ascii_case(name))
-            .map(|(_, v)| v)
-    })
-}
