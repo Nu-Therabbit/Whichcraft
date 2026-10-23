@@ -328,3 +328,9 @@ export interface MissingPin {
   installVersion: string | null;
   downloadBytes: number | null;
 }
+
+/** A User PATH cleanup: the plan plus why each entry goes. */
+export interface PathCleanupPlan extends ToolApplyPlan {
+  removedDuplicates: string[];
+  removedMissing: string[];
+}

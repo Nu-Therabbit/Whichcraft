@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::commands::path::{dir_exists, expand_env_vars};
+use crate::commands::path::dir_exists;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::model::{EnvSnapshot, EnvValue, EnvValueKind, VarScope};
@@ -153,12 +153,19 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
         .map(|v| v.value.as_str())
         .unwrap_or("");
 
+    // Judge PATH with the values this plan writes: a System `%JAVA_HOME%\bin` follows the new
+    // JAVA_HOME, so it is not a shadow to remove.
+    let mut user_after = user.clone();
+    for diff in &user_diffs {
+        user_after.insert(diff.name.clone(), crate::model::EnvValue::typed(diff.after.clone(), diff.value_kind));
+    }
+    let expand = crate::whichcraft::services::registry_expander(&user_after, &system);
     let check_user = path_manage::check_command_with(
         cmd,
         &path_after,
         system_path_before.as_str(),
         pathext,
-        expand_env_vars,
+        &expand,
         dir_exists,
     );
     let effective_after_user = check_user.hits.first().is_some_and(|hit| {
@@ -168,7 +175,7 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     });
 
     if !effective_after_user {
-        if let Some(shadow) = find_system_shadow(&system_path_before, installation) {
+        if let Some(shadow) = find_system_shadow(&system_path_before, installation, &expand) {
             let mut system_after = system_path_before.clone();
             system_after = remove_path_entry(&system_after, &shadow);
             system_diffs.push(PlanVariableDiff {
@@ -232,10 +239,14 @@ pub fn tool_plan_is_stale(plan: &ToolApplyPlan, backend: &dyn EnvBackend) -> Res
     Ok(false)
 }
 
-fn find_system_shadow(system_path: &str, installation: &ToolInstallation) -> Option<String> {
+fn find_system_shadow(
+    system_path: &str,
+    installation: &ToolInstallation,
+    expand: &dyn Fn(&str) -> String,
+) -> Option<String> {
     let selected_dirs: Vec<String> = path_dirs_for_tool(installation);
     for entry in path_entries(system_path) {
-        let expanded = expand_env_vars(&entry);
+        let expanded = expand(&entry);
         if !dir_exists(&expanded) {
             continue;
         }
@@ -258,7 +269,8 @@ fn would_shadow(system_dir: &str, selected_dir: &str, tool: ToolKind) -> bool {
         selected_dir,
         system_dir,
         ".EXE;.CMD;.BAT",
-        expand_env_vars,
+        // Both folders are already expanded.
+        |s: &str| s.to_string(),
         dir_exists,
     );
     !hit.hits.is_empty()
@@ -301,4 +313,37 @@ pub fn plan_to_mutations(
             (diff.clone(), entries)
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::env_store::MemBackend;
+
+    fn leak(s: String) -> &'static str {
+        Box::leak(s.into_boxed_str())
+    }
+
+    #[test]
+    fn a_system_java_home_bin_entry_follows_the_new_java_home_and_is_not_removed() {
+        let dir = tempfile::tempdir().unwrap();
+        for jdk in ["jdk17", "jdk21"] {
+            std::fs::create_dir_all(dir.path().join(jdk).join("bin")).unwrap();
+            std::fs::write(dir.path().join(jdk).join("bin").join("java.exe"), b"").unwrap();
+        }
+        let jdk17 = leak(dir.path().join("jdk17").to_string_lossy().into_owned());
+        let backend = MemBackend::new()
+            .with_user([("Path", r"C:\u")])
+            .with_system([("Path", r"%JAVA_HOME%\bin"), ("JAVA_HOME", jdk17), ("PATHEXT", ".EXE;.CMD;.BAT")]);
+        let jdk21 = ToolInstallation {
+            tool: ToolKind::Java,
+            vendor: "Eclipse Adoptium".into(),
+            version: "21.0.12".into(),
+            root: dir.path().join("jdk21"),
+            managed: false,
+        };
+        let plan = build_tool_apply_plan(&backend, &jdk21, "p".into()).unwrap();
+        assert!(plan.system_diffs.is_empty(), "{:?}", plan.system_diffs);
+        assert!(!plan.requires_uac);
+    }
 }

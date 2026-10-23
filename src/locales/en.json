@@ -313,6 +313,14 @@
       "installing": "Installing…",
       "wait_for_mise": "Whichcraft's installer (mise {{version}}) is being downloaded in the background. Installing is available once it has been checked; uninstalling works meanwhile."
     },
+    "cleanup": {
+      "button": "Clean up PATH",
+      "title": "Clean up User PATH",
+      "clean": "User PATH has no duplicate or missing entries.",
+      "duplicates": "Repeats an earlier entry:",
+      "missing": "Folder no longer exists:",
+      "review": "Nothing is removed until you apply the plan below, and Undo puts it back. Entries with variables are judged after expanding them."
+    },
     "profiles_tab": "Profiles",
     "profiles": {
       "none": "No profiles yet. Save the tools you use now as one below.",

@@ -329,6 +329,10 @@ export default function App() {
             onCheck: () => void developerTools.checkUpdates(),
             onUpdate: (candidate) => void developerTools.updateTo(candidate),
           }}
+          pathCleanup={{
+            result: developerTools.cleanup,
+            onPlan: () => void developerTools.planCleanup(),
+          }}
           profiles={{
             list: developerTools.profiles,
             current: developerTools.currentPins,

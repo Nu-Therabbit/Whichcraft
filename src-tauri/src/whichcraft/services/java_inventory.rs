@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use crate::commands::path::{dir_exists, expand_env_vars};
+use crate::commands::path::dir_exists;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage::{self, FullPathStatus};
@@ -61,12 +61,13 @@ pub fn list_java_installations_with_options<B: EnvBackend>(
         .map(|v| v.value.as_str())
         .unwrap_or("");
 
+    let expand = crate::whichcraft::services::registry_expander(&user, &system);
     let effective = path_manage::check_command_with(
         "java",
         user_path,
         system_path,
         pathext,
-        expand_env_vars,
+        &expand,
         dir_exists,
     );
     let effective_root = effective
@@ -101,6 +102,7 @@ pub fn list_java_installations_with_options<B: EnvBackend>(
                     user_path,
                     system_path,
                     pathext,
+                    &expand,
                 )
             } else {
                 None
@@ -136,6 +138,7 @@ fn shadow_reason_for_selection(
     user_path: &str,
     system_path: &str,
     pathext: &str,
+    expand: &dyn Fn(&str) -> String,
 ) -> Option<String> {
     let java_exe = installation
         .root
@@ -148,7 +151,7 @@ fn shadow_reason_for_selection(
         user_path,
         system_path,
         pathext,
-        expand_env_vars,
+        expand,
         dir_exists,
     );
     match check.full_path_status {
@@ -179,9 +182,10 @@ pub(crate) fn discover_java_roots(
     include_standard_locations: bool,
 ) -> Vec<PathBuf> {
     let mut roots = Vec::new();
+    let expand = crate::whichcraft::services::registry_expander(user_vars, system_vars);
     for vars in [user_vars, system_vars] {
         if let Some(home) = crate::whichcraft::services::get_var(vars, "JAVA_HOME") {
-            roots.push(PathBuf::from(expand_env_vars(&home.value)));
+            roots.push(PathBuf::from(expand(&home.value)));
         }
     }
     for segment in system_path
@@ -190,7 +194,7 @@ pub(crate) fn discover_java_roots(
         .map(str::trim)
         .filter(|s| !s.is_empty())
     {
-        let expanded = expand_env_vars(segment);
+        let expanded = expand(segment);
         let path = PathBuf::from(&expanded);
         if path.join("java.exe").is_file() {
             if let Some(root) = path.parent() {

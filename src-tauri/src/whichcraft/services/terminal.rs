@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use crate::commands::path::{dir_exists, expand_env_vars};
+use crate::commands::path::dir_exists;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage;
@@ -93,16 +93,17 @@ pub fn effective_executable<B: EnvBackend>(backend: &B, tool: ToolKind) -> Resul
     let system = backend.read_system()?;
     let path = |m: &HashMap<String, crate::model::EnvValue>, n: &str| get_var(m, n).map(|v| v.value.clone()).unwrap_or_default();
     let pathext = get_var(&user, "PATHEXT").or_else(|| get_var(&system, "PATHEXT")).map(|v| v.value.clone());
+    let expand = crate::whichcraft::services::registry_expander(&user, &system);
     let result = path_manage::check_command_with(
         command_name(tool),
         &path(&user, "Path"),
         &path(&system, "Path"),
         pathext.as_deref().unwrap_or(".COM;.EXE;.BAT;.CMD"),
-        expand_env_vars,
+        &expand,
         dir_exists,
     );
     Ok(result.hits.first().map(|h| {
-        let dir = PathBuf::from(expand_env_vars(&h.directory));
+        let dir = PathBuf::from(expand(&h.directory));
         // The hit spells the extension from PATHEXT ("node.EXE"); show the file's real name.
         let name = std::fs::read_dir(&dir)
             .ok()

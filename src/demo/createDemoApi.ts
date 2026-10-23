@@ -293,6 +293,9 @@ export function createDemoApi(
       throw new Error("Updating is unavailable in demo mode");
     },
     prepareMise: async () => false,
+    planPathCleanup: async () => {
+      throw new Error("PATH cleanup is unavailable in demo mode");
+    },
     listProfiles: async () => [],
     saveProfiles: async () => {},
     profileStatus: async (profile) => ({ profile, matchesEffective: false, unavailable: [] }),

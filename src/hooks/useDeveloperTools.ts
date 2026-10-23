@@ -96,7 +96,11 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
       }
       if (result.stale) {
         setError("Environment changed since the plan was created. Refresh and try again.");
-        await buildPlan(plan.selected.root);
+        // Only a single-tool plan can be rebuilt from its selection; profile and cleanup plans
+        // are made again from where they started.
+        const singleTool = plan.recordsSelection !== false && !plan.additionalSelections?.length;
+        if (singleTool) await buildPlan(plan.selected.root);
+        else setPlan(null);
         return result;
       }
       if (result.needsElevation) {
@@ -433,6 +437,25 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     [loadProfiles, planProfile],
   );
 
+  const [cleanup, setCleanup] = useState<{ duplicates: string[]; missing: string[] } | null>(null);
+
+  /** Proposes removing duplicate and vanished User PATH entries; nothing is written until applied. */
+  const planCleanup = useCallback(async () => {
+    setError(null);
+    setPlanBusy(true);
+    setPlan(null);
+    setCleanup(null);
+    try {
+      const result = await api.planPathCleanup();
+      setCleanup({ duplicates: result.removedDuplicates, missing: result.removedMissing });
+      if (result.userDiffs.length > 0) setPlan(result);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setPlanBusy(false);
+    }
+  }, []);
+
   // The list belongs to the tool it was checked for.
   // biome-ignore lint/correctness/useExhaustiveDependencies: clearing is the point when the tool changes
   useEffect(() => {
@@ -516,9 +539,12 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     checkUpdates,
     updateTo,
     undoLast,
+    cleanup,
+    planCleanup,
     clearPlan: () => {
       setPlan(null);
       setReplacedRoot(null);
+      setCleanup(null);
     },
     clearUndoResult: () => setUndoResult(null),
   };

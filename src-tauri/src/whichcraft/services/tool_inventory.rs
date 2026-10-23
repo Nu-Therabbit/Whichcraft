@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use crate::commands::path::{dir_exists, expand_env_vars};
+use crate::commands::path::dir_exists;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage;
@@ -66,12 +66,13 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
         .unwrap_or("");
 
     let cmd = command_name(tool);
+    let expand = crate::whichcraft::services::registry_expander(&user, &system);
     let effective = path_manage::check_command_with(
         cmd,
         user_path,
         system_path,
         pathext,
-        expand_env_vars,
+        &expand,
         dir_exists,
     );
     let effective_root = effective
@@ -80,7 +81,7 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
         .and_then(|hit| infer_root_from_command_dir(tool, Path::new(&hit.directory)));
 
     let mut roots: HashSet<PathBuf> = HashSet::new();
-    for dir in path_dirs(user_path).chain(path_dirs(system_path)) {
+    for dir in path_dirs(user_path, &expand).chain(path_dirs(system_path, &expand)) {
         for sub in command_search_dirs(tool) {
             let candidate = if *sub == "." {
                 dir.clone()
@@ -211,11 +212,11 @@ pub fn with_missing_selection(
 }
 
 /// PATH entries as folders: variables expanded, trailing separators dropped (`nodejs\` = `nodejs`).
-fn path_dirs(path: &str) -> impl Iterator<Item = PathBuf> + '_ {
+fn path_dirs<'a>(path: &'a str, expand: &'a dyn Fn(&str) -> String) -> impl Iterator<Item = PathBuf> + 'a {
     path.split(';')
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
-        .map(|s| PathBuf::from(expand_env_vars(s).trim_end_matches(['\\', '/'])))
+        .map(move |s| PathBuf::from(expand(s).trim_end_matches(['\\', '/'])))
 }
 
 fn walk_scan_root(tool: ToolKind, dir: &Path, depth: u8, out: &mut HashSet<PathBuf>) {

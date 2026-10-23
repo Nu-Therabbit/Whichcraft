@@ -29,6 +29,7 @@ import { ShellCheckResult } from "./ShellCheckResult";
 import { PythonLauncherInfo, SdkInventory } from "./SupplementalInfo";
 import { ToolsSettings } from "./ToolsSettings";
 import { UninstallSection } from "./UninstallSection";
+import { PathCleanupSummary } from "./PathCleanupSummary";
 import { ProfilesSection } from "./ProfilesSection";
 import { UpdateList } from "./UpdateList";
 
@@ -71,6 +72,10 @@ interface Props {
     onOpen: () => void;
     onChoose: (version: string) => void;
     onInstall: () => void;
+  };
+  pathCleanup?: {
+    result: { duplicates: string[]; missing: string[] } | null;
+    onPlan: () => void;
   };
   updates?: {
     list: UpdateCandidate[] | null;
@@ -135,6 +140,7 @@ export function ToolsPanel({
   updates,
   profiles,
   uninstall,
+  pathCleanup,
 }: Props) {
   const { t } = useI18n();
   const [showSettings, setShowSettings] = useState(false);
@@ -276,6 +282,11 @@ export function ToolsPanel({
               {t("tools.check_updates")}
             </Button>
           )}
+          {pathCleanup && (
+            <Button variant="ghost" size="sm" onClick={pathCleanup.onPlan} disabled={planBusy || applyBusy}>
+              {t("tools.cleanup.button")}
+            </Button>
+          )}
           {settings && onSaveSettings && (
             <Button variant="ghost" size="sm" onClick={() => setShowSettings((v) => !v)}>
               {showSettings ? t("tools.hide_settings") : t("tools.show_settings")}
@@ -375,6 +386,14 @@ export function ToolsPanel({
         )}
 
         {tool === "python" && pythonInfo && <PythonLauncherInfo info={pythonInfo} />}
+
+        {pathCleanup?.result && (plan?.recordsSelection === false || !plan) && (
+          <PathCleanupSummary
+            duplicates={pathCleanup.result.duplicates}
+            missing={pathCleanup.result.missing}
+            pending={plan?.recordsSelection === false}
+          />
+        )}
 
         {plan && (
           <div className="border border-rim rounded-md p-4 flex flex-col gap-3 bg-surface/40">
