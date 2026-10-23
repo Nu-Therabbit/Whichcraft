@@ -18,6 +18,9 @@ function WriteSystemPath($value, $name) {
     if ($code -ne 0) { throw "envarly import $name failed (exit $code)" }
 }
 
+# 0 = passed, 1 = the check failed but System PATH was restored, 2 = System PATH is NOT restored.
+$script:exitCode = 0
+
 & {
     $original = ReadSystemPath
     $without = ($original -split ';' | Where-Object { $_ -ne 'C:\Program Files\nodejs\' }) -join ';'
@@ -27,13 +30,21 @@ function WriteSystemPath($value, $name) {
         "--- fresh env:"; Get-NodeResolution
     } catch {
         "ERROR: $_"
+        $script:exitCode = 1
     } finally {
         # Restore even if the check above threw; only skip when nothing changed.
         if ((ReadSystemPath) -cne $original) {
             "## restore original System PATH"
-            try { WriteSystemPath $original 'system-restore' } catch { "RESTORE FAILED: $_ -- restore from backup\hklm-environment.reg" }
+            try { WriteSystemPath $original 'system-restore' } catch { "RESTORE FAILED: $_" }
         }
-        "restored identical: $((ReadSystemPath) -ceq $original)  kind: $((Get-Item $sysKey).GetValueKind('Path'))"
+        $restored = (ReadSystemPath) -ceq $original
+        "restored identical: $restored  kind: $((Get-Item $sysKey).GetValueKind('Path'))"
+        if (-not $restored) {
+            "System PATH is NOT restored -- import backup\hklm-environment.reg before doing anything else"
+            $script:exitCode = 2
+        }
     }
-    "--- fresh env:"; Get-NodeResolution
+    if ($script:exitCode -lt 2) { "--- fresh env:"; Get-NodeResolution }
 } | Tee-Object $log
+
+exit $script:exitCode

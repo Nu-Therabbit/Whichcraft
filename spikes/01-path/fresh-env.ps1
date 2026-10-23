@@ -44,9 +44,11 @@ function Invoke-FreshEnv([string]$File, [string]$Arguments) {
     $psi.EnvironmentVariables.Clear()
     foreach ($kv in [FreshEnv]::Build().GetEnumerator()) { $psi.EnvironmentVariables[$kv.Key] = $kv.Value }
     $p = [System.Diagnostics.Process]::Start($psi)
-    $out = $p.StandardOutput.ReadToEnd() + $p.StandardError.ReadToEnd()
+    # Drain both pipes at once: reading one to the end first deadlocks when the child fills the other.
+    $stdout = $p.StandardOutput.ReadToEndAsync()
+    $stderr = $p.StandardError.ReadToEndAsync()
     $p.WaitForExit()
-    $out.TrimEnd()
+    ($stdout.Result + $stderr.Result).TrimEnd()
 }
 
 function Get-NodeResolution {
