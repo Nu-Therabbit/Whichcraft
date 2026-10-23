@@ -4,7 +4,7 @@
 
 **Blocked by:** 09: แก้ Environment variables ผ่าน workspace ใหม่.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / backup and restore journey
 
@@ -33,3 +33,7 @@
 ### Review round 2 (Grok 4.7)
 
 - **Profile reload lock:** `ShellToolsProvider` dispatches `loadProfiles` only when invalidation includes `tools-profiles` (installation/overview rescan still follows `environment-*` via existing subscribers). Apply-staged shell test asserts `listProfiles` runs after success, not just scope names in a test-local listener — dropping `tools-profiles` from `readbackScopes` fails while `environment-variables` rescan remains. Background `loadProfiles` no longer clears stale-plan or install-failure errors (`reduce`).
+
+### Review round 2 approval
+
+- Approved. After a successful staged apply, the shell test counts real `listProfiles` and `listToolInstallations` calls. Dropping `tools-profiles` fails the profile assertion while an environment-variables change still rescans installations. The Windows save/compare/restore checkbox stays open and is not a pass.
