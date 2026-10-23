@@ -27,6 +27,17 @@ const base = {
 };
 
 describe("InstallSection", () => {
+  it("shows Flutter's download and the space it takes once installed", () => {
+    render(
+      <InstallSection
+        {...base}
+        tool="flutter"
+        chosen={{ version: "3.32.8", downloadBytes: 1_749_058_829, diskBytes: 3_148_305_892 }}
+      />,
+    );
+    expect(screen.getByText(/Download: 1\.6 GB\. Takes about 2\.9 GB on disk/)).toBeInTheDocument();
+  });
+
   it("waits for the new mise while it downloads in the background", () => {
     const fetching = { ...base.miseStatus, fetching: true, oldVersions: ["2026.9.2"] };
     render(

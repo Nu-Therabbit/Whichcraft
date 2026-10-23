@@ -277,7 +277,7 @@ export function createDemoApi(
       oldVersions: [],
       fetching: false,
     }),
-    downloadSize: async () => null,
+    downloadSize: async () => ({ downloadBytes: null, diskBytes: null }),
     installManaged: async () => {
       throw new Error("Installing is unavailable in demo mode");
     },

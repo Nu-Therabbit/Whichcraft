@@ -90,7 +90,7 @@ interface Props {
     loading: boolean;
     busy: boolean;
     miseStatus: MiseStatus | null;
-    chosen: { version: string; downloadBytes: number | null } | null;
+    chosen: { version: string; downloadBytes: number | null; diskBytes?: number | null } | null;
     onOpen: () => void;
     onChoose: (version: string) => void;
     onInstall: () => void;

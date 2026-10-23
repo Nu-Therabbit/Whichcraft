@@ -160,7 +160,10 @@ impl<R: MiseRunner> MiseToolManager<R> {
             })
     }
 
-    /// Installs the vfox-flutter plugin at the pinned commit, replacing any other ref.
+    /// Installs the vfox-flutter plugin at the pinned commit, replacing any other ref. There is no
+    /// auto-update to turn off: the pinned mise never updates plugins by itself (its
+    /// `plugin_autoupdate_last_check_duration` setting is deprecated as never implemented), and
+    /// this check runs before every Flutter install anyway (I-17).
     pub fn ensure_flutter_plugin(&self) -> Result<(), EnvarlyError> {
         let listing = self.run_ok(&["plugins", "ls", "--urls", "--refs"])?;
         match plugin_ref(&String::from_utf8_lossy(&listing), FLUTTER_PLUGIN_NAME) {

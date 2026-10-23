@@ -414,6 +414,52 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
     assert!(same_values(&WinregBackend.read_system().unwrap(), &system_before));
 }
 
+/// I-17: mise never moves the plugin by itself, even when upstream is ahead and the checkout is
+/// a month old; and before installing, Whichcraft puts a plugin at any other commit back on the pin.
+/// Downloads mise and the plugin (no Flutter).
+#[test]
+#[ignore = "contract: downloads mise and the vfox-flutter plugin into temporary folders"]
+fn contract_flutter_plugin_stays_on_the_pin_over_time() {
+    use crate::whichcraft::mise::manager::{MiseRunner, ProcessMiseRunner};
+    use crate::whichcraft::mise::pins::VFOX_FLUTTER_PLUGIN_SHA;
+    use crate::whichcraft::mise::MiseToolManager;
+
+    let data = tempfile::tempdir().unwrap();
+    use_test_data_dir(data.path());
+    let store = tempfile::tempdir().unwrap();
+    let mgr = MiseToolManager::with_runner(ProcessMiseRunner::for_store(store.path()));
+    mgr.ensure_flutter_plugin().unwrap();
+    let plugin = store.path().join("_mise").join("data").join("plugins").join("vfox-jdx-vfox-flutter");
+    let git = |args: &[&str]| {
+        let out = std::process::Command::new("git").arg("-C").arg(&plugin).args(args).output().unwrap();
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+    assert_eq!(git(&["rev-parse", "HEAD"]), VFOX_FLUTTER_PLUGIN_SHA);
+
+    // Put the checkout behind upstream and make everything mise wrote a month old.
+    let older = git(&["rev-parse", "HEAD~3"]);
+    git(&["-c", "advice.detachedHead=false", "checkout", "-q", &older]);
+    let month_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(30 * 24 * 3600);
+    fn backdate(dir: &std::path::Path, when: std::time::SystemTime) {
+        for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                backdate(&path, when);
+            } else if let Ok(f) = std::fs::OpenOptions::new().write(true).open(&path) {
+                let _ = f.set_modified(when);
+            }
+        }
+    }
+    backdate(&store.path().join("_mise"), month_ago);
+
+    let runner = ProcessMiseRunner::for_store(store.path());
+    assert!(runner.run(&["ls-remote", "vfox:jdx/vfox-flutter"]).unwrap().success);
+    assert_eq!(git(&["rev-parse", "HEAD"]), older, "mise moved the plugin by itself");
+
+    mgr.ensure_flutter_plugin().unwrap();
+    assert_eq!(git(&["rev-parse", "HEAD"]), VFOX_FLUTTER_PLUGIN_SHA, "Whichcraft puts it back on the pin");
+}
+
 /// A-2 and U-1 for System scope: the write goes through UAC to the app's elevated helper (two UAC
 /// prompts: apply, then Undo). Needs `cargo build` first so target\debug\whichcraft.exe is current.
 #[test]

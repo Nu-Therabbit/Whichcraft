@@ -305,6 +305,7 @@
       "chosen": "Version {{version}}.",
       "size": "Download: {{size}}.",
       "size_unknown": "Download size is not known before installing.",
+      "disk": "Takes about {{size}} on disk once installed.",
       "mise_first": "The first install also downloads Whichcraft's pinned installer (mise {{version}}, {{size}}) and checks its hash.",
       "confirm_store": "Choose where Whichcraft keeps the tools it installs. You can change it later; tools already installed stay where they are.",
       "use_folder": "Use this folder",

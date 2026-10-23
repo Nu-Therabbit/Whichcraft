@@ -274,15 +274,22 @@ pub fn whichcraft_mise_status() -> Result<crate::whichcraft::mise::manager::Mise
     crate::whichcraft::mise::manager::mise_status()
 }
 
-/// Download size in bytes for one version, or `None` when it cannot be known before installing.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadSize {
+    /// `None` when it cannot be known before installing.
+    pub download_bytes: Option<u64>,
+    /// Estimated space once unpacked, where known (Flutter, I-9).
+    pub disk_bytes: Option<u64>,
+}
+
+/// Download size of one version, and the space it takes once unpacked where that is known.
 #[tauri::command]
-pub async fn whichcraft_download_size(tool: ToolKind, version: String) -> Result<Option<u64>, EnvarlyError> {
+pub async fn whichcraft_download_size(tool: ToolKind, version: String) -> Result<DownloadSize, EnvarlyError> {
+    use crate::whichcraft::mise::sizes::{download_size, estimated_disk_bytes, http_content_length};
     off_main(move || {
-        crate::whichcraft::mise::sizes::download_size(
-            tool,
-            &version,
-            crate::whichcraft::mise::sizes::http_content_length,
-        )
+        let download_bytes = download_size(tool, &version, http_content_length)?;
+        Ok(DownloadSize { download_bytes, disk_bytes: download_bytes.and_then(|b| estimated_disk_bytes(tool, b)) })
     })
     .await
 }

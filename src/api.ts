@@ -80,7 +80,10 @@ export interface EnvarlyApi {
   undoLastWhichcraftApply: () => Promise<import("./types").UndoResult>;
   listRemoteVersions: (tool: import("./types").ToolKind) => Promise<import("./types").RemoteVersion[]>;
   getMiseStatus: () => Promise<import("./types").MiseStatus>;
-  downloadSize: (tool: import("./types").ToolKind, version: string) => Promise<number | null>;
+  downloadSize: (
+    tool: import("./types").ToolKind,
+    version: string,
+  ) => Promise<{ downloadBytes: number | null; diskBytes: number | null }>;
   installManaged: (tool: import("./types").ToolKind, version: string) => Promise<string>;
   planUninstall: (tool: import("./types").ToolKind, root: string) => Promise<import("./types").UninstallPlan>;
   uninstall: (

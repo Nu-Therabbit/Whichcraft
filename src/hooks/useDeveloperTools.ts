@@ -195,9 +195,11 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
   const [remoteVersions, setRemoteVersions] = useState<RemoteVersion[]>([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [miseStatus, setMiseStatus] = useState<MiseStatus | null>(null);
-  const [chosenVersion, setChosenVersion] = useState<{ version: string; downloadBytes: number | null } | null>(
-    null,
-  );
+  const [chosenVersion, setChosenVersion] = useState<{
+    version: string;
+    downloadBytes: number | null;
+    diskBytes?: number | null;
+  } | null>(null);
   const [installBusy, setInstallBusy] = useState(false);
 
   const loadRemoteVersions = useCallback(async () => {
@@ -218,7 +220,7 @@ export function useDeveloperTools(initialTool: ToolKind = "java") {
     async (version: string) => {
       setChosenVersion({ version, downloadBytes: null });
       try {
-        setChosenVersion({ version, downloadBytes: await api.downloadSize(tool, version) });
+        setChosenVersion({ version, ...(await api.downloadSize(tool, version)) });
       } catch {
         // The size is informative only; installing still works without it.
       }

@@ -10,7 +10,7 @@ interface Props {
   busy: boolean;
   miseStatus: MiseStatus | null;
   settings: WhichcraftSettings;
-  chosen: { version: string; downloadBytes: number | null } | null;
+  chosen: { version: string; downloadBytes: number | null; diskBytes?: number | null } | null;
   onChoose: (version: string) => void;
   onConfirmStore: (store: string) => void;
   onInstall: () => void;
@@ -80,6 +80,7 @@ export function InstallSection({
             {chosen.downloadBytes != null
               ? t("tools.install.size", { size: formatBytes(chosen.downloadBytes) })
               : t("tools.install.size_unknown")}
+            {chosen.diskBytes != null && ` ${t("tools.install.disk", { size: formatBytes(chosen.diskBytes) })}`}
           </p>
           {miseStatus && !miseStatus.present && (
             <p className="text-xs text-warning">
