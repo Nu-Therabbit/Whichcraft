@@ -35,7 +35,7 @@ Source at start: `feat/ui-redesign` at `d00e6de`. Windows 11 10.0.26300, one loc
 - Rust: full `cargo test --lib -- --test-threads=1`: 269 passed, 16 ignored, no failures. Application subset: 98 passed, 3 ignored. Ignored tests are not included in pass counts.
 - Manual real Flutter install/uninstall contract passed separately, including a safe retry after the temporary Windows Appraisal usage block.
 - Manual native-helper System apply/Undo passed separately. The explicit cancellation contract failed its cancellation expectation because the helper was allowed without any prompt; it cleaned up its writes. The user independently confirmed that no UAC dialog appeared. Therefore A-3 remains blocked; no security settings were changed.
-- Native minimum-size resize did not take effect with the attempted automation. Default 1200×760 was inspected; earlier demo-only 900×600 evidence is in ticket 18. A latest non-demo minimum-size pass is still outstanding.
+- Minimum-size follow-up: actual non-demo Developer tools and Java plan were inspected at 900×600. A long Python Store-alias path overflowed the inventory column; wrapping was fixed and the user supplied the final native screenshot confirming containment and removal of the horizontal scrollbar. Remaining Environment/minimum-size focus journeys are still open.
 
 ## Case mapping and remaining acceptance
 
@@ -92,11 +92,11 @@ IDs refer to `docs/acceptance-criteria.md`, using the spec's section/ID mapping.
 | X-3 | NOT RUN | Independently opened existing Terminal tab is outside app control; document observed limitation. |
 | X-4 | BLOCKED | Real rollback race needs a controlled concurrent-writer environment; unit tests are not native race evidence. |
 
-Added spec scenarios: navigation/keyboard tabs/themes/default window and native JSON custom export have direct UI evidence. Earlier real Environment variable create/delete, snapshot save/compare/stage/discard and REG import observations remain in ticket 18. Full supported value-kind/secret-confirmation, snapshot rename/delete/restore combinations, every export format/scope and cancellation path are not closed by that evidence. Clean-machine startup and latest native minimum-size/focus review remain open. Tickets 19/20 therefore remain `ready-for-human`, and ticket 21 has not started.
+Added spec scenarios: navigation/keyboard tabs/themes/default window and native JSON custom export have direct UI evidence. Earlier real Environment variable create/delete, snapshot save/compare/stage/discard and REG import observations remain in ticket 18. Full supported value-kind/secret-confirmation, snapshot rename/delete/restore combinations, every export format/scope and cancellation path are not closed by that evidence. Clean-machine startup and remaining Environment/minimum-size focus journeys remain open. Tickets 19/20 therefore remain `ready-for-human`, and ticket 21 has not started.
 
 ## Restoration
 
-Completed after all app processes closed:
+Initial acceptance cleanup, completed before the read-only window-size follow-up:
 
 - Final `hkcu-final.reg` and `hklm-final.reg` have the exact SHA256 of their respective before exports; raw values and Registry kinds are unchanged.
 - Original `selection.json` restored byte-for-byte. Removed only this run's isolated-store settings and empty test-profile file after checking they still matched the known test values.
@@ -104,3 +104,11 @@ Completed after all app processes closed:
 - Removed test Java/Go through the UI; verified no executable installation remained before deleting the generated isolated store/cache within this acceptance directory.
 - MSI and NSIS test uninstall registrations are gone. No Whichcraft test process is left. Four external JDKs and the working System Go remain.
 - Raw Registry/app-data backups, logs and export files remain only in the ignored local acceptance directory; this report and its ignore rules are the committed evidence.
+
+## Minimum-size follow-up (25 October 2026)
+
+The user resized the real, non-demo release app to the minimum. Native capture measured 902×632 including frame/title bar, corresponding to 900×600 content. Tool inventory, independent inspector scrolling, and the Java review plan with Apply/Undo controls were readable; no plan was applied. The Python Store-alias warning overflowed its narrow inventory column. Added `break-words` to that warning so long Windows paths wrap within its card.
+
+The first follow-up build left the previous GUI binary in place. Explicit `npm run tauri -- build --no-bundle --verbose -- --bin whichcraft` succeeded and produced GUI SHA256 `E0822F6275D6500BADB07F1FA145F54664FACE5C6427738CDB140DC2300E599F`. The user then supplied `codex-clipboard-05ba995e-3120-4f62-a32e-4f9cc9206352.png`: the Store-alias path is fully contained and the horizontal scrollbar is gone at the minimum size with the Python inspector open. Local evidence copy: ignored `minimum-size-python.png` beside this report. No further Computer Use was needed after that screenshot.
+
+Verification: existing supplemental-info component tests 3/3 passed; lint and TypeScript/frontend/release build passed. No new layout-only unit test. MSI/NSIS hashes above remain evidence for the earlier installed candidate; this CSS-only follow-up was checked in the rebuilt release executable and did not repeat installer or Registry mutation suites. The app was reopened for the sizing check and left open for the user; test stores/settings remain removed. Remaining Windows acceptance cases and the legacy-removal gate are unchanged.

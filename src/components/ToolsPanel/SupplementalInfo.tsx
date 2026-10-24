@@ -29,7 +29,7 @@ export function PythonLauncherInfo({ info }: { info: PythonSupplementalView }) {
         </ul>
       )}
       {info.storeStub && (
-        <p className="text-xs text-warning">{t("tools.python.store_stub", { path: info.storeStub })}</p>
+        <p className="text-xs text-warning break-words">{t("tools.python.store_stub", { path: info.storeStub })}</p>
       )}
     </section>
   );
