@@ -36,6 +36,12 @@ export function useEnvironmentController(environment: EnvironmentApi, platform: 
 
   const { push, undo, redo } = useUndo();
   const { localUndoRef, handleRegisterLocalUndo } = useLocalUndo();
+  const undoLocalEdit = useCallback(() => {
+    const undoEdit = localUndoRef.current;
+    if (!undoEdit) return false;
+    undoEdit();
+    return true;
+  }, [localUndoRef]);
 
   const {
     userPathInEnv,
@@ -153,7 +159,6 @@ export function useEnvironmentController(environment: EnvironmentApi, platform: 
   );
 
   return {
-    environment,
     vars,
     effectiveVars,
     loading,
@@ -187,7 +192,7 @@ export function useEnvironmentController(environment: EnvironmentApi, platform: 
     stagedLog,
     undo,
     redo,
-    localUndoRef,
+    undoLocalEdit,
     handleRegisterLocalUndo,
   };
 }

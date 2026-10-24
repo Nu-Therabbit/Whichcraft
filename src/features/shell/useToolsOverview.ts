@@ -1,76 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import type { WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
 import type { EnvironmentApi } from "../environment/api";
 import type { ToolsApi } from "../tools/api";
-import type {
-  AndroidInventory,
-  MsvcInventory,
-  PythonSupplementalView,
-  ToolInstallationView,
-  ToolKind,
-} from "../tools/types";
+import type { ToolKind } from "../tools/types";
 import { OVERVIEW_TOOL_KINDS } from "./overviewTools";
+import {
+  initialToolsOverview,
+  reduceToolsOverview,
+  type ToolsOverviewModel,
+} from "./toolsOverviewReduce";
 
-export type ToolOverviewSlice = {
-  loading: boolean;
-  error: string | null;
-  installations: ToolInstallationView[];
-  boundRequestId: number;
-  boundAccountToken: string;
-  inFlightRequestId: number;
-};
+export type { ToolOverviewSlice } from "./toolsOverviewReduce";
 
-export type ToolsOverviewState = {
-  query: string;
+export type ToolsOverviewState = ToolsOverviewModel & {
   setQuery: (value: string) => void;
-  selectedTool: ToolKind | null;
   selectTool: (tool: ToolKind | null) => void;
-  detailOpen: boolean;
   closeDetail: () => void;
   rescan: () => Promise<void>;
-  rescanning: boolean;
-  accountError: string | null;
-  byTool: Record<ToolKind, ToolOverviewSlice>;
-  pythonInfo: PythonSupplementalView | null;
-  sdks: { android: AndroidInventory | null; msvc: MsvcInventory | null };
-  sdkLoading: boolean;
-  sdkError: string | null;
 };
-
-function emptySlice(): ToolOverviewSlice {
-  return {
-    loading: false,
-    error: null,
-    installations: [],
-    boundRequestId: 0,
-    boundAccountToken: "",
-    inFlightRequestId: 0,
-  };
-}
-
-function initialByTool(): Record<ToolKind, ToolOverviewSlice> {
-  return Object.fromEntries(OVERVIEW_TOOL_KINDS.map((tool) => [tool, emptySlice()])) as Record<
-    ToolKind,
-    ToolOverviewSlice
-  >;
-}
 
 type ActiveScan = { generation: number; accountToken: string };
 
 const RETIRED_SCAN: ActiveScan = { generation: 0, accountToken: "" };
-
-function applyStaleDiscard(
-  prev: Record<ToolKind, ToolOverviewSlice>,
-  tool: ToolKind,
-  generation: number,
-): Record<ToolKind, ToolOverviewSlice> {
-  const slice = prev[tool];
-  if (slice.inFlightRequestId !== generation) return prev;
-  return {
-    ...prev,
-    [tool]: { ...slice, loading: false, inFlightRequestId: 0 },
-  };
-}
 
 function resultStillValid(
   generation: number,
@@ -83,77 +34,37 @@ function resultStillValid(
   return generation === scan.generation && accountToken === scan.accountToken;
 }
 
+/** Loads every overview tool's inventory; the reducer owns state, these effects own the API calls. */
 export function useToolsOverview(
   tools: ToolsApi,
   environment: EnvironmentApi,
   coordination?: WriteCoordinatorFacade,
 ): ToolsOverviewState {
-  const [query, setQuery] = useState("");
-  const [selectedTool, setSelectedTool] = useState<ToolKind | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [byTool, setByTool] = useState(initialByTool);
-  const [rescanning, setRescanning] = useState(false);
-  const [accountError, setAccountError] = useState<string | null>(null);
-  const [pythonInfo, setPythonInfo] = useState<PythonSupplementalView | null>(null);
-  const [sdks, setSdks] = useState<{ android: AndroidInventory | null; msvc: MsvcInventory | null }>({
-    android: null,
-    msvc: null,
-  });
-  const [sdkLoading, setSdkLoading] = useState(false);
-  const [sdkError, setSdkError] = useState<string | null>(null);
+  const [model, dispatch] = useReducer(reduceToolsOverview, undefined, initialToolsOverview);
 
   const requestId = useRef(0);
   const activeScan = useRef<ActiveScan>(RETIRED_SCAN);
 
   const loadTool = useCallback(
     async (tool: ToolKind, generation: number, accountToken: string) => {
-      setByTool((prev) => ({
-        ...prev,
-        [tool]: { ...prev[tool], loading: true, error: null, inFlightRequestId: generation },
-      }));
+      dispatch({ type: "toolScanStarted", tool, generation });
       const coordBinding = coordination?.beginRead({ kind: "overview-inventory", tool });
+      const stillCurrent = () =>
+        !(coordBinding && coordination && !coordination.isReadCurrent(coordBinding)) &&
+        resultStillValid(generation, accountToken, requestId.current, activeScan.current);
       try {
         const installations = await tools.listToolInstallations(tool);
-        setByTool((prev) => {
-          if (coordBinding && coordination && !coordination.isReadCurrent(coordBinding)) {
-            return applyStaleDiscard(prev, tool, generation);
-          }
-          if (!resultStillValid(generation, accountToken, requestId.current, activeScan.current)) {
-            return applyStaleDiscard(prev, tool, generation);
-          }
-          return {
-            ...prev,
-            [tool]: {
-              loading: false,
-              error: null,
-              installations,
-              boundRequestId: generation,
-              boundAccountToken: accountToken,
-              inFlightRequestId: 0,
-            },
-          };
-        });
+        dispatch(
+          stillCurrent()
+            ? { type: "toolScanned", tool, generation, accountToken, installations }
+            : { type: "toolScanDiscarded", tool, generation },
+        );
       } catch (err) {
-        setByTool((prev) => {
-          if (coordBinding && coordination && !coordination.isReadCurrent(coordBinding)) {
-            return applyStaleDiscard(prev, tool, generation);
-          }
-          if (!resultStillValid(generation, accountToken, requestId.current, activeScan.current)) {
-            return applyStaleDiscard(prev, tool, generation);
-          }
-          return {
-            ...prev,
-            [tool]: {
-              ...prev[tool],
-              loading: false,
-              error: String(err),
-              installations: [],
-              boundRequestId: generation,
-              boundAccountToken: accountToken,
-              inFlightRequestId: 0,
-            },
-          };
-        });
+        dispatch(
+          stillCurrent()
+            ? { type: "toolScanFailed", tool, generation, accountToken, error: String(err) }
+            : { type: "toolScanDiscarded", tool, generation },
+        );
       }
     },
     [coordination, tools],
@@ -161,103 +72,65 @@ export function useToolsOverview(
 
   const rescan = useCallback(async () => {
     const generation = ++requestId.current;
-    setRescanning(true);
-    setAccountError(null);
+    dispatch({ type: "scanStarted" });
 
     let accountToken: string;
     try {
       const selected = await environment.getSelectedAccount();
       if (generation !== requestId.current) {
-        setSdkLoading(false);
+        dispatch({ type: "scanSuperseded" });
         return;
       }
       accountToken = selected?.sid ?? "local";
       coordination?.notifyAccountContextChanged(selected?.sid ?? null);
     } catch (err) {
       if (generation !== requestId.current) return;
-      const message = String(err);
       activeScan.current = RETIRED_SCAN;
-      setSdkLoading(false);
-      setAccountError(message);
-      setByTool((prev) => {
-        const next = { ...prev };
-        for (const tool of OVERVIEW_TOOL_KINDS) {
-          next[tool] = {
-            ...next[tool],
-            loading: false,
-            inFlightRequestId: 0,
-            error: message,
-            installations: [],
-            boundRequestId: 0,
-            boundAccountToken: "",
-          };
-        }
-        return next;
-      });
-      setRescanning(false);
+      dispatch({ type: "accountFailed", message: String(err) });
       return;
     }
 
     if (generation !== requestId.current) {
-      setSdkLoading(false);
+      dispatch({ type: "scanSuperseded" });
       return;
     }
 
     activeScan.current = { generation, accountToken };
 
-    setSdkLoading(true);
-    setSdkError(null);
-    const sdkResults = await Promise.allSettled([
+    dispatch({ type: "sdkScanStarted" });
+    const [python, android, msvc] = await Promise.allSettled([
       tools.getPythonLauncherInfo(),
       tools.getAndroidInventory(),
       tools.getMsvcInventory(),
     ]);
     if (generation !== requestId.current) {
-      setSdkLoading(false);
+      dispatch({ type: "scanSuperseded" });
       return;
     }
-    setPythonInfo(sdkResults[0].status === "fulfilled" ? sdkResults[0].value : null);
-    setSdks({
-      android: sdkResults[1].status === "fulfilled" ? sdkResults[1].value : null,
-      msvc: sdkResults[2].status === "fulfilled" ? sdkResults[2].value : null,
+    dispatch({
+      type: "sdkScanned",
+      pythonInfo: python.status === "fulfilled" ? python.value : null,
+      android: android.status === "fulfilled" ? android.value : null,
+      msvc: msvc.status === "fulfilled" ? msvc.value : null,
+      incomplete: [python, android, msvc].some((result) => result.status === "rejected"),
     });
-    if (sdkResults.some((result) => result.status === "rejected")) {
-      setSdkError("Some supplemental inventory could not be loaded.");
-    }
-    setSdkLoading(false);
 
     await Promise.all(OVERVIEW_TOOL_KINDS.map((tool) => loadTool(tool, generation, accountToken)));
-    if (generation === requestId.current) setRescanning(false);
+    if (generation === requestId.current) dispatch({ type: "scanFinished" });
   }, [coordination, environment, loadTool, tools]);
 
   useEffect(() => {
     void rescan();
   }, [rescan]);
 
-  const selectTool = useCallback((tool: ToolKind | null) => {
-    setSelectedTool(tool);
-    setDetailOpen(tool !== null);
-  }, []);
+  const actions = useMemo(
+    () => ({
+      setQuery: (query: string) => dispatch({ type: "queryChanged", query }),
+      selectTool: (tool: ToolKind | null) => dispatch({ type: "toolSelected", tool }),
+      closeDetail: () => dispatch({ type: "detailClosed" }),
+    }),
+    [],
+  );
 
-  const closeDetail = useCallback(() => {
-    setDetailOpen(false);
-    setSelectedTool(null);
-  }, []);
-
-  return {
-    query,
-    setQuery,
-    selectedTool,
-    selectTool,
-    detailOpen,
-    closeDetail,
-    rescan,
-    rescanning,
-    accountError,
-    byTool,
-    pythonInfo,
-    sdks,
-    sdkLoading,
-    sdkError,
-  };
-};
+  return { ...model, ...actions, rescan };
+}

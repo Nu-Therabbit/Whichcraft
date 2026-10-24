@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { ToolsSettings } from "../../components/ToolsPanel/ToolsSettings";
 import { useI18n } from "../../hooks/useI18n";
-import { useShellTools } from "./ShellToolsContext";
+import { useTools } from "../tools/ToolsContext";
 
 export function ShellSettingsView() {
   const { t } = useI18n();
-  const { state, dispatch } = useShellTools();
+  const { state, dispatch } = useTools();
   const settings = state.settings;
 
   useEffect(() => {

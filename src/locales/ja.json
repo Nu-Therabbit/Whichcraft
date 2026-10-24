@@ -528,6 +528,7 @@
     "this_pc_account_error": "現在のアカウントを読み取れませんでした",
     "this_pc_scanned": "この PC のインベントリは最新です",
     "view_source": "ソース",
-    "view_source_title": "GitHub でソースコードを表示"
+    "view_source_title": "GitHub でソースコードを表示",
+    "sdk_incomplete": "一部の補足インベントリを読み込めませんでした。"
   }
 }

@@ -3,7 +3,7 @@ import { InstallSection } from "../../components/ToolsPanel/InstallSection";
 import { useI18n } from "../../hooks/useI18n";
 import type { ToolKind } from "../tools/types";
 import { INSTALLABLE_TOOL_KINDS, TOOL_DISPLAY } from "./overviewTools";
-import { useShellTools } from "./ShellToolsContext";
+import { useTools } from "../tools/ToolsContext";
 
 interface Props {
   /** Null until the user picks which tool to install. */
@@ -14,7 +14,7 @@ interface Props {
 
 export function ShellInstallView({ tool, onPickTool, onClose }: Props) {
   const { t } = useI18n();
-  const { state, dispatch } = useShellTools();
+  const { state, dispatch } = useTools();
   const { install, settings } = state;
 
   useEffect(() => {

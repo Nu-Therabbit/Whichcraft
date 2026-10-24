@@ -1,26 +1,29 @@
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
-import type { ShellCheck } from "../tools/types";
+import type { ShellCheck } from "./types";
 import { createToolsRuntime } from "../../composition/appServices";
 import { useAppServices } from "../../composition/AppServicesContext";
 import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
-import type { ToolsDispatch } from "../tools/useToolsStore";
-import { useToolsStore } from "../tools/useToolsStore";
-import type { ToolsState } from "../tools/model";
+import type { ToolsDispatch } from "./useToolsStore";
+import { useToolsStore } from "./useToolsStore";
+import type { ToolsState } from "./model";
 import {
   changesEnvironment,
   scopesNeedProfileReload,
   scopesNeedToolsRefresh,
 } from "../../coordination/scopeGroups";
 
-type ShellToolsContextValue = {
+type ToolsContextValue = {
   state: ToolsState;
   dispatch: ToolsDispatch;
 };
 
-const ShellToolsContext = createContext<ShellToolsContextValue | null>(null);
+const ToolsContext = createContext<ToolsContextValue | null>(null);
 
-/** App-lifetime Tools MVI store for the desktop shell (install, settings, detail writes). */
-export function ShellToolsProvider({ children }: { children: ReactNode }) {
+/**
+ * App-lifetime Tools MVI store and its read invalidation, shared by both presentations
+ * (only one is mounted per process).
+ */
+export function ToolsProvider({ children }: { children: ReactNode }) {
   const services = useAppServices();
   const coordination = useWriteCoordinator();
   const toolsRuntime = useMemo(
@@ -59,13 +62,13 @@ export function ShellToolsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ state, dispatch }), [state, dispatch]);
 
-  return <ShellToolsContext.Provider value={value}>{children}</ShellToolsContext.Provider>;
+  return <ToolsContext.Provider value={value}>{children}</ToolsContext.Provider>;
 }
 
-export function useShellTools(): ShellToolsContextValue {
-  const ctx = useContext(ShellToolsContext);
+export function useTools(): ToolsContextValue {
+  const ctx = useContext(ToolsContext);
   if (!ctx) {
-    throw new Error("useShellTools requires ShellToolsProvider");
+    throw new Error("useTools requires ToolsProvider");
   }
   return ctx;
 }

@@ -737,6 +737,7 @@
     "this_pc_account_error": "The current account could not be read",
     "this_pc_scanned": "Inventory of this PC is up to date",
     "view_source": "Source",
-    "view_source_title": "View the source code on GitHub"
+    "view_source_title": "View the source code on GitHub",
+    "sdk_incomplete": "Some supplemental inventory could not be loaded."
   }
 }

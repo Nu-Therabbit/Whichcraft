@@ -2,12 +2,12 @@ import { PathCleanupSummary } from "../../components/ToolsPanel/PathCleanupSumma
 import { PlanDiffList } from "../../components/ToolsPanel/PlanDiffList";
 import { Button } from "../../components/ui/Button";
 import { useI18n } from "../../hooks/useI18n";
-import { useShellTools } from "./ShellToolsContext";
+import { useTools } from "../tools/ToolsContext";
 
 /** PATH cleanup plan/diff/apply from the Environment workspace (uses tools write admission). */
 export function ShellEnvironmentPathMaintenance() {
   const { t } = useI18n();
-  const { state, dispatch } = useShellTools();
+  const { state, dispatch } = useTools();
   const { plan } = state;
   const busy = plan.applying || plan.building;
   const cleanupPlan = plan.current?.recordsSelection === false ? plan.current : null;

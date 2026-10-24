@@ -528,6 +528,7 @@
     "this_pc_account_error": "Không đọc được tài khoản hiện tại",
     "this_pc_scanned": "Danh mục của máy này đã cập nhật",
     "view_source": "Mã nguồn",
-    "view_source_title": "Xem mã nguồn trên GitHub"
+    "view_source_title": "Xem mã nguồn trên GitHub",
+    "sdk_incomplete": "Không tải được một phần danh mục bổ sung."
   }
 }

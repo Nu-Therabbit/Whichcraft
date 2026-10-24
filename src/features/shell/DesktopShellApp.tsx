@@ -31,7 +31,7 @@ import { ShellProfilesWorkspace } from "./ShellProfilesWorkspace";
 import { ShellSettingsView } from "./ShellSettingsView";
 import { EnvironmentProvider } from "../environment/EnvironmentContext";
 import { ShellEnvironmentUiProvider } from "./ShellEnvironmentUiContext";
-import { ShellToolsProvider, useShellTools } from "./ShellToolsContext";
+import { ToolsProvider, useTools } from "../tools/ToolsContext";
 import { useShellNavigation } from "./useShellNavigation";
 import { useShellToolsWrite } from "./useShellToolsWrite";
 import { useToolsOverview } from "./useToolsOverview";
@@ -40,7 +40,7 @@ type ShellPage = "tools" | "profiles" | "environment" | "settings";
 
 type Translate = ReturnType<typeof useI18n>["t"];
 
-function shellStatusLine(t: Translate, toolsState: ReturnType<typeof useShellTools>["state"]): string {
+function shellStatusLine(t: Translate, toolsState: ReturnType<typeof useTools>["state"]): string {
   if (toolsState.install.busy) return t("desktop_shell.status_installing");
   if (toolsState.plan.applying) return t("desktop_shell.status_applying");
   if (toolsState.plan.building) return t("desktop_shell.status_building_plan");
@@ -82,7 +82,7 @@ function DesktopShellAppInner() {
   const services = useAppServices();
   const coordination = useWriteCoordinator();
   const { page, envTab, installOpen, goPage, goEnvTab, navigate } = useShellNavigation();
-  const shellTools = useShellTools();
+  const shellTools = useTools();
   const overview = useToolsOverview(services.tools, services.environment, coordination);
   const toolsWrite = useShellToolsWrite(overview.detailOpen ? overview.selectedTool : null);
   const { theme } = useTheme();
@@ -334,7 +334,9 @@ function DesktopShellAppInner() {
                     </h2>
                     <p className="text-xs text-dim mb-2">{t("desktop_shell.inventory_only")}</p>
                     {overview.sdkLoading && <p className="text-xs text-dim">{t("desktop_shell.loading")}</p>}
-                    {overview.sdkError && <p className="text-xs text-warn">{overview.sdkError}</p>}
+                    {overview.sdkIncomplete && (
+                      <p className="text-xs text-warn">{t("desktop_shell.sdk_incomplete")}</p>
+                    )}
                     <ul className="space-y-2">
                       {overview.sdks.android && (
                         <li className="rounded border border-rim-subtle px-3 py-2 text-sm bg-panel">
@@ -462,9 +464,9 @@ export function DesktopShellApp() {
   return (
     <EnvironmentProvider>
       <ShellEnvironmentUiProvider>
-        <ShellToolsProvider>
+        <ToolsProvider>
           <DesktopShellAppInner />
-        </ShellToolsProvider>
+        </ToolsProvider>
       </ShellEnvironmentUiProvider>
     </EnvironmentProvider>
   );

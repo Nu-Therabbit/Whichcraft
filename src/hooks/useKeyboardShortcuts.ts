@@ -1,17 +1,12 @@
-import type { RefObject } from "react";
 import { useEffect } from "react";
 
-export function useKeyboardShortcuts(
-  undo: () => void,
-  redo: () => void,
-  localUndoRef: RefObject<(() => void) | null>,
-) {
+/** `undoLocal` undoes an in-progress local edit and returns true, or returns false when there is none. */
+export function useKeyboardShortcuts(undo: () => void, redo: () => void, undoLocal: () => boolean) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!e.ctrlKey) return;
-      if (e.key === "z" && !e.shiftKey && localUndoRef.current) {
+      if (e.key === "z" && !e.shiftKey && undoLocal()) {
         e.preventDefault();
-        localUndoRef.current();
         return;
       }
       const active = document.activeElement;
@@ -27,5 +22,5 @@ export function useKeyboardShortcuts(
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo, redo, localUndoRef]);
+  }, [undo, redo, undoLocal]);
 }

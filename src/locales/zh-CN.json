@@ -528,6 +528,7 @@
     "this_pc_account_error": "无法读取当前账户",
     "this_pc_scanned": "此电脑的清单已是最新",
     "view_source": "源代码",
-    "view_source_title": "在 GitHub 上查看源代码"
+    "view_source_title": "在 GitHub 上查看源代码",
+    "sdk_incomplete": "部分补充清单无法加载。"
   }
 }

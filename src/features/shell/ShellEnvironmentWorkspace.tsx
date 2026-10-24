@@ -62,7 +62,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
     handleStageSnapshot,
     undo,
     redo,
-    localUndoRef,
+    undoLocalEdit,
     handleRegisterLocalUndo,
   } = env;
 
@@ -80,7 +80,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
         ? "User"
         : null;
 
-  useKeyboardShortcuts(undo, redo, localUndoRef);
+  useKeyboardShortcuts(undo, redo, undoLocalEdit);
 
   const effectiveSelected = useMemo<EnvVar | null>(() => {
     if (!selected) return null;

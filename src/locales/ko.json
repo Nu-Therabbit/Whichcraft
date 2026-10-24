@@ -528,6 +528,7 @@
     "this_pc_account_error": "현재 계정을 읽지 못했습니다",
     "this_pc_scanned": "이 PC의 인벤토리가 최신 상태입니다",
     "view_source": "소스",
-    "view_source_title": "GitHub에서 소스 코드 보기"
+    "view_source_title": "GitHub에서 소스 코드 보기",
+    "sdk_incomplete": "일부 보조 인벤토리를 불러오지 못했습니다."
   }
 }

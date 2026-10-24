@@ -83,7 +83,7 @@ export function LegacyEnvironmentView({ tools, sendTools }: LegacyEnvironmentVie
     stagedLog,
     undo,
     redo,
-    localUndoRef,
+    undoLocalEdit,
     handleRegisterLocalUndo,
   } = env;
 
@@ -105,7 +105,7 @@ export function LegacyEnvironmentView({ tools, sendTools }: LegacyEnvironmentVie
     if (diffEntries.length > 0) setDialog("changes");
   }, [diffEntries.length]);
 
-  useKeyboardShortcuts(undo, redo, localUndoRef);
+  useKeyboardShortcuts(undo, redo, undoLocalEdit);
 
   const { platform } = useAppServices();
   const updateInfo = useUpdateCheck(platform);

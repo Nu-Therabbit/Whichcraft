@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import type { ToolKind } from "../tools/types";
-import { useShellTools } from "./ShellToolsContext";
+import { useTools } from "../tools/ToolsContext";
 
 /** Sync the app-lifetime shell tools store with the overview's selected tool. */
 export function useShellToolsWrite(activeTool: ToolKind | null) {
-  const { state, dispatch } = useShellTools();
+  const { state, dispatch } = useTools();
 
   useEffect(() => {
     if (!activeTool) return;

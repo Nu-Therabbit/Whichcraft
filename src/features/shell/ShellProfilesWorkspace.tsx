@@ -2,12 +2,12 @@ import { useEffect } from "react";
 import { ProfilesSection } from "../../components/ToolsPanel/ProfilesSection";
 import { useI18n } from "../../hooks/useI18n";
 import { ShellProfilePlanPanel } from "./ShellProfilePlanPanel";
-import { useShellTools } from "./ShellToolsContext";
+import { useTools } from "../tools/ToolsContext";
 
 /** Tool profiles workspace in the desktop shell (saved pins, apply, install-missing). */
 export function ShellProfilesWorkspace() {
   const { t } = useI18n();
-  const { state, dispatch } = useShellTools();
+  const { state, dispatch } = useTools();
   const { profiles, settings, plan } = state;
   const applyBusy = plan.applying || plan.building;
 
