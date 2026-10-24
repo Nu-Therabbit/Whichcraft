@@ -508,6 +508,26 @@
     "installations": "Installations",
     "no_installations": "No installations found.",
     "read_only_status": "Read-only desktop shell preview",
-    "preview_presentation": "Add ?presentation=desktop-shell to the URL"
+    "preview_presentation": "Add ?presentation=desktop-shell to the URL",
+    "tool_description": {
+      "java": "JDK · JVM 언어",
+      "node": "JavaScript 런타임",
+      "python": "Python 인터프리터",
+      "go": "Go 툴체인",
+      "flutter": "Flutter SDK",
+      "git": "Git for Windows"
+    },
+    "install_pick_heading": "설치할 도구 선택",
+    "check_shell_needs_tool": "셸에서 확인하려면 도구 세부 정보를 여세요",
+    "status_inventory_one": "도구 {{tools}}개에 설치 {{count}}개",
+    "status_inventory_other": "도구 {{tools}}개에 설치 {{count}}개",
+    "status_inventory_failed_one": "도구 {{count}}개를 검사하지 못했습니다",
+    "status_inventory_failed_other": "도구 {{count}}개를 검사하지 못했습니다",
+    "status_inventory_account_error": "인벤토리를 불러올 수 없음: 현재 계정을 읽지 못했습니다",
+    "this_pc_scanning": "이 PC의 설치를 검사하는 중",
+    "this_pc_account_error": "현재 계정을 읽지 못했습니다",
+    "this_pc_scanned": "이 PC의 인벤토리가 최신 상태입니다",
+    "view_source": "소스",
+    "view_source_title": "GitHub에서 소스 코드 보기"
   }
 }

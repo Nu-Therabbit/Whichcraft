@@ -717,6 +717,26 @@
     "status_installing": "Installing…",
     "install_heading": "Install {{tool}}",
     "close_install": "Close",
-    "git_switch_only": "Git is switch-only; install and update are not offered."
+    "git_switch_only": "Git is switch-only; install and update are not offered.",
+    "tool_description": {
+      "java": "JDK · JVM languages",
+      "node": "JavaScript runtime",
+      "python": "Python interpreter",
+      "go": "Go toolchain",
+      "flutter": "Flutter SDK",
+      "git": "Git for Windows"
+    },
+    "install_pick_heading": "Choose a tool to install",
+    "check_shell_needs_tool": "Open a tool's details to check it in the shell",
+    "status_inventory_one": "{{count}} installation across {{tools}} tools",
+    "status_inventory_other": "{{count}} installations across {{tools}} tools",
+    "status_inventory_failed_one": "{{count}} tool could not be scanned",
+    "status_inventory_failed_other": "{{count}} tools could not be scanned",
+    "status_inventory_account_error": "Inventory unavailable: the current account could not be read",
+    "this_pc_scanning": "Scanning installations on this PC",
+    "this_pc_account_error": "The current account could not be read",
+    "this_pc_scanned": "Inventory of this PC is up to date",
+    "view_source": "Source",
+    "view_source_title": "View the source code on GitHub"
   }
 }

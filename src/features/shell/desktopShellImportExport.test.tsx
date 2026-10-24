@@ -7,6 +7,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { UndoProvider } from "../../contexts/UndoContext";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
@@ -58,11 +59,13 @@ function renderShell(apiOverrides: Record<string, unknown> = {}) {
   const services = splitEnvarlyApi(fakeToolsRuntime({ ...sdkMocks, ...apiOverrides }).api);
   configureProductionServices(services);
   return render(
-    <AppServicesProvider services={services}>
-      <WriteCoordinatorProvider>
-        <DesktopShellApp />
-      </WriteCoordinatorProvider>
-    </AppServicesProvider>,
+    <UndoProvider>
+      <AppServicesProvider services={services}>
+        <WriteCoordinatorProvider>
+          <DesktopShellApp />
+        </WriteCoordinatorProvider>
+      </AppServicesProvider>
+    </UndoProvider>,
   );
 }
 

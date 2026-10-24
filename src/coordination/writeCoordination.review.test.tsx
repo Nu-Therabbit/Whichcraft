@@ -31,13 +31,15 @@ function renderLegacyApp(apiOverrides: Parameters<typeof fakeToolsRuntime>[0]) {
   configureProductionServices(splitEnvarlyApi(fake));
   return render(
     <UndoProvider>
-      <AppServicesProvider>
-        <WriteCoordinatorProvider>
-          <EnvironmentProvider>
-            <LegacyHarness />
-          </EnvironmentProvider>
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>
+      <UndoProvider>
+        <AppServicesProvider>
+          <WriteCoordinatorProvider>
+            <EnvironmentProvider>
+              <LegacyHarness />
+            </EnvironmentProvider>
+          </WriteCoordinatorProvider>
+        </AppServicesProvider>
+      </UndoProvider>
     </UndoProvider>,
   );
 }
@@ -161,11 +163,13 @@ describe("write coordination review", () => {
     configureProductionServices(splitEnvarlyApi(fake));
 
     render(
-      <AppServicesProvider>
-        <WriteCoordinatorProvider>
-          <DesktopShellApp />
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>,
+      <UndoProvider>
+        <AppServicesProvider>
+          <WriteCoordinatorProvider>
+            <DesktopShellApp />
+          </WriteCoordinatorProvider>
+        </AppServicesProvider>
+      </UndoProvider>,
     );
 
     await waitFor(() => expect(getSelectedAccount).toHaveBeenCalled());

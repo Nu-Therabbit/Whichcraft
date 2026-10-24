@@ -4,6 +4,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import i18n from "i18next";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { UndoProvider } from "../../contexts/UndoContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
@@ -13,11 +14,13 @@ import { DesktopShellApp } from "./DesktopShellApp";
 
 function renderDefaultShell() {
   return render(
-    <AppServicesProvider>
-      <WriteCoordinatorProvider>
-        <DesktopShellApp />
-      </WriteCoordinatorProvider>
-    </AppServicesProvider>,
+    <UndoProvider>
+      <AppServicesProvider>
+        <WriteCoordinatorProvider>
+          <DesktopShellApp />
+        </WriteCoordinatorProvider>
+      </AppServicesProvider>
+    </UndoProvider>,
   );
 }
 

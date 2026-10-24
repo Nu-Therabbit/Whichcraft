@@ -2,14 +2,19 @@ import type { ToolKind } from "../tools/types";
 
 export const OVERVIEW_TOOL_KINDS: ToolKind[] = ["java", "node", "python", "go", "flutter", "git"];
 
-export const TOOL_DISPLAY: Record<
-  ToolKind,
-  { title: string; glyph: string; description: string; switchOnly?: boolean }
-> = {
-  java: { title: "Java", glyph: "J", description: "JDK · JVM languages" },
-  node: { title: "Node.js", glyph: "N", description: "JavaScript runtime" },
-  python: { title: "Python", glyph: "Py", description: "Python interpreter" },
-  go: { title: "Go", glyph: "Go", description: "Go toolchain" },
-  flutter: { title: "Flutter", glyph: "F", description: "Flutter SDK" },
-  git: { title: "Git", glyph: "G", description: "Git for Windows", switchOnly: true },
+/** Tools Whichcraft can install; Git stays switch-only. */
+export const INSTALLABLE_TOOL_KINDS: ToolKind[] = OVERVIEW_TOOL_KINDS.filter((tool) => tool !== "git");
+
+/** Product names stay untranslated; the description is an i18n key under `desktop_shell.tool_description`. */
+export const TOOL_DISPLAY: Record<ToolKind, { title: string; glyph: string; switchOnly?: boolean }> = {
+  java: { title: "Java", glyph: "J" },
+  node: { title: "Node.js", glyph: "N" },
+  python: { title: "Python", glyph: "Py" },
+  go: { title: "Go", glyph: "Go" },
+  flutter: { title: "Flutter", glyph: "F" },
+  git: { title: "Git", glyph: "G", switchOnly: true },
 };
+
+export function toolDescriptionKey(tool: ToolKind): string {
+  return `desktop_shell.tool_description.${tool}`;
+}

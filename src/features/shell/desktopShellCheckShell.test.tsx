@@ -7,6 +7,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { UndoProvider } from "../../contexts/UndoContext";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
@@ -57,11 +58,13 @@ function renderShell(apiOverrides: Record<string, unknown> = {}) {
     coordination,
     api,
     ...render(
-      <AppServicesProvider services={splitEnvarlyApi(api)}>
-        <WriteCoordinatorProvider coordinator={coordination}>
-          <DesktopShellApp />
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>,
+      <UndoProvider>
+        <AppServicesProvider services={splitEnvarlyApi(api)}>
+          <WriteCoordinatorProvider coordinator={coordination}>
+            <DesktopShellApp />
+          </WriteCoordinatorProvider>
+        </AppServicesProvider>
+      </UndoProvider>,
     ),
   };
 }
@@ -119,7 +122,7 @@ describe("desktop shell check command and shell resolution", () => {
     const user = userEvent.setup();
     const details = await openJavaDetail(user);
     expect(within(details).getByText(/C:\\jdk17/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /check in shell/i }));
+    await user.click(within(details).getByRole("button", { name: /check in shell/i }));
     await waitFor(() => expect(shellCheck).toHaveBeenCalledWith("java"));
     const status = await within(details).findByRole("status");
     expect(within(status).getByText(/C:\\jdk21\\bin\\java.exe/i)).toBeInTheDocument();
@@ -135,8 +138,8 @@ describe("desktop shell check command and shell resolution", () => {
       openTerminal,
     });
     const user = userEvent.setup();
-    await openJavaDetail(user);
-    await user.click(screen.getByRole("button", { name: /open terminal/i }));
+    const details = await openJavaDetail(user);
+    await user.click(within(details).getByRole("button", { name: /open terminal/i }));
     await waitFor(() => expect(openTerminal).toHaveBeenCalled());
   });
 
@@ -177,7 +180,7 @@ describe("desktop shell check command and shell resolution", () => {
 
     const user = userEvent.setup();
     const details = await openJavaDetail(user);
-    await user.click(screen.getByRole("button", { name: /check in shell/i }));
+    await user.click(within(details).getByRole("button", { name: /check in shell/i }));
     await waitFor(() => expect(shellCheck).toHaveBeenCalledTimes(1));
     expect(within(details).queryByRole("status")).not.toBeInTheDocument();
 
@@ -276,5 +279,35 @@ describe("desktop shell check command and shell resolution", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /^check$/i })).toBeInTheDocument());
     expect(screen.queryByText(/backend boom/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId("check-command-hit")).not.toBeInTheDocument();
+  });
+
+  it("checks the inspected tool in the shell and opens a terminal from the command bar", async () => {
+    const jdk = inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true });
+    const shellCheck = vi.fn(async () => ({
+      tool: "java" as const,
+      shell: "windows_terminal" as const,
+      effectivePath: "C:\\jdk21\\bin\\java.exe",
+      shellPath: "C:\\jdk21\\bin\\java.exe",
+      matches: true,
+    }));
+    const openTerminal = vi.fn(async () => {});
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [jdk] : []),
+      shellCheck,
+      openTerminal,
+    });
+    const user = userEvent.setup();
+    const commandBar = await screen.findByRole("toolbar", { name: /tool actions/i });
+    expect(within(commandBar).getByRole("button", { name: /check in shell/i })).toBeDisabled();
+
+    await user.click(within(commandBar).getByRole("button", { name: /open terminal/i }));
+    await waitFor(() => expect(openTerminal).toHaveBeenCalledTimes(1));
+
+    const details = await openJavaDetail(user);
+    const check = within(commandBar).getByRole("button", { name: /check in shell/i });
+    await waitFor(() => expect(check).toBeEnabled());
+    await user.click(check);
+    await waitFor(() => expect(shellCheck).toHaveBeenCalledWith("java"));
+    expect(await within(details).findByRole("status")).toBeInTheDocument();
   });
 });

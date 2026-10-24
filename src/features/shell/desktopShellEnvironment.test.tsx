@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { UndoProvider } from "../../contexts/UndoContext";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { ENVIRONMENT_PENDING_TOOLS_MESSAGE, WRITE_BUSY_MESSAGE } from "../../coordination/types";
@@ -52,11 +53,13 @@ const sdkMocks = {
 function renderDesktopShell(services = splitEnvarlyApi(fakeToolsRuntime({ ...sdkMocks }).api)) {
   configureProductionServices(services);
   return render(
-    <AppServicesProvider services={services}>
-      <WriteCoordinatorProvider>
-        <DesktopShellApp />
-      </WriteCoordinatorProvider>
-    </AppServicesProvider>,
+    <UndoProvider>
+      <AppServicesProvider services={services}>
+        <WriteCoordinatorProvider>
+          <DesktopShellApp />
+        </WriteCoordinatorProvider>
+      </AppServicesProvider>
+    </UndoProvider>,
   );
 }
 

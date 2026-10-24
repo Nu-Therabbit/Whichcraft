@@ -47,13 +47,15 @@ function renderLegacyApp(
     coordination,
     ...render(
       <UndoProvider>
-        <AppServicesProvider>
-          <WriteCoordinatorProvider coordinator={coordination}>
-            <EnvironmentProvider>
-              <LegacyHarness />
-            </EnvironmentProvider>
-          </WriteCoordinatorProvider>
-        </AppServicesProvider>
+        <UndoProvider>
+          <AppServicesProvider>
+            <WriteCoordinatorProvider coordinator={coordination}>
+              <EnvironmentProvider>
+                <LegacyHarness />
+              </EnvironmentProvider>
+            </WriteCoordinatorProvider>
+          </AppServicesProvider>
+        </UndoProvider>
       </UndoProvider>,
     ),
   };
@@ -290,11 +292,13 @@ describe("write coordination review round 2", () => {
     configureProductionServices(splitEnvarlyApi(fake));
 
     render(
-      <AppServicesProvider>
-        <WriteCoordinatorProvider coordinator={coordination}>
-          <DesktopShellApp />
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>,
+      <UndoProvider>
+        <AppServicesProvider>
+          <WriteCoordinatorProvider coordinator={coordination}>
+            <DesktopShellApp />
+          </WriteCoordinatorProvider>
+        </AppServicesProvider>
+      </UndoProvider>,
     );
 
     await waitFor(() => expect(getSelectedAccount).toHaveBeenCalled());

@@ -29,3 +29,23 @@ export function toolMatchesQuery(tool: ToolKind, query: string, meta: { title: s
   const haystack = `${meta.title} ${meta.description} ${tool}`.toLowerCase();
   return haystack.includes(query.trim().toLowerCase());
 }
+
+export type InventorySummary =
+  | { kind: "scanning" }
+  | { kind: "account-error" }
+  | { kind: "scanned"; installations: number; unavailable: number; failedTools: number };
+
+/** What the status bar and the This PC indicator say about the last inventory scan. */
+export function summarizeInventory(
+  slices: { loading: boolean; error: string | null; installations: ToolInstallationView[] }[],
+  scan: { rescanning: boolean; accountError: string | null },
+): InventorySummary {
+  if (scan.accountError) return { kind: "account-error" };
+  if (scan.rescanning || slices.some((slice) => slice.loading)) return { kind: "scanning" };
+  return {
+    kind: "scanned",
+    installations: slices.reduce((sum, slice) => sum + slice.installations.length, 0),
+    unavailable: slices.reduce((sum, slice) => sum + unavailableCount(slice.installations), 0),
+    failedTools: slices.filter((slice) => slice.error !== null).length,
+  };
+}

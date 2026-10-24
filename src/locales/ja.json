@@ -508,6 +508,26 @@
     "installations": "Installations",
     "no_installations": "No installations found.",
     "read_only_status": "Read-only desktop shell preview",
-    "preview_presentation": "Add ?presentation=desktop-shell to the URL"
+    "preview_presentation": "Add ?presentation=desktop-shell to the URL",
+    "tool_description": {
+      "java": "JDK · JVM 言語",
+      "node": "JavaScript ランタイム",
+      "python": "Python インタープリター",
+      "go": "Go ツールチェーン",
+      "flutter": "Flutter SDK",
+      "git": "Git for Windows"
+    },
+    "install_pick_heading": "インストールするツールを選択",
+    "check_shell_needs_tool": "シェルで確認するにはツールの詳細を開いてください",
+    "status_inventory_one": "{{tools}} 個のツールに {{count}} 件のインストール",
+    "status_inventory_other": "{{tools}} 個のツールに {{count}} 件のインストール",
+    "status_inventory_failed_one": "{{count}} 個のツールをスキャンできませんでした",
+    "status_inventory_failed_other": "{{count}} 個のツールをスキャンできませんでした",
+    "status_inventory_account_error": "インベントリを取得できません: 現在のアカウントを読み取れませんでした",
+    "this_pc_scanning": "この PC のインストールをスキャン中",
+    "this_pc_account_error": "現在のアカウントを読み取れませんでした",
+    "this_pc_scanned": "この PC のインベントリは最新です",
+    "view_source": "ソース",
+    "view_source_title": "GitHub でソースコードを表示"
   }
 }

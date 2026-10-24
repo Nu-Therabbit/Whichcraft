@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { UndoProvider } from "../../contexts/UndoContext";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
@@ -42,11 +43,13 @@ const sdkMocks = {
 function renderDesktopShell(services: ReturnType<typeof splitEnvarlyApi>) {
   configureProductionServices(services);
   return render(
-    <AppServicesProvider services={services}>
-      <WriteCoordinatorProvider>
-        <DesktopShellApp />
-      </WriteCoordinatorProvider>
-    </AppServicesProvider>,
+    <UndoProvider>
+      <AppServicesProvider services={services}>
+        <WriteCoordinatorProvider>
+          <DesktopShellApp />
+        </WriteCoordinatorProvider>
+      </AppServicesProvider>
+    </UndoProvider>,
   );
 }
 
@@ -371,5 +374,62 @@ describe("desktop shell settings and install", () => {
     expect(screen.queryByRole("button", { name: /check for updates/i })).not.toBeInTheDocument();
     expect(listRemoteVersions).not.toHaveBeenCalled();
     expect(updateCandidates).not.toHaveBeenCalled();
+  });
+
+  it("asks which tool to install when Install tool is pressed with nothing selected", async () => {
+    const listRemoteVersions = vi.fn(async () => [
+      { version: "22.0.1", downloadBytes: 1000, installBytes: 2000 },
+    ]);
+    const services = splitEnvarlyApi(
+      fakeToolsRuntime({
+        ...sdkMocks,
+        getWhichcraftSettings: async () => ({
+          installStore: "C:\\store",
+          scanRoots: [],
+          terminal: "windows_terminal" as const,
+          installStoreConfirmed: true,
+        }),
+        listToolInstallations: async () => [],
+        listRemoteVersions,
+        getMiseStatus: async () => ({
+          version: "2026.10.1",
+          present: true,
+          downloadBytes: 1,
+          oldVersions: [],
+          fetching: false,
+        }),
+      }).api,
+    );
+    renderDesktopShell(services);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /install tool/i }));
+    const picker = await screen.findByRole("group", { name: /choose a tool to install/i });
+    expect(within(picker).queryByRole("radio", { name: /^git$/i })).not.toBeInTheDocument();
+    expect(listRemoteVersions).not.toHaveBeenCalled();
+
+    await user.click(within(picker).getByRole("radio", { name: /node\.js/i }));
+    await waitFor(() => expect(listRemoteVersions).toHaveBeenCalledWith("node"));
+  });
+
+  it("summarizes the scanned inventory in the status bar", async () => {
+    const services = splitEnvarlyApi(
+      fakeToolsRuntime({
+        ...sdkMocks,
+        listToolInstallations: async (tool: string) =>
+          tool === "node"
+            ? [
+                inst("node", "20.0.0", "C:\\node20", { effective: true, selected: true }),
+                inst("node", "18.0.0", "C:\\node18", { available: false }),
+              ]
+            : [],
+      }).api,
+    );
+    renderDesktopShell(services);
+
+    const footer = await screen.findByRole("contentinfo");
+    await waitFor(() =>
+      expect(footer).toHaveTextContent(/2 installations across 6 tools · 1 unavailable/i),
+    );
   });
 });

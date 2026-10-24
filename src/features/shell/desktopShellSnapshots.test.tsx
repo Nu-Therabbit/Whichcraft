@@ -7,6 +7,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { UndoProvider } from "../../contexts/UndoContext";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import {
@@ -111,11 +112,13 @@ function renderShell(
   return {
     coordination,
     ...render(
-      <AppServicesProvider services={splitEnvarlyApi(api)}>
-        <WriteCoordinatorProvider coordinator={coordination}>
-          <DesktopShellApp />
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>,
+      <UndoProvider>
+        <AppServicesProvider services={splitEnvarlyApi(api)}>
+          <WriteCoordinatorProvider coordinator={coordination}>
+            <DesktopShellApp />
+          </WriteCoordinatorProvider>
+        </AppServicesProvider>
+      </UndoProvider>,
     ),
   };
 }

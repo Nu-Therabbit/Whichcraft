@@ -508,6 +508,26 @@
     "installations": "Installations",
     "no_installations": "No installations found.",
     "read_only_status": "Read-only desktop shell preview",
-    "preview_presentation": "Add ?presentation=desktop-shell to the URL"
+    "preview_presentation": "Add ?presentation=desktop-shell to the URL",
+    "tool_description": {
+      "java": "JDK · ngôn ngữ JVM",
+      "node": "Môi trường chạy JavaScript",
+      "python": "Trình thông dịch Python",
+      "go": "Bộ công cụ Go",
+      "flutter": "Flutter SDK",
+      "git": "Git for Windows"
+    },
+    "install_pick_heading": "Chọn công cụ để cài đặt",
+    "check_shell_needs_tool": "Mở chi tiết công cụ để kiểm tra trong shell",
+    "status_inventory_one": "{{count}} bản cài đặt trên {{tools}} công cụ",
+    "status_inventory_other": "{{count}} bản cài đặt trên {{tools}} công cụ",
+    "status_inventory_failed_one": "Không quét được {{count}} công cụ",
+    "status_inventory_failed_other": "Không quét được {{count}} công cụ",
+    "status_inventory_account_error": "Không có danh mục: không đọc được tài khoản hiện tại",
+    "this_pc_scanning": "Đang quét các bản cài đặt trên máy này",
+    "this_pc_account_error": "Không đọc được tài khoản hiện tại",
+    "this_pc_scanned": "Danh mục của máy này đã cập nhật",
+    "view_source": "Mã nguồn",
+    "view_source_title": "Xem mã nguồn trên GitHub"
   }
 }

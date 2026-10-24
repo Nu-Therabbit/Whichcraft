@@ -508,6 +508,26 @@
     "installations": "Installations",
     "no_installations": "No installations found.",
     "read_only_status": "Read-only desktop shell preview",
-    "preview_presentation": "Add ?presentation=desktop-shell to the URL"
+    "preview_presentation": "Add ?presentation=desktop-shell to the URL",
+    "tool_description": {
+      "java": "JDK · JVM 语言",
+      "node": "JavaScript 运行时",
+      "python": "Python 解释器",
+      "go": "Go 工具链",
+      "flutter": "Flutter SDK",
+      "git": "Git for Windows"
+    },
+    "install_pick_heading": "选择要安装的工具",
+    "check_shell_needs_tool": "打开工具详情以在 Shell 中检查",
+    "status_inventory_one": "{{tools}} 个工具共 {{count}} 个安装",
+    "status_inventory_other": "{{tools}} 个工具共 {{count}} 个安装",
+    "status_inventory_failed_one": "{{count}} 个工具无法扫描",
+    "status_inventory_failed_other": "{{count}} 个工具无法扫描",
+    "status_inventory_account_error": "清单不可用：无法读取当前账户",
+    "this_pc_scanning": "正在扫描此电脑上的安装",
+    "this_pc_account_error": "无法读取当前账户",
+    "this_pc_scanned": "此电脑的清单已是最新",
+    "view_source": "源代码",
+    "view_source_title": "在 GitHub 上查看源代码"
   }
 }

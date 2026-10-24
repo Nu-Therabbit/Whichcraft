@@ -10,12 +10,14 @@ import { Icon } from "../../components/ui/Icon";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
 import type { ToolKind } from "../tools/types";
-import { OVERVIEW_TOOL_KINDS, TOOL_DISPLAY } from "./overviewTools";
+import { OVERVIEW_TOOL_KINDS, TOOL_DISPLAY, toolDescriptionKey } from "./overviewTools";
 import {
   formatInstallationLabel,
+  type InventorySummary,
   pickEffective,
   pickSelected,
   selectionDiffers,
+  summarizeInventory,
   toolMatchesQuery,
   unavailableCount,
 } from "./toolOverviewModel";
@@ -27,7 +29,6 @@ import { ShellRegistryErrorBanner } from "./ShellRegistryErrorBanner";
 import { ShellInstallView } from "./ShellInstallView";
 import { ShellProfilesWorkspace } from "./ShellProfilesWorkspace";
 import { ShellSettingsView } from "./ShellSettingsView";
-import { UndoProvider } from "../../contexts/UndoContext";
 import { EnvironmentProvider } from "../environment/EnvironmentContext";
 import { ShellEnvironmentUiProvider } from "./ShellEnvironmentUiContext";
 import { ShellToolsProvider, useShellTools } from "./ShellToolsContext";
@@ -48,16 +49,45 @@ function scopesNeedShellRescan(scopes: InvalidationScope[]): boolean {
   );
 }
 
-function shellStatusLine(
-  t: ReturnType<typeof useI18n>["t"],
-  toolsState: ReturnType<typeof useShellTools>["state"],
-): string {
+type Translate = ReturnType<typeof useI18n>["t"];
+
+function shellStatusLine(t: Translate, toolsState: ReturnType<typeof useShellTools>["state"]): string {
   if (toolsState.install.busy) return t("desktop_shell.status_installing");
   if (toolsState.plan.applying) return t("desktop_shell.status_applying");
   if (toolsState.plan.building) return t("desktop_shell.status_building_plan");
   if (toolsState.error) return toolsState.error;
   return t("desktop_shell.status_ready");
 }
+
+function inventoryStatusLine(t: Translate, summary: InventorySummary): string {
+  switch (summary.kind) {
+    case "scanning":
+      return t("desktop_shell.scanning_installations");
+    case "account-error":
+      return t("desktop_shell.status_inventory_account_error");
+    case "scanned": {
+      const parts = [
+        t("desktop_shell.status_inventory", {
+          count: summary.installations,
+          tools: OVERVIEW_TOOL_KINDS.length,
+        }),
+      ];
+      if (summary.unavailable > 0) {
+        parts.push(t("desktop_shell.unavailable_count", { count: summary.unavailable }));
+      }
+      if (summary.failedTools > 0) {
+        parts.push(t("desktop_shell.status_inventory_failed", { count: summary.failedTools }));
+      }
+      return parts.join(" · ");
+    }
+  }
+}
+
+const THIS_PC_STATE: Record<InventorySummary["kind"], { dot: string; titleKey: string }> = {
+  scanning: { dot: "bg-warn", titleKey: "desktop_shell.this_pc_scanning" },
+  "account-error": { dot: "bg-danger", titleKey: "desktop_shell.this_pc_account_error" },
+  scanned: { dot: "bg-success", titleKey: "desktop_shell.this_pc_scanned" },
+};
 
 function DesktopShellAppInner() {
   const services = useAppServices();
@@ -70,7 +100,18 @@ function DesktopShellAppInner() {
   const { t } = useI18n();
 
   const activePage: ShellPage = page === "profiles" ? "profiles" : page;
+  const inventory = summarizeInventory(Object.values(overview.byTool), overview);
+  const thisPc = THIS_PC_STATE[inventory.kind];
   const statusLine = shellStatusLine(t, shellTools.state);
+  const inventoryLine = inventoryStatusLine(t, inventory);
+  const installTool = overview.selectedTool;
+  const inspectedTool = overview.detailOpen ? overview.selectedTool : null;
+  const toolsBusy = shellTools.state.plan.applying;
+  const canCheckShell =
+    inspectedTool !== null &&
+    shellTools.state.tool === inspectedTool &&
+    !shellTools.state.loading &&
+    !toolsBusy;
 
   useEffect(() => {
     return coordination.subscribeInvalidation((scopes) => {
@@ -81,9 +122,12 @@ function DesktopShellAppInner() {
   const visibleTools = useMemo(
     () =>
       OVERVIEW_TOOL_KINDS.filter((tool) =>
-        toolMatchesQuery(tool, overview.query, TOOL_DISPLAY[tool]),
+        toolMatchesQuery(tool, overview.query, {
+          title: TOOL_DISPLAY[tool].title,
+          description: t(toolDescriptionKey(tool)),
+        }),
       ),
-    [overview.query],
+    [overview.query, t],
   );
 
   const selectedSlice = overview.selectedTool ? overview.byTool[overview.selectedTool] : null;
@@ -136,8 +180,8 @@ function DesktopShellAppInner() {
           <header className="flex items-center justify-between px-5 py-3 border-b border-rim-subtle shrink-0">
             <h1 className="text-lg font-semibold">{pageTitle}</h1>
             <div className="flex items-center gap-3 text-xs text-dim">
-              <span className="inline-flex items-center gap-1">
-                <span className="size-2 rounded-full bg-success" aria-hidden />
+              <span className="inline-flex items-center gap-1" title={t(thisPc.titleKey)}>
+                <span className={`size-2 rounded-full ${thisPc.dot}`} aria-hidden />
                 {t("desktop_shell.this_pc")}
               </span>
               <ShellAppHeaderActions />
@@ -163,10 +207,7 @@ function DesktopShellAppInner() {
                       installOpen: !installOpen,
                     })
                   }
-                  disabled={overview.selectedTool === "git"}
-                  title={
-                    overview.selectedTool === "git" ? t("desktop_shell.git_switch_only") : undefined
-                  }
+                  aria-pressed={installOpen}
                 >
                   <Icon name="plus" size={14} />
                   {t("desktop_shell.install_tool")}
@@ -181,6 +222,23 @@ function DesktopShellAppInner() {
                   <Icon name="refresh" size={14} />
                   {overview.rescanning ? t("desktop_shell.rescanning") : t("desktop_shell.rescan")}
                 </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => shellTools.dispatch({ type: "checkShell" })}
+                  disabled={!canCheckShell}
+                  title={canCheckShell ? undefined : t("desktop_shell.check_shell_needs_tool")}
+                >
+                  {t("tools.check_in_shell")}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => shellTools.dispatch({ type: "openTerminal" })}
+                  disabled={toolsBusy}
+                >
+                  {t("tools.open_terminal")}
+                </Button>
                 <label className="ml-auto flex items-center gap-2 text-sm min-w-[12rem] flex-1 max-w-md">
                   <span className="sr-only">{t("desktop_shell.search_label")}</span>
                   <input
@@ -193,9 +251,10 @@ function DesktopShellAppInner() {
                 </label>
               </div>
 
-              {installOpen && overview.selectedTool && (
+              {installOpen && (
                 <ShellInstallView
-                  tool={overview.selectedTool}
+                  tool={installTool}
+                  onPickTool={overview.selectTool}
                   onClose={() => navigate({ installOpen: false })}
                 />
               )}
@@ -341,7 +400,7 @@ function DesktopShellAppInner() {
                       <ToolMark tool={overview.selectedTool} />
                       <div className="flex-1 min-w-0">
                         <h2 className="text-base font-semibold">{TOOL_DISPLAY[overview.selectedTool].title}</h2>
-                        <p className="text-xs text-dim">{TOOL_DISPLAY[overview.selectedTool].description}</p>
+                        <p className="text-xs text-dim">{t(toolDescriptionKey(overview.selectedTool))}</p>
                       </div>
                       <IconButton
                         aria-label={t("desktop_shell.close_details")}
@@ -386,8 +445,9 @@ function DesktopShellAppInner() {
 
           {activePage === "settings" && <ShellSettingsView />}
 
-          <footer className="shrink-0 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim">
+          <footer className="shrink-0 flex items-center gap-4 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim">
             <span className="truncate">{statusLine}</span>
+            <span className="ml-auto truncate">{inventoryLine}</span>
           </footer>
         </div>
       </div>
@@ -411,14 +471,12 @@ function ToolMark({ tool, small }: { tool: ToolKind; small?: boolean }) {
 
 export function DesktopShellApp() {
   return (
-    <UndoProvider>
-      <EnvironmentProvider>
-        <ShellEnvironmentUiProvider>
-          <ShellToolsProvider>
-            <DesktopShellAppInner />
-          </ShellToolsProvider>
-        </ShellEnvironmentUiProvider>
-      </EnvironmentProvider>
-    </UndoProvider>
+    <EnvironmentProvider>
+      <ShellEnvironmentUiProvider>
+        <ShellToolsProvider>
+          <DesktopShellAppInner />
+        </ShellToolsProvider>
+      </ShellEnvironmentUiProvider>
+    </EnvironmentProvider>
   );
 }

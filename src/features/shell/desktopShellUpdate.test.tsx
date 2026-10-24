@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { UndoProvider } from "../../contexts/UndoContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
@@ -57,11 +58,13 @@ function renderShell(apiOverrides: Record<string, unknown> = {}) {
     coordination,
     fake,
     ...render(
-      <AppServicesProvider>
-        <WriteCoordinatorProvider coordinator={coordination}>
-          <DesktopShellApp />
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>,
+      <UndoProvider>
+        <AppServicesProvider>
+          <WriteCoordinatorProvider coordinator={coordination}>
+            <DesktopShellApp />
+          </WriteCoordinatorProvider>
+        </AppServicesProvider>
+      </UndoProvider>,
     ),
   };
 }

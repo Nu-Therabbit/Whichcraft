@@ -540,6 +540,30 @@
     "installations": "Installations",
     "no_installations": "No installations found.",
     "read_only_status": "Read-only desktop shell preview",
-    "preview_presentation": "Add ?presentation=desktop-shell to the URL"
+    "preview_presentation": "Add ?presentation=desktop-shell to the URL",
+    "tool_description": {
+      "java": "JDK · языки JVM",
+      "node": "Среда выполнения JavaScript",
+      "python": "Интерпретатор Python",
+      "go": "Набор инструментов Go",
+      "flutter": "Flutter SDK",
+      "git": "Git for Windows"
+    },
+    "install_pick_heading": "Выберите инструмент для установки",
+    "check_shell_needs_tool": "Откройте сведения об инструменте, чтобы проверить его в оболочке",
+    "status_inventory_one": "{{count}} установка в {{tools}} инструментах",
+    "status_inventory_few": "{{count}} установки в {{tools}} инструментах",
+    "status_inventory_many": "{{count}} установок в {{tools}} инструментах",
+    "status_inventory_other": "{{count}} установки в {{tools}} инструментах",
+    "status_inventory_failed_one": "Не удалось просканировать {{count}} инструмент",
+    "status_inventory_failed_few": "Не удалось просканировать {{count}} инструмента",
+    "status_inventory_failed_many": "Не удалось просканировать {{count}} инструментов",
+    "status_inventory_failed_other": "Не удалось просканировать {{count}} инструмента",
+    "status_inventory_account_error": "Инвентаризация недоступна: не удалось прочитать текущую учётную запись",
+    "this_pc_scanning": "Сканирование установок на этом ПК",
+    "this_pc_account_error": "Не удалось прочитать текущую учётную запись",
+    "this_pc_scanned": "Инвентаризация этого ПК актуальна",
+    "view_source": "Исходный код",
+    "view_source_title": "Открыть исходный код на GitHub"
   }
 }

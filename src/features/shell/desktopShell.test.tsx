@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { UndoProvider } from "../../contexts/UndoContext";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { splitEnvarlyApi } from "../../composition/appServices";
@@ -45,11 +46,13 @@ describe("desktop shell read journey", () => {
     configureProductionServices(splitEnvarlyApi(fake));
 
     render(
-      <AppServicesProvider>
-        <WriteCoordinatorProvider>
-          <DesktopShellApp />
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>,
+      <UndoProvider>
+        <AppServicesProvider>
+          <WriteCoordinatorProvider>
+            <DesktopShellApp />
+          </WriteCoordinatorProvider>
+        </AppServicesProvider>
+      </UndoProvider>,
     );
 
     await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThanOrEqual(6));

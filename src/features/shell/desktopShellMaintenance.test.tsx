@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { UndoProvider } from "../../contexts/UndoContext";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
@@ -51,11 +52,13 @@ function renderShell(apiOverrides: Record<string, unknown> = {}) {
   return {
     coordination,
     ...render(
-      <AppServicesProvider services={splitEnvarlyApi(api)}>
-        <WriteCoordinatorProvider coordinator={coordination}>
-          <DesktopShellApp />
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>,
+      <UndoProvider>
+        <AppServicesProvider services={splitEnvarlyApi(api)}>
+          <WriteCoordinatorProvider coordinator={coordination}>
+            <DesktopShellApp />
+          </WriteCoordinatorProvider>
+        </AppServicesProvider>
+      </UndoProvider>,
     ),
   };
 }
