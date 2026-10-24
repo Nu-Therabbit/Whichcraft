@@ -9,7 +9,12 @@ export async function resolveCheckCommand(
   input: string,
 ): Promise<CheckCommandResult | null> {
   const binding = coordination?.beginCheckCommand();
-  const result = await environment.checkCommand(input);
-  if (binding && !coordination?.isCheckCommandCurrent(binding)) return null;
-  return result;
+  try {
+    const result = await environment.checkCommand(input);
+    if (binding && !coordination?.isCheckCommandCurrent(binding)) return null;
+    return result;
+  } catch (error) {
+    if (binding && !coordination?.isCheckCommandCurrent(binding)) return null;
+    throw error;
+  }
 }

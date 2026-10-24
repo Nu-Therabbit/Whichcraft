@@ -399,6 +399,22 @@ mod tests {
     const PATHEXT: &str = ".COM;.EXE;.BAT;.CMD";
 
     #[test]
+    fn check_command_with_resolves_via_path_existence_only() {
+        use std::cell::RefCell;
+        let checked: RefCell<Vec<String>> = RefCell::new(Vec::new());
+        let path_exists = |candidate: &str| {
+            checked.borrow_mut().push(candidate.to_string());
+            candidate.eq_ignore_ascii_case(r"C:\Tools\node.exe")
+        };
+        let result = check_command_with("node", "", r"C:\Tools", PATHEXT, no_expand, path_exists);
+        assert_eq!(result.hits.len(), 1);
+        assert!(
+            !checked.borrow().is_empty(),
+            "check_command_with must consult path existence, not launch the binary"
+        );
+    }
+
+    #[test]
     fn check_finds_bare_name_via_pathext() {
         let exists = fake_exists(&[r"C:\Tools\node.exe"]);
         let result = check_command_with("node", "", r"C:\Tools", PATHEXT, no_expand, exists);

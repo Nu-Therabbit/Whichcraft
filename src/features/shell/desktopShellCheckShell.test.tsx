@@ -93,25 +93,22 @@ describe("desktop shell check command and shell resolution", () => {
       "",
       shellNavigationHref({ page: "environment", envTab: "check-command" }),
     );
-    const runCheckCommandLocally = vi.fn(async () => {
-      throw new Error("Command input must not be executed locally");
-    });
-    const checkCommand = vi.fn(async () => ({
-      input: "node.exe",
-      queriedName: "node.exe",
+    const probeInput = "wc-exec-probe-token.exe";
+    const checkCommand = vi.fn(async (input: string) => ({
+      input,
+      queriedName: input,
       hadExtension: true,
-      hits: [{ directory: "C:\\Windows", matchedFile: "node.exe", source: "System" as const }],
-      fullPathStatus: { exists: true, isFile: true },
+      hits: [{ directory: "C:\\Windows", matchedFile: input, source: "System" as const }],
+      fullPathStatus: null,
     }));
-    renderShell({ getEnvVars: async () => [], checkCommand, runCheckCommandLocally });
+    renderShell({ getEnvVars: async () => [], checkCommand });
 
     const user = userEvent.setup();
     const input = await screen.findByTestId("check-command-input");
-    await user.type(input, "node.exe");
+    await user.type(input, probeInput);
     await user.click(screen.getByRole("button", { name: /^check$/i }));
-    await waitFor(() => expect(checkCommand).toHaveBeenCalledWith("node.exe"));
-    expect(runCheckCommandLocally).not.toHaveBeenCalled();
-    expect(await screen.findByTestId("check-command-hit")).toBeInTheDocument();
+    await waitFor(() => expect(checkCommand).toHaveBeenCalledWith(probeInput));
+    expect(await screen.findByTestId("check-command-hit")).toHaveTextContent(probeInput);
   });
 
   it("shows shell resolution versus effective installation in the tool inspector", async () => {
@@ -243,7 +240,7 @@ describe("desktop shell check command and shell resolution", () => {
     const input = await screen.findByTestId("check-command-input");
     await user.type(input, "node.exe");
     await user.click(screen.getByRole("button", { name: /^check$/i }));
-    await waitFor(() => expect(checkCommand).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole("button", { name: /checking/i })).toBeInTheDocument());
 
     coordination.invalidate(["environment-variables"]);
     expect(screen.queryByTestId("check-command-hit")).not.toBeInTheDocument();
@@ -255,7 +252,38 @@ describe("desktop shell check command and shell resolution", () => {
       hits: [{ directory: "C:\\Windows", matchedFile: "node.exe", source: "System" }],
       fullPathStatus: null,
     });
-    await waitFor(() => expect(checkCommand).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^check$/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByTestId("check-command-hit")).not.toBeInTheDocument());
+  });
+
+  it("drops a late check command failure after environment invalidation", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      shellNavigationHref({ page: "environment", envTab: "check-command" }),
+    );
+    let rejectCheck: (error: Error) => void = () => {};
+    const checkCommand = vi.fn(
+      () =>
+        new Promise<never>((_, reject) => {
+          rejectCheck = reject;
+        }),
+    );
+    const { coordination } = renderShell({
+      getEnvVars: async () => [],
+      checkCommand,
+    });
+
+    const user = userEvent.setup();
+    const input = await screen.findByTestId("check-command-input");
+    await user.type(input, "node.exe");
+    await user.click(screen.getByRole("button", { name: /^check$/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /checking/i })).toBeInTheDocument());
+
+    coordination.invalidate(["environment-variables"]);
+    rejectCheck(new Error("backend boom"));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^check$/i })).toBeInTheDocument());
+    expect(screen.queryByText(/backend boom/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId("check-command-hit")).not.toBeInTheDocument();
   });
 });

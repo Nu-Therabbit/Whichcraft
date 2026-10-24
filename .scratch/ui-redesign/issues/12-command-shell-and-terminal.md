@@ -27,3 +27,10 @@
 - Check command uses coordinator `beginCheckCommand` / `isCheckCommandCurrent`; late responses after `environment-*` invalidation are dropped. Shell test asserts `runCheckCommandLocally` stays idle.
 - Shell resolution test uses selected vs effective roots; Effective line asserts `effectivePath` from shell check, not the selected root.
 - Late in-flight `shellCheck` after environment revision bump does not restore the status panel.
+
+### Review round 2 (Grok re-review on 18549cf)
+
+- Removed unused `runCheckCommandLocally` seam. `checkCommandSession.test.ts` > **`resolveCheckCommand does not execute the typed input`** mocks `node:child_process` and fails if spawn/exec run; Rust **`check_command_with_resolves_via_path_existence_only`** locks path-existence-only resolution.
+- Shell late-success test waits for Check button after late resolve; **`drops a stale success when environment invalidates before resolve`** fails if generation drop removed.
+- **`drops a stale failure when environment invalidates before reject`** + shell **`drops a late check command failure after environment invalidation`**; `resolveCheckCommand` drops stale errors.
+- **Verification:** `npm test -- --run` (491 passed), `npm run lint` (clean), `cargo test path_manage`, `cargo clippy -- -D warnings` (clean).
