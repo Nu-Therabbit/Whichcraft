@@ -25,3 +25,5 @@
 Blocked, not passed. No packaged Tauri build was produced (`npm run tauri build` was not run). No real Windows session recorded Registry, UAC, account, shell, snapshot, or file-transfer evidence.
 
 Every required case is **blocked**: `E-3`, `E-4`, `A-1`–`A-9`, `U-1`–`U-4`, `T-1`–`T-4`, `C-1`–`C-2`, `X-1`–`X-4`, plus the spec's added Environment, snapshot, and transfer cases. Frontend tests and `npm run build` are not acceptance. Ticket 21 must not remove the legacy fallback while these stay blocked.
+
+- 2026-10-24: Partial agent evidence (not a suite run) is recorded in [ticket 18](18-production-cutover-and-contract.md) under the "Agent Windows run" sections and covers U-1/A-2/T-2 (HKCU apply and Undo), C-1 (command lookup), real snapshot save/compare/stage-restore, `.reg` import and export cancellation, and PATH cleanup with Undo. Required cases that need UAC, other accounts or a clean machine are still open.

@@ -25,3 +25,5 @@
 Blocked, not passed. No packaged app and no disposable Windows install, switch, update, profile, or uninstall session.
 
 Every required case is **blocked**: `D-1`–`D-7`, `E-1`, `E-2`, `E-5`, `I-1`–`I-17`, `S-1`, `S-2`, `R-1`–`R-13`, `P-1`, `F-1`–`F-6`. Fake-API results are not acceptance. Ticket 21 must not remove the legacy fallback while these stay blocked.
+
+- 2026-10-24: Partial agent evidence (not a suite run) is recorded in [ticket 18](18-production-cutover-and-contract.md) under the "Agent Windows run" sections and covers D-* discovery on this machine, I-1/I-7/R-1 and the Temurin/Python/Go, two-store, old-mise and Flutter plugin contracts, the full Flutter install (uninstall blocked by a Windows service), a Java switch with Undo, and the shell check. Required cases that need UAC, other accounts or a clean machine are still open.

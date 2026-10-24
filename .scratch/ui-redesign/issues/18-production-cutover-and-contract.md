@@ -94,3 +94,38 @@ Run with the user's approval. `HKCU\Environment` was exported before the run and
   - `ensure_mise()` caches the verified `mise.exe` path in a process-wide `OnceLock`, and each contract test uses its own temp data dir. Later tests got a deleted path from the first test.
   - The cache is now reused only for the same data dir while `mise.exe` is still on disk. Covered by a unit test, and all five contract tests pass together in one process (97 s).
 - **Not run:** the full Flutter install (≈1.9 GB), the System/HKLM write through UAC, uninstall to the Recycle Bin, other-user accounts, installers, and a clean machine without Envarly.
+
+### Agent Windows run, third set (2026-10-24, same machine)
+
+Run with the user's approval. `HKCU\Environment` was diffed against a baseline after every step. It ended identical (10 values) after the fixes listed below.
+
+**Builds and suites**
+
+- **Pass — installers:** `npm run tauri build` produced `Whichcraft_0.1.0_x64_en-US.msi` (6 MB) and `Whichcraft_0.1.0_x64-setup.exe` (3.8 MB). They were not installed.
+- **Fixed — Storybook:** 18 stories failed because components moved to `useEnvironmentApi` without the stories being updated, plus one stale AppHeader count from main. Fixed in `d7f5967`; all 112 now pass.
+- **Pass — Recycle Bin:** `contract_recycle_moves_a_folder_to_the_recycle_bin` passes. Its test folder `whichcraft-recycle-contract` is now in the user's Recycle Bin.
+- **Install pass, uninstall blocked — Flutter:** `contract_flutter_installs_through_the_pinned_plugin_and_uninstalls` installed Flutter 3.32.8 (3.18 GB, 131 s). Uninstall returned `Blocked: in use by Inventory and Compatibility Appraisal service` right after `flutter` ran: a Windows service briefly holds freshly run executables. The temporary store was removed afterwards. Real users can hit the same block straight after running a tool, so the message may need a "try again shortly" hint.
+
+**Real UI, User scope only (driven over CDP)**
+
+- **Pass — Check command:** `java` → `jdk-21.0.11…\bin\java.EXE`, Active, USER. A no-match input returns no hits.
+- **Pass — Check shell:** Node matches in Windows Terminal (`C:\Program Files\nodejs\node.exe`).
+- **Pass — variables:** creating a User variable wrote exactly one String value; deleting it restored HKCU exactly.
+- **Pass — snapshots:** save, then preview against the current state ("matches"). Comparing with the pre-delete snapshot showed +1 added; staging the restore gave "1 staged", and Discard all brought it back to 0 with no writes.
+- **Pass — import:** a `.reg` file through the real file input → preview "Stage 1 variable" → apply wrote `WHICHCRAFT_UI_IMPORT` (String) → deleted again.
+- **Pass — export cancellation:** cancelling the native Save dialog returns the button to idle. Saving an export file was not automated: typing into native dialogs from the agent is unreliable (Thai keyboard layout) and could reach other windows.
+- **Pass after fix — Java switch to 21.0.12:** User `JAVA_HOME` and User Path only, no UAC. A new process resolves 21.0.12; Undo restores both values.
+  - **Fixed `0d4476e`:** Undo used to drop an empty Path segment (`;;`) that the original value had. An untouched PATH is now restored verbatim.
+- **Pass after fix — PATH cleanup:** the plan lists two duplicate `go\bin` entries and a missing Ollama folder (User only). Apply, then Undo, restores Path exactly.
+  - **Fixed `8ae4930`:** after the cleanup was applied, the only Undo left was inside a tool inspector. Undo now sits in the Environment toolbar.
+- **Finding — slow readback:** a write's readback takes about 45 s.
+  - Each `whichcraft_list_tools` call costs about 1.8 s even for a tool with no installations, because `App::list_tools` reloads the Windows installer catalog every call.
+  - One apply triggers about 13 such calls (overview ×6, tools store, profile status ×6).
+  - Meanwhile the inspector header (from the overview) and its installation list (from the tools store) briefly disagree on the Effective Installation.
+  - Proposed: cache the catalog per refresh/short TTL and invalidate it after install/uninstall.
+- **Finding — Selection after Undo:** Undo leaves `selection.json` at the undone version (Java 21.0.12), so after Undo the inspector shows Selection 21.0.12 against Effective 21.0.11. This is already on main, and the spec does not say whether Undo should restore Selection; needs a product decision.
+- **Left on the machine:**
+  - five snapshots in `%LOCALAPPDATA%\Envarly\snapshots` (four automatic "before apply" and "whichcraft-ui-test"); the agent was not allowed to delete them.
+  - `%LOCALAPPDATA%\Whichcraft\selection.json` (Java 21.0.12).
+  - three undone journals.
+- **Not run:** profiles (create/apply/delete), System/HKLM writes and UAC, other accounts, a clean machine without Envarly, and installing the MSI/NSIS packages.
