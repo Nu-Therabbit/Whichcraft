@@ -193,7 +193,7 @@ fn find_system_shadow(
             continue;
         }
         for sel in &selected_dirs {
-            if entry.eq_ignore_ascii_case(sel) {
+            if crate::whichcraft::tools::paths_equal(std::path::Path::new(&expanded), std::path::Path::new(sel)) {
                 continue;
             }
             if would_shadow(machine, &expanded, sel, installation.tool) {
@@ -239,7 +239,9 @@ fn would_shadow(machine: &dyn Machine, system_dir: &str, selected_dir: &str, too
         |s: &str| s.to_string(),
         |p: &str| machine.dir_exists(p),
     );
-    !hit.hits.is_empty()
+    // A hit in the selected User folder proves the target exists, not that this System
+    // entry shadows it. Removing that entry could otherwise drop System32 from PATH.
+    hit.hits.first().is_some_and(|hit| hit.source == "System")
 }
 
 fn remove_path_entry(path: &str, entry: &str) -> String {
@@ -298,6 +300,31 @@ mod tests {
         std::fs::write(root.join("bin").join("java.exe"), b"").unwrap();
         std::fs::write(root.join("release"), format!("IMPLEMENTOR=\"Eclipse Adoptium\"\nJAVA_VERSION=\"{version}\"\n")).unwrap();
         ToolInstallation { tool: ToolKind::Java, vendor: "Eclipse Adoptium".into(), version: version.into(), root, managed: false }
+    }
+
+    #[test]
+    fn a_go_switch_preserves_shared_system_directories_before_the_real_shadow() {
+        let dir = tempfile::tempdir().unwrap();
+        let shared = dir.path().join("system32");
+        let unrelated = dir.path().join("other-tools");
+        let old = dir.path().join("old-go");
+        let new = dir.path().join("new-go");
+        for folder in [&shared, &unrelated, &old.join("bin"), &new.join("bin")] {
+            std::fs::create_dir_all(folder).unwrap();
+        }
+        for root in [&old, &new] {
+            std::fs::write(root.join("bin").join("go.exe"), b"").unwrap();
+            std::fs::write(root.join("VERSION"), "go1.26.10").unwrap();
+        }
+        let system_path = leak(format!("{};{};{}", shared.display(), old.join("bin").display(), unrelated.display()));
+        let backend = MemBackend::new()
+            .with_user([("Path", r"C:\user-tools")])
+            .with_system([("Path", system_path), ("PATHEXT", ".EXE;.CMD;.BAT")]);
+        let selected = ToolInstallation { tool: ToolKind::Go, vendor: "Go".into(), version: "1.26.10".into(), root: new, managed: true };
+        let plan = build_tool_apply_plan(&backend, &LocalMachine, &selected, "go-shadow".into()).unwrap();
+        assert_eq!(plan.system_diffs.len(), 1);
+        assert_eq!(plan.system_diffs[0].after, format!("{};{}", shared.display(), unrelated.display()), "only the actual old Go directory may be removed");
+        assert!(!plan.system_diffs[0].after.contains(&*selected.root.to_string_lossy()), "the selected root stays in User PATH");
     }
 
     #[test]

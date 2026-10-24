@@ -69,6 +69,20 @@ fn unique(prefix: &str) -> (String, String) {
     (format!("WHICHCRAFT_TEST_{prefix}"), format!("contract-{stamp}"))
 }
 
+/// Real Registry I/O, with admission forced through the native UAC helper so a writable
+/// HKLM ACL cannot silently turn a UAC contract into an in-process write test.
+struct NativeUacBackend;
+impl EnvBackend for NativeUacBackend {
+    fn read_user(&self) -> Result<HashMap<String, EnvValue>, crate::error::EnvarlyError> { WinregBackend.read_user() }
+    fn read_system(&self) -> Result<HashMap<String, EnvValue>, crate::error::EnvarlyError> { WinregBackend.read_system() }
+    fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), crate::error::EnvarlyError> { WinregBackend.write_user(name, value) }
+    fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), crate::error::EnvarlyError> { WinregBackend.write_system(name, value) }
+    fn delete_user(&self, name: &str) -> Result<(), crate::error::EnvarlyError> { WinregBackend.delete_user(name) }
+    fn delete_system(&self, name: &str) -> Result<(), crate::error::EnvarlyError> { WinregBackend.delete_system(name) }
+    fn is_elevated(&self) -> bool { false }
+    fn broadcast_changes(&self) { WinregBackend.broadcast_changes(); }
+}
+
 /// U-1 and A-2 for User scope, T-2: apply, a new process and a new Windows Terminal see it, Undo
 /// leaves HKCU\Environment exactly as it was.
 #[test]
@@ -416,7 +430,19 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
         &WinUsageProbe,
     )
     .unwrap();
-    let outcome = uninstall(&plan, None, &UninstallPorts { backend: &WinregBackend, store: &FileStore, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &WinElevator, usage: &WinUsageProbe, uninstaller: &WinUninstaller }).unwrap();
+    // Windows' Inventory/Appraisal service can briefly hold a just-probed executable.
+    // Exercise the same safe user retry; never bypass usage checks or kill the holder.
+    let retry_started = std::time::Instant::now();
+    let outcome = loop {
+        let outcome = uninstall(&plan, None, &UninstallPorts { backend: &WinregBackend, store: &FileStore, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &WinElevator, usage: &WinUsageProbe, uninstaller: &WinUninstaller }).unwrap();
+        if !matches!(&outcome, UninstallOutcome::Blocked { reason } if reason.starts_with("in use by "))
+            || retry_started.elapsed() >= std::time::Duration::from_secs(60)
+        {
+            break outcome;
+        }
+        println!("temporary usage block; retrying in 5 s: {outcome:?}");
+        std::thread::sleep(std::time::Duration::from_secs(5));
+    };
     let left = leftovers(store.path(), ToolKind::Flutter);
     println!("after uninstall: {outcome:?} {left:?}");
     assert_eq!(outcome, UninstallOutcome::Removed);
@@ -561,12 +587,39 @@ fn contract_system_apply_through_uac_and_undo_restores_the_key() {
     let (name, value) = unique("SYSTEM");
 
     let plan = set_variable_plan(VarScope::System, &name, &value);
-    let result = apply_tool_plan_elevated(&WinregBackend, &FileStore, &SystemOperationIds, &elevator, &plan).unwrap();
+    let result = apply_tool_plan_elevated(&NativeUacBackend, &FileStore, &SystemOperationIds, &elevator, &plan).unwrap();
     assert!(!result.stale && !result.needs_elevation, "{result:?}");
     assert_eq!(WinregBackend.read_system().unwrap()[&name].value, value);
     assert_eq!(fresh_environment().unwrap().get(&name), Some(&value), "a process started now gets it");
 
-    let undo = undo_last_apply(&WinregBackend, &FileStore, Some(&elevator)).unwrap();
+    let undo = undo_last_apply(&NativeUacBackend, &FileStore, Some(&elevator)).unwrap();
     assert!(undo.conflicts.is_empty(), "{:?}", undo.conflicts);
     assert!(same_values(&WinregBackend.read_system().unwrap(), &before), "System Environment is back as it was");
+}
+
+
+/// A-3: cancel the native UAC prompt; neither side of a mixed-scope plan may be written.
+#[test]
+#[ignore = "contract: prompts for UAC; the tester must press No"]
+fn contract_cancelled_uac_preserves_both_environment_scopes() {
+    use crate::whichcraft::adapters::win::elevation::HelperExeElevator;
+    let data = tempfile::tempdir().unwrap();
+    use_test_data_dir(data.path());
+    let helper = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target").join("debug").join("whichcraft.exe");
+    let elevator = HelperExeElevator(helper);
+    let user_before = WinregBackend.read_user().unwrap();
+    let system_before = WinregBackend.read_system().unwrap();
+    let (system_name, value) = unique("CANCEL_SYSTEM");
+    let (user_name, _) = unique("CANCEL_USER");
+    let mut plan = set_variable_plan(VarScope::System, &system_name, &value);
+    plan.user_diffs = set_variable_plan(VarScope::User, &user_name, &value).user_diffs;
+    println!("Press No on this UAC prompt. User and System must both remain unchanged.");
+    let result = apply_tool_plan_elevated(&NativeUacBackend, &FileStore, &SystemOperationIds, &elevator, &plan);
+    if result.is_ok() {
+        // If the tester clicked Yes by mistake, restore the test variables before failing.
+        undo_last_apply(&NativeUacBackend, &FileStore, Some(&elevator)).unwrap();
+    }
+    assert!(same_values(&WinregBackend.read_user().unwrap(), &user_before));
+    assert!(same_values(&WinregBackend.read_system().unwrap(), &system_before));
+    assert!(result.is_err_and(|e| e.to_string().contains("UAC was cancelled")), "expected the native prompt to be cancelled");
 }

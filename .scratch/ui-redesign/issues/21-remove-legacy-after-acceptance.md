@@ -19,4 +19,4 @@
 
 ### Gate (2026-10-24)
 
-Not started. Tickets 19 and 20 record every required case as blocked. That is not a pass, so the legacy presentation stays.
+Not started. Tickets 19 and 20 have partial installed-candidate evidence and required blocked/not-run cases ([current report](../acceptance/2026-10-24/RESULT.md)). Neither suite has passed, so the legacy presentation stays. Successful builds, equivalent-tool flows and backend contracts do not waive the remaining acceptance gate.

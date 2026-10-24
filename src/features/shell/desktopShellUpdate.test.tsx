@@ -81,6 +81,27 @@ describe("desktop shell update journey", () => {
     window.history.replaceState(null, "", "/?presentation=desktop-shell");
   });
 
+  it("keeps update progress and failure visible after navigating to Settings", async () => {
+    let failUpdate!: (reason: Error) => void;
+    const pendingUpdate = new Promise<never>((_resolve, reject) => { failUpdate = reject; });
+    renderShell({
+      listToolInstallations: async (tool: string) => tool === "java" ? [jdk21] : [],
+      updateCandidates: async () => [{ root: jdk21.root, current: jdk21.version, latest: jdk21new.version }],
+      updateInstallation: async () => pendingUpdate,
+    });
+    const user = userEvent.setup();
+    await openJavaDetail(user);
+    await user.click(screen.getByRole("button", { name: /check for updates/i }));
+    await user.click(await screen.findByRole("button", { name: /^update$/i }));
+    await user.click(screen.getByRole("link", { name: /^settings/i }));
+    expect(screen.getByRole("contentinfo")).toHaveTextContent("Working");
+    await act(async () => { failUpdate(new Error("update download cancelled")); });
+    await waitFor(() => expect(screen.getByRole("contentinfo")).toHaveTextContent("update download cancelled"));
+    await user.click(screen.getByRole("link", { name: /^developer tools/i }));
+    await user.click(screen.getByRole("button", { name: /Java/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("update download cancelled");
+  });
+
   it("installs beside the old root, applies the reviewed plan id, repoints, and offers uninstall", async () => {
     const switchPlan = planFor(jdk21new, { planId: "update-switch-plan" });
     const updateCandidates = vi.fn(async () => [

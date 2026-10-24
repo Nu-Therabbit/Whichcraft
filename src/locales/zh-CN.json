@@ -465,6 +465,7 @@
     "LANGCHAIN_TRACING_V2": "设置为 \"true\" 以启用 LLM 管道与调用链的 LangSmith V2 执行跟踪。"
   },
   "desktop_shell": {
+    "status_working": "正在处理…",
     "selection_mismatch": "所选安装与实际生效的安装不同",
     "nav_label": "Primary navigation",
     "nav_tools": "Developer tools",

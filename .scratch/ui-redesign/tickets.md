@@ -3,7 +3,7 @@
 Status: published
 Approved: 2026-10-24
 
-The user approved the original 02–20 breakdown. Review corrections split the removal portion of 18 into 21 so Windows verification gates legacy removal. Tickets 02–21 are separate local issues with status ready-for-agent; blocking edges still determine which work can start. Prototype 01 remains unchanged. The spec and architecture now include those review corrections.
+The user approved the original 02–20 breakdown. Review corrections split the removal portion of 18 into 21 so Windows verification gates legacy removal. Tickets 02–21 are separate local issues; they were published as ready-for-agent, and each issue now records its current status. Blocking edges still determine which work can start. Prototype 01 remains unchanged. The spec and architecture now include those review corrections.
 
 Source: [implementation spec](spec.md) and [architecture review](architecture.md).
 Parity baseline: [legacy UI action inventory](ui-action-inventory.md). Review disposition: [checked findings](review-resolution.md).
@@ -45,3 +45,8 @@ Start an issue only when all its blockers are resolved. After 02, both Environme
 Implementation begins from main with documentation transferred separately. The prototype branch is a design reference, not the implementation base. Ticket 02 owns validating the action inventory; 18 and 21 check that maintained inventory rather than starting it late.
 
 Publishing tickets does not start or complete their implementation. Record pass/fail/blocked Windows outcomes honestly; a fixture UI does not constitute production acceptance.
+
+
+## Current acceptance checkpoint (25 October 2026)
+
+Implementation and review corrections are in the production worktree. [Installed-candidate evidence and remaining case matrix](acceptance/2026-10-24/RESULT.md) cover actual MSI/NSIS, Registry restoration, Java/profile flows, managed Go update/retirement, Flutter contract and discovered fixes. Tickets 18–20 remain `ready-for-human` because required coverage is incomplete; ticket 21 remains unstarted behind 19/20. Required blocked/not-run cases are not passes.

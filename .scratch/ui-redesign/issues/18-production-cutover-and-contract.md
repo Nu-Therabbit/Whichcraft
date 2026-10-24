@@ -14,8 +14,8 @@
 - [x] ยืนยันว่า implementation branch ตั้งต้นจาก production base และไม่มี prototype variants/switcher/state inspector/sample actions ปนมา; ใช้ primary source บน throwaway branch เป็น reference โดยไม่ลบ Environment backend/types ที่ยังจำเป็น.
 - [x] ตรวจ action/parity inventory ที่ 02 เก็บไว้ตั้งแต่ต้น รวม themes/languages, update notice, refresh, licences/attribution, account context, diagnostics, Undo/recovery และ settings ให้แต่ละรายการมีผลลัพธ์/ตำแหน่งใหม่ ไม่เริ่ม audit รายการหลัง migration เสร็จ (`desktopShellHeaderParity.test.tsx` locks language/update/licences on default shell).
 - [ ] app-level journeys, relevant frontend/Rust tests, architecture dependency checks และ packaged build ผ่าน; ตรวจ desktop minimum/default sizes, keyboard/focus, themes และขอบเขต subscriptions ระหว่าง navigation.
-- [ ] ตรวจ startup ของทั้งสองโหมดว่ามี bootstrap/subscriptions เพียงชุดเดียวและเข้า shared write admission/refresh จริง; ทดสอบปิดแอปแล้วเปิดอีกโหมดและอ่าน Windows state/recovery กลับตาม contract เดิม ไม่อ้างว่า pending edits หรือ operation ในหน่วยความจำย้ายข้าม process ได้. ชุด 19/20 ต้องเก็บ acceptance จาก UI ใหม่ ส่วนการเปิด fallback แยกเป็น fallback smoke/regression comparison.
-- [ ] wire/storage compatibility และ Windows integration contracts ไม่เปลี่ยนโดยไม่มีข้อกำหนด; แพ็กเกจทำงานโดยไม่ต้องติดตั้ง/เปิด Envarly แยก (`npm run tauri build` not run in agent environment).
+- [x] ตรวจ startup ของทั้งสองโหมดว่ามี bootstrap/subscriptions เพียงชุดเดียวและเข้า shared write admission/refresh จริง; ทดสอบปิดแอปแล้วเปิดอีกโหมดและอ่าน Windows state/recovery กลับตาม contract เดิม ไม่อ้างว่า pending edits หรือ operation ในหน่วยความจำย้ายข้าม process ได้. ชุด 19/20 ต้องเก็บ acceptance จาก UI ใหม่ ส่วนการเปิด fallback แยกเป็น fallback smoke/regression comparison.
+- [ ] wire/storage compatibility และ Windows integration contracts ไม่เปลี่ยนโดยไม่มีข้อกำหนด; แพ็กเกจทำงานโดยไม่ต้องติดตั้ง/เปิด Envarly แยก (MSI/NSIS install and CLI smoke now pass; clean-machine validation remains open).
 - [x] ระบุ candidate build และวิธีเปิด fallback ให้ผู้ทดสอบใช้; งานถอด fallback/compatibility ที่ไม่ใช้ถูกกำหนดไว้ใน 21 ซึ่งรอให้ 19 และ 20 ผ่านก่อน.
 
 ## Comments
@@ -152,3 +152,15 @@ Run with the user's approval. `HKCU\Environment` was diffed against a baseline a
 - Install-store confirmation, single-tool/profile plan presentation and the ADR-0001 restart notice each have one shared implementation/source.
 - The earlier three review fixes are also in this working tree: catalog ownership/selection reset on tool change, persistent catalog errors with deliberate retry, and shared inventory invalidation after update/install-missing completion or partial failure.
 - Verification: all 542 frontend unit tests pass (15 added across the two review rounds), lint and TypeScript/frontend build pass, and Rust application tests pass (97 passed, 3 real-machine contracts ignored). Frontend/Rust architecture checks are included. This is not packaged Windows acceptance; ticket 18 and suites 19/20 retain their existing open gates, and legacy fallback remains.
+
+
+### Installed candidate acceptance (24–25 October 2026)
+
+Current evidence supersedes earlier “not built/not installed/every case blocked” snapshots in this ticket and 19/20: [run report and complete case mapping](../acceptance/2026-10-24/RESULT.md).
+
+- Built, installed, launched and uninstalled both MSI and NSIS; corrected package hashes are recorded. New and legacy startup were checked in separate processes. Real persisted profile/recovery data was read across modes, and no separately installed Envarly app was required on this machine.
+- New UI exercised Java/profile switch/Undo, isolated Java/Go installs, corrected Go same-line update/switch/old-install retirement/Undo, shell readback, native JSON export and keyboard Environment tabs. Both Environment scopes and original Selection were restored exactly; only owned test installations/settings/packages were removed.
+- Acceptance exposed and fixed two regressions: update progress/errors disappeared after navigation/readback, and System-shadow detection could remove an unrelated System PATH entry. The dangerous old plan was never applied. Corrected installed MSI removes only the real Go shadow and preserves System32/Windows.
+- User chose: Undo keeps the last Selection and displays mismatch with Effective Installation. Recorded in `CONTEXT.md` and observed in native UI after Go Undo.
+- Current checks: frontend 543 passed, lint/TypeScript/build passed; Rust full library 269 passed, 16 ignored (application subset 98 passed, 3 ignored); both installers built. Real Flutter contract now safely retries a temporary service usage block and passes.
+- Still open: latest non-demo minimum-size/focus review, clean-machine coverage and the full remaining matrix in the report. User confirmed no UAC prompt appeared; native-helper success does not prove consent/cancellation. Single-account/alternate-shell/race cases require other environments. Status stays `ready-for-human`; 19/20 are partial and 21 must not start.

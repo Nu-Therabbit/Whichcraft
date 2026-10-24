@@ -43,6 +43,7 @@ type Translate = ReturnType<typeof useI18n>["t"];
 
 function shellStatusLine(t: Translate, toolsState: ReturnType<typeof useTools>["state"]): string {
   if (toolsState.install.busy) return t("desktop_shell.status_installing");
+  if (toolsState.update.busy || toolsState.profiles.busy) return t("desktop_shell.status_working");
   if (toolsState.plan.applying) return t("desktop_shell.status_applying");
   if (toolsState.plan.building) return t("desktop_shell.status_building_plan");
   if (toolsState.error) return toolsState.error;

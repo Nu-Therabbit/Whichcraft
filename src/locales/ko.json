@@ -465,6 +465,7 @@
     "LANGCHAIN_TRACING_V2": "LLM 파이프라인 및 체인의 LangSmith V2 실행 추적을 활성화하려면 \"true\"로 설정합니다."
   },
   "desktop_shell": {
+    "status_working": "처리 중…",
     "selection_mismatch": "선택한 설치와 실제 적용된 설치가 다릅니다",
     "nav_label": "Primary navigation",
     "nav_tools": "Developer tools",

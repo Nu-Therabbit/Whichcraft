@@ -497,6 +497,7 @@
     "LANGCHAIN_TRACING_V2": "Установите в \"true\", чтобы включить трассировку выполнения LangSmith V2 для конвейеров и цепочек LLM."
   },
   "desktop_shell": {
+    "status_working": "Выполняется…",
     "selection_mismatch": "Выбранная установка отличается от действующей",
     "nav_label": "Primary navigation",
     "nav_tools": "Developer tools",

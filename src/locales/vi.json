@@ -465,6 +465,7 @@
     "LANGCHAIN_TRACING_V2": "Đặt thành \"true\" để bật tính năng theo dõi thực thi LangSmith V2 cho quy trình và chuỗi LLM."
   },
   "desktop_shell": {
+    "status_working": "Đang xử lý…",
     "selection_mismatch": "Bản cài đặt đã chọn khác với bản đang có hiệu lực",
     "nav_label": "Primary navigation",
     "nav_tools": "Developer tools",

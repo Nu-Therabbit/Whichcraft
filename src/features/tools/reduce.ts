@@ -286,8 +286,8 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
 
     case "failed": {
       const next = endBusy({ ...s, error: msg.error }, msg.op);
-      if (msg.op !== "install") return next;
-      return { ...next, install: { ...next.install, catalogError: s.install.loading ? msg.error : s.install.catalogError, retainErrorOnRefresh: true } };
+      if (msg.op !== "install" && msg.op !== "update" && msg.op !== "profiles") return next;
+      return { ...next, install: { ...next.install, catalogError: msg.op === "install" && s.install.loading ? msg.error : s.install.catalogError, retainErrorOnRefresh: true } };
     }
   }
 }

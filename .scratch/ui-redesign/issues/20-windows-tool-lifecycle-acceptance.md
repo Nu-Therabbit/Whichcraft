@@ -20,10 +20,19 @@
 
 ## Comments
 
-### Agent result (2026-10-24)
+### Initial agent result (2026-10-24; superseded by installed-candidate report below)
 
 Blocked, not passed. No packaged app and no disposable Windows install, switch, update, profile, or uninstall session.
 
-Every required case is **blocked**: `D-1`–`D-7`, `E-1`, `E-2`, `E-5`, `I-1`–`I-17`, `S-1`, `S-2`, `R-1`–`R-13`, `P-1`, `F-1`–`F-6`. Fake-API results are not acceptance. Ticket 21 must not remove the legacy fallback while these stay blocked.
+At that checkpoint every required case was recorded as **blocked**: `D-1`–`D-7`, `E-1`, `E-2`, `E-5`, `I-1`–`I-17`, `S-1`, `S-2`, `R-1`–`R-13`, `P-1`, `F-1`–`F-6`. Fake-API results are not acceptance. Ticket 21 must not remove the legacy fallback while these stay blocked.
 
 - 2026-10-24: Partial agent evidence (not a suite run) is recorded in [ticket 18](18-production-cutover-and-contract.md) under the "Agent Windows run" sections and covers D-* discovery on this machine, I-1/I-7/R-1 and the Temurin/Python/Go, two-store, old-mise and Flutter plugin contracts, the full Flutter install (uninstall blocked by a Windows service), a Java switch with Undo, and the shell check. Required cases that need UAC, other accounts or a clean machine are still open.
+
+
+### Current installed-candidate result (24–25 October 2026)
+
+**Partial; not a suite pass.** [Detailed evidence, package hashes, restoration and every original case ID](../acceptance/2026-10-24/RESULT.md) replace the initial blanket-blocked assessment above. New UI results are kept separate from legacy smoke, prior non-packaged runs and backend contracts.
+
+Installed candidate verified Inventory Only SDK/Python details, managed Java/Go install without environment changes, real Go same-line update/switch/old-install retirement/Undo and managed removal, plus a saved Java-only profile and match status. Corrected the actual Go plan before applying it: unrelated System PATH entries now remain. Full real Flutter contract passed after a bounded safe retry of Windows Appraisal usage refusal. All owned test installations/packages were removed; working tools remain intact.
+
+Still required: full representative ownership/refusal/external-uninstaller cases, replacement flow, missing-pin/install-missing/profile repointing, offline/checksum/cancellation presentation and store/upgrade combinations listed in the report. Exact Temurin update and expanded profile scenarios are partial rather than inferred from equivalent Go/single-profile results. Keep status `ready-for-human` and fallback intact.

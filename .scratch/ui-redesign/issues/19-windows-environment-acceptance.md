@@ -20,10 +20,19 @@
 
 ## Comments
 
-### Agent result (2026-10-24)
+### Initial agent result (2026-10-24; superseded by installed-candidate report below)
 
 Blocked, not passed. No packaged Tauri build was produced (`npm run tauri build` was not run). No real Windows session recorded Registry, UAC, account, shell, snapshot, or file-transfer evidence.
 
-Every required case is **blocked**: `E-3`, `E-4`, `A-1`–`A-9`, `U-1`–`U-4`, `T-1`–`T-4`, `C-1`–`C-2`, `X-1`–`X-4`, plus the spec's added Environment, snapshot, and transfer cases. Frontend tests and `npm run build` are not acceptance. Ticket 21 must not remove the legacy fallback while these stay blocked.
+At that checkpoint every required case was recorded as **blocked**: `E-3`, `E-4`, `A-1`–`A-9`, `U-1`–`U-4`, `T-1`–`T-4`, `C-1`–`C-2`, `X-1`–`X-4`, plus the spec's added Environment, snapshot, and transfer cases. Frontend tests and `npm run build` are not acceptance. Ticket 21 must not remove the legacy fallback while these stay blocked.
 
 - 2026-10-24: Partial agent evidence (not a suite run) is recorded in [ticket 18](18-production-cutover-and-contract.md) under the "Agent Windows run" sections and covers U-1/A-2/T-2 (HKCU apply and Undo), C-1 (command lookup), real snapshot save/compare/stage-restore, `.reg` import and export cancellation, and PATH cleanup with Undo. Required cases that need UAC, other accounts or a clean machine are still open.
+
+
+### Current installed-candidate result (24–25 October 2026)
+
+**Partial; not a suite pass.** [Detailed evidence, package hashes, restoration and every original case ID](../acceptance/2026-10-24/RESULT.md) replace the initial blanket-blocked assessment above. New UI results are kept separate from legacy smoke, prior non-packaged runs and backend contracts.
+
+Real packaged User Java/profile and mixed User/System Go switch/Undo, actual shell readback, native custom JSON export, keyboard tabs/themes and cross-mode persisted recovery are recorded. Final Registry exports match both baselines byte-for-byte; original Selection/app-data configuration was restored. Seeded recovery proves readback/resume/rollback, not an actual process kill. Cancellation contract cleans up then fails when no native prompt appears; the user confirmed no UAC dialog was shown, so A-3 remains blocked.
+
+Still required: interactive consent/cancel and account boundaries, stale/conflicting/concurrent writes and partial failures, real interrupted Apply, full snapshot/transfer/type/secret scenarios, terminal variants and minimum-size review. Alternate admin account and configured shell variants are unavailable here. Keep status `ready-for-human` and fallback intact.
