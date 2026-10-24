@@ -4,7 +4,7 @@
 
 **Blocked by:** 18: เปิด UI ใหม่เป็นค่าเริ่มต้นใน candidate build พร้อม legacy fallback.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 **Kind:** Acceptance / Windows end-to-end
 
@@ -17,3 +17,11 @@
 - [ ] บันทึก OS/build/account configuration, steps, expected/actual state และหลักฐานก่อน/หลัง; backup/readback/restore ตาม acceptance procedure และแยก pass/fail/blocked ไม่ถือ skipped เป็น passed.
 - [ ] ใช้ isolated/disposable fixtures หรือบัญชี/เครื่องทดสอบที่เหมาะสมสำหรับกรณีเขียน/ขัดจังหวะ; รวมผลกับชุด Windows เครื่องมือโดยไม่รันซ้ำเมื่อไม่มีเหตุใหม่ และรายงานข้อจำกัดที่ยังไม่ผ่าน.
 - [ ] รายงาน required cases ที่ fail/blocked อย่างชัดเจน และไม่ถือว่าเกณฑ์พร้อมลบ fallback ใน 21 ผ่านจนกว่าจะจัดการครบ; เมื่อพบ regression ให้ใช้ fallback ที่ยังคงไว้สำหรับเปรียบเทียบ/ทำงานต่อ.
+
+## Comments
+
+### Agent result (2026-10-24)
+
+Blocked, not passed. No packaged Tauri build was produced (`npm run tauri build` was not run). No real Windows session recorded Registry, UAC, account, shell, snapshot, or file-transfer evidence.
+
+Every required case is **blocked**: `E-3`, `E-4`, `A-1`–`A-9`, `U-1`–`U-4`, `T-1`–`T-4`, `C-1`–`C-2`, `X-1`–`X-4`, plus the spec's added Environment, snapshot, and transfer cases. Frontend tests and `npm run build` are not acceptance. Ticket 21 must not remove the legacy fallback while these stay blocked.

@@ -4,7 +4,7 @@
 
 **Blocked by:** 10: ใช้ Snapshots จริงจาก Environment; 11: นำเข้าและส่งออก Environment ผ่านไฟล์จริง; 12: ตรวจคำสั่ง ผลใน shell และเปิด Terminal จริง; 15: อัปเดตในสายเดิม สลับ และเสนอถอนตัวเก่า; 16: จัดการและ Apply Tool profiles จาก workspace ใหม่; 17: ดูแล PATH, external changes และกู้คืนงานที่ค้าง.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Integration / candidate cutover
 
@@ -41,3 +41,9 @@
 - **Shell parity:** `ShellAppHeaderActions` on `DesktopShellApp` — language (`useI18n`), update notice (`useUpdateCheck` + opener), licences (`setDialog("licenses")` → production `LicensesPanel`); `ShellRegistryErrorBanner` on default tools page.
 - **Evidence:** Packaged-app / `tauri build` checkboxes remain open; Windows relaunch unchanged.
 - **Verification:** `npx tsc --noEmit` (clean), `npm test -- --run` (507 passed), `npm run lint` (clean), `npm run build` (succeeded). `npm run tauri build` not run.
+
+### Review round 1 approval (`8e41905`)
+
+- Approved. `does not store uninstallPlanned on the current tool when the event omits tool` fails if a Java plan with no `tool` is stored on the Java panel. `does not switch presentation when location.search changes after startup` fails if the freeze is removed. Header language, update notice, and licences are locked by `exposes language, update notice, and licences on the default shell header`. The registry banner test uses `renderProductionApp("")`.
+- Accepted leftover, not a blocker: a Java `switchPlanned` that omits `tool` is rejected in `reduceSwitchPlanned`, but no test fails if that guard falls back to `plan.tool`. The null-switch test only covers a Node event.
+- Packaged build, separate-Envarly, and Windows relaunch checkboxes stay open and are not passes.

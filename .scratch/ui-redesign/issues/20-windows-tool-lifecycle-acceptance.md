@@ -4,7 +4,7 @@
 
 **Blocked by:** 18: เปิด UI ใหม่เป็นค่าเริ่มต้นใน candidate build พร้อม legacy fallback.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 **Kind:** Acceptance / Windows end-to-end
 
@@ -17,3 +17,11 @@
 - [ ] เทียบ roots/executable versions, Registry/new-process results, store contents และ profile references; บันทึก pass/fail/blocked พร้อมสาเหตุเมื่อเครือข่าย บัญชี หรือ shell variant ใช้ไม่ได้.
 - [ ] รวบรวม evidence จาก slices ที่ตรวจ Windows ไปแล้วและเติม cross-flow/regression ที่เหลือ; ประเมินร่วมกับชุด Environment ก่อนสรุป production acceptance.
 - [ ] required fail/blocked ยังไม่ถือว่า gate ของ 21 ผ่าน; เก็บ fallback สำหรับเปรียบเทียบ/ใช้งานระหว่างแก้ regression และห้ามถอดก่อนทั้งสองชุดผ่าน.
+
+## Comments
+
+### Agent result (2026-10-24)
+
+Blocked, not passed. No packaged app and no disposable Windows install, switch, update, profile, or uninstall session.
+
+Every required case is **blocked**: `D-1`–`D-7`, `E-1`, `E-2`, `E-5`, `I-1`–`I-17`, `S-1`, `S-2`, `R-1`–`R-13`, `P-1`, `F-1`–`F-6`. Fake-API results are not acceptance. Ticket 21 must not remove the legacy fallback while these stay blocked.

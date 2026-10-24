@@ -14,3 +14,9 @@
 - [ ] production branch ไม่มี prototype variant/switcher/state inspector หรือ simulated data/actions โดยตั้งต้นจาก production base และใช้ต้นแบบเป็น reference; ไม่ merge โค้ด throwaway เข้ามาเพื่อค่อยลบท้ายงาน.
 - [ ] build/tests และ dependency checks ที่ได้รับผลกระทบผ่าน พร้อม packaged Windows smoke ของ navigation และ flow ที่การลบอาจกระทบ; ไม่จำเป็นต้องดาวน์โหลด/ถอนซ้ำทุกกรณีที่ไม่มีความเปลี่ยนแปลง แต่ต้องผูกหลักฐานกับ build ที่ตรวจจริง.
 - [ ] ระบุผล Windows acceptance ทั้งสองชุด ผล recheck หลัง cleanup และข้อจำกัดคงเหลืออย่างตรงไปตรงมาก่อนปิดงาน; ไม่รายงาน production acceptance จากหน้าตา prototype หรือ build ที่ยังไม่ได้ตรวจ.
+
+## Comments
+
+### Gate (2026-10-24)
+
+Not started. Tickets 19 and 20 record every required case as blocked. That is not a pass, so the legacy presentation stays.
