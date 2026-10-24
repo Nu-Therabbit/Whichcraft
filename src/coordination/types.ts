@@ -34,6 +34,7 @@ export type ReadScopeKey =
   | { kind: "profiles" }
   | { kind: "shell-check"; tool: ToolKind }
   | { kind: "environment" }
+  | { kind: "check-command" }
   | { kind: "tool-result"; tool: ToolKind };
 
 export type CoordinatorReadBinding = {
@@ -77,6 +78,8 @@ export function readScopeKey(scope: ReadScopeKey): string {
       return `shell:${scope.tool}`;
     case "environment":
       return "environment";
+    case "check-command":
+      return "check-command";
     case "tool-result":
       return `result:${scope.tool}`;
   }

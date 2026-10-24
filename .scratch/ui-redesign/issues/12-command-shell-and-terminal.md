@@ -21,3 +21,9 @@
 - **Invalidation:** `ShellToolsProvider` clears stale shell checks on environment changes and skips auto-recheck in the same batch.
 - **Tests:** `desktopShellCheckShell.test.tsx` (check command API, shell resolution, open terminal, env apply clears shell check). `CheckCommandPanel.test.tsx` unchanged contract.
 - **Windows manual (WT/PowerShell/cmd, PATH/alias profiles):** Not run in this agent environment. Leave checkbox open; variants not exercised: Windows Terminal, PowerShell, cmd round-trip.
+
+### Review round 1 (Grok on 903aeed)
+
+- Check command uses coordinator `beginCheckCommand` / `isCheckCommandCurrent`; late responses after `environment-*` invalidation are dropped. Shell test asserts `runCheckCommandLocally` stays idle.
+- Shell resolution test uses selected vs effective roots; Effective line asserts `effectivePath` from shell check, not the selected root.
+- Late in-flight `shellCheck` after environment revision bump does not restore the status panel.

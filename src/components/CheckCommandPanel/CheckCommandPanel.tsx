@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useOptionalWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
+import { resolveCheckCommand } from "../../features/environment/checkCommandSession";
 import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
 import { useI18n } from "../../hooks/useI18n";
 import type { CheckCommandResult, CommandHit } from "../../types";
@@ -33,7 +34,8 @@ export function CheckCommandPanel() {
     setLoading(true);
     setError(null);
     try {
-      setResult(await environment.checkCommand(trimmed));
+      const next = await resolveCheckCommand(environment, coordination ?? undefined, trimmed);
+      if (next) setResult(next);
     } catch (e) {
       setError(String(e));
       setResult(null);

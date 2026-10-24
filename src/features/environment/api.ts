@@ -40,6 +40,8 @@ export interface EnvironmentApi {
   getPathStatus: () => Promise<PathStatusView>;
   getPathProposal: (scope: VarScope) => Promise<string | null>;
   checkCommand: (input: string) => Promise<CheckCommandResult>;
+  /** Test seam: if the UI executed the command locally it would call this — must stay unused. */
+  runCheckCommandLocally?: (input: string) => Promise<CheckCommandResult>;
   listLocalAccounts: () => Promise<LocalAccount[]>;
   selectAccount: (sid: string | null) => Promise<LocalAccount | null>;
   getSelectedAccount: () => Promise<LocalAccount | null>;

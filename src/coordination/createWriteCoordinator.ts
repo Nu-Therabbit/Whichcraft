@@ -29,6 +29,8 @@ export type WriteCoordinatorFacade = {
   isToolsReadCurrent: (binding: CoordinatorReadBinding) => boolean;
   beginEnvironmentRead: () => CoordinatorReadBinding;
   isEnvironmentReadCurrent: (binding: CoordinatorReadBinding) => boolean;
+  beginCheckCommand: () => CoordinatorReadBinding;
+  isCheckCommandCurrent: (binding: CoordinatorReadBinding) => boolean;
   beginShellCheck: (tool: ToolKind) => CoordinatorReadBinding;
   isShellCheckCurrent: (binding: CoordinatorReadBinding) => boolean;
   beginToolResult: (tool: ToolKind) => CoordinatorReadBinding;
@@ -209,6 +211,14 @@ export function createWriteCoordinator(): WriteCoordinatorFacade {
 
     isEnvironmentReadCurrent(binding: CoordinatorReadBinding) {
       return binding.scopeKey === "environment" && isReadCurrent(binding);
+    },
+
+    beginCheckCommand() {
+      return beginRead({ kind: "check-command" });
+    },
+
+    isCheckCommandCurrent(binding: CoordinatorReadBinding) {
+      return binding.scopeKey === "check-command" && isReadCurrent(binding);
     },
 
     beginShellCheck(tool: ToolKind) {
