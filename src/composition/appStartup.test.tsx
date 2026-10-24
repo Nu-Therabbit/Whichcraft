@@ -69,7 +69,7 @@ describe("production app startup", () => {
 
   it("surfaces the registry error banner when production bootstrap fails", async () => {
     vi.mocked(isTauri).mockReturnValue(false);
-    renderProductionApp("?presentation=legacy");
+    renderProductionApp("");
 
     await waitFor(() =>
       expect(

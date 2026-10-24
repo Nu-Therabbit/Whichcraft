@@ -21,10 +21,15 @@ import {
 } from "./toolOverviewModel";
 import { ShellInstallationDetail } from "./ShellInstallationDetail";
 import { ShellEnvironmentWorkspace } from "./ShellEnvironmentWorkspace";
+import { ShellAppHeaderActions } from "./ShellAppHeaderActions";
 import { ShellAppRecoveryBanner } from "./ShellAppRecoveryBanner";
+import { ShellRegistryErrorBanner } from "./ShellRegistryErrorBanner";
 import { ShellInstallView } from "./ShellInstallView";
 import { ShellProfilesWorkspace } from "./ShellProfilesWorkspace";
 import { ShellSettingsView } from "./ShellSettingsView";
+import { UndoProvider } from "../../contexts/UndoContext";
+import { EnvironmentProvider } from "../environment/EnvironmentContext";
+import { ShellEnvironmentUiProvider } from "./ShellEnvironmentUiContext";
 import { ShellToolsProvider, useShellTools } from "./ShellToolsContext";
 import { useShellNavigation } from "./useShellNavigation";
 import { useShellToolsWrite } from "./useShellToolsWrite";
@@ -61,7 +66,7 @@ function DesktopShellAppInner() {
   const shellTools = useShellTools();
   const overview = useToolsOverview(services.tools, services.environment, coordination);
   const toolsWrite = useShellToolsWrite(overview.detailOpen ? overview.selectedTool : null);
-  const { theme, toggle: toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const { t } = useI18n();
 
   const activePage: ShellPage = page === "profiles" ? "profiles" : page;
@@ -135,14 +140,11 @@ function DesktopShellAppInner() {
                 <span className="size-2 rounded-full bg-success" aria-hidden />
                 {t("desktop_shell.this_pc")}
               </span>
-              <IconButton
-                aria-label={t("desktop_shell.toggle_theme")}
-                icon={theme === "dark" ? "sun" : "moon"}
-                onClick={toggleTheme}
-              />
+              <ShellAppHeaderActions />
             </div>
           </header>
 
+          <ShellRegistryErrorBanner />
           <ShellAppRecoveryBanner />
 
           {activePage === "tools" && (
@@ -409,8 +411,14 @@ function ToolMark({ tool, small }: { tool: ToolKind; small?: boolean }) {
 
 export function DesktopShellApp() {
   return (
-    <ShellToolsProvider>
-      <DesktopShellAppInner />
-    </ShellToolsProvider>
+    <UndoProvider>
+      <EnvironmentProvider>
+        <ShellEnvironmentUiProvider>
+          <ShellToolsProvider>
+            <DesktopShellAppInner />
+          </ShellToolsProvider>
+        </ShellEnvironmentUiProvider>
+      </EnvironmentProvider>
+    </UndoProvider>
   );
 }

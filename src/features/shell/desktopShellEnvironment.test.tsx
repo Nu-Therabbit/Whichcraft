@@ -1,16 +1,13 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { UndoProvider } from "../../contexts/UndoContext";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { ENVIRONMENT_PENDING_TOOLS_MESSAGE, WRITE_BUSY_MESSAGE } from "../../coordination/types";
-import { EnvironmentProvider } from "../environment/EnvironmentContext";
 import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
-import { ShellEnvironmentUiProvider } from "./ShellEnvironmentUiContext";
 import { shellNavigationHref } from "../../lib/shellNavigation";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -55,17 +52,11 @@ const sdkMocks = {
 function renderDesktopShell(services = splitEnvarlyApi(fakeToolsRuntime({ ...sdkMocks }).api)) {
   configureProductionServices(services);
   return render(
-    <UndoProvider>
-      <AppServicesProvider services={services}>
-        <WriteCoordinatorProvider>
-          <EnvironmentProvider>
-            <ShellEnvironmentUiProvider>
-              <DesktopShellApp />
-            </ShellEnvironmentUiProvider>
-          </EnvironmentProvider>
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>
-    </UndoProvider>,
+    <AppServicesProvider services={services}>
+      <WriteCoordinatorProvider>
+        <DesktopShellApp />
+      </WriteCoordinatorProvider>
+    </AppServicesProvider>,
   );
 }
 

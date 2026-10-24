@@ -5,16 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => true),
 }));
-import { UndoProvider } from "../../contexts/UndoContext";
-import { splitEnvarlyApi } from "../../composition/appServices";
+
 import { AppServicesProvider } from "../../composition/AppServicesContext";
-import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
+import { splitEnvarlyApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
-import { EnvironmentProvider } from "../environment/EnvironmentContext";
+import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
+import { shellNavigationHref } from "../../lib/shellNavigation";
 import { fakeToolsRuntime, inst } from "../tools/testHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
-import { ShellEnvironmentUiProvider } from "./ShellEnvironmentUiContext";
-import { shellNavigationHref } from "../../lib/shellNavigation";
 
 const sdkMocks = {
   getSelectedAccount: async () => null,
@@ -60,17 +58,11 @@ function renderShell(apiOverrides: Record<string, unknown> = {}) {
   const services = splitEnvarlyApi(fakeToolsRuntime({ ...sdkMocks, ...apiOverrides }).api);
   configureProductionServices(services);
   return render(
-    <UndoProvider>
-      <AppServicesProvider services={services}>
-        <WriteCoordinatorProvider>
-          <EnvironmentProvider>
-            <ShellEnvironmentUiProvider>
-              <DesktopShellApp />
-            </ShellEnvironmentUiProvider>
-          </EnvironmentProvider>
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>
-    </UndoProvider>,
+    <AppServicesProvider services={services}>
+      <WriteCoordinatorProvider>
+        <DesktopShellApp />
+      </WriteCoordinatorProvider>
+    </AppServicesProvider>,
   );
 }
 
@@ -98,14 +90,18 @@ describe("desktop shell import export", () => {
     });
 
     const user = userEvent.setup();
-    await waitFor(() => expect(screen.getByRole("heading", { name: /import \/ export/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: /import \/ export/i })).toBeInTheDocument(),
+    );
     await user.click(screen.getByRole("radio", { name: /^import$/i }));
     const textarea = await screen.findByPlaceholderText(/paste file contents/i);
     fireEvent.change(textarea, { target: { value: '{"user":{}}' } });
     await user.click(screen.getByRole("button", { name: /^parse$/i }));
     await waitFor(() => expect(parseImport).toHaveBeenCalled());
     await user.click(await screen.findByRole("button", { name: /stage 1 variable/i }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument(),
+    );
     expect(applyEnvChanges).not.toHaveBeenCalled();
     expect(setEnvVar).not.toHaveBeenCalled();
   });
@@ -116,7 +112,9 @@ describe("desktop shell import export", () => {
     });
     renderShell({ getEnvVars: async () => [], parseImport });
     const user = userEvent.setup();
-    await waitFor(() => expect(screen.getByRole("heading", { name: /import \/ export/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: /import \/ export/i })).toBeInTheDocument(),
+    );
     await user.click(screen.getByRole("radio", { name: /^import$/i }));
     fireEvent.change(await screen.findByPlaceholderText(/paste file contents/i), {
       target: { value: "{bad" },
@@ -132,7 +130,10 @@ describe("desktop shell import export", () => {
       "",
       shellNavigationHref({ page: "environment", envTab: "variables" }),
     );
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const confirmSpy = vi
+      .spyOn(window, "confirm")
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
     renderShell({
       getEnvVars: async () => [
         {
@@ -154,7 +155,9 @@ describe("desktop shell import export", () => {
     await user.clear(editor);
     await user.type(editor, "pending");
     await user.click(screen.getByRole("button", { name: /^stage$/i }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument(),
+    );
 
     await user.click(screen.getByRole("tab", { name: /^import \/ export$/i }));
     await user.click(screen.getByRole("radio", { name: /^import$/i }));
@@ -177,7 +180,9 @@ describe("desktop shell import export", () => {
     });
     await user.click(screen.getByRole("button", { name: /^parse$/i }));
     await user.click(await screen.findByRole("button", { name: /stage 1 variable/i }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument(),
+    );
     await user.click(screen.getByRole("tab", { name: /^variables$/i }));
     await user.click(screen.getAllByText("KEEP")[0]);
     expect(await screen.findByLabelText(/^value$/i)).toHaveValue("current");
@@ -204,7 +209,9 @@ describe("desktop shell import export", () => {
     });
 
     const user = userEvent.setup();
-    await waitFor(() => expect(screen.getByRole("heading", { name: /import \/ export/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: /import \/ export/i })).toBeInTheDocument(),
+    );
     await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThan(0));
     const callsBefore = listToolInstallations.mock.calls.length;
     await user.click(screen.getByRole("button", { name: /export all/i }));

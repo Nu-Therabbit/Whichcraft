@@ -1,15 +1,13 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { UndoProvider } from "../../contexts/UndoContext";
-import { splitEnvarlyApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
-import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
+import { splitEnvarlyApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
-import { EnvironmentProvider } from "../environment/EnvironmentContext";
+import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
+import { shellNavigationHref } from "../../lib/shellNavigation";
 import { fakeToolsRuntime, inst } from "../tools/testHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
-import { shellNavigationHref } from "../../lib/shellNavigation";
 
 const sdkMocks = {
   getSelectedAccount: async () => null,
@@ -41,20 +39,14 @@ const sdkMocks = {
   }),
 };
 
-function renderDesktopShell(
-  services: ReturnType<typeof splitEnvarlyApi>,
-  { withEnvironment = false }: { withEnvironment?: boolean } = {},
-) {
+function renderDesktopShell(services: ReturnType<typeof splitEnvarlyApi>) {
   configureProductionServices(services);
-  const app = <DesktopShellApp />;
   return render(
-    <UndoProvider>
-      <AppServicesProvider services={services}>
-        <WriteCoordinatorProvider>
-          {withEnvironment ? <EnvironmentProvider>{app}</EnvironmentProvider> : app}
-        </WriteCoordinatorProvider>
-      </AppServicesProvider>
-    </UndoProvider>,
+    <AppServicesProvider services={services}>
+      <WriteCoordinatorProvider>
+        <DesktopShellApp />
+      </WriteCoordinatorProvider>
+    </AppServicesProvider>,
   );
 }
 
@@ -65,7 +57,11 @@ describe("desktop shell settings and install", () => {
   });
 
   it("saves scan roots and terminal, keeps previous store history, and lists old-store installs after store change", async () => {
-    const oldStoreInstall = inst("java", "11.0.2", "D:\\old-store\\java\\11", { managed: true, effective: true, selected: true });
+    const oldStoreInstall = inst("java", "11.0.2", "D:\\old-store\\java\\11", {
+      managed: true,
+      effective: true,
+      selected: true,
+    });
     const listToolInstallations = vi.fn(async () => [oldStoreInstall]);
     const saveWhichcraftSettings = vi.fn(async (settings: unknown) => settings);
     const getWhichcraftSettings = vi.fn(async () => ({
@@ -159,7 +155,11 @@ describe("desktop shell settings and install", () => {
         installManaged,
       }).api,
     );
-    window.history.replaceState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
+    window.history.replaceState(
+      null,
+      "",
+      shellNavigationHref({ page: "tools", installOpen: true }),
+    );
     renderDesktopShell(services);
 
     const user = userEvent.setup();
@@ -172,7 +172,9 @@ describe("desktop shell settings and install", () => {
     await waitFor(() => expect(installManaged).toHaveBeenCalledWith("node", "22.0.1"));
     await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThanOrEqual(2));
     expect(
-      await screen.findByRole("button", { name: /Node\.js, Windows uses 20\.0\.0.*2 installations/i }),
+      await screen.findByRole("button", {
+        name: /Node\.js, Windows uses 20\.0\.0.*2 installations/i,
+      }),
     ).toBeInTheDocument();
   });
 
@@ -211,7 +213,11 @@ describe("desktop shell settings and install", () => {
         installManaged,
       }).api,
     );
-    window.history.replaceState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
+    window.history.replaceState(
+      null,
+      "",
+      shellNavigationHref({ page: "tools", installOpen: true }),
+    );
     renderDesktopShell(services);
 
     const user = userEvent.setup();
@@ -261,7 +267,11 @@ describe("desktop shell settings and install", () => {
         installManaged,
       }).api,
     );
-    window.history.replaceState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
+    window.history.replaceState(
+      null,
+      "",
+      shellNavigationHref({ page: "tools", installOpen: true }),
+    );
     renderDesktopShell(services);
 
     const user = userEvent.setup();
@@ -312,8 +322,12 @@ describe("desktop shell settings and install", () => {
         installManaged,
       }).api,
     );
-    window.history.replaceState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
-    renderDesktopShell(services, { withEnvironment: true });
+    window.history.replaceState(
+      null,
+      "",
+      shellNavigationHref({ page: "tools", installOpen: true }),
+    );
+    renderDesktopShell(services);
 
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /Node\.js/i }));
@@ -326,8 +340,12 @@ describe("desktop shell settings and install", () => {
   });
 
   it("does not offer install or update for Git", async () => {
-    const listRemoteVersions = vi.fn(async () => [{ version: "2.50.0", downloadBytes: null, installBytes: null }]);
-    const updateCandidates = vi.fn(async () => [{ root: "C:\\Git", current: "2.45.0", latest: "2.50.0" }]);
+    const listRemoteVersions = vi.fn(async () => [
+      { version: "2.50.0", downloadBytes: null, installBytes: null },
+    ]);
+    const updateCandidates = vi.fn(async () => [
+      { root: "C:\\Git", current: "2.45.0", latest: "2.50.0" },
+    ]);
     const services = splitEnvarlyApi(
       fakeToolsRuntime({
         ...sdkMocks,
@@ -339,7 +357,11 @@ describe("desktop shell settings and install", () => {
             : [],
       }).api,
     );
-    window.history.replaceState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
+    window.history.replaceState(
+      null,
+      "",
+      shellNavigationHref({ page: "tools", installOpen: true }),
+    );
     renderDesktopShell(services);
 
     const user = userEvent.setup();

@@ -5,7 +5,6 @@ import { useWriteCoordinator } from "./coordination/WriteCoordinatorContext";
 import { EnvironmentProvider } from "./features/environment/EnvironmentContext";
 import { LegacyEnvironmentView } from "./features/environment/LegacyEnvironmentView";
 import { DesktopShellApp } from "./features/shell/DesktopShellApp";
-import { ShellEnvironmentUiProvider } from "./features/shell/ShellEnvironmentUiContext";
 import { scopesNeedToolsRefresh } from "./features/shell/useShellToolsWrite";
 import { useToolsStore } from "./features/tools/useToolsStore";
 import type { AppPresentation } from "./lib/appPresentation";
@@ -38,13 +37,7 @@ function LegacyAppRoot() {
 
 export default function App({ presentation }: { presentation: AppPresentation }) {
   if (presentation === "desktop-shell") {
-    return (
-      <EnvironmentProvider>
-        <ShellEnvironmentUiProvider>
-          <DesktopShellApp />
-        </ShellEnvironmentUiProvider>
-      </EnvironmentProvider>
-    );
+    return <DesktopShellApp />;
   }
   return <LegacyAppRoot />;
 }

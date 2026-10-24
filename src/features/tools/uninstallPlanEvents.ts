@@ -22,14 +22,18 @@ export function isSwitchPlannedEvent(msg: { type: string }): msg is SwitchPlanne
 }
 
 export function reduceUninstallPlanned(s: ToolsState, msg: UninstallPlannedEvent): ToolsState {
-  const plannedFor = msg.tool ?? msg.plan.installation.tool;
-  if (plannedFor !== s.tool) return { ...s, uninstall: { ...s.uninstall, busy: false } };
+  if (msg.tool === undefined) {
+    return { ...s, uninstall: { ...s.uninstall, busy: false } };
+  }
+  if (msg.tool !== s.tool) {
+    return { ...s, uninstall: { ...s.uninstall, busy: false } };
+  }
   return { ...s, uninstall: { ...s.uninstall, busy: false, plan: msg.plan } };
 }
 
 export function reduceSwitchPlanned(s: ToolsState, msg: SwitchPlannedEvent): ToolsState {
+  if (msg.tool === undefined) return s;
+  if (msg.tool !== s.tool) return s;
   if (!msg.plan) return { ...s, uninstall: { ...s.uninstall, switchPlan: null } };
-  const plannedFor = msg.tool ?? msg.plan.tool;
-  if (plannedFor !== s.tool) return s;
   return { ...s, uninstall: { ...s.uninstall, switchPlan: msg.plan } };
 }

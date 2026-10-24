@@ -5,16 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => true),
 }));
-import { UndoProvider } from "../../contexts/UndoContext";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
-import { EnvironmentProvider } from "../environment/EnvironmentContext";
 import { fakeToolsRuntime, inst } from "../tools/testHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
-import { ShellEnvironmentUiProvider } from "./ShellEnvironmentUiContext";
 import { shellNavigationHref } from "../../lib/shellNavigation";
 
 const sdkMocks = {
@@ -60,17 +57,11 @@ function renderShell(apiOverrides: Record<string, unknown> = {}) {
     coordination,
     api,
     ...render(
-      <UndoProvider>
-        <AppServicesProvider services={splitEnvarlyApi(api)}>
-          <WriteCoordinatorProvider coordinator={coordination}>
-            <EnvironmentProvider>
-              <ShellEnvironmentUiProvider>
-                <DesktopShellApp />
-              </ShellEnvironmentUiProvider>
-            </EnvironmentProvider>
-          </WriteCoordinatorProvider>
-        </AppServicesProvider>
-      </UndoProvider>,
+      <AppServicesProvider services={splitEnvarlyApi(api)}>
+        <WriteCoordinatorProvider coordinator={coordination}>
+          <DesktopShellApp />
+        </WriteCoordinatorProvider>
+      </AppServicesProvider>,
     ),
   };
 }

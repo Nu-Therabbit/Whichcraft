@@ -5,18 +5,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => true),
 }));
-import { UndoProvider } from "../../contexts/UndoContext";
-import { splitEnvarlyApi } from "../../composition/appServices";
+
 import { AppServicesProvider } from "../../composition/AppServicesContext";
-import { createWriteCoordinator, type WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
-import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
+import { splitEnvarlyApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
-import { EnvironmentProvider } from "../environment/EnvironmentContext";
-import { fakeToolsRuntime, inst } from "../tools/testHarness";
-import { DesktopShellApp } from "./DesktopShellApp";
-import { ShellEnvironmentUiProvider } from "./ShellEnvironmentUiContext";
+import {
+  createWriteCoordinator,
+  type WriteCoordinatorFacade,
+} from "../../coordination/createWriteCoordinator";
+import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { shellNavigationHref } from "../../lib/shellNavigation";
 import type { EnvSnapshot, SnapshotMeta } from "../../types";
+import { fakeToolsRuntime, inst } from "../tools/testHarness";
+import { DesktopShellApp } from "./DesktopShellApp";
 
 const sdkMocks = {
   getSelectedAccount: async () => null,
@@ -110,17 +111,11 @@ function renderShell(
   return {
     coordination,
     ...render(
-      <UndoProvider>
-        <AppServicesProvider services={splitEnvarlyApi(api)}>
-          <WriteCoordinatorProvider coordinator={coordination}>
-            <EnvironmentProvider>
-              <ShellEnvironmentUiProvider>
-                <DesktopShellApp />
-              </ShellEnvironmentUiProvider>
-            </EnvironmentProvider>
-          </WriteCoordinatorProvider>
-        </AppServicesProvider>
-      </UndoProvider>,
+      <AppServicesProvider services={splitEnvarlyApi(api)}>
+        <WriteCoordinatorProvider coordinator={coordination}>
+          <DesktopShellApp />
+        </WriteCoordinatorProvider>
+      </AppServicesProvider>,
     ),
   };
 }
@@ -161,7 +156,9 @@ describe("desktop shell environment snapshots", () => {
     expect(await screen.findByRole("button", { name: /^stage restore$/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^stage restore$/i }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /4 staged/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /4 staged/i })).toBeInTheDocument(),
+    );
     await user.click(screen.getByRole("tab", { name: /^variables$/i }));
     await user.click(screen.getByText("REMOVE"));
     expect(await screen.findByText(/staged: delete/i)).toBeInTheDocument();
@@ -169,7 +166,10 @@ describe("desktop shell environment snapshots", () => {
   });
 
   it("asks before replacing existing staged work when restoring a snapshot", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const confirmSpy = vi
+      .spyOn(window, "confirm")
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
     renderShell({
       getEnvVars: async () => REGISTRY_VARS,
       listSnapshots: async () => [SNAP],
@@ -188,14 +188,18 @@ describe("desktop shell environment snapshots", () => {
     await user.clear(editor);
     await user.type(editor, "pending");
     await user.click(screen.getByRole("button", { name: /^stage$/i }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument(),
+    );
 
     await user.click(screen.getByRole("button", { name: /new variable/i }));
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText(/^name$/i), "ORPHAN");
     await user.type(within(dialog).getByLabelText(/^value$/i), "only-staged");
     await user.click(within(dialog).getByRole("button", { name: /^stage new variable$/i }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /2 staged/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /2 staged/i })).toBeInTheDocument(),
+    );
 
     await user.click(screen.getByRole("tab", { name: /snapshots/i }));
     await user.click(screen.getByRole("button", { name: /^preview$/i }));
@@ -205,7 +209,9 @@ describe("desktop shell environment snapshots", () => {
 
     await user.click(screen.getByRole("button", { name: /^preview$/i }));
     await user.click(await screen.findByRole("button", { name: /^stage restore$/i }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /4 staged/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /4 staged/i })).toBeInTheDocument(),
+    );
     expect(screen.queryByText("ORPHAN")).not.toBeInTheDocument();
     confirmSpy.mockRestore();
   });

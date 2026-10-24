@@ -101,6 +101,24 @@ describe("reduce", () => {
     expect(next.uninstall.busy).toBe(false);
   });
 
+  it("does not store uninstallPlanned on the current tool when the event omits tool", () => {
+    const s = {
+      ...initialToolsState(),
+      tool: "java" as const,
+      uninstall: { ...initialToolsState().uninstall, busy: true },
+    };
+    const next = reduce(s, { type: "uninstallPlanned", plan: uninstallPlan() } as ToolsMsg);
+    expect(next.uninstall.plan).toBeNull();
+    expect(next.uninstall.busy).toBe(false);
+  });
+
+  it("does not clear switchPlan when a null switchPlanned targets another tool", () => {
+    const shown = planFor(jdk21);
+    const s = withUninstall({ switchPlan: shown });
+    const next = reduce(s, { type: "switchPlanned", tool: "node", plan: null });
+    expect(next.uninstall.switchPlan).toBe(shown);
+  });
+
   it("does not set uninstall busy when confirming a plan stored for another tool", () => {
     const s = withUninstall({ switchPlan: planFor(jdk21) });
     const onNode = { ...s, tool: "node" as const };

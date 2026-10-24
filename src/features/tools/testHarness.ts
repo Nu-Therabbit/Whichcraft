@@ -13,6 +13,19 @@ import { reduce } from "./reduce";
 /** An API whose every call fails unless a test provides it, so unexpected calls show up. */
 export function fakeApi(overrides: Partial<EnvarlyApi>): EnvarlyApi {
   const base = {
+    getEnvVars: vi.fn(async () => []),
+    getUnsupportedEnvValues: vi.fn(async () => []),
+    getRegistrySnapshot: vi.fn(async () => ({ user: [], system: [] })),
+    listLocalAccounts: vi.fn(async () => []),
+    getSelectedAccount: vi.fn(async () => null),
+    getPathStatus: vi.fn(async () => ({
+      installDir: "",
+      userHasEntry: false,
+      systemHasEntry: false,
+      otherUserHasEntry: null,
+    })),
+    isElevated: vi.fn(async () => false),
+    checkForUpdate: vi.fn(async () => null),
     getRecoveryStatus: vi.fn(async () => null),
     unfinishedUninstalls: vi.fn(async () => []),
     getWhichcraftSettings: vi.fn(async () => ({

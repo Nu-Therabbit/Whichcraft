@@ -1,17 +1,14 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { UndoProvider } from "../../contexts/UndoContext";
-import { splitEnvarlyApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
+import { splitEnvarlyApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
-import { EnvironmentProvider } from "../environment/EnvironmentContext";
+import { shellNavigationHref } from "../../lib/shellNavigation";
 import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
-import { ShellEnvironmentUiProvider } from "./ShellEnvironmentUiContext";
-import { shellNavigationHref } from "../../lib/shellNavigation";
 
 const sdkMocks = {
   getSelectedAccount: async () => null,
@@ -54,17 +51,11 @@ function renderShell(apiOverrides: Record<string, unknown> = {}) {
   return {
     coordination,
     ...render(
-      <UndoProvider>
-        <AppServicesProvider services={splitEnvarlyApi(api)}>
-          <WriteCoordinatorProvider coordinator={coordination}>
-            <EnvironmentProvider>
-              <ShellEnvironmentUiProvider>
-                <DesktopShellApp />
-              </ShellEnvironmentUiProvider>
-            </EnvironmentProvider>
-          </WriteCoordinatorProvider>
-        </AppServicesProvider>
-      </UndoProvider>,
+      <AppServicesProvider services={splitEnvarlyApi(api)}>
+        <WriteCoordinatorProvider coordinator={coordination}>
+          <DesktopShellApp />
+        </WriteCoordinatorProvider>
+      </AppServicesProvider>,
     ),
   };
 }
@@ -121,13 +112,22 @@ describe("desktop shell maintenance and recovery", () => {
 
   it("does not write the registry until Apply on PATH cleanup", async () => {
     const cleanupPlan = {
-      ...planFor(inst("java", "21.0.1", "C:\\jdk21"), { planId: "path-cleanup", recordsSelection: false }),
+      ...planFor(inst("java", "21.0.1", "C:\\jdk21"), {
+        planId: "path-cleanup",
+        recordsSelection: false,
+      }),
       removedDuplicates: ["C:\\dup"],
       removedMissing: ["C:\\gone"],
-      userDiffs: [{ name: "PATH", scope: "User" as const, kind: "changed" as const, before: "a", after: "b" }],
+      userDiffs: [
+        { name: "PATH", scope: "User" as const, kind: "changed" as const, before: "a", after: "b" },
+      ],
     };
     const planPathCleanup = vi.fn(async () => cleanupPlan);
-    const applyToolPlan = vi.fn(async () => ({ planId: "path-cleanup", stale: false, needsElevation: false }));
+    const applyToolPlan = vi.fn(async () => ({
+      planId: "path-cleanup",
+      stale: false,
+      needsElevation: false,
+    }));
     const applyEnvChanges = vi.fn(async () => {});
     renderShell({
       getEnvVars: async () => [],
@@ -152,10 +152,15 @@ describe("desktop shell maintenance and recovery", () => {
 
   it("offers undo on the PATH cleanup band", async () => {
     const cleanupPlan = {
-      ...planFor(inst("java", "21.0.1", "C:\\jdk21"), { planId: "path-cleanup", recordsSelection: false }),
+      ...planFor(inst("java", "21.0.1", "C:\\jdk21"), {
+        planId: "path-cleanup",
+        recordsSelection: false,
+      }),
       removedDuplicates: [],
       removedMissing: [],
-      userDiffs: [{ name: "PATH", scope: "User" as const, kind: "changed" as const, before: "a", after: "b" }],
+      userDiffs: [
+        { name: "PATH", scope: "User" as const, kind: "changed" as const, before: "a", after: "b" },
+      ],
     };
     const undoLastWhichcraftApply = vi.fn(async () => ({ restored: 1, conflicts: [] }));
     renderShell({
