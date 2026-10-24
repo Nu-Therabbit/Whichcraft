@@ -71,3 +71,26 @@ Release build (`npm run tauri build -- --no-bundle`, no installers) driven throu
 - **Finding — tabs:** the Environment tablist does not move with ArrowLeft/ArrowRight.
 - **Finding — list height:** at 900×600 the variable list shows about two rows.
 - **Not run:** real (non-demo) launch, which downloads the pinned mise on first start; installers; the Run as admin relaunch with `--legacy-ui` (needs UAC); recovery/readback across modes with real data; the separate-Envarly check on a clean machine.
+
+### Agent Windows run, writing set (2026-10-24, same machine)
+
+Run with the user's approval. `HKCU\Environment` was exported before the run and compared after each step. All 10 values matched exactly: names, kinds and raw values.
+
+- **Pass — real launch:** a real (non-demo) `whichcraft.exe` mounts the shell once (`get_launch_options` ×1, `whichcraft_prepare_mise` ×1).
+  - Inventory shows 8 installations across 6 tools: Java ×4 with MSI ownership, Node 24.20, Python, Go 1.27, Git, plus Android SDK, MSVC Build Tools and the Python launcher/Store stub.
+  - Python shows no effective installation because the Store stub is first on PATH.
+  - Flutter shows 0 until `E:\Dev` is a scan folder (D-6).
+  - Nothing was written to `%LOCALAPPDATA%\Whichcraft` or HKCU.
+  - `prepare_mise` fetches only when an older mise is present, so a first start downloads nothing. Minor: `get_unsupported_env_values` is called twice at startup.
+- **Pass — HKCU write and Undo:** `contract_user_apply_reaches_new_processes_and_undo_restores_the_key` passes (U-1/A-2/T-2). A new process and a new Windows Terminal saw the value, and Undo restored the key exactly.
+- **Pass — mise installs and uninstalls:** these pass, each run in its own process:
+  - `contract_mise_installs_node_…` (Node 22.12.0)
+  - `contract_mise_installs_temurin_python_go_…` (Temurin 21.0.12, Python 3.13.17, Go 1.26.10)
+  - `contract_two_install_stores_…`
+  - `contract_install_with_old_mise_and_uninstall_with_the_new_one`
+  - `contract_flutter_plugin_stays_on_the_pin_over_time`
+  - No mise default folders were created, and no temp stores were left behind.
+- **Finding (pre-existing on main, not a product failure):** run together with `--test-threads=1`, four of these failed with "mise spawn failed: cannot find the path".
+  - `ensure_mise()` caches the verified `mise.exe` path in a process-wide `OnceLock`, and each contract test uses its own temp data dir. Later tests got a deleted path from the first test.
+  - Run them one per process until the cache is keyed by data dir (and re-checked when the file disappears).
+- **Not run:** the full Flutter install (≈1.9 GB), the System/HKLM write through UAC, uninstall to the Recycle Bin, other-user accounts, installers, and a clean machine without Envarly.
