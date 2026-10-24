@@ -34,3 +34,10 @@
 - Shell late-success test waits for Check button after late resolve; **`drops a stale success when environment invalidates before resolve`** fails if generation drop removed.
 - **`drops a stale failure when environment invalidates before reject`** + shell **`drops a late check command failure after environment invalidation`**; `resolveCheckCommand` drops stale errors.
 - **Verification:** `npm test -- --run` (491 passed), `npm run lint` (clean), `cargo test path_manage`, `cargo clippy -- -D warnings` (clean).
+
+### Review round 3 (Grok re-review on f09cb12)
+
+- **Rust path-only lock:** `check_command_with_resolves_via_path_existence_only` keeps the path-existence behavioral assertion and scans `check_command_with`, windows `check_command`, and `dir_exists` bodies (via `include_str!`) for process-launch tokens (`std::process`, `Command::`, `CreateProcess`, `ShellExecute`, `cmd.exe`, `powershell`); inserting `Command::new` in `check_command_with` fails this test.
+- **TS resolve lock:** `resolveCheckCommand does not execute the typed input` mocks both `child_process` and `node:child_process` so a bare spawn import fails.
+- **Note:** Review round 1’s `runCheckCommandLocally` idle assertion was historical; that seam was removed in round 2.
+- **Verification:** `cargo test path_manage` (24 passed), `cargo clippy -- -D warnings` (clean), `npm test -- --run` (497 passed), `npm run lint` (clean).

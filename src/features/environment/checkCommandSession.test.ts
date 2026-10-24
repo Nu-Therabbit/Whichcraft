@@ -14,11 +14,14 @@ const hitResult = (input: string): CheckCommandResult => ({
 
 const spawnProbe = vi.hoisted(() => vi.fn());
 
-vi.mock("node:child_process", () => ({
+const childProcessMock = {
   spawn: (...args: unknown[]) => spawnProbe(...args),
   exec: (...args: unknown[]) => spawnProbe(...args),
   execFile: (...args: unknown[]) => spawnProbe(...args),
-}));
+};
+
+vi.mock("child_process", () => childProcessMock);
+vi.mock("node:child_process", () => childProcessMock);
 
 function minimalEnv(checkCommand: EnvironmentApi["checkCommand"]): EnvironmentApi {
   return { checkCommand } as EnvironmentApi;

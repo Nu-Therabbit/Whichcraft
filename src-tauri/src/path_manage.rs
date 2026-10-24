@@ -398,8 +398,69 @@ mod tests {
 
     const PATHEXT: &str = ".COM;.EXE;.BAT;.CMD";
 
+    const PROCESS_LAUNCH_TOKENS: &[&str] = &[
+        "std::process",
+        "Command::",
+        "CreateProcess",
+        "ShellExecute",
+        "cmd.exe",
+        "powershell",
+    ];
+
+    fn function_body<'a>(source: &'a str, signature_needle: &str) -> &'a str {
+        let start = source
+            .find(signature_needle)
+            .unwrap_or_else(|| panic!("function signature not found: {signature_needle}"));
+        let open = source[start..]
+            .find('{')
+            .unwrap_or_else(|| panic!("function body brace not found: {signature_needle}"))
+            + start;
+        let mut depth = 0usize;
+        for (offset, ch) in source[open..].char_indices() {
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return &source[start..open + offset + 1];
+                    }
+                }
+                _ => {}
+            }
+        }
+        panic!("unbalanced braces in {signature_needle}");
+    }
+
+    fn assert_no_process_launch_in(body: &str, label: &str) {
+        for token in PROCESS_LAUNCH_TOKENS {
+            assert!(
+                !body.contains(token),
+                "{label} must not launch processes (found {token:?} in function body)"
+            );
+        }
+    }
+
+    fn assert_check_command_resolution_is_path_only() {
+        let path_manage_src = include_str!("path_manage.rs");
+        let path_cmds_src = include_str!("commands/path.rs");
+        assert_no_process_launch_in(
+            function_body(path_manage_src, "pub fn check_command_with("),
+            "check_command_with",
+        );
+        assert_no_process_launch_in(
+            function_body(path_manage_src, "pub fn check_command(raw_input: &str)"),
+            "check_command",
+        );
+        assert_no_process_launch_in(
+            function_body(path_cmds_src, "pub(crate) fn dir_exists(path: &str)"),
+            "dir_exists",
+        );
+    }
+
     #[test]
     fn check_command_with_resolves_via_path_existence_only() {
+        assert_check_command_resolution_is_path_only();
+
         use std::cell::RefCell;
         let checked: RefCell<Vec<String>> = RefCell::new(Vec::new());
         let path_exists = |candidate: &str| {
