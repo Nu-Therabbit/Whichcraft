@@ -13,6 +13,7 @@ import type { DiagnosticAction, EnvironmentDiagnostic } from "../../lib/environm
 import type { ShellEnvironmentTab } from "../../lib/shellNavigation";
 import type { EnvVar, VarScope } from "../../types";
 import { useEnvironment } from "../environment/EnvironmentContext";
+import { ShellEnvironmentPathMaintenance } from "./ShellEnvironmentPathMaintenance";
 import { ShellEnvironmentToolbar } from "./ShellEnvironmentToolbar";
 import { useShellEnvironmentUi } from "./ShellEnvironmentUiContext";
 
@@ -147,6 +148,8 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
           </button>
         ))}
       </div>
+
+      {envTab === "variables" && <ShellEnvironmentPathMaintenance />}
 
       {pathBannerScope && !pathBannerDismissed && envTab === "variables" && (
         <PathBanner
