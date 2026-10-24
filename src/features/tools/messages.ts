@@ -37,6 +37,7 @@ export type ToolsIntent =
   | { type: "resolveRecovery"; action: "resume" | "rollBack" }
   | { type: "saveSettings"; settings: WhichcraftSettings }
   | { type: "checkShell" }
+  | { type: "clearShellCheck" }
   | { type: "openTerminal" }
   | { type: "loadSdks" }
   | { type: "openInstallList" }

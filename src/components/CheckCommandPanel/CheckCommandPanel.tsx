@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useOptionalWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
 import { useI18n } from "../../hooks/useI18n";
 import type { CheckCommandResult, CommandHit } from "../../types";
@@ -9,11 +10,22 @@ import { TextInput } from "../ui/TextInput";
 
 export function CheckCommandPanel() {
   const environment = useEnvironmentApi();
+  const coordination = useOptionalWriteCoordinator();
   const { t } = useI18n();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CheckCommandResult | null>(null);
+
+  useEffect(() => {
+    if (!coordination) return;
+    return coordination.subscribeInvalidation((scopes) => {
+      if (scopes.some((scope) => scope.startsWith("environment-"))) {
+        setResult(null);
+        setError(null);
+      }
+    });
+  }, [coordination]);
 
   const runCheck = async () => {
     const trimmed = input.trim();

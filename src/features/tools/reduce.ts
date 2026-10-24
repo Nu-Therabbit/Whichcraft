@@ -128,6 +128,8 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
       return { ...s, error: null };
     case "checkShell":
       return { ...s, error: null, shellCheck: null };
+    case "clearShellCheck":
+      return { ...s, shellCheck: null };
     case "shellChecked":
       return { ...s, shellCheck: msg.check };
     case "sdksLoaded":

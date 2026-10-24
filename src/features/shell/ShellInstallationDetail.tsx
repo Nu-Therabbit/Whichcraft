@@ -1,6 +1,8 @@
 import { PlanDiffList } from "../../components/ToolsPanel/PlanDiffList";
 import { RecoveryBanner } from "../../components/ToolsPanel/RecoveryBanner";
+import { ShellCheckResult } from "../../components/ToolsPanel/ShellCheckResult";
 import { UninstallSection } from "../../components/ToolsPanel/UninstallSection";
+import { UpdateList } from "../../components/ToolsPanel/UpdateList";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import type { ToolsDispatch } from "../tools/useToolsStore";
@@ -16,9 +18,22 @@ interface Props {
 
 export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
   const { t } = useI18n();
-  const { installations, loading, error, plan, recovery, uninstall, unfinished } = state;
+  const { installations, loading, error, plan, recovery, uninstall, unfinished, shellCheck, update, settings } =
+    state;
   const applyBusy = plan.applying;
   const current = plan.current;
+  const canInstall = tool !== "git";
+  const storeGate = settings
+    ? {
+        confirmed: settings.installStoreConfirmed ?? false,
+        installStore: settings.installStore,
+        onConfirm: (installStore: string) =>
+          dispatch({
+            type: "saveSettings",
+            settings: { ...settings, installStore, installStoreConfirmed: true },
+          }),
+      }
+    : { confirmed: false, installStore: "", onConfirm: () => {} };
 
   if (state.tool !== tool) {
     return <p className="text-xs text-dim py-2">{t("desktop_shell.loading")}</p>;
@@ -119,6 +134,51 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
           ))}
         </ul>
       </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="secondary"
+          size="xs"
+          onClick={() => dispatch({ type: "checkShell" })}
+          disabled={loading || applyBusy}
+        >
+          {t("tools.check_in_shell")}
+        </Button>
+        <Button variant="secondary" size="xs" onClick={() => dispatch({ type: "openTerminal" })} disabled={applyBusy}>
+          {t("tools.open_terminal")}
+        </Button>
+        {canInstall && (
+          <Button
+            variant="secondary"
+            size="xs"
+            onClick={() => dispatch({ type: "checkUpdates" })}
+            disabled={update.busy || applyBusy}
+          >
+            {t("tools.check_updates")}
+          </Button>
+        )}
+      </div>
+
+      <p className="text-[11px] text-dim">{t("desktop_shell.shell_check_hint")}</p>
+
+      {shellCheck && shellCheck.tool === tool && <ShellCheckResult check={shellCheck} />}
+
+      {canInstall && update.list && (
+        <UpdateList
+          updates={update.list}
+          busy={update.busy}
+          awaitingSwitch={update.pending !== null}
+          onUpdate={(candidate) => dispatch({ type: "update", candidate })}
+          store={storeGate}
+          repoint={
+            update.pending?.repoint && {
+              names: update.pending.repoint.names,
+              checked: update.pending.repoint.checked,
+              onToggle: (checked) => dispatch({ type: "toggleRepoint", checked }),
+            }
+          }
+        />
+      )}
 
       {plan.building && !current && (
         <p className="text-xs text-dim">{t("tools.building_plan")}</p>

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
+import type { ShellCheck } from "../../types";
 import { createToolsRuntime } from "../../composition/appServices";
 import { useAppServices } from "../../composition/AppServicesContext";
 import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
@@ -24,6 +25,8 @@ export function ShellToolsProvider({ children }: { children: ReactNode }) {
   );
   const { state, dispatch } = useToolsStore("java", toolsRuntime);
   const started = useRef(false);
+  const shellCheckRef = useRef<ShellCheck | null>(null);
+  shellCheckRef.current = state.shellCheck;
 
   useEffect(() => {
     if (started.current) return;
@@ -34,11 +37,19 @@ export function ShellToolsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     return coordination.subscribeInvalidation((scopes) => {
+      const environmentChanged = scopes.some((scope) => scope.startsWith("environment-"));
+      if (environmentChanged) {
+        shellCheckRef.current = null;
+        dispatch({ type: "clearShellCheck" });
+      }
       if (scopesNeedProfileReload(scopes)) {
         dispatch({ type: "loadProfiles" });
       }
       if (!scopesNeedToolsRefresh(scopes)) return;
       dispatch({ type: "refresh" });
+      if (scopes.includes("tools-shell-check") && shellCheckRef.current && !environmentChanged) {
+        dispatch({ type: "checkShell" });
+      }
     });
   }, [coordination, dispatch]);
 

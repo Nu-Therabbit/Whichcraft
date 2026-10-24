@@ -31,6 +31,11 @@ export function useWriteCoordinator(): WriteCoordinatorFacade {
   return coordinator;
 }
 
+/** When the panel may render outside a coordinator provider (legacy tests, isolated stories). */
+export function useOptionalWriteCoordinator(): WriteCoordinatorFacade | null {
+  return useContext(WriteCoordinatorContext);
+}
+
 /** Tests and harnesses that run outside the provider tree. */
 export function createIsolatedWriteCoordinator(): WriteCoordinatorFacade {
   return createWriteCoordinator();

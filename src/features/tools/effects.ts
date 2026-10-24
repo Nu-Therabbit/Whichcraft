@@ -215,6 +215,8 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       dispatch({ type: "shellChecked", tool, check });
       return;
     }
+    case "clearShellCheck":
+      return;
     case "openTerminal":
       return platform.openTerminal();
     case "loadSdks":
