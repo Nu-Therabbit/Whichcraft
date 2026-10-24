@@ -1,10 +1,10 @@
 // Build as a console subsystem app so the shell waits for the process when CLI
-// args are present. For GUI-only launches (no args), we hide the console window
-// immediately so users never see a flash.
+// args are present. For GUI launches (no args, or GUI flags such as --legacy-ui),
+// we hide the console window immediately so users never see a flash.
 
 fn main() {
     #[cfg(windows)]
-    if std::env::args().len() <= 1 {
+    if whichcraft_lib::is_gui_launch() {
         // GUI mode: detach from the console Windows allocated so its window
         // closes without a minimize/hide animation, then restore focus to
         // whatever was active before our console stole it.

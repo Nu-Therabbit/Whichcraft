@@ -12,7 +12,10 @@ import "./index.css";
 
 applyThemeToDocument(getInitialTheme());
 
-const appPresentation = freezeAppPresentation(window.location.search);
+const appPresentation = freezeAppPresentation(
+  window.location.search,
+  window.__WHICHCRAFT_PRESENTATION__,
+);
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

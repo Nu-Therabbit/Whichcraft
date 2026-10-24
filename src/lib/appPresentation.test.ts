@@ -22,6 +22,12 @@ describe("appPresentation", () => {
     expect(parseAppPresentation("?presentation=legacy")).toBe("legacy");
   });
 
+  it("selects legacy when the packaged app was launched with --legacy-ui", () => {
+    expect(parseAppPresentation("", "legacy")).toBe("legacy");
+    expect(parseAppPresentation("", "desktop-shell")).toBe("desktop-shell");
+    expect(parseAppPresentation("?presentation=legacy", "desktop-shell")).toBe("legacy");
+  });
+
   it("freezes presentation for the process", () => {
     freezeAppPresentation("?presentation=legacy");
     expect(getFrozenAppPresentation()).toBe("legacy");

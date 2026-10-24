@@ -20,16 +20,23 @@ mod snapshot;
 #[cfg(windows)]
 mod user_hive;
 
+#[cfg(windows)]
+fn launch_args() -> Vec<String> {
+    std::env::args().skip(1).collect()
+}
+
+/// True when this process starts the GUI (no args, or only GUI flags such as
+/// `--demo` or `--legacy-ui`) rather than a CLI subcommand.
+#[cfg(windows)]
+pub fn is_gui_launch() -> bool {
+    commands::launch::is_gui_launch(&launch_args())
+}
+
 /// If CLI subcommand args are present, execute them and exit the process.
 /// Returns normally (unit) when there are no subcommand args, so the caller can launch the GUI.
 #[cfg(windows)]
 pub fn try_run_cli() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.is_empty()
-        || args
-            .iter()
-            .any(|arg| arg == "--demo" || arg.starts_with("--demo-fixture"))
-    {
+    if is_gui_launch() {
         return;
     }
     cli::run() // -> !  (either exits 0 on success or exits 1 on error)
@@ -41,6 +48,16 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            // The main window is created here (`create: false` in tauri.conf.json) so the
+            // presentation chosen by `--legacy-ui` is in place before any page script runs.
+            let presentation = commands::launch::startup_presentation(&launch_args());
+            let config = app.config().app.windows[0].clone();
+            tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?
+                .initialization_script(commands::launch::presentation_init_script(presentation))
+                .build()?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::env::get_env_vars,
             commands::env::get_unsupported_env_values,
