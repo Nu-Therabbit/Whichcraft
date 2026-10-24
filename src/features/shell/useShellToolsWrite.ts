@@ -4,7 +4,7 @@ import type { ToolKind } from "../tools/types";
 import { useShellTools } from "./ShellToolsContext";
 
 export function scopesNeedProfileReload(scopes: InvalidationScope[]): boolean {
-  return scopes.includes("tools-profiles");
+  return scopes.includes("tools-profiles") || scopes.some((scope) => scope.startsWith("environment-"));
 }
 
 export function scopesNeedToolsRefresh(scopes: InvalidationScope[]): boolean {

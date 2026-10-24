@@ -76,7 +76,7 @@ export type ToolsEvent =
       settings: WhichcraftSettings;
       pythonInfo: PythonSupplementalView | null;
     }
-  | { type: "planBuilt"; tool: ToolKind; plan: ToolApplyPlan }
+  | { type: "planBuilt"; tool: ToolKind; plan: ToolApplyPlan; source?: "inventory" | "profile" }
   | { type: "toolMutationDropped"; tool: ToolKind }
   | { type: "cleanupPlanned"; plan: ToolApplyPlan | null; duplicates: string[]; missing: string[] }
   | { type: "applyFinished"; tool: ToolKind; result: ApplyToolResult }

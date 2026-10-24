@@ -126,7 +126,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       if (!guardConflictingToolWork(ctx, "plan")) return;
       const plan = await tools.planToolApply(tool, msg.root);
       coordination.registerReviewedPlan(plan);
-      dispatch({ type: "planBuilt", tool, plan });
+      dispatch({ type: "planBuilt", tool, plan, source: "inventory" });
       return;
     }
     case "applyPlan": {
@@ -355,7 +355,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       if (!guardConflictingToolWork(ctx, "plan")) return;
       const plan = await tools.planProfile(msg.profile);
       coordination.registerReviewedPlan(plan);
-      dispatch({ type: "planBuilt", tool, plan });
+      dispatch({ type: "planBuilt", tool: plan.tool, plan, source: "profile" });
       return;
     }
     case "checkMissing":

@@ -20,3 +20,9 @@
 - **Refresh:** Profile match reload follows ticket 10 `tools-profiles` invalidation on environment/tool readback.
 - **Tests:** `desktopShellProfiles.test.tsx` (partial apply via `planProfile`, refresh after invalidation, unavailable → install-missing gate).
 - **Windows manual (partial profile / install-missing):** Not run in this agent environment. Leave checkbox open.
+
+### Review round 1 (Grok on e078048)
+
+- `ShellProfilePlanPanel` shows plan diff + Apply on the profiles page; `planProfile` dispatches `planBuilt` with `plan.tool` and `source: "profile"`.
+- Single app-level recovery via `ShellAppRecoveryBanner` (removed duplicate inspector banner).
+- Shell tests lock staged-env block, no `createSnapshot` on profile apply, unavailable pins idle, environment-only invalidation refresh, and full `applyToolPlan` on Apply plan.

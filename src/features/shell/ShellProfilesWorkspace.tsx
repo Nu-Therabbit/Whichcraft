@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { ProfilesSection } from "../../components/ToolsPanel/ProfilesSection";
 import { useI18n } from "../../hooks/useI18n";
+import { ShellProfilePlanPanel } from "./ShellProfilePlanPanel";
 import { useShellTools } from "./ShellToolsContext";
 
 /** Tool profiles workspace in the desktop shell (saved pins, apply, install-missing). */
@@ -44,6 +45,7 @@ export function ShellProfilesWorkspace() {
         onInstallMissing={(profile) => dispatch({ type: "installMissing", profile })}
         store={storeGate}
       />
+      <ShellProfilePlanPanel state={state} dispatch={dispatch} />
     </div>
   );
 }

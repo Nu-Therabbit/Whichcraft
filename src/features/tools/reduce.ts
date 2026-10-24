@@ -12,6 +12,9 @@ export function isApplyPlanOutcomeError(error: string | null): boolean {
 export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
   // A slow result for the tool the panel has since left must not land on the new one.
   if (!isIntent(msg) && msg.type === "planBuilt" && msg.tool !== s.tool) {
+    if (msg.source === "profile" || !isSingleToolPlan(msg.plan)) {
+      return { ...s, plan: { ...s.plan, current: msg.plan, building: false } };
+    }
     return { ...s, plan: { ...s.plan, building: false } };
   }
   if (

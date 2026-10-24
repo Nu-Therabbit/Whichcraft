@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UndoProvider } from "../../contexts/UndoContext";
@@ -7,6 +7,7 @@ import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
+import { ENVIRONMENT_PENDING_TOOLS_MESSAGE } from "../../coordination/types";
 import { EnvironmentProvider } from "../environment/EnvironmentContext";
 import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
@@ -88,9 +89,11 @@ describe("desktop shell tool profiles", () => {
     );
   });
 
-  it("loads saved profiles and plans apply for a partial pin set", async () => {
+  it("loads saved profiles, shows the plan on the profiles page, and applies through applyToolPlan", async () => {
     const profile = { id: "p1", name: "JDK only", tools: [javaPin] };
-    const planProfile = vi.fn(async () => planFor(inst("java", "17.0.2", "C:\\jdk17"), { planId: "profile-plan" }));
+    const reviewedPlan = planFor(inst("java", "17.0.2", "C:\\jdk17"), { planId: "profile-plan" });
+    const planProfile = vi.fn(async () => reviewedPlan);
+    const applyToolPlan = vi.fn(async () => ({ planId: "profile-plan", stale: false, needsElevation: false }));
     const listProfiles = vi.fn(async () => [profile]);
     const profileStatus = vi.fn(async () => ({
       profile,
@@ -101,6 +104,7 @@ describe("desktop shell tool profiles", () => {
       listProfiles,
       profileStatus,
       planProfile,
+      applyToolPlan,
       listToolInstallations: async (tool: string) =>
         tool === "java"
           ? [inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true })]
@@ -112,9 +116,36 @@ describe("desktop shell tool profiles", () => {
     expect(await screen.findByText("JDK only")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^apply$/i }));
     await waitFor(() => expect(planProfile).toHaveBeenCalledWith(profile));
+    expect(await screen.findByRole("button", { name: /^apply plan$/i })).toBeInTheDocument();
+    expect(applyToolPlan).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: /^apply plan$/i }));
+    await waitFor(() => expect(applyToolPlan).toHaveBeenCalledWith(reviewedPlan));
   });
 
-  it("reloads profile match status after environment invalidation", async () => {
+  it("shows profile apply plan when the first pin is not the default open tool", async () => {
+    const profile = { id: "p1", name: "Node only", tools: [nodePin] };
+    const reviewedPlan = planFor(inst("node", "20.0.0", "C:\\node20"), { planId: "node-profile-plan" });
+    const planProfile = vi.fn(async () => reviewedPlan);
+    renderShell({
+      listProfiles: async () => [profile],
+      profileStatus: async () => ({
+        profile,
+        matchesEffective: false,
+        unavailable: [],
+      }),
+      planProfile,
+      listToolInstallations: async (tool: string) =>
+        tool === "node" ? [inst("node", "22.0.0", "C:\\node22", { effective: true, selected: true })] : [],
+    });
+
+    const user = userEvent.setup();
+    await waitFor(() => expect(screen.getByText("Node only")).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /^apply$/i }));
+    await waitFor(() => expect(planProfile).toHaveBeenCalled());
+    expect(await screen.findByRole("button", { name: /^apply plan$/i })).toBeInTheDocument();
+  });
+
+  it("reloads profile match status after environment invalidation without tools-profiles scope", async () => {
     const profile = { id: "p1", name: "Work", tools: [javaPin, nodePin] };
     const listProfiles = vi.fn(async () => [profile]);
     const profileStatus = vi.fn(async () => ({
@@ -129,15 +160,86 @@ describe("desktop shell tool profiles", () => {
     });
     await waitFor(() => expect(listProfiles.mock.calls.length).toBeGreaterThan(0));
     const before = profileStatus.mock.calls.length;
-    coordination.invalidate(["environment-variables", "tools-profiles"]);
+    coordination.invalidate(["environment-variables"]);
     await waitFor(() => expect(profileStatus.mock.calls.length).toBeGreaterThan(before));
   });
 
-  it("blocks apply when pins are unavailable and surfaces install-missing workflow", async () => {
+  it("blocks profile planning while staged environment edits are pending", async () => {
+    const profile = { id: "p1", name: "Work", tools: [javaPin] };
+    const planProfile = vi.fn(async () => planFor(inst("java", "17.0.2", "C:\\jdk17")));
+    renderShell({
+      listProfiles: async () => [profile],
+      profileStatus: async () => ({
+        profile,
+        matchesEffective: false,
+        unavailable: [],
+      }),
+      planProfile,
+      getEnvVars: async () => [
+        {
+          name: "BLOCK",
+          value: "x",
+          valueKind: "String" as const,
+          scope: "User" as const,
+          listSeparator: null,
+        },
+      ],
+      listToolInstallations: async () => [],
+    });
+
+    const user = userEvent.setup();
+    await waitFor(() => expect(screen.getByText("Work")).toBeInTheDocument());
+    await user.click(screen.getByRole("link", { name: /^environment$/i }));
+    await user.click(screen.getByText("BLOCK"));
+    const editor = await screen.findByLabelText(/^value$/i);
+    fireEvent.change(editor, { target: { value: "changed" } });
+    await user.click(screen.getByRole("button", { name: /^stage$/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument());
+
+    await user.click(screen.getByRole("link", { name: /tool profiles/i }));
+    await user.click(screen.getByRole("button", { name: /^apply$/i }));
+    await waitFor(() => expect(screen.getByText(ENVIRONMENT_PENDING_TOOLS_MESSAGE)).toBeInTheDocument());
+    expect(planProfile).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /^apply plan$/i })).not.toBeInTheDocument();
+  });
+
+  it("does not call createSnapshot when confirming a profile plan", async () => {
+    const profile = { id: "p1", name: "JDK only", tools: [javaPin] };
+    const reviewedPlan = planFor(inst("java", "17.0.2", "C:\\jdk17"), { planId: "profile-plan" });
+    const planProfile = vi.fn(async () => reviewedPlan);
+    const applyToolPlan = vi.fn(async () => ({ planId: "profile-plan", stale: false, needsElevation: false }));
+    const createSnapshot = vi.fn(async () => {
+      throw new Error("createSnapshot must not run during profile apply");
+    });
+    renderShell({
+      listProfiles: async () => [profile],
+      profileStatus: async () => ({
+        profile,
+        matchesEffective: false,
+        unavailable: [],
+      }),
+      planProfile,
+      applyToolPlan,
+      createSnapshot,
+      listToolInstallations: async () => [inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true })],
+    });
+
+    const user = userEvent.setup();
+    await waitFor(() => expect(screen.getByText("JDK only")).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /^apply$/i }));
+    await waitFor(() => expect(planProfile).toHaveBeenCalled());
+    await user.click(await screen.findByRole("button", { name: /^apply plan$/i }));
+    await waitFor(() => expect(applyToolPlan).toHaveBeenCalled());
+    expect(createSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("blocks apply when pins are unavailable and keeps planning idle", async () => {
     const profile = { id: "p1", name: "Android", tools: [javaPin, nodePin] };
     const profileMissing = vi.fn(async () => [
       { pin: nodePin, installVersion: "20.19.0", downloadBytes: 1024 },
     ]);
+    const planProfile = vi.fn(async () => planFor(inst("java", "17.0.2", "C:\\jdk17")));
+    const applyToolPlan = vi.fn(async () => ({ planId: "p", stale: false, needsElevation: false }));
     renderShell({
       listProfiles: async () => [profile],
       profileStatus: async () => ({
@@ -146,6 +248,8 @@ describe("desktop shell tool profiles", () => {
         unavailable: [nodePin],
       }),
       profileMissing,
+      planProfile,
+      applyToolPlan,
       listToolInstallations: async () => [],
     });
 
@@ -154,6 +258,8 @@ describe("desktop shell tool profiles", () => {
     expect(screen.queryByRole("button", { name: /^apply$/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /what is missing/i }));
     await waitFor(() => expect(profileMissing).toHaveBeenCalledWith(profile));
+    expect(planProfile).not.toHaveBeenCalled();
+    expect(applyToolPlan).not.toHaveBeenCalled();
     expect(await screen.findByRole("button", { name: /install the missing/i })).toBeInTheDocument();
   });
 });

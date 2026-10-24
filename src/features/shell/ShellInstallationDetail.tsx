@@ -1,5 +1,4 @@
 import { PlanDiffList } from "../../components/ToolsPanel/PlanDiffList";
-import { RecoveryBanner } from "../../components/ToolsPanel/RecoveryBanner";
 import { ShellCheckResult } from "../../components/ToolsPanel/ShellCheckResult";
 import { UninstallSection } from "../../components/ToolsPanel/UninstallSection";
 import { UpdateList } from "../../components/ToolsPanel/UpdateList";
@@ -18,8 +17,7 @@ interface Props {
 
 export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
   const { t } = useI18n();
-  const { installations, loading, error, plan, recovery, uninstall, unfinished, shellCheck, update, settings } =
-    state;
+  const { installations, loading, error, plan, uninstall, unfinished, shellCheck, update, settings } = state;
   const applyBusy = plan.applying;
   const current = plan.current;
   const canInstall = tool !== "git";
@@ -45,15 +43,6 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
         <div className="text-xs text-danger border border-danger/30 rounded-md px-3 py-2" role="alert">
           {error}
         </div>
-      )}
-
-      {recovery && (
-        <RecoveryBanner
-          recovery={recovery}
-          busy={applyBusy}
-          onResume={() => dispatch({ type: "resolveRecovery", action: "resume" })}
-          onRollBack={() => dispatch({ type: "resolveRecovery", action: "rollBack" })}
-        />
       )}
 
       {unfinished.map((u) => (
