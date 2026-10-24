@@ -21,3 +21,8 @@
 - **Recovery:** `ShellAppRecoveryBanner` surfaces `RecoveryBanner` at app level from tools store readback (not only in the inspector).
 - **Tests:** `desktopShellMaintenance.test.tsx` (recovery banner, PATH cleanup plan, diagnostics stage action).
 - **Windows manual (cleanup/Undo/reopen):** Not run in this agent environment. Leave checkbox open.
+
+### Review round 1 (Grok on 23123b6)
+
+- PATH band includes Undo (`undoLast` via tools write path). Cleanup test asserts no registry write until Apply (`applyToolPlan` only after confirm).
+- Recovery test uses real `RecoveryItem.state` readback, clicks Finish/Roll back, expects `resumeApply` / `rollBackApply`. Registry expansion remains gated by Rust `variables_are_expanded_from_the_registry_before_judging`.

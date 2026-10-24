@@ -79,27 +79,47 @@ describe("desktop shell maintenance and recovery", () => {
     );
   });
 
-  it("shows recovery resume/rollback before opening the tool inspector", async () => {
+  it("shows recovery readback and runs resume/rollback from the app banner without opening the inspector", async () => {
     const recovery = {
       journalId: "j-1",
       kind: "java_apply" as const,
       createdAt: "2026-10-23T09:00:00Z",
       canResume: true,
-      items: [{ name: "JAVA_HOME", scope: "User" as const, status: "pending" as const }],
+      items: [
+        {
+          name: "JAVA_HOME",
+          scope: "User" as const,
+          state: "notWritten" as const,
+          before: null,
+          after: "C:\\jdk21",
+          current: null,
+        },
+      ],
     };
+    const resumeApply = vi.fn(async () => {});
+    const rollBackApply = vi.fn(async () => ({ restored: 1, conflicts: [] }));
     renderShell({
       getRecoveryStatus: async () => recovery,
+      resumeApply,
+      rollBackApply,
       getEnvVars: async () => [],
       listToolInstallations: async () => [
         inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true }),
       ],
     });
 
-    expect(await screen.findByRole("button", { name: /finish the apply/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /roll back/i })).toBeInTheDocument();
+    expect(await screen.findByText(/User JAVA_HOME/i)).toBeInTheDocument();
+    expect(screen.getByText(/not written/i)).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /finish the apply/i }));
+    await waitFor(() => expect(resumeApply).toHaveBeenCalledWith("j-1"));
+
+    await user.click(screen.getByRole("button", { name: /roll back/i }));
+    await waitFor(() => expect(rollBackApply).toHaveBeenCalledWith("j-1"));
   });
 
-  it("plans PATH cleanup through the production API and shows duplicate/missing summary", async () => {
+  it("does not write the registry until Apply on PATH cleanup", async () => {
     const cleanupPlan = {
       ...planFor(inst("java", "21.0.1", "C:\\jdk21"), { planId: "path-cleanup", recordsSelection: false }),
       removedDuplicates: ["C:\\dup"],
@@ -107,9 +127,13 @@ describe("desktop shell maintenance and recovery", () => {
       userDiffs: [{ name: "PATH", scope: "User" as const, kind: "changed" as const, before: "a", after: "b" }],
     };
     const planPathCleanup = vi.fn(async () => cleanupPlan);
+    const applyToolPlan = vi.fn(async () => ({ planId: "path-cleanup", stale: false, needsElevation: false }));
+    const applyEnvChanges = vi.fn(async () => {});
     renderShell({
       getEnvVars: async () => [],
       planPathCleanup,
+      applyToolPlan,
+      applyEnvChanges,
       listToolInstallations: async () => [
         inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true }),
       ],
@@ -118,8 +142,35 @@ describe("desktop shell maintenance and recovery", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /clean up path$/i }));
     await waitFor(() => expect(planPathCleanup).toHaveBeenCalled());
-    expect(await screen.findByText(/C:\\dup/)).toBeInTheDocument();
-    expect(screen.getByText(/C:\\gone/)).toBeInTheDocument();
+    expect(applyToolPlan).not.toHaveBeenCalled();
+    expect(applyEnvChanges).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /^apply plan$/i }));
+    await waitFor(() => expect(applyToolPlan).toHaveBeenCalled());
+    expect(applyEnvChanges).not.toHaveBeenCalled();
+  });
+
+  it("offers undo on the PATH cleanup band", async () => {
+    const cleanupPlan = {
+      ...planFor(inst("java", "21.0.1", "C:\\jdk21"), { planId: "path-cleanup", recordsSelection: false }),
+      removedDuplicates: [],
+      removedMissing: [],
+      userDiffs: [{ name: "PATH", scope: "User" as const, kind: "changed" as const, before: "a", after: "b" }],
+    };
+    const undoLastWhichcraftApply = vi.fn(async () => ({ restored: 1, conflicts: [] }));
+    renderShell({
+      getEnvVars: async () => [],
+      planPathCleanup: async () => cleanupPlan,
+      undoLastWhichcraftApply,
+      listToolInstallations: async () => [
+        inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true }),
+      ],
+    });
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /clean up path$/i }));
+    await user.click(await screen.findByRole("button", { name: /undo last whichcraft apply/i }));
+    await waitFor(() => expect(undoLastWhichcraftApply).toHaveBeenCalled());
   });
 
   it("keeps diagnostics staging actions on the variables workflow", async () => {

@@ -10,6 +10,6 @@ export async function resolveCheckCommand(
 ): Promise<CheckCommandResult | null> {
   const binding = coordination?.beginCheckCommand();
   const result = await environment.checkCommand(input);
-  if (binding && !coordination!.isCheckCommandCurrent(binding)) return null;
+  if (binding && !coordination?.isCheckCommandCurrent(binding)) return null;
   return result;
 }

@@ -29,9 +29,14 @@ export function ShellEnvironmentPathMaintenance() {
           {cleanupPlan && (
             <div className="rounded-md border border-rim-subtle p-3 flex flex-col gap-2 bg-surface/40">
               <PlanDiffList plan={cleanupPlan} />
-              <Button variant="primary" size="sm" onClick={() => dispatch({ type: "applyPlan" })} disabled={busy}>
-                {plan.applying ? t("tools.applying") : t("tools.apply_plan")}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="primary" size="sm" onClick={() => dispatch({ type: "applyPlan" })} disabled={busy}>
+                  {plan.applying ? t("tools.applying") : t("tools.apply_plan")}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => dispatch({ type: "undoLast" })} disabled={busy}>
+                  {t("tools.undo_last")}
+                </Button>
+              </div>
             </div>
           )}
         </>
