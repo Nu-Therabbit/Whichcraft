@@ -90,8 +90,8 @@ export type ToolsEvent =
   | { type: "updatesChecked"; tool: ToolKind; list: UpdateCandidate[] }
   | { type: "updateInstalled"; tool: ToolKind; candidateRoot: string; plan: ToolApplyPlan; pending: PendingUpdate }
   | { type: "updateSwitched"; tool: ToolKind }
-  | { type: "uninstallPlanned"; plan: UninstallPlan }
-  | { type: "switchPlanned"; plan: ToolApplyPlan | null }
+  | { type: "uninstallPlanned"; tool: ToolKind; plan: UninstallPlan }
+  | { type: "switchPlanned"; tool: ToolKind; plan: ToolApplyPlan | null }
   | { type: "uninstallFinished"; tool: ToolKind; outcome: UninstallOutcome }
   | {
       type: "profilesLoaded";

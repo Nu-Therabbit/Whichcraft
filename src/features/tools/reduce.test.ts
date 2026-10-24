@@ -79,6 +79,16 @@ describe("reduce", () => {
     }
   });
 
+  it("drops a late uninstall plan when the panel tool changed before the result arrived", () => {
+    const s = {
+      ...initialToolsState(),
+      tool: "node" as const,
+      uninstall: { ...initialToolsState().uninstall, busy: false },
+    };
+    const next = reduce(s, { type: "uninstallPlanned", tool: "java", plan: uninstallPlan() });
+    expect(next.uninstall.plan).toBeNull();
+  });
+
   it("will not confirm an uninstall until the switch for that replacement is on screen", () => {
     const s = withUninstall();
     expect(reduce(s, { type: "confirmUninstall", replacementRoot: "C:\\jdk21", repoint: false })).toBe(s);

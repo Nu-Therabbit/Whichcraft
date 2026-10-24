@@ -158,6 +158,51 @@ describe("desktop shell update journey", () => {
     expect(planUninstall).not.toHaveBeenCalled();
   });
 
+  it("does not apply a late java uninstall offer to another tool when planUninstall is in flight", async () => {
+    const switchPlan = planFor(jdk21new, { planId: "update-switch-plan" });
+    let releaseUninstallPlan: (value: UninstallPlan) => void = () => {};
+    const planUninstall = vi.fn(
+      () =>
+        new Promise<UninstallPlan>((resolve) => {
+          releaseUninstallPlan = resolve;
+        }),
+    );
+    const applyToolPlan = vi.fn(async () => ({ planId: "update-switch-plan", stale: false, needsElevation: false }));
+    const uninstall = vi.fn(async () => ({ status: "removed" as const }));
+    renderShell({
+      listToolInstallations: vi.fn(async (tool: string) => {
+        if (tool === "java") return [jdk21];
+        if (tool === "node") return [node];
+        return [];
+      }),
+      updateCandidates: vi.fn(async () => [{ root: "C:\\jdk21", current: "21.0.12", latest: "21.0.13" }]),
+      updateInstallation: vi.fn(async () => ({ installation: jdk21new, plan: switchPlan })),
+      applyToolPlan,
+      repointProfiles: vi.fn(async () => []),
+      profilesUsing: vi.fn(async () => []),
+      planUninstall,
+      uninstall,
+      planToolApply: vi.fn(async () => switchPlan),
+    });
+
+    const user = userEvent.setup();
+    await openJavaDetail(user);
+    await user.click(screen.getByRole("button", { name: /check for updates/i }));
+    await user.click(await screen.findByRole("button", { name: /^update$/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^apply plan$/i })).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /^apply plan$/i }));
+    await waitFor(() => expect(planUninstall).toHaveBeenCalled());
+    expect(screen.queryByText(/uninstall eclipse adoptium/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Node\.js/i }));
+    releaseUninstallPlan(uninstallPlanStub());
+    await waitFor(() => expect(screen.queryByText(/uninstall eclipse adoptium/i)).not.toBeInTheDocument());
+    expect(uninstall).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /Java/i }));
+    await waitFor(() => expect(screen.queryByText(/uninstall eclipse adoptium/i)).not.toBeInTheDocument());
+  });
+
   it("clears java update uninstall offer when switching to another tool", async () => {
     const switchPlan = planFor(jdk21new, { planId: "update-switch-plan" });
     const applyToolPlan = vi.fn(async () => ({ planId: "update-switch-plan", stale: false, needsElevation: false }));

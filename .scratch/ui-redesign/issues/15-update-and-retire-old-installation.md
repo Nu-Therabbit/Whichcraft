@@ -27,3 +27,9 @@
 - **Tool scoping:** `updateInstalled` / `updateSwitched` carry `tool`; `selectTool` drops another tool’s pending update, plan, and uninstall; late cross-tool update results are dropped in reduce.
 - **Git / happy-path assertions:** `/check for updates/i`, no Update button; `updateInstallation("java", "21.0.13")`, no `applyToolPlan` before Apply, repoint roots and uninstall offer on success.
 - **Verification:** `npm test -- --run` (478 passed), `npm run lint` (clean).
+
+### Review round 2 (Grok re-review on f5f2fc1)
+
+- **Late uninstall plan:** `uninstallPlanned` and `switchPlanned` carry `tool`; reduce drops results for a non-current panel tool; `confirmUninstall` / `chooseReplacement` guard on `plan.installation.tool`.
+- **Tests:** Shell `does not apply a late java uninstall offer to another tool when planUninstall is in flight`; effects/reduce late-plan cases; stale rebuild asserts `repointProfiles` not called on first stale apply.
+- **Verification:** `npm test -- --run` (486 passed), `npm run lint` (clean).

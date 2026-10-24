@@ -293,20 +293,24 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     case "toggleRepoint":
       return;
 
-    case "planUninstall":
-      dispatch({ type: "uninstallPlanned", plan: await tools.planUninstall(tool, msg.root) });
+    case "planUninstall": {
+      const originTool = tool;
+      const plan = await tools.planUninstall(originTool, msg.root);
+      dispatch({ type: "uninstallPlanned", tool: originTool, plan });
       return;
-    case "chooseReplacement":
+    }
+    case "chooseReplacement": {
       if (!msg.root || !state.uninstall.plan?.needsReplacement) return;
-      {
-        const switchPlan = await tools.planToolApply(tool, msg.root);
-        coordination.registerReviewedPlan(switchPlan);
-        dispatch({ type: "switchPlanned", plan: switchPlan });
-      }
+      const originTool = tool;
+      if (state.uninstall.plan.installation.tool !== originTool) return;
+      const switchPlan = await tools.planToolApply(originTool, msg.root);
+      coordination.registerReviewedPlan(switchPlan);
+      dispatch({ type: "switchPlanned", tool: originTool, plan: switchPlan });
       return;
+    }
     case "confirmUninstall": {
       const plan = state.uninstall.plan;
-      if (!plan || !canConfirmUninstall(state, msg.replacementRoot)) return;
+      if (!plan || plan.installation.tool !== tool || !canConfirmUninstall(state, msg.replacementRoot)) return;
       return withToolsWrite(ctx, "uninstall", "uninstall", async () => {
         const originTool = tool;
         const resultBinding = coordination.beginToolResult(originTool);

@@ -107,6 +107,7 @@ describe("tools effects", () => {
     await h.settle();
     expect(h.state.error).toMatch(/Environment changed/);
     expect(h.state.plan.current?.selected.root).toBe(jdk21new.root);
+    expect(api.repointProfiles).not.toHaveBeenCalled();
     expect(api.planUninstall).not.toHaveBeenCalled();
 
     h.dispatch({ type: "applyPlan" });
@@ -287,6 +288,36 @@ describe("tools effects", () => {
     expect(h.state.uninstall.busy).toBe(false);
     expect(h.state.uninstall.outcome).toBeNull();
     expect(h.state.tool).toBe("node");
+  });
+
+  it("does not keep an uninstall offer on another tool when planUninstall finishes late", async () => {
+    const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });
+    let releasePlan: (value: UninstallPlan) => void = () => {};
+    const planUninstall = vi.fn(
+      () =>
+        new Promise<UninstallPlan>((resolve) => {
+          releasePlan = resolve;
+        }),
+    );
+    const uninstall = vi.fn(async () => ({ status: "removed" as const }));
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async (tool: string) => (tool === "java" ? [jdk21] : [node])),
+      planUninstall,
+      uninstall,
+    });
+    const h = harness(runtime, { tool: "java", installations: [jdk21] });
+    h.dispatch({ type: "planUninstall", root: "C:\\jdk21" });
+    h.dispatch({ type: "selectTool", tool: "node" });
+    releasePlan(uninstallPlanFor(jdk21));
+    await h.settle();
+    expect(h.state.tool).toBe("node");
+    expect(h.state.uninstall.plan).toBeNull();
+    h.dispatch({ type: "selectTool", tool: "java" });
+    await h.settle();
+    expect(h.state.uninstall.plan).toBeNull();
+    h.dispatch({ type: "confirmUninstall", replacementRoot: jdk21new.root, repoint: false });
+    await h.settle();
+    expect(uninstall).not.toHaveBeenCalled();
   });
 
   it("clears plan.building when a late planBuilt arrives for another tool", async () => {

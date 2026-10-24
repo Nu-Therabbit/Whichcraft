@@ -214,10 +214,12 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
         },
       };
     case "uninstallPlanned":
+      if (msg.tool !== s.tool) return { ...s, uninstall: { ...s.uninstall, busy: false } };
       return { ...s, uninstall: { ...s.uninstall, busy: false, plan: msg.plan } };
     case "chooseReplacement":
       return { ...s, uninstall: { ...s.uninstall, switchPlan: null } };
     case "switchPlanned":
+      if (msg.tool !== s.tool) return s;
       return { ...s, uninstall: { ...s.uninstall, switchPlan: msg.plan } };
     case "confirmUninstall":
       return canConfirmUninstall(s, msg.replacementRoot)
