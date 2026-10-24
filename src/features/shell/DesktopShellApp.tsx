@@ -173,9 +173,7 @@ function DesktopShellAppInner() {
           ))}
         </nav>
 
-        <div
-          className={`flex flex-1 flex-col min-w-0 ${activePage === "tools" && overview.detailOpen ? "max-w-[calc(100%-22rem)]" : ""}`}
-        >
+        <div className="flex flex-1 flex-col min-w-0">
           <header className="flex items-center justify-between px-5 py-3 border-b border-rim-subtle shrink-0">
             <h1 className="text-lg font-semibold">{pageTitle}</h1>
             <div className="flex items-center gap-3 text-xs text-dim">
@@ -265,7 +263,7 @@ function DesktopShellAppInner() {
               )}
 
               <div className="flex flex-1 min-h-0">
-                <main className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+                <main className="@container flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-6">
                   <div>
                     <h2 className="text-sm font-semibold">{t("desktop_shell.installed_tools")}</h2>
                     <p className="text-xs text-dim">{t("desktop_shell.effective_subtitle")}</p>
