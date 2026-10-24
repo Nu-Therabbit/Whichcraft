@@ -28,4 +28,4 @@
 - **Shared bootstrap:** Both modes mount under the same `AppServicesProvider` and `WriteCoordinatorProvider` in `main.tsx`.
 - **Tests:** `App.presentation.test.tsx` — default shell vs legacy startup, no flip after query change; `appPresentation.test.ts` — parse/freeze and shell href without `presentation` param.
 - **Packaged / relaunch evidence:** Not produced in this agent environment (`npm run tauri build` not run here). Windows manual checkboxes for 19/20 remain open.
-- **Verification:** `npm test -- --run`, `npm run lint`, `npm run build` (exact counts in commit message).
+- **Verification:** `npm test -- --run` (504 passed), `npm run lint` (clean). `npm run build` failed in this environment on existing `src/features/tools/effects.ts` / `reduce.ts` TS errors (not introduced by cutover). `npm run tauri build` not run.
