@@ -5,7 +5,7 @@ import { ThemeContext } from "../../context/ThemeContext";
 import { useAppServices } from "../../composition/AppServicesContext";
 import { useI18n } from "../../hooks/useI18n";
 import { useTheme } from "../../hooks/useTheme";
-import { legacyPresentationHref, shellNavigationHref } from "../../lib/appPresentation";
+import { shellNavigationHref } from "../../lib/shellNavigation";
 import { Icon } from "../../components/ui/Icon";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
@@ -123,11 +123,6 @@ function DesktopShellAppInner() {
               {label}
             </a>
           ))}
-          <div className="mt-auto px-3 pt-3 border-t border-rim-subtle">
-            <a className="text-xs text-accent hover:underline" href={legacyPresentationHref()}>
-              {t("desktop_shell.open_legacy")}
-            </a>
-          </div>
         </nav>
 
         <div
@@ -389,9 +384,8 @@ function DesktopShellAppInner() {
 
           {activePage === "settings" && <ShellSettingsView />}
 
-          <footer className="shrink-0 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim flex justify-between gap-4">
+          <footer className="shrink-0 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim">
             <span className="truncate">{statusLine}</span>
-            <span className="shrink-0">{t("desktop_shell.preview_presentation")}</span>
           </footer>
         </div>
       </div>

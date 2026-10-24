@@ -46,7 +46,7 @@ export function shellNavigationHref(
   const url = new URL(baseHref);
   const current = readShellNavigation(url.search);
   const next = { ...current, ...patch };
-  url.searchParams.set("presentation", "desktop-shell");
+  url.searchParams.delete("presentation");
   if (next.page === "tools") url.searchParams.delete("page");
   else url.searchParams.set("page", next.page);
   if (next.page === "environment") url.searchParams.set("env", next.envTab);

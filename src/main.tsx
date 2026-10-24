@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { freezeAppPresentation } from "./lib/appPresentation";
 import { AppServicesProvider } from "./composition/AppServicesContext";
 import { WriteCoordinatorProvider } from "./coordination/WriteCoordinatorContext";
 import { ErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
@@ -11,13 +12,15 @@ import "./index.css";
 
 applyThemeToDocument(getInitialTheme());
 
+const appPresentation = freezeAppPresentation(window.location.search);
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
       <UndoProvider>
         <AppServicesProvider>
           <WriteCoordinatorProvider>
-            <App />
+            <App presentation={appPresentation} />
           </WriteCoordinatorProvider>
         </AppServicesProvider>
       </UndoProvider>

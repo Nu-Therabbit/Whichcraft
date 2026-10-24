@@ -8,7 +8,7 @@ import { DesktopShellApp } from "./features/shell/DesktopShellApp";
 import { ShellEnvironmentUiProvider } from "./features/shell/ShellEnvironmentUiContext";
 import { scopesNeedToolsRefresh } from "./features/shell/useShellToolsWrite";
 import { useToolsStore } from "./features/tools/useToolsStore";
-import { readAppPresentation } from "./lib/appPresentation";
+import type { AppPresentation } from "./lib/appPresentation";
 
 function LegacyAppRoot() {
   const services = useAppServices();
@@ -36,8 +36,7 @@ function LegacyAppRoot() {
   );
 }
 
-export default function App() {
-  const presentation = readAppPresentation();
+export default function App({ presentation }: { presentation: AppPresentation }) {
   if (presentation === "desktop-shell") {
     return (
       <EnvironmentProvider>

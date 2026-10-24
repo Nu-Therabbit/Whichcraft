@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import en from "../locales/en.json";
+import { freezeAppPresentation, resetAppPresentationForTests } from "../lib/appPresentation";
 import { UndoProvider } from "../contexts/UndoContext";
 import { api, resetLegacyApiFacadeForTests } from "../api";
 import { splitEnvarlyApi } from "./appServices";
@@ -14,12 +15,14 @@ import { fakeToolsRuntime } from "../features/tools/testHarness";
 
 const TAURI_UNAVAILABLE = "Tauri runtime unavailable. Start Envarly with `npm run dev`.";
 
-function renderProductionApp() {
+function renderProductionApp(search = "") {
+  resetAppPresentationForTests();
+  const presentation = freezeAppPresentation(search);
   return render(
     <UndoProvider>
       <AppServicesProvider>
         <WriteCoordinatorProvider>
-          <App />
+          <App presentation={presentation} />
         </WriteCoordinatorProvider>
       </AppServicesProvider>
     </UndoProvider>,
@@ -29,6 +32,7 @@ function renderProductionApp() {
 describe("production app startup", () => {
   beforeEach(() => {
     resetLegacyApiFacadeForTests();
+    resetAppPresentationForTests();
     configureProductionServices(null);
     vi.mocked(isTauri).mockReturnValue(true);
   });
@@ -65,7 +69,7 @@ describe("production app startup", () => {
 
   it("surfaces the registry error banner when production bootstrap fails", async () => {
     vi.mocked(isTauri).mockReturnValue(false);
-    renderProductionApp();
+    renderProductionApp("?presentation=legacy");
 
     await waitFor(() =>
       expect(
