@@ -4,7 +4,7 @@
 
 **Blocked by:** 08: สลับการติดตั้งผ่านแผนจริงและ Undo; 13: ตั้งค่าที่เก็บและติดตั้งเครื่องมือจาก desktop UI.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / profile journey
 
@@ -33,3 +33,8 @@
 - `plan.source` tracks profile vs inventory vs cleanup; `ShellProfilePlanPanel` shows profile-sourced plans only.
 - Install-missing shell test reaches `planProfile` and `applyToolPlan` after Install the missing.
 - **Verification:** `npm test -- --run` (487 passed), `npm run lint` (clean).
+
+### Review round 2 approval (`5dbae71`)
+
+- Approved. `shows profile apply plan when the first pin is not the default open tool` clicks Apply and expects `applyToolPlan` with `tool: "node"` while the store is still on Java. `rebuilds a stale single-tool profile plan with the plan tool, not the open store tool` expects `planToolApply("node", ...)` and not Java. `install-missing reaches profile plan and applyToolPlan` clicks through to `planProfile` and `applyToolPlan`.
+- The Windows partial-profile / install-missing checkbox stays open and is not a pass.
