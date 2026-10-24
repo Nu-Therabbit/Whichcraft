@@ -133,3 +133,11 @@ Run with the user's approval. `HKCU\Environment` was diffed against a baseline a
   - `%LOCALAPPDATA%\Whichcraft\selection.json` (Java 21.0.12).
   - three undone journals.
 - **Not run:** profiles (create/apply/delete), System/HKLM writes and UAC, other accounts, a clean machine without Envarly, and installing the MSI/NSIS packages.
+
+### Stray Terminal windows (2026-10-24)
+
+- **Fixed `3d5aaf3` — background programs:** version probes, `py`, `vswhere` and mise ran without `CREATE_NO_WINDOW` from a GUI with no console. Windows 11 handed each new console to Windows Terminal, which left an empty window behind; one session left more than a hundred. They now go through `background_command`, and a layer test guards it.
+  - Checked with the release build: startup, three Rescans and a Java switch with Undo added no window.
+- **Fixed `2d74f51` — one window per launch:** `whichcraft.exe` was a console app, so each launch from Explorer left one window. Release `whichcraft.exe` is now a GUI app, and the CLI ships as a console `whichcraft.com` beside it (PATHEXT tries .COM first, so the shell still waits).
+  - Checked: an Explorer launch adds no window; `whichcraft get JAVA_HOME` runs through the .com and waits; `whichcraft` alone opens the GUI and returns in about 0.2 s; `whichcraft.exe get JAVA_HOME` (the installers' path) still prints and exits 0; the MSI contains `whichcraft.com`.
+  - Not run: installing the MSI or NSIS package.
