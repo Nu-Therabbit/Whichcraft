@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { splitEnvarlyApi } from "../../composition/appServices";
@@ -104,6 +104,41 @@ describe("desktop shell environment workspace", () => {
     await user.click(screen.getByRole("tab", { name: /snapshots/i }));
     await user.click(screen.getByRole("tab", { name: /variables/i }));
     expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument();
+  });
+
+  it("offers Run as admin from the Environment toolbar, but not over staged edits", async () => {
+    const restartAsAdmin = vi.fn(async () => {});
+    const getEnvVars = vi.fn(async () => [
+      {
+        name: "STAGE_ME",
+        value: "one",
+        valueKind: "String" as const,
+        scope: "User" as const,
+        listSeparator: null,
+      },
+    ]);
+    const services = splitEnvarlyApi(
+      fakeToolsRuntime({ ...sdkMocks, getEnvVars, restartAsAdmin, isElevated: async () => false }).api,
+    );
+    window.history.replaceState(
+      null,
+      "",
+      shellNavigationHref({ page: "environment", envTab: "variables" }),
+    );
+    renderDesktopShell(services);
+
+    const user = userEvent.setup();
+    const toolbar = await screen.findByRole("toolbar", { name: /environment actions/i });
+    await user.click(within(toolbar).getByRole("button", { name: /run as admin/i }));
+    expect(restartAsAdmin).toHaveBeenCalledTimes(1);
+
+    await user.click(await screen.findByText("STAGE_ME"));
+    const editor = await screen.findByLabelText(/^value$/i);
+    await user.type(editor, "x");
+    await user.click(screen.getByRole("button", { name: /^stage$/i }));
+    await waitFor(() =>
+      expect(within(toolbar).getByRole("button", { name: /run as admin/i })).toBeDisabled(),
+    );
   });
 
   it("blocks tool apply while staged environment edits are pending", async () => {

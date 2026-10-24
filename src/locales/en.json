@@ -255,7 +255,8 @@
     "need_two": "Need at least 2 snapshots to compare",
     "matches_current": "\"{{label}}\" matches current state — nothing to stage.",
     "staged_one": "\"{{label}}\" staged ({{count}} change). Use \"Apply staged\" to commit.",
-    "staged_other": "\"{{label}}\" staged ({{count}} changes). Use \"Apply staged\" to commit."
+    "staged_other": "\"{{label}}\" staged ({{count}} changes). Use \"Apply staged\" to commit.",
+    "scope_note": "A snapshot holds environment variable values only. It does not include tool installation files and is not a Tool Profile; restoring it stages values for you to review."
   },
   "snapshot_preview": {
     "title": "Snapshot preview",
@@ -739,6 +740,7 @@
     "view_source": "Source",
     "view_source_title": "View the source code on GitHub",
     "sdk_incomplete": "Some supplemental inventory could not be loaded.",
-    "this_pc_incomplete": "Some tools could not be scanned; this PC's inventory is incomplete"
+    "this_pc_incomplete": "Some tools could not be scanned; this PC's inventory is incomplete",
+    "restart_admin_pending": "Apply or discard pending edits before restarting as administrator"
   }
 }

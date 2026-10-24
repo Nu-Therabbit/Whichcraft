@@ -250,7 +250,8 @@
     "need_two": "至少需要 2 个快照才能比较",
     "matches_current": "“{{label}}” 与当前状态一致 — 无需暂存。",
     "staged_one": "“{{label}}” 已暂存（{{count}} 项更改）。使用“应用已暂存的更改”以提交。",
-    "staged_other": "“{{label}}” 已暂存（{{count}} 项更改）。使用“应用已暂存的更改”以提交。"
+    "staged_other": "“{{label}}” 已暂存（{{count}} 项更改）。使用“应用已暂存的更改”以提交。",
+    "scope_note": "快照只包含环境变量的值，不包括工具的安装文件，也不是 Tool Profile；还原时会先暂存这些值供你检查。"
   },
   "snapshot_preview": {
     "title": "快照预览",
@@ -530,6 +531,7 @@
     "view_source": "源代码",
     "view_source_title": "在 GitHub 上查看源代码",
     "sdk_incomplete": "部分补充清单无法加载。",
-    "this_pc_incomplete": "部分工具无法扫描，此电脑的清单不完整"
+    "this_pc_incomplete": "部分工具无法扫描，此电脑的清单不完整",
+    "restart_admin_pending": "以管理员身份重启前，请先应用或放弃待处理的更改"
   }
 }

@@ -71,6 +71,7 @@ export function SnapshotPanel({ onStageSnapshot, pendingStagedCount = 0 }: Props
         <div>
           <h2 className="text-sm font-semibold text-fg mb-1">{t("snapshot.title")}</h2>
           <p className="text-xs text-muted">{t("snapshot.description")}</p>
+          <p className="text-xs text-dim mt-1">{t("snapshot.scope_note")}</p>
         </div>
 
         <div className="flex gap-2">

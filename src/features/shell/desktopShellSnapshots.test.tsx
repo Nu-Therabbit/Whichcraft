@@ -150,6 +150,9 @@ describe("desktop shell environment snapshots", () => {
 
     const user = userEvent.setup();
     await waitFor(() => expect(screen.getByText("Before change")).toBeInTheDocument());
+    expect(
+      screen.getByText(/does not include tool installation files and is not a Tool Profile/i),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^save snapshot$/i }));
     await waitFor(() => expect(createSnapshot).toHaveBeenCalled());

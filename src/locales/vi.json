@@ -250,7 +250,8 @@
     "need_two": "Cần ít nhất 2 ảnh chụp nhanh để so sánh",
     "matches_current": "\"{{label}}\" khớp với trạng thái hiện tại — không có gì để xếp hàng.",
     "staged_one": "\"{{label}}\" đã được xếp hàng ({{count}} thay đổi). Dùng \"Áp dụng thay đổi đang chờ\" để lưu.",
-    "staged_other": "\"{{label}}\" đã được xếp hàng ({{count}} thay đổi). Dùng \"Áp dụng thay đổi đang chờ\" để lưu."
+    "staged_other": "\"{{label}}\" đã được xếp hàng ({{count}} thay đổi). Dùng \"Áp dụng thay đổi đang chờ\" để lưu.",
+    "scope_note": "Ảnh chụp nhanh chỉ chứa giá trị biến môi trường. Nó không gồm tệp cài đặt công cụ và không phải Tool Profile; khôi phục sẽ đưa các giá trị vào danh sách chờ để bạn xem lại."
   },
   "snapshot_preview": {
     "title": "Xem trước ảnh chụp nhanh",
@@ -530,6 +531,7 @@
     "view_source": "Mã nguồn",
     "view_source_title": "Xem mã nguồn trên GitHub",
     "sdk_incomplete": "Không tải được một phần danh mục bổ sung.",
-    "this_pc_incomplete": "Không quét được một số công cụ; danh mục của máy này chưa đầy đủ"
+    "this_pc_incomplete": "Không quét được một số công cụ; danh mục của máy này chưa đầy đủ",
+    "restart_admin_pending": "Áp dụng hoặc hủy các thay đổi đang chờ trước khi khởi động lại với quyền quản trị"
   }
 }

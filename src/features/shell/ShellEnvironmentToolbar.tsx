@@ -1,7 +1,9 @@
 import { useI18n } from "../../hooks/useI18n";
 import type { LocalAccount } from "../environment/types";
 import { Button } from "../../components/ui/Button";
+import { Icon } from "../../components/ui/Icon";
 import { Select } from "../../components/ui/Select";
+import { usePlatformApi } from "../../platform/platformApiContext";
 
 interface Props {
   loading: boolean;
@@ -31,6 +33,7 @@ export function ShellEnvironmentToolbar({
   onSelectAccount,
 }: Props) {
   const { t } = useI18n();
+  const platform = usePlatformApi();
   const selectableAccounts = accounts.filter((a) => a.hasProfile);
   const accountOptions = [
     { value: "", label: t("account_picker.my_variables") },
@@ -66,6 +69,28 @@ export function ShellEnvironmentToolbar({
           onValueChange={(value) => onSelectAccount(value || null)}
         />
       )}
+      <span className="ml-auto inline-flex items-center gap-2">
+        {elevated ? (
+          <span className="inline-flex items-center gap-1 text-xs text-success">
+            <Icon name="shield" size={14} />
+            {t("header.administrator")}
+          </span>
+        ) : (
+          // Restarting starts a new process, so staged edits must be applied or discarded first.
+          <Button
+            variant="warn"
+            size="sm"
+            icon="shield"
+            onClick={() => void platform.restartAsAdmin()}
+            disabled={stagedCount > 0}
+            title={
+              stagedCount > 0 ? t("desktop_shell.restart_admin_pending") : t("header.run_as_admin_title")
+            }
+          >
+            {t("header.run_as_admin")}
+          </Button>
+        )}
+      </span>
     </div>
   );
 }
