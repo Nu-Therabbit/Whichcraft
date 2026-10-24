@@ -4,7 +4,7 @@
 
 **Blocked by:** 10: ใช้ Snapshots จริงจาก Environment; 11: นำเข้าและส่งออก Environment ผ่านไฟล์จริง; 12: ตรวจคำสั่ง ผลใน shell และเปิด Terminal จริง; 15: อัปเดตในสายเดิม สลับ และเสนอถอนตัวเก่า; 16: จัดการและ Apply Tool profiles จาก workspace ใหม่; 17: ดูแล PATH, external changes และกู้คืนงานที่ค้าง.
 
-**Status:** resolved
+**Status:** ready-for-human
 
 **Kind:** Integration / candidate cutover
 
@@ -23,7 +23,7 @@
 ### Startup flag (ticket 18)
 
 - **Default:** Desktop shell (`DesktopShellApp`) with no query flag.
-- **Legacy fallback:** Relaunch with `?presentation=legacy` in the URL. `main.tsx` calls `freezeAppPresentation(window.location.search)` once before `ReactDOM.createRoot`; `App` receives the frozen value and does not re-read `location.search`.
+- **Legacy fallback:** Close Whichcraft and relaunch it as `Whichcraft.exe --legacy-ui` (packaged or `cargo`/`tauri` builds); under `npm run dev:web` use `?presentation=legacy`. The Tauri setup hook creates the main window with an initialization script that sets `window.__WHICHCRAFT_PRESENTATION__`; `main.tsx` calls `freezeAppPresentation(location.search, window.__WHICHCRAFT_PRESENTATION__)` once before `ReactDOM.createRoot`, and `App` receives the frozen value.
 - **No live switch:** Removed Legacy UI link and preview footer from `DesktopShellApp`. Change mode by closing the app and relaunching with or without the legacy flag.
 - **Shared bootstrap:** Both modes mount under the same `AppServicesProvider` and `WriteCoordinatorProvider` in `main.tsx`.
 - **Tests:** `App.presentation.test.tsx` — default shell vs legacy startup, no flip after query change; `appPresentation.test.ts` — parse/freeze and shell href without `presentation` param.
@@ -47,3 +47,12 @@
 - Approved. `does not store uninstallPlanned on the current tool when the event omits tool` fails if a Java plan with no `tool` is stored on the Java panel. `does not switch presentation when location.search changes after startup` fails if the freeze is removed. Header language, update notice, and licences are locked by `exposes language, update notice, and licences on the default shell header`. The registry banner test uses `renderProductionApp("")`.
 - Accepted leftover, not a blocker: a Java `switchPlanned` that omits `tool` is rejected in `reduceSwitchPlanned`, but no test fails if that guard falls back to `plan.tool`. The null-switch test only covers a Node event.
 - Packaged build, separate-Envarly, and Windows relaunch checkboxes stay open and are not passes.
+
+### Review follow-up (2026-10-24)
+
+Status moved back from `resolved` to `ready-for-human`: three acceptance boxes above were still open, and they need a packaged build and a real Windows relaunch, which no agent run has produced.
+
+- **Fallback reachable in packaged builds:** `--legacy-ui` is a GUI launch flag (not a CLI subcommand, console detached). Before this, the only switch was `location.search`, which nothing sets in a packaged build. Covered by Rust `commands::launch` tests and `appPresentation.test.ts`; not yet run as a packaged app.
+- **Architecture dependency checks:** `src/architecture.test.ts` adds the frontend side next to the Rust `layer_tests.rs`. Feature policy has no Tauri, transport, demo or barrel imports. The `api` singleton is reached only from composition and the legacy-only `AppHeader`. Shell feature code now opens URLs and checks updates through `PlatformApi`.
+- **Parity rows fixed:** UI-23 (the shell header's Source link), UI-26 (Check in shell and Open terminal in the command bar) and story 5 (inventory status in the status bar).
+- **Still open (human):** `npm run tauri build`, starting both modes from the package, closing and relaunching across modes with persisted state/recovery readback, and running without a separate Envarly. Tickets 19/20 stay blocked on this ticket.
