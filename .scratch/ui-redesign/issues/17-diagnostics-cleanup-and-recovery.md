@@ -4,7 +4,7 @@
 
 **Blocked by:** 08: สลับการติดตั้งผ่านแผนจริงและ Undo; 09: แก้ Environment variables ผ่าน workspace ใหม่.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / maintenance journey
 
@@ -26,3 +26,8 @@
 
 - PATH band includes Undo (`undoLast` via tools write path). Cleanup test asserts no registry write until Apply (`applyToolPlan` only after confirm).
 - Recovery test uses real `RecoveryItem.state` readback, clicks Finish/Roll back, expects `resumeApply` / `rollBackApply`. Registry expansion remains gated by Rust `variables_are_expanded_from_the_registry_before_judging`.
+
+### Review round 1 approval (`a6b8e31`)
+
+- Approved. Undo on the PATH band goes through `undoLast` / `undoLastWhichcraftApply`. The cleanup test fails if a write happens before Apply. The recovery test fails unless Finish and Roll back call `resumeApply("j-1")` and `rollBackApply("j-1")` without opening the inspector.
+- Accepted leftovers, not blockers: the Undo button is inside the pending cleanup plan and unmounts after a successful Apply; the shell recovery fixture does not print `RecoveryItem.current`; the cleanup test no longer asserts the `C:\dup` and `C:\gone` summary rows. The Windows cleanup/Undo/reopen checkbox stays open and is not a pass.
