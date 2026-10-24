@@ -23,3 +23,19 @@ impl crate::whichcraft::ports::installer_catalog::InstallerCatalogSource for NoI
         Ok(Box::new(FakeInstallerCatalog::default()))
     }
 }
+
+/// No uninstall entries, and counts how often the App asks for a fresh read.
+#[derive(Default)]
+pub struct CountingCatalogs {
+    pub invalidations: std::sync::atomic::AtomicUsize,
+}
+
+impl crate::whichcraft::ports::installer_catalog::InstallerCatalogSource for std::sync::Arc<CountingCatalogs> {
+    fn load(&self) -> Result<Box<dyn InstallerCatalog>, EnvarlyError> {
+        Ok(Box::new(FakeInstallerCatalog::default()))
+    }
+
+    fn invalidate(&self) {
+        self.invalidations.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    }
+}

@@ -12,7 +12,7 @@ mod usage_probe;
 
 pub use host::{DeclinesUac, FakeProcessRunner, MachineUninstaller, NoSdks};
 pub use installer_lifecycle::FakeInstallerLifecycle;
-pub use installer_catalog::{FakeInstallerCatalog, NoInstallerEntries};
+pub use installer_catalog::{CountingCatalogs, FakeInstallerCatalog, NoInstallerEntries};
 pub use machine::FakeMachine;
 pub use operation_ids::FakeOperationIds;
 pub use store::MemStore;

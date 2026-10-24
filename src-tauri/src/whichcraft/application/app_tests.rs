@@ -11,7 +11,7 @@ use crate::whichcraft::domain::settings::WhichcraftSettings;
 use crate::whichcraft::domain::uninstall::UninstallOutcome;
 use crate::whichcraft::domain::{ToolInstallation, ToolKind};
 use crate::whichcraft::fake::{
-    DeclinesUac, FakeInstallerLifecycle, FakeMachine, FakeOperationIds, FakeProcessRunner, FakeToolManagers, FakeTools,
+    CountingCatalogs, DeclinesUac, FakeInstallerLifecycle, FakeMachine, FakeOperationIds, FakeProcessRunner, FakeToolManagers, FakeTools,
     FakeUsageProbe, MachineUninstaller, MemStore, NoInstallerEntries, NoSdks,
 };
 
@@ -189,6 +189,21 @@ fn removing_a_managed_install_goes_through_its_store_and_is_journaled() {
     assert_eq!(records[0].started_at, "2025-06-01T12:00:00+00:00");
     assert_eq!(records[0].outcome, Some(UninstallOutcome::Removed));
     assert!(w.app.unfinished_uninstalls().unwrap().is_empty());
+}
+
+#[test]
+fn installs_and_uninstalls_read_the_installer_catalog_afresh() {
+    let mut w = world(r"C:\u", true);
+    let catalogs = Arc::new(CountingCatalogs::default());
+    w.app.catalogs = Box::new(catalogs.clone());
+    let count = || catalogs.invalidations.load(std::sync::atomic::Ordering::SeqCst);
+
+    let root = w.app.install(ToolKind::Node, "22.24.0").unwrap();
+    assert_eq!(count(), 1, "after an install");
+    w.app.list_tools(ToolKind::Node).unwrap();
+    assert_eq!(count(), 1, "listing reuses the snapshot");
+    w.app.uninstall(ToolKind::Node, &root, None).unwrap();
+    assert!(count() >= 3, "before planning the removal and after it: {}", count());
 }
 
 #[test]

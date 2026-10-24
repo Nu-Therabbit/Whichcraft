@@ -12,7 +12,8 @@ use crate::whichcraft::application::app::App;
 use crate::whichcraft::mise::manager::{MiseInstallerLifecycle, MiseToolManagers};
 use crate::whichcraft::persistence::FileStore;
 
-/// Whichcraft on this Windows machine. Every adapter is stateless, so building it is cheap.
+/// Whichcraft on this Windows machine. Building it is cheap: adapters keep no per-instance state
+/// (the installer catalog reuses a short-lived process-wide snapshot of its own).
 pub fn windows_app() -> App<WinregBackend> {
     App {
         env: WinregBackend,

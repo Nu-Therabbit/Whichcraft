@@ -204,7 +204,9 @@ impl<B: EnvBackend> App<B> {
     }
 
     pub fn install(&self, tool: ToolKind, version: &str) -> Result<PathBuf, EnvarlyError> {
-        self.installing_manager()?.install(tool, version)
+        let result = self.installing_manager()?.install(tool, version);
+        self.catalogs.invalidate();
+        result
     }
 
     /// Newer releases in the same line as the installations of `tool` (ticket 16).
@@ -217,9 +219,11 @@ impl<B: EnvBackend> App<B> {
     /// Installs the newer release beside the old one and returns the plan to switch to it.
     pub fn update(&self, tool: ToolKind, version: &str) -> Result<UpdateResult, EnvarlyError> {
         let manager = self.installing_manager()?;
-        install_and_plan(&self.env, &*self.machine, &*self.ids, tool, version, |tool, version| {
+        let result = install_and_plan(&self.env, &*self.machine, &*self.ids, tool, version, |tool, version| {
             manager.install(tool, version)
-        })
+        });
+        self.catalogs.invalidate();
+        result
     }
 
     // --- profiles ---
@@ -266,10 +270,11 @@ impl<B: EnvBackend> App<B> {
             return Err(EnvarlyError::InvalidInput(format!("Whichcraft cannot install: {}", not_installable.join(", "))));
         }
         let manager = self.installing_manager()?;
-        for m in &missing {
-            manager.install(m.pin.tool, m.install_version.as_deref().unwrap_or_default())?;
-        }
-        Ok(())
+        let result = missing
+            .iter()
+            .try_for_each(|m| manager.install(m.pin.tool, m.install_version.as_deref().unwrap_or_default()).map(|_| ()));
+        self.catalogs.invalidate();
+        result
     }
 
     /// Names of the profiles that use this installation, offered for repointing when it is updated (F-5).
@@ -306,6 +311,8 @@ impl<B: EnvBackend> App<B> {
 
     /// Everything the uninstall dialog shows before the user confirms: method, usage, replacement.
     pub fn plan_uninstall(&self, tool: ToolKind, root: &Path) -> Result<UninstallPlan, EnvarlyError> {
+        // How an installation is removed comes from its uninstall entry, so never decide from a reused one.
+        self.catalogs.invalidate();
         let views = self.list_tools(tool)?;
         let view = views
             .iter()
@@ -343,7 +350,7 @@ impl<B: EnvBackend> App<B> {
     /// removes it.
     pub fn uninstall(&self, tool: ToolKind, root: &Path, replacement: Option<&ToolApplyPlan>) -> Result<UninstallOutcome, EnvarlyError> {
         let plan = self.plan_uninstall(tool, root)?;
-        uninstall(
+        let outcome = uninstall(
             &plan,
             replacement,
             &UninstallPorts {
@@ -355,7 +362,9 @@ impl<B: EnvBackend> App<B> {
                 usage: &*self.usage,
                 uninstaller: &*self.uninstaller,
             },
-        )
+        );
+        self.catalogs.invalidate();
+        outcome
     }
 
     pub fn unfinished_uninstalls(&self) -> Result<Vec<UninstallRecord>, EnvarlyError> {

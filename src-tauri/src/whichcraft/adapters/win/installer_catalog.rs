@@ -1,4 +1,6 @@
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use msi::{Expr, Select, Value};
 use winreg::enums::*;
@@ -67,12 +69,66 @@ impl WinInstallerCatalog {
     }
 }
 
-/// The `InstallerCatalogSource` port: a fresh read of the uninstall keys each time.
+/// Reading the uninstall keys and resolving MSI roots takes about 2 s, and one refresh after a
+/// write lists every tool and profile (a dozen loads), so a snapshot is reused this long.
+const CATALOG_REUSE: Duration = Duration::from_secs(15);
+
+/// One process-wide catalog snapshot. Commands build a new `App` per call, so it cannot live there.
+static CATALOG_CACHE: CatalogCache = CatalogCache::new();
+
+/// The `InstallerCatalogSource` port: the uninstall keys, reused for `CATALOG_REUSE` unless
+/// an install or uninstall invalidated them.
 pub struct WinInstallerCatalogs;
 
 impl crate::whichcraft::ports::installer_catalog::InstallerCatalogSource for WinInstallerCatalogs {
     fn load(&self) -> Result<Box<dyn InstallerCatalog>, EnvarlyError> {
-        Ok(Box::new(WinInstallerCatalog::load()?))
+        let catalog = CATALOG_CACHE.get_or_load(Instant::now(), CATALOG_REUSE, || {
+            Ok(Arc::new(WinInstallerCatalog::load()?) as Arc<dyn InstallerCatalog>)
+        })?;
+        Ok(Box::new(SharedCatalog(catalog)))
+    }
+
+    fn invalidate(&self) {
+        CATALOG_CACHE.clear();
+    }
+}
+
+/// A loaded catalog and when it was read. The lock is held while loading, so calls that arrive
+/// together wait for one read instead of each reading the registry.
+struct CatalogCache(Mutex<Option<(Instant, Arc<dyn InstallerCatalog>)>>);
+
+impl CatalogCache {
+    const fn new() -> Self {
+        Self(Mutex::new(None))
+    }
+
+    fn get_or_load(
+        &self,
+        now: Instant,
+        reuse: Duration,
+        load: impl FnOnce() -> Result<Arc<dyn InstallerCatalog>, EnvarlyError>,
+    ) -> Result<Arc<dyn InstallerCatalog>, EnvarlyError> {
+        let mut slot = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some((read_at, catalog)) = slot.as_ref() {
+            if now.saturating_duration_since(*read_at) < reuse {
+                return Ok(catalog.clone());
+            }
+        }
+        let catalog = load()?;
+        *slot = Some((now, catalog.clone()));
+        Ok(catalog)
+    }
+
+    fn clear(&self) {
+        *self.0.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    }
+}
+
+struct SharedCatalog(Arc<dyn InstallerCatalog>);
+
+impl InstallerCatalog for SharedCatalog {
+    fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, EnvarlyError> {
+        self.0.entries_for_root(root)
     }
 }
 
@@ -224,6 +280,49 @@ fn normalize_path(path: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct Empty;
+
+    impl InstallerCatalog for Empty {
+        fn entries_for_root(&self, _root: &Path) -> Result<Vec<CatalogEntry>, EnvarlyError> {
+            Ok(Vec::new())
+        }
+    }
+
+    fn counting_load(loads: &std::cell::Cell<u32>) -> Result<Arc<dyn InstallerCatalog>, EnvarlyError> {
+        loads.set(loads.get() + 1);
+        Ok(Arc::new(Empty))
+    }
+
+    #[test]
+    fn a_catalog_snapshot_is_reused_until_it_is_old_or_invalidated() {
+        let cache = CatalogCache::new();
+        let loads = std::cell::Cell::new(0);
+        let start = Instant::now();
+        let reuse = Duration::from_secs(15);
+
+        cache.get_or_load(start, reuse, || counting_load(&loads)).unwrap();
+        cache.get_or_load(start + Duration::from_secs(14), reuse, || counting_load(&loads)).unwrap();
+        assert_eq!(loads.get(), 1, "a refresh's dozen lookups share one registry read");
+
+        cache.get_or_load(start + Duration::from_secs(15), reuse, || counting_load(&loads)).unwrap();
+        assert_eq!(loads.get(), 2, "an old snapshot is read again");
+
+        cache.clear();
+        cache.get_or_load(start + Duration::from_secs(16), reuse, || counting_load(&loads)).unwrap();
+        assert_eq!(loads.get(), 3, "an install or uninstall forces a fresh read");
+    }
+
+    #[test]
+    fn a_failed_load_is_not_cached() {
+        let cache = CatalogCache::new();
+        let now = Instant::now();
+        let reuse = Duration::from_secs(15);
+        assert!(cache.get_or_load(now, reuse, || Err(EnvarlyError::InvalidInput("registry".into()))).is_err());
+        let loads = std::cell::Cell::new(0);
+        cache.get_or_load(now, reuse, || counting_load(&loads)).unwrap();
+        assert_eq!(loads.get(), 1);
+    }
 
     #[test]
     fn product_code_is_the_first_braced_guid() {
