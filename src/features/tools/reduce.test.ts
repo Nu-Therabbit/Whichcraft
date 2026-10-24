@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { UninstallPlan } from "../../types";
 import { initialToolsState, type ToolsState } from "./model";
+import type { ToolsMsg } from "./messages";
 import { isApplyPlanOutcomeError, reduce } from "./reduce";
 import { inst, planFor } from "./testHarness";
 
@@ -87,6 +88,24 @@ describe("reduce", () => {
     };
     const next = reduce(s, { type: "uninstallPlanned", tool: "java", plan: uninstallPlan() });
     expect(next.uninstall.plan).toBeNull();
+  });
+
+  it("drops uninstallPlanned scoped by installation tool when the event omits tool", () => {
+    const s = {
+      ...initialToolsState(),
+      tool: "node" as const,
+      uninstall: { ...initialToolsState().uninstall, busy: true },
+    };
+    const next = reduce(s, { type: "uninstallPlanned", plan: uninstallPlan() } as ToolsMsg);
+    expect(next.uninstall.plan).toBeNull();
+    expect(next.uninstall.busy).toBe(false);
+  });
+
+  it("does not set uninstall busy when confirming a plan stored for another tool", () => {
+    const s = withUninstall({ switchPlan: planFor(jdk21) });
+    const onNode = { ...s, tool: "node" as const };
+    const next = reduce(onNode, { type: "confirmUninstall", replacementRoot: "C:\\jdk21", repoint: false });
+    expect(next.uninstall.busy).toBe(false);
   });
 
   it("will not confirm an uninstall until the switch for that replacement is on screen", () => {

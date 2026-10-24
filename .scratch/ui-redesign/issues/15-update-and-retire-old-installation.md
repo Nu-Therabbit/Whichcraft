@@ -33,3 +33,10 @@
 - **Late uninstall plan:** `uninstallPlanned` and `switchPlanned` carry `tool`; reduce drops results for a non-current panel tool; `confirmUninstall` / `chooseReplacement` guard on `plan.installation.tool`.
 - **Tests:** Shell `does not apply a late java uninstall offer to another tool when planUninstall is in flight`; effects/reduce late-plan cases; stale rebuild asserts `repointProfiles` not called on first stale apply.
 - **Verification:** `npm test -- --run` (486 passed), `npm run lint` (clean).
+
+### Review round 3 (Grok re-review on 4dbce98)
+
+- **Tool locks:** `uninstallPlanned` / `switchPlanned` bypass the generic reduce tool gate; scope via `msg.tool ?? plan.installation.tool` / `msg.tool ?? plan.tool`. Effects tests assert production dispatches include `tool`; reduce test drops events that omit `tool` on the wrong panel.
+- **In-flight:** Shell late `planUninstall` test releases the pending promise after switching tools, then asserts no cross-tool offer or `uninstall`; effects cover late `chooseReplacement` / `switchPlanned` the same way.
+- **Confirm wedge:** Reduce refuses `confirmUninstall` busy when the stored plan is for another tool; effect clears `uninstall.busy` via `toolMutationDropped` when a mismatched confirm would otherwise stick.
+- **Verification:** `npm test -- --run` (497 passed), `npm run lint` (clean).

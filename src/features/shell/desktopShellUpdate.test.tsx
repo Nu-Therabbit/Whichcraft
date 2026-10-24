@@ -192,15 +192,24 @@ describe("desktop shell update journey", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /^apply plan$/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /^apply plan$/i }));
     await waitFor(() => expect(planUninstall).toHaveBeenCalled());
-    expect(screen.queryByText(/uninstall eclipse adoptium/i)).not.toBeInTheDocument();
+    const lastPlanCall = planUninstall.mock.results.at(-1);
+    expect(lastPlanCall?.type).toBe("return");
+    const planPromise = lastPlanCall?.value as Promise<UninstallPlan>;
 
     await user.click(screen.getByRole("button", { name: /Node\.js/i }));
-    releaseUninstallPlan(uninstallPlanStub());
-    await waitFor(() => expect(screen.queryByText(/uninstall eclipse adoptium/i)).not.toBeInTheDocument());
-    expect(uninstall).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole("complementary", { name: /installation details/i })).toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: /Java/i }));
+    releaseUninstallPlan(uninstallPlanStub());
+    await planPromise;
+
     await waitFor(() => expect(screen.queryByText(/uninstall eclipse adoptium/i)).not.toBeInTheDocument());
+    const uninstallButton = screen.queryByRole("button", { name: /^uninstall$/i });
+    if (uninstallButton) {
+      await user.click(uninstallButton);
+      await waitFor(() => expect(uninstall).not.toHaveBeenCalled());
+    }
+    expect(uninstall).not.toHaveBeenCalled();
+    expect(uninstall).not.toHaveBeenCalledWith("node", "C:\\jdk21", expect.anything());
   });
 
   it("clears java update uninstall offer when switching to another tool", async () => {

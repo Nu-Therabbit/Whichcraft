@@ -24,6 +24,8 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
     !isIntent(msg) &&
     "tool" in msg &&
     msg.type !== "toolMutationDropped" &&
+    msg.type !== "uninstallPlanned" &&
+    msg.type !== "switchPlanned" &&
     msg.tool !== s.tool
   )
     return s;
@@ -229,18 +231,23 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
           defaultReplacement: msg.defaultReplacement ?? null,
         },
       };
-    case "uninstallPlanned":
-      if (msg.tool !== s.tool) return { ...s, uninstall: { ...s.uninstall, busy: false } };
+    case "uninstallPlanned": {
+      const plannedFor = msg.tool ?? msg.plan.installation.tool;
+      if (plannedFor !== s.tool) return { ...s, uninstall: { ...s.uninstall, busy: false } };
       return { ...s, uninstall: { ...s.uninstall, busy: false, plan: msg.plan } };
+    }
     case "chooseReplacement":
       return { ...s, uninstall: { ...s.uninstall, switchPlan: null } };
-    case "switchPlanned":
-      if (msg.tool !== s.tool) return s;
+    case "switchPlanned": {
+      if (!msg.plan) return { ...s, uninstall: { ...s.uninstall, switchPlan: null } };
+      const plannedFor = msg.tool ?? msg.plan.tool;
+      if (plannedFor !== s.tool) return s;
       return { ...s, uninstall: { ...s.uninstall, switchPlan: msg.plan } };
+    }
     case "confirmUninstall":
-      return canConfirmUninstall(s, msg.replacementRoot)
-        ? { ...s, error: null, uninstall: { ...s.uninstall, busy: true } }
-        : s;
+      if (!canConfirmUninstall(s, msg.replacementRoot)) return s;
+      if (s.uninstall.plan && s.uninstall.plan.installation.tool !== s.tool) return s;
+      return { ...s, error: null, uninstall: { ...s.uninstall, busy: true } };
     case "uninstallFinished":
       return {
         ...s,

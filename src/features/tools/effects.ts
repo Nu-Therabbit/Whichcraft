@@ -325,7 +325,13 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     }
     case "confirmUninstall": {
       const plan = state.uninstall.plan;
-      if (!plan || plan.installation.tool !== tool || !canConfirmUninstall(state, msg.replacementRoot)) return;
+      if (!plan || plan.installation.tool !== tool || !canConfirmUninstall(state, msg.replacementRoot)) {
+        const live = ctx.getState();
+        if (plan && plan.installation.tool !== live.tool && live.uninstall.busy) {
+          dispatch({ type: "toolMutationDropped", tool: live.tool });
+        }
+        return;
+      }
       return withToolsWrite(ctx, "uninstall", "uninstall", async () => {
         const originTool = tool;
         const resultBinding = coordination.beginToolResult(originTool);
@@ -339,7 +345,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
             return "cancel";
           }
         }
-        const outcome = await tools.uninstall(tool, plan.installation.root, replacement);
+        const outcome = await tools.uninstall(originTool, plan.installation.root, replacement);
         if (!shouldCommitToolMutation(ctx, originTool, resultBinding, planBinding)) {
           dropToolMutation(ctx, originTool);
           return "cancel";

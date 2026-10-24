@@ -315,6 +315,34 @@ describe("tools effects", () => {
     expect(h.state.tool).toBe("node");
   });
 
+  it("dispatches uninstallPlanned including tool for the tool that started planUninstall", async () => {
+    const { runtime } = fakeToolsRuntime({
+      planUninstall: vi.fn(async () => uninstallPlanFor()),
+    });
+    const h = harness(runtime, { tool: "java", installations: [jdk21] });
+    h.dispatch({ type: "planUninstall", root: "C:\\jdk21" });
+    await h.settle();
+    const planned = h.log.filter((m) => m.type === "uninstallPlanned");
+    expect(planned).toHaveLength(1);
+    expect(planned[0]).toMatchObject({ type: "uninstallPlanned", tool: "java" });
+  });
+
+  it("dispatches switchPlanned including tool for the tool that started chooseReplacement", async () => {
+    const shown = planFor(jdk21new, { planId: "shown" });
+    const { runtime } = fakeToolsRuntime({
+      planUninstall: vi.fn(async () => uninstallPlanFor()),
+      planToolApply: vi.fn(async () => shown),
+    });
+    const h = harness(runtime, { tool: "java", installations: [jdk21] });
+    h.dispatch({ type: "planUninstall", root: "C:\\jdk21" });
+    await h.settle();
+    h.dispatch({ type: "chooseReplacement", root: jdk21new.root });
+    await h.settle();
+    const switched = h.log.filter((m) => m.type === "switchPlanned");
+    expect(switched).toHaveLength(1);
+    expect(switched[0]).toMatchObject({ type: "switchPlanned", tool: "java" });
+  });
+
   it("does not keep an uninstall offer on another tool when planUninstall finishes late", async () => {
     const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });
     let releasePlan: (value: UninstallPlan) => void = () => {};
@@ -343,6 +371,61 @@ describe("tools effects", () => {
     h.dispatch({ type: "confirmUninstall", replacementRoot: jdk21new.root, repoint: false });
     await h.settle();
     expect(uninstall).not.toHaveBeenCalled();
+    const planned = h.log.filter((m) => m.type === "uninstallPlanned");
+    expect(planned.at(-1)).toMatchObject({ tool: "java" });
+  });
+
+  it("does not keep a switch plan on another tool when chooseReplacement finishes late", async () => {
+    const shown = planFor(jdk21new, { planId: "shown" });
+    const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });
+    let releaseApply: (value: typeof shown) => void = () => {};
+    const planToolApply = vi.fn(
+      () =>
+        new Promise<typeof shown>((resolve) => {
+          releaseApply = resolve;
+        }),
+    );
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async (tool: string) => (tool === "java" ? [jdk21] : [node])),
+      planUninstall: vi.fn(async () => uninstallPlanFor()),
+      planToolApply,
+    });
+    const h = harness(runtime, { tool: "java", installations: [jdk21] });
+    h.dispatch({ type: "planUninstall", root: "C:\\jdk21" });
+    await h.settle();
+    h.dispatch({ type: "chooseReplacement", root: jdk21new.root });
+    h.dispatch({ type: "selectTool", tool: "node" });
+    releaseApply(shown);
+    await h.settle();
+    expect(h.state.tool).toBe("node");
+    expect(h.state.uninstall.switchPlan).toBeNull();
+    const switched = h.log.filter((m) => m.type === "switchPlanned");
+    expect(switched.at(-1)).toMatchObject({ tool: "java" });
+  });
+
+  it("does not call uninstall or leave busy when confirming a plan stored for another tool", async () => {
+    const shown = planFor(jdk21new, { planId: "shown" });
+    const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });
+    const uninstall = vi.fn(async () => ({ status: "removed" as const }));
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async () => [node]),
+      uninstall,
+    });
+    const h = harness(runtime, {
+      tool: "node",
+      installations: [node],
+      uninstall: {
+        plan: uninstallPlanFor(jdk21),
+        outcome: null,
+        busy: false,
+        switchPlan: shown,
+        defaultReplacement: null,
+      },
+    });
+    h.dispatch({ type: "confirmUninstall", replacementRoot: jdk21new.root, repoint: false });
+    await h.settle();
+    expect(uninstall).not.toHaveBeenCalled();
+    expect(h.state.uninstall.busy).toBe(false);
   });
 
   it("clears plan.building when a late planBuilt arrives for another tool", async () => {
