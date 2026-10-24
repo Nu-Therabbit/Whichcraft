@@ -90,7 +90,7 @@ Run with the user's approval. `HKCU\Environment` was exported before the run and
   - `contract_install_with_old_mise_and_uninstall_with_the_new_one`
   - `contract_flutter_plugin_stays_on_the_pin_over_time`
   - No mise default folders were created, and no temp stores were left behind.
-- **Finding (pre-existing on main, not a product failure):** run together with `--test-threads=1`, four of these failed with "mise spawn failed: cannot find the path".
+- **Fixed — pre-existing on main:** run together with `--test-threads=1`, four of these failed with "mise spawn failed: cannot find the path".
   - `ensure_mise()` caches the verified `mise.exe` path in a process-wide `OnceLock`, and each contract test uses its own temp data dir. Later tests got a deleted path from the first test.
-  - Run them one per process until the cache is keyed by data dir (and re-checked when the file disappears).
+  - The cache is now reused only for the same data dir while `mise.exe` is still on disk. Covered by a unit test, and all five contract tests pass together in one process (97 s).
 - **Not run:** the full Flutter install (≈1.9 GB), the System/HKLM write through UAC, uninstall to the Recycle Bin, other-user accounts, installers, and a clean machine without Envarly.
