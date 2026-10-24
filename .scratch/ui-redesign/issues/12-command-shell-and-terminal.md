@@ -4,7 +4,7 @@
 
 **Blocked by:** 08: สลับการติดตั้งผ่านแผนจริงและ Undo; 09: แก้ Environment variables ผ่าน workspace ใหม่.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / resolution journey
 
@@ -41,3 +41,7 @@
 - **TS resolve lock:** `resolveCheckCommand does not execute the typed input` mocks both `child_process` and `node:child_process` so a bare spawn import fails.
 - **Note:** Review round 1’s `runCheckCommandLocally` idle assertion was historical; that seam was removed in round 2.
 - **Verification:** `cargo test path_manage` (24 passed), `cargo clippy -- -D warnings` (clean), `npm test -- --run` (497 passed), `npm run lint` (clean).
+
+### Review round 3 approval (`d4bd13d`)
+
+- Approved. Inserting `Command::new` in `check_command_with` fails `check_command_with_resolves_via_path_existence_only`. The scan covers that function body plus the Windows `check_command` and `dir_exists` bodies. Late success and late failure drops stay locked. The Windows Terminal / PowerShell / cmd checkbox stays open and is not a pass.
