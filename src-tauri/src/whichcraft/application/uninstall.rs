@@ -195,20 +195,25 @@ pub fn plan_uninstall(inputs: PlanInputs, usage: &dyn UsageProbe) -> Result<Unin
     })
 }
 
+/// The ports an uninstall reaches: the replacement switch, its record, and the removal itself.
+pub struct UninstallPorts<'a, B: EnvBackend> {
+    pub backend: &'a B,
+    pub store: &'a dyn Store,
+    pub ids: &'a dyn OperationIds,
+    pub machine: &'a dyn Machine,
+    pub elevator: &'a dyn Elevator,
+    pub usage: &'a dyn UsageProbe,
+    pub uninstaller: &'a dyn Uninstaller,
+}
+
 /// Carries out a plan. `replacement` is the apply plan for the chosen replacement when the
 /// installation is selected or effective; it is applied first, through UAC when needed.
-#[allow(clippy::too_many_arguments)]
 pub fn uninstall<B: EnvBackend>(
     plan: &UninstallPlan,
     replacement: Option<&ToolApplyPlan>,
-    backend: &B,
-    store: &dyn Store,
-    ids: &dyn OperationIds,
-    machine: &dyn Machine,
-    elevator: &dyn Elevator,
-    usage: &dyn UsageProbe,
-    uninstaller: &dyn Uninstaller,
+    ports: &UninstallPorts<'_, B>,
 ) -> Result<UninstallOutcome, EnvarlyError> {
+    let UninstallPorts { backend, store, ids, machine, elevator, usage, uninstaller } = *ports;
     let inst = &plan.installation.installation;
     if let UninstallMethod::Refused { reason } = &plan.method {
         return Ok(UninstallOutcome::Blocked { reason: reason.clone() });
@@ -414,7 +419,7 @@ mod tests {
         let plan = plan_uninstall(inputs(&v, &[v.clone()], None), &FakeUsageProbe::default()).unwrap();
         assert_eq!(plan.method, UninstallMethod::RecycleFolder);
         let un = FakeUninstaller::default();
-        let out = uninstall(&plan, None, &MemBackend::new(), &store, &SystemOperationIds, &LocalMachine, &FakeElevator::new(&MemBackend::new(), vec![]), &FakeUsageProbe::default(), &un).unwrap();
+        let out = uninstall(&plan, None, &UninstallPorts { backend: &MemBackend::new(), store: &store, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &FakeElevator::new(&MemBackend::new(), vec![]), usage: &FakeUsageProbe::default(), uninstaller: &un }).unwrap();
         assert_eq!(out, UninstallOutcome::Removed);
         assert_eq!(*un.recycled.lock().unwrap(), vec![v.installation.root.clone()]);
     }
@@ -466,7 +471,7 @@ mod tests {
         let plan = plan_uninstall(inputs(&v, &[v.clone()], None), &busy).unwrap();
         assert!(plan.gradle_hint);
         let un = FakeUninstaller::default();
-        let out = uninstall(&plan, None, &MemBackend::new(), &store, &SystemOperationIds, &LocalMachine, &FakeElevator::new(&MemBackend::new(), vec![]), &busy, &un).unwrap();
+        let out = uninstall(&plan, None, &UninstallPorts { backend: &MemBackend::new(), store: &store, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &FakeElevator::new(&MemBackend::new(), vec![]), usage: &busy, uninstaller: &un }).unwrap();
         assert!(matches!(out, UninstallOutcome::Blocked { reason } if reason.contains("OpenJDK")));
         assert!(un.recycled.lock().unwrap().is_empty());
         assert!(v.installation.root.exists());
@@ -479,7 +484,7 @@ mod tests {
         let v = jdk(dir.path(), "jdk-zip", "21.0.1");
         let locked = FakeUsageProbe { report: UsageReport { processes: vec![], folder_locked: true } };
         let plan = plan_uninstall(inputs(&v, &[v.clone()], None), &FakeUsageProbe::default()).unwrap();
-        let out = uninstall(&plan, None, &MemBackend::new(), &store, &SystemOperationIds, &LocalMachine, &FakeElevator::new(&MemBackend::new(), vec![]), &locked, &FakeUninstaller::default()).unwrap();
+        let out = uninstall(&plan, None, &UninstallPorts { backend: &MemBackend::new(), store: &store, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &FakeElevator::new(&MemBackend::new(), vec![]), usage: &locked, uninstaller: &FakeUninstaller::default() }).unwrap();
         assert!(matches!(out, UninstallOutcome::Blocked { reason } if reason.contains("folder open")));
     }
 
@@ -500,12 +505,12 @@ mod tests {
         let elevator = FakeElevator::new(&backend, vec![]);
         let un = FakeUninstaller::default();
         // Without a replacement nothing happens.
-        let blocked = uninstall(&plan, None, &backend, &store, &SystemOperationIds, &LocalMachine, &elevator, &FakeUsageProbe::default(), &un).unwrap();
+        let blocked = uninstall(&plan, None, &UninstallPorts { backend: &backend, store: &store, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &elevator, usage: &FakeUsageProbe::default(), uninstaller: &un }).unwrap();
         assert!(matches!(blocked, UninstallOutcome::Blocked { .. }));
         assert!(old.installation.root.exists());
 
         let switch = create_tool_plan(&backend, &LocalMachine, &new.installation, &SystemOperationIds).unwrap();
-        let out = uninstall(&plan, Some(&switch), &backend, &store, &SystemOperationIds, &LocalMachine, &elevator, &FakeUsageProbe::default(), &un).unwrap();
+        let out = uninstall(&plan, Some(&switch), &UninstallPorts { backend: &backend, store: &store, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &elevator, usage: &FakeUsageProbe::default(), uninstaller: &un }).unwrap();
         assert_eq!(out, UninstallOutcome::Removed);
         assert_eq!(backend.read_user().unwrap()["JAVA_HOME"].value, new.installation.root.to_string_lossy());
     }
@@ -522,7 +527,7 @@ mod tests {
         let plan = plan_uninstall(inputs(&old, &all, None), &FakeUsageProbe::default()).unwrap();
         let switch = create_tool_plan(&backend, &LocalMachine, &new.installation, &SystemOperationIds).unwrap();
         let elevator = FakeElevator::new(&backend, vec![]);
-        let out = uninstall(&plan, Some(&switch), &backend, &store, &SystemOperationIds, &LocalMachine, &elevator, &FakeUsageProbe::default(), &FakeUninstaller::default()).unwrap();
+        let out = uninstall(&plan, Some(&switch), &UninstallPorts { backend: &backend, store: &store, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &elevator, usage: &FakeUsageProbe::default(), uninstaller: &FakeUninstaller::default() }).unwrap();
         assert_eq!(out, UninstallOutcome::Removed);
 
         let records = store.uninstall_records().unwrap();
@@ -584,7 +589,7 @@ mod tests {
         let v = jdk(dir.path(), "jdk17", "17.0.20.1");
         let plan = plan_uninstall(inputs(&v, &[v.clone()], Some(msi_entry(&v.installation.root))), &FakeUsageProbe::default()).unwrap();
         let backend = MemBackend::new();
-        assert!(uninstall(&plan, None, &backend, &store, &SystemOperationIds, &LocalMachine, &FakeElevator::new(&backend, vec![]), &FakeUsageProbe::default(), &Broken).is_err());
+        assert!(uninstall(&plan, None, &UninstallPorts { backend: &backend, store: &store, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &FakeElevator::new(&backend, vec![]), usage: &FakeUsageProbe::default(), uninstaller: &Broken }).is_err());
         let r = &store.uninstall_records().unwrap()[0];
         assert_eq!(r.outcome, None);
         assert!(r.error.as_deref().unwrap().contains("msiexec"));
@@ -603,7 +608,7 @@ mod tests {
         let plan = plan_uninstall(inputs(&old, &all, Some(msi_entry(&old.installation.root))), &FakeUsageProbe::default()).unwrap();
         let switch = create_tool_plan(&backend, &LocalMachine, &new.installation, &SystemOperationIds).unwrap();
         let un = FakeUninstaller { outcome: RunOutcome::Cancelled, ..Default::default() };
-        let out = uninstall(&plan, Some(&switch), &backend, &store, &SystemOperationIds, &LocalMachine, &FakeElevator::new(&backend, vec![]), &FakeUsageProbe::default(), &un).unwrap();
+        let out = uninstall(&plan, Some(&switch), &UninstallPorts { backend: &backend, store: &store, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &FakeElevator::new(&backend, vec![]), usage: &FakeUsageProbe::default(), uninstaller: &un }).unwrap();
         assert_eq!(out, UninstallOutcome::Cancelled);
         assert!(old.installation.root.exists());
         assert_eq!(backend.read_user().unwrap()["JAVA_HOME"].value, new.installation.root.to_string_lossy());
@@ -616,7 +621,7 @@ mod tests {
         let v = jdk(dir.path(), "jdk17", "17.0.20.1");
         let plan = plan_uninstall(inputs(&v, &[v.clone()], Some(msi_entry(&v.installation.root))), &FakeUsageProbe::default()).unwrap();
         let un = FakeUninstaller { leaves_folder: true, ..Default::default() };
-        let out = uninstall(&plan, None, &MemBackend::new(), &store, &SystemOperationIds, &LocalMachine, &FakeElevator::new(&MemBackend::new(), vec![]), &FakeUsageProbe::default(), &un).unwrap();
+        let out = uninstall(&plan, None, &UninstallPorts { backend: &MemBackend::new(), store: &store, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &FakeElevator::new(&MemBackend::new(), vec![]), usage: &FakeUsageProbe::default(), uninstaller: &un }).unwrap();
         assert_eq!(out, UninstallOutcome::Incomplete { remaining: v.installation.root.clone() });
         assert_eq!(un.ran.lock().unwrap()[0], "msiexec.exe /x {E8C508F2-9798-43CA-84B4-B25D1274380B}");
     }
@@ -643,7 +648,7 @@ mod tests {
         assert_eq!(plan.method, UninstallMethod::Managed { store: store_a.clone(), mise_version: "temurin-21.0.12+101.0.LTS".into() });
         let un = FakeUninstaller::default();
         *un.removes.lock().unwrap() = Some(root.clone());
-        let out = uninstall(&plan, None, &MemBackend::new(), &store, &SystemOperationIds, &LocalMachine, &FakeElevator::new(&MemBackend::new(), vec![]), &FakeUsageProbe::default(), &un).unwrap();
+        let out = uninstall(&plan, None, &UninstallPorts { backend: &MemBackend::new(), store: &store, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &FakeElevator::new(&MemBackend::new(), vec![]), usage: &FakeUsageProbe::default(), uninstaller: &un }).unwrap();
         assert_eq!(out, UninstallOutcome::Removed);
         assert_eq!(un.managed.lock().unwrap()[0].0, store_a);
     }

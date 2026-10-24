@@ -76,7 +76,10 @@ mod tests {
     #[test]
     fn legacy_flag_selects_legacy_presentation() {
         assert_eq!(startup_presentation(&args(&["--legacy-ui"])), "legacy");
-        assert_eq!(startup_presentation(&args(&["--demo", "--legacy-ui"])), "legacy");
+        assert_eq!(
+            startup_presentation(&args(&["--demo", "--legacy-ui"])),
+            "legacy"
+        );
     }
 
     #[test]

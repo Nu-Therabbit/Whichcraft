@@ -19,7 +19,7 @@ use crate::whichcraft::application::tool_inventory::{list_tool_installations, wi
 use crate::whichcraft::application::undo::{undo_last_apply, UndoResult};
 use crate::whichcraft::application::uninstall::{
     dismiss_unfinished_uninstall, plan_uninstall, protected_folders, uninstall, unfinished_uninstalls, PlanInputs,
-    UninstallPlan,
+    UninstallPlan, UninstallPorts,
 };
 use crate::whichcraft::application::update::{install_and_plan, UpdateResult};
 use crate::whichcraft::domain::profiles::{missing_pins, profiles_using, repoint_profiles, MissingPin, ProfileMatchStatus, ToolProfile};
@@ -346,13 +346,15 @@ impl<B: EnvBackend> App<B> {
         uninstall(
             &plan,
             replacement,
-            &self.env,
-            &*self.store,
-            &*self.ids,
-            &*self.machine,
-            &*self.elevator,
-            &*self.usage,
-            &*self.uninstaller,
+            &UninstallPorts {
+                backend: &self.env,
+                store: &*self.store,
+                ids: &*self.ids,
+                machine: &*self.machine,
+                elevator: &*self.elevator,
+                usage: &*self.usage,
+                uninstaller: &*self.uninstaller,
+            },
         )
     }
 

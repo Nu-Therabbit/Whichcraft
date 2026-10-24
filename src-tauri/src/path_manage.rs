@@ -440,7 +440,11 @@ mod tests {
         }
     }
 
-    fn assert_check_command_resolution_is_path_only() {
+    /// Dependency rule, like `application/layer_tests.rs`: Check command must never execute
+    /// what the user typed (spec "Flows and feature parity"), so its resolution code may not
+    /// reach any process-launch API.
+    #[test]
+    fn check_command_resolution_reaches_no_process_launch_api() {
         let path_manage_src = include_str!("path_manage.rs");
         let path_cmds_src = include_str!("commands/path.rs");
         assert_no_process_launch_in(
@@ -459,8 +463,6 @@ mod tests {
 
     #[test]
     fn check_command_with_resolves_via_path_existence_only() {
-        assert_check_command_resolution_is_path_only();
-
         use std::cell::RefCell;
         let checked: RefCell<Vec<String>> = RefCell::new(Vec::new());
         let path_exists = |candidate: &str| {

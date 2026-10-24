@@ -234,7 +234,7 @@ fn mise_status_and_prepare_go_through_the_application_port() {
     assert_eq!(status.download_bytes, 230_000_000);
     assert!(w.app.prepare_mise().unwrap());
 
-    let offline = world_with_lifecycle(FakeInstallerLifecycle::offline("2025.3.6"));
+    let offline = world_with_lifecycle(FakeInstallerLifecycle::offline());
     assert!(offline.app.mise_status().is_err());
     assert!(offline.app.prepare_mise().is_err());
 

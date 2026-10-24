@@ -35,7 +35,7 @@ impl FakeInstallerLifecycle {
         }
     }
 
-    pub fn offline(_version: &str) -> Self {
+    pub fn offline() -> Self {
         Self {
             status: Mutex::new(Err(EnvarlyError::InvalidInput("offline".into()))),
             prepare: Mutex::new(Err(EnvarlyError::InvalidInput("offline".into()))),

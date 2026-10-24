@@ -133,7 +133,7 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
     use crate::whichcraft::domain::InstallerKind;
     use crate::whichcraft::adapters::win::elevation::WinElevator;
     use crate::whichcraft::application::tool_inventory::list_tool_installations;
-    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallPorts};
     use crate::whichcraft::domain::uninstall::{UninstallMethod, UninstallOutcome};
 
     const VERSION: &str = "22.12.0";
@@ -183,7 +183,7 @@ fn contract_mise_installs_node_without_touching_the_environment_and_uninstalls_i
     )
     .unwrap();
     assert!(matches!(&plan.method, UninstallMethod::Managed { mise_version, .. } if mise_version == VERSION), "{:?}", plan.method);
-    let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &SystemOperationIds, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+    let outcome = uninstall(&plan, None, &UninstallPorts { backend: &WinregBackend, store: &FileStore, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &WinElevator, usage: &WinUsageProbe, uninstaller: &WinUninstaller }).unwrap();
     assert_eq!(outcome, UninstallOutcome::Removed);
     assert!(!root.exists());
     assert!(
@@ -229,7 +229,7 @@ fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::adapters::win::elevation::WinElevator;
     use crate::whichcraft::application::tool_inventory::list_tool_installations;
-    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallPorts};
     use crate::whichcraft::domain::uninstall::{UninstallOutcome};
 
     let data = tempfile::tempdir().unwrap();
@@ -273,7 +273,7 @@ fn contract_mise_installs_temurin_python_go_and_uninstalls_them_cleanly() {
             &WinUsageProbe,
         )
         .unwrap();
-        let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &SystemOperationIds, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+        let outcome = uninstall(&plan, None, &UninstallPorts { backend: &WinregBackend, store: &FileStore, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &WinElevator, usage: &WinUsageProbe, uninstaller: &WinUninstaller }).unwrap();
         assert_eq!(outcome, UninstallOutcome::Removed, "{tool:?}");
         let left = leftovers(store.path(), tool);
         println!("  after uninstall: {left:?}");
@@ -300,7 +300,7 @@ fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::adapters::win::elevation::WinElevator;
     use crate::whichcraft::application::tool_inventory::list_tool_installations;
-    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallPorts};
     use crate::whichcraft::domain::uninstall::{UninstallMethod, UninstallOutcome};
 
     let data = tempfile::tempdir().unwrap();
@@ -330,7 +330,7 @@ fn contract_two_install_stores_list_both_and_uninstall_from_the_old_one() {
     .unwrap();
     assert!(matches!(&plan.method, UninstallMethod::Managed { store, .. } if crate::whichcraft::tools::paths_equal(store, a.path())), "{:?}", plan.method);
     assert_eq!(
-        uninstall(&plan, None, &WinregBackend, &FileStore, &SystemOperationIds, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
+        uninstall(&plan, None, &UninstallPorts { backend: &WinregBackend, store: &FileStore, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &WinElevator, usage: &WinUsageProbe, uninstaller: &WinUninstaller }).unwrap(),
         UninstallOutcome::Removed
     );
     assert!(!in_a.exists());
@@ -363,7 +363,7 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
     use crate::whichcraft::persistence::{load_settings, save_settings};
     use crate::whichcraft::adapters::win::elevation::WinElevator;
     use crate::whichcraft::application::tool_inventory::list_tool_installations;
-    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallPorts};
     use crate::whichcraft::domain::uninstall::{UninstallOutcome};
 
     let data = tempfile::tempdir().unwrap();
@@ -416,7 +416,7 @@ fn contract_flutter_installs_through_the_pinned_plugin_and_uninstalls() {
         &WinUsageProbe,
     )
     .unwrap();
-    let outcome = uninstall(&plan, None, &WinregBackend, &FileStore, &SystemOperationIds, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap();
+    let outcome = uninstall(&plan, None, &UninstallPorts { backend: &WinregBackend, store: &FileStore, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &WinElevator, usage: &WinUsageProbe, uninstaller: &WinUninstaller }).unwrap();
     let left = leftovers(store.path(), ToolKind::Flutter);
     println!("after uninstall: {outcome:?} {left:?}");
     assert_eq!(outcome, UninstallOutcome::Removed);
@@ -488,7 +488,7 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
     use crate::whichcraft::persistence::{load_settings, save_settings, whichcraft_data_dir};
     use crate::whichcraft::adapters::win::elevation::WinElevator;
     use crate::whichcraft::application::tool_inventory::list_tool_installations;
-    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs};
+    use crate::whichcraft::application::uninstall::{plan_uninstall, uninstall, PlanInputs, UninstallPorts};
     use crate::whichcraft::domain::uninstall::{UninstallOutcome};
     use sha2::{Digest, Sha256};
 
@@ -540,7 +540,7 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
     )
     .unwrap();
     assert_eq!(
-        uninstall(&plan, None, &WinregBackend, &FileStore, &SystemOperationIds, &LocalMachine, &WinElevator, &WinUsageProbe, &WinUninstaller).unwrap(),
+        uninstall(&plan, None, &UninstallPorts { backend: &WinregBackend, store: &FileStore, ids: &SystemOperationIds, machine: &LocalMachine, elevator: &WinElevator, usage: &WinUsageProbe, uninstaller: &WinUninstaller }).unwrap(),
         UninstallOutcome::Removed
     );
     assert!(!root.exists());
