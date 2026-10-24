@@ -1,14 +1,14 @@
 import { vi } from "vitest";
-import type { EnvarlyApi } from "../../contracts";
-import { createToolsRuntime, splitEnvarlyApi } from "../../composition/appServices";
-import { createIsolatedWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
-import type { WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
-import type { ToolsRuntime } from "./runtime";
-import type { ToolApplyPlan, ToolInstallationRef, ToolInstallationView, ToolKind } from "./types";
-import { runEffects } from "./effects";
-import { isIntent, type ToolsIntent, type ToolsMsg } from "./messages";
-import { initialToolsState, type ToolsState } from "./model";
-import { reduce } from "./reduce";
+import type { EnvarlyApi } from "../contracts";
+import { createToolsRuntime, splitEnvarlyApi } from "../composition/appServices";
+import { createIsolatedWriteCoordinator } from "../coordination/WriteCoordinatorContext";
+import type { WriteCoordinatorFacade } from "../coordination/createWriteCoordinator";
+import type { ToolsRuntime } from "../features/tools/runtime";
+import type { ToolApplyPlan, ToolInstallationRef, ToolInstallationView, ToolKind } from "../features/tools/types";
+import { runEffects } from "../features/tools/effects";
+import { isIntent, type ToolsIntent, type ToolsMsg } from "../features/tools/messages";
+import { initialToolsState, type ToolsState } from "../features/tools/model";
+import { reduce } from "../features/tools/reduce";
 
 /** An API whose every call fails unless a test provides it, so unexpected calls show up. */
 export function fakeApi(overrides: Partial<EnvarlyApi>): EnvarlyApi {

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import type { EnvironmentApi } from "../../features/environment/api";
-import { renderWithEnvironmentApi } from "../../features/environment/renderWithEnvironmentApi";
+import { renderWithEnvironmentApi } from "../../test/renderWithEnvironmentApi";
 import type { StagedChange } from "../../hooks/useStaged";
 import type { EnvVar } from "../../types";
 import { DetailPanel } from "./DetailPanel";

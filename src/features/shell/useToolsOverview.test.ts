@@ -4,7 +4,7 @@ import { createWriteCoordinator } from "../../coordination/createWriteCoordinato
 import type { EnvironmentApi } from "../environment/api";
 import type { ToolsApi } from "../tools/api";
 import type { ToolInstallationView } from "../tools/types";
-import { inst } from "../tools/testHarness";
+import { inst } from "../../test/toolsTestHarness";
 import { OVERVIEW_TOOL_KINDS } from "./overviewTools";
 import { useToolsOverview } from "./useToolsOverview";
 

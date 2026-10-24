@@ -6,7 +6,7 @@ import { AppServicesProvider } from "./composition/AppServicesContext";
 import { configureProductionServices } from "./composition/createProductionServices";
 import { WriteCoordinatorProvider } from "./coordination/WriteCoordinatorContext";
 import { UndoProvider } from "./contexts/UndoContext";
-import { fakeToolsRuntime } from "./features/tools/testHarness";
+import { fakeToolsRuntime } from "./test/toolsTestHarness";
 import en from "./locales/en.json";
 import { freezeAppPresentation, resetAppPresentationForTests } from "./lib/appPresentation";
 import { splitEnvarlyApi } from "./composition/appServices";

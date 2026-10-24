@@ -9,7 +9,7 @@ import { createWriteCoordinator, type WriteCoordinatorFacade } from "../../coord
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import type { InvalidationScope } from "../../coordination/types";
 import type { UninstallPlan } from "../tools/types";
-import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
+import { fakeToolsRuntime, inst, planFor } from "../../test/toolsTestHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 
 const sdkMocks = {

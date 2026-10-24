@@ -11,7 +11,7 @@ import { splitEnvarlyApi } from "./appServices";
 import { WriteCoordinatorProvider } from "../coordination/WriteCoordinatorContext";
 import { AppServicesProvider } from "./AppServicesContext";
 import { configureProductionServices } from "./createProductionServices";
-import { fakeToolsRuntime } from "../features/tools/testHarness";
+import { fakeToolsRuntime } from "../test/toolsTestHarness";
 
 const TAURI_UNAVAILABLE = "Tauri runtime unavailable. Start Envarly with `npm run dev`.";
 

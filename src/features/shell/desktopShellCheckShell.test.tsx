@@ -11,7 +11,7 @@ import { UndoProvider } from "../../contexts/UndoContext";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
-import { fakeToolsRuntime, inst } from "../tools/testHarness";
+import { fakeToolsRuntime, inst } from "../../test/toolsTestHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 import { shellNavigationHref } from "../../lib/shellNavigation";
 

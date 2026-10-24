@@ -6,7 +6,7 @@ import { splitEnvarlyApi } from "../composition/appServices";
 import { AppServicesProvider } from "../composition/AppServicesContext";
 import { configureProductionServices } from "../composition/createProductionServices";
 import { EnvironmentProvider, useEnvironment } from "../features/environment/EnvironmentContext";
-import { fakeToolsRuntime } from "../features/tools/testHarness";
+import { fakeToolsRuntime } from "../test/toolsTestHarness";
 import { WriteCoordinatorProvider, useWriteCoordinator } from "./WriteCoordinatorContext";
 
 function InvalidateToolsButton() {

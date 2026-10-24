@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import type { EnvironmentApi } from "../../features/environment/api";
-import { renderWithEnvironmentApi } from "../../features/environment/renderWithEnvironmentApi";
+import { renderWithEnvironmentApi } from "../../test/renderWithEnvironmentApi";
 import type { CheckCommandResult } from "../../types";
 import { CheckCommandPanel } from "./CheckCommandPanel";
 

@@ -11,7 +11,7 @@ import { ENVIRONMENT_PENDING_TOOLS_MESSAGE } from "./types";
 import { EnvironmentProvider } from "../features/environment/EnvironmentContext";
 import { LegacyEnvironmentView } from "../features/environment/LegacyEnvironmentView";
 import { DesktopShellApp } from "../features/shell/DesktopShellApp";
-import { fakeToolsRuntime, inst, planFor } from "../features/tools/testHarness";
+import { fakeToolsRuntime, inst, planFor } from "../test/toolsTestHarness";
 import { useToolsStore } from "../features/tools/useToolsStore";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -44,7 +44,7 @@ function renderLegacyApp(apiOverrides: Parameters<typeof fakeToolsRuntime>[0]) {
   );
 }
 
-describe("write coordination review", () => {
+describe("write coordination across workspaces", () => {
   beforeEach(() => {
     configureProductionServices(null);
   });

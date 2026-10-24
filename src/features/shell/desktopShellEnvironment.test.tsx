@@ -7,7 +7,7 @@ import { UndoProvider } from "../../contexts/UndoContext";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { ENVIRONMENT_PENDING_TOOLS_MESSAGE, WRITE_BUSY_MESSAGE } from "../../coordination/types";
-import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
+import { fakeToolsRuntime, inst, planFor } from "../../test/toolsTestHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 import { shellNavigationHref } from "../../lib/shellNavigation";
 

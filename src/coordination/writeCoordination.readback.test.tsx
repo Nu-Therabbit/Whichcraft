@@ -10,7 +10,7 @@ import { EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES } from "../features/environment
 import { EnvironmentProvider } from "../features/environment/EnvironmentContext";
 import { LegacyEnvironmentView } from "../features/environment/LegacyEnvironmentView";
 import { DesktopShellApp } from "../features/shell/DesktopShellApp";
-import { fakeToolsRuntime, harness, inst, planFor } from "../features/tools/testHarness";
+import { fakeToolsRuntime, harness, inst, planFor } from "../test/toolsTestHarness";
 import { initialToolsState } from "../features/tools/model";
 import { useToolsStore } from "../features/tools/useToolsStore";
 import { useEnvVars } from "../hooks/useEnvVars";
@@ -61,7 +61,7 @@ function renderLegacyApp(
   };
 }
 
-describe("write coordination review round 2", () => {
+describe("write coordination readback and admission", () => {
   beforeEach(() => {
     configureProductionServices(null);
   });

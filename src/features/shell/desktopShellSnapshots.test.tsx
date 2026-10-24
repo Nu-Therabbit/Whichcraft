@@ -17,7 +17,7 @@ import {
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { shellNavigationHref } from "../../lib/shellNavigation";
 import type { EnvSnapshot, SnapshotMeta } from "../environment/types";
-import { fakeToolsRuntime, inst } from "../tools/testHarness";
+import { fakeToolsRuntime, inst } from "../../test/toolsTestHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 
 const sdkMocks = {

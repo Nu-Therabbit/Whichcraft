@@ -7,7 +7,7 @@ import { splitEnvarlyApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { shellNavigationHref } from "../../lib/shellNavigation";
-import { fakeToolsRuntime, inst } from "../tools/testHarness";
+import { fakeToolsRuntime, inst } from "../../test/toolsTestHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 
 const sdkMocks = {

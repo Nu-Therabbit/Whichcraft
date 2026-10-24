@@ -8,7 +8,7 @@ import { configureProductionServices } from "../../composition/createProductionS
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import type { UninstallPlan } from "../tools/types";
-import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
+import { fakeToolsRuntime, inst, planFor } from "../../test/toolsTestHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 
 const jdk21 = inst("java", "21.0.12", "C:\\jdk21", { effective: true, selected: true });

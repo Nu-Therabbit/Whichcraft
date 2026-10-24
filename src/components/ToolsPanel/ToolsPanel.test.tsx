@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { initialToolsState, type ToolsState } from "../../features/tools/model";
-import { inst } from "../../features/tools/testHarness";
+import { inst } from "../../test/toolsTestHarness";
 import { ToolsPanel } from "./ToolsPanel";
 
 function stateWith(extra: Partial<ToolsState> = {}): ToolsState {

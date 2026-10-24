@@ -8,7 +8,7 @@ import { configureProductionServices } from "../../composition/createProductionS
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { shellNavigationHref } from "../../lib/shellNavigation";
-import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
+import { fakeToolsRuntime, inst, planFor } from "../../test/toolsTestHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 
 const sdkMocks = {

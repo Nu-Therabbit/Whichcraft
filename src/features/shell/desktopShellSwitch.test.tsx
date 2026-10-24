@@ -7,7 +7,7 @@ import { UndoProvider } from "../../contexts/UndoContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { createWriteCoordinator, type WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
-import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
+import { fakeToolsRuntime, inst, planFor } from "../../test/toolsTestHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 
 const sdkMocks = {

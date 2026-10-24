@@ -7,7 +7,7 @@ import { createToolsRuntime, splitEnvarlyApi } from "../../composition/appServic
 import { WriteCoordinatorProvider, useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import { AppServicesProvider, useAppServices } from "../../composition/AppServicesContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
-import { fakeToolsRuntime } from "../tools/testHarness";
+import { fakeToolsRuntime } from "../../test/toolsTestHarness";
 import { useToolsStore } from "../tools/useToolsStore";
 import { EnvironmentProvider } from "./EnvironmentContext";
 import { LegacyEnvironmentView } from "./LegacyEnvironmentView";

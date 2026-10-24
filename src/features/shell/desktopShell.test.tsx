@@ -6,7 +6,7 @@ import { UndoProvider } from "../../contexts/UndoContext";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { splitEnvarlyApi } from "../../composition/appServices";
-import { inst, fakeToolsRuntime } from "../tools/testHarness";
+import { inst, fakeToolsRuntime } from "../../test/toolsTestHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 
 describe("desktop shell read journey", () => {

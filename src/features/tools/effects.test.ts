@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ENVIRONMENT_PENDING_TOOLS_MESSAGE } from "../../coordination/types";
 import type { UninstallPlan } from "./types";
 import { initialToolsState } from "./model";
-import { fakeToolsRuntime, harness, inst, planFor } from "./testHarness";
+import { fakeToolsRuntime, harness, inst, planFor } from "../../test/toolsTestHarness";
 
 const jdk21 = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
 const jdk21new = inst("java", "21.0.13", "C:\\store\\jdk21.0.13", { managed: true });

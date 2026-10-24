@@ -8,7 +8,7 @@ import { UndoProvider } from "../../contexts/UndoContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { splitEnvarlyApi } from "../../composition/appServices";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
-import { fakeToolsRuntime } from "../tools/testHarness";
+import { fakeToolsRuntime } from "../../test/toolsTestHarness";
 import en from "../../locales/en.json";
 import { DesktopShellApp } from "./DesktopShellApp";
 

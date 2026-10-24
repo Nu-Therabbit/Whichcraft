@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppServices } from "./contracts";
 import { api, resetLegacyApiFacadeForTests, wireLegacyApiFacade } from "./api";
 import { configureProductionServices } from "./composition/createProductionServices";
-import { fakeApi } from "./features/tools/testHarness";
+import { fakeApi } from "./test/toolsTestHarness";
 import type { ApplyProgressEvent } from "./types";
 
 vi.mock("@tauri-apps/api/event", () => ({

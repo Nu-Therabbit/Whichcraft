@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { splitEnvarlyApi } from "./appServices";
-import { fakeToolsRuntime, inst } from "../features/tools/testHarness";
+import { fakeToolsRuntime, inst } from "../test/toolsTestHarness";
 import { useToolsStore } from "../features/tools/useToolsStore";
 import { AppServicesProvider } from "./AppServicesContext";
 

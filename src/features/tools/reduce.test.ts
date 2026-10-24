@@ -3,7 +3,7 @@ import type { UninstallPlan } from "./types";
 import { initialToolsState, type ToolsState } from "./model";
 import type { ToolsMsg } from "./messages";
 import { isApplyPlanOutcomeError, reduce } from "./reduce";
-import { inst, planFor } from "./testHarness";
+import { inst, planFor } from "../../test/toolsTestHarness";
 
 const jdk17 = inst("java", "17.0.20.1", "C:\\jdk17", { selected: true });
 const jdk21 = inst("java", "21.0.12", "C:\\jdk21");
