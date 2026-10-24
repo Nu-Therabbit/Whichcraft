@@ -1,11 +1,10 @@
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { api } from "../../api";
 import { LANGUAGE_OPTIONS, useI18n } from "../../hooks/useI18n";
 import type { LocalAccount, UpdateInfo } from "../../types";
 import { Button } from "../ui/Button";
 import { Dropdown } from "../ui/Dropdown";
 import { Icon } from "../ui/Icon";
 import { IconButton } from "../ui/IconButton";
+import { usePlatformApi } from "../../platform/platformApiContext";
 import { Select } from "../ui/Select";
 
 interface AppHeaderProps {
@@ -54,6 +53,7 @@ export function AppHeader({
   accountSwitchDisabled,
 }: AppHeaderProps) {
   const { t, language, setLanguage } = useI18n();
+  const platform = usePlatformApi();
   // Accounts without a profile have no Environment key to load — offering
   // them here would be a guaranteed-to-fail dead end.
   const selectableAccounts = accounts.filter((a) => a.hasProfile);
@@ -125,7 +125,7 @@ export function AppHeader({
             variant="warn"
             size="sm"
             icon="shield"
-            onClick={() => api.restartAsAdmin()}
+            onClick={() => platform.restartAsAdmin()}
             title={t("header.run_as_admin_title")}
           >
             {t("header.run_as_admin")}
@@ -142,7 +142,7 @@ export function AppHeader({
             variant="ghost"
             size="xs"
             icon="info"
-            onClick={() => openUrl(updateInfo.url)}
+            onClick={() => platform.openUrl(updateInfo.url)}
             title={t("header.update_available_title")}
             className="text-accent"
           >
@@ -186,7 +186,7 @@ export function AppHeader({
             size="xs"
             icon="external-link"
             iconPosition="right"
-            onClick={() => openUrl("https://github.com/iray-tno/envarly")}
+            onClick={() => platform.openUrl("https://github.com/iray-tno/envarly")}
             title="View on GitHub"
           >
             GitHub
@@ -268,7 +268,7 @@ export function AppHeader({
             </button>
             <button
               type="button"
-              onClick={() => openUrl("https://github.com/iray-tno/envarly")}
+              onClick={() => platform.openUrl("https://github.com/iray-tno/envarly")}
               className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-muted hover:bg-hover hover:text-fg"
             >
               <Icon name="external-link" size={14} />

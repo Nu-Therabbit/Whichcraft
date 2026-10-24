@@ -3,10 +3,9 @@
  * architecture.md "Migration order and completion evidence"). Counterpart of the Rust
  * `application/layer_tests.rs`. Test-only code (tests, stories, `src/test/`) is exempt.
  *
- * Inherited Envarly presentation in `components/`, `hooks/` and `lib/` is the documented
- * exception: it may still use native dialog/opener plugins and the compatibility barrel
- * until ticket 21 removes the legacy UI. The one remaining singleton consumer is the
- * legacy-only `AppHeader`.
+ * Inherited Envarly presentation in `components/`, `hooks/` and `lib/` may still import the
+ * compatibility barrel until ticket 21 removes the legacy UI; it reaches native dialogs, the
+ * browser and elevation only through the injected PlatformApi, like feature code.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -20,11 +19,11 @@ const POLICY_DIRS = ["features", "coordination", "contracts", "platform", "share
 const SINGLETON = path.join(SRC, "api.ts");
 const BARREL = path.join(SRC, "types.ts");
 
-/** Modules allowed to reach the legacy `api` singleton. */
-const SINGLETON_ALLOWED = [path.join(SRC, "composition"), path.join(SRC, "components", "AppHeader", "AppHeader.tsx")];
+/** Modules allowed to reach the legacy `api` singleton: composition wires it for old callers. */
+const SINGLETON_ALLOWED = [path.join(SRC, "composition")];
 
-/** Modules allowed to import `@tauri-apps/api` (invoke/listen/isTauri): adapters and launch construction. */
-const TAURI_CORE_ALLOWED = [
+/** Modules allowed to import any `@tauri-apps/*` package: adapters and launch construction. */
+const TAURI_ALLOWED = [
   path.join(SRC, "transport"),
   path.join(SRC, "composition"),
   path.join(SRC, "demo"),
@@ -99,7 +98,7 @@ describe("frontend architecture", () => {
     expect(violations(policyFiles, (_spec, resolved) => resolved === BARREL)).toEqual([]);
   });
 
-  it("reaches the legacy api singleton only from composition and the legacy header", () => {
+  it("reaches the legacy api singleton only from composition", () => {
     const found = violations(
       allFiles.filter((file) => file !== SINGLETON && !within(file, SINGLETON_ALLOWED)),
       (_spec, resolved) => resolved === SINGLETON,
@@ -107,10 +106,10 @@ describe("frontend architecture", () => {
     expect(found).toEqual([]);
   });
 
-  it("calls Tauri invoke/listen only from adapters and launch construction", () => {
+  it("uses Tauri (invoke, listen, dialog and opener plugins) only from adapters and launch construction", () => {
     const found = violations(
-      allFiles.filter((file) => !within(file, TAURI_CORE_ALLOWED)),
-      (spec) => spec === "@tauri-apps/api" || spec.startsWith("@tauri-apps/api/"),
+      allFiles.filter((file) => !within(file, TAURI_ALLOWED)),
+      (spec) => spec.startsWith("@tauri-apps/"),
     );
     expect(found).toEqual([]);
   });

@@ -1,15 +1,17 @@
-import { open } from "@tauri-apps/plugin-dialog";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import type { EnvironmentApi } from "../../features/environment/api";
+import { fakePlatformApi } from "../../test/fakePlatformApi";
 import { renderWithEnvironmentApi } from "../../test/renderWithEnvironmentApi";
 import type { EnvVar } from "../../types";
 import { PathEditor } from "./PathEditor";
 
 function renderEditor(ui: React.ReactElement) {
-  return renderWithEnvironmentApi(ui, api as unknown as EnvironmentApi);
+  return renderWithEnvironmentApi(ui, api as unknown as EnvironmentApi, {
+    platform: fakePlatformApi({ pickFolder }),
+  });
 }
 
 vi.mock("../../api", () => ({
@@ -18,9 +20,7 @@ vi.mock("../../api", () => ({
   },
 }));
 
-vi.mock("@tauri-apps/plugin-dialog", () => ({
-  open: vi.fn(),
-}));
+const pickFolder = vi.fn<(defaultPath?: string) => Promise<string | null>>();
 
 const A = "/usr/local/bin";
 const B = "/nonexistent/path";
@@ -31,7 +31,7 @@ describe("PathEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.validatePaths).mockResolvedValue([true, false, true]);
-    vi.mocked(open).mockResolvedValue(null);
+    pickFolder.mockResolvedValue(null);
   });
 
   it("renders each path entry", () => {
@@ -70,32 +70,24 @@ describe("PathEditor", () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     vi.mocked(api.validatePaths).mockResolvedValue([true, true]);
-    vi.mocked(open).mockResolvedValue("/selected/new");
+    pickFolder.mockResolvedValue("/selected/new");
     renderEditor(<PathEditor rawValue={A} onChange={onChange} />);
 
     await user.click(screen.getByRole("button", { name: /browse folder to add/i }));
 
-    expect(open).toHaveBeenCalledWith({
-      directory: true,
-      multiple: false,
-      defaultPath: undefined,
-    });
+    expect(pickFolder).toHaveBeenCalledWith(undefined);
     expect(onChange).toHaveBeenCalledWith(`${A};/selected/new`);
   });
 
   it("uses the typed new entry value as the folder picker default path", async () => {
     const user = userEvent.setup();
-    vi.mocked(open).mockResolvedValue(null);
+    pickFolder.mockResolvedValue(null);
     renderEditor(<PathEditor rawValue={A} onChange={vi.fn()} />);
 
     await user.type(screen.getByPlaceholderText(/add new path/i), "/partial");
     await user.click(screen.getByRole("button", { name: /browse folder to add/i }));
 
-    expect(open).toHaveBeenCalledWith({
-      directory: true,
-      multiple: false,
-      defaultPath: "/partial",
-    });
+    expect(pickFolder).toHaveBeenCalledWith("/partial");
   });
 
   it("adds entry on Enter key", async () => {
@@ -121,16 +113,12 @@ describe("PathEditor", () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     vi.mocked(api.validatePaths).mockResolvedValue([true, true]);
-    vi.mocked(open).mockResolvedValue("/selected/bin");
+    pickFolder.mockResolvedValue("/selected/bin");
     renderEditor(<PathEditor rawValue={`${A};${C}`} onChange={onChange} />);
 
     await user.click(screen.getByRole("button", { name: `Browse folder for ${A}` }));
 
-    expect(open).toHaveBeenCalledWith({
-      directory: true,
-      multiple: false,
-      defaultPath: A,
-    });
+    expect(pickFolder).toHaveBeenCalledWith(A);
     expect(onChange).toHaveBeenCalledWith(`/selected/bin;${C}`);
   });
 

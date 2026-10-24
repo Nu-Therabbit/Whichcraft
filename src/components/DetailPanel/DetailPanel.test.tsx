@@ -1,9 +1,9 @@
-import { open } from "@tauri-apps/plugin-dialog";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import type { EnvironmentApi } from "../../features/environment/api";
+import { fakePlatformApi } from "../../test/fakePlatformApi";
 import { renderWithEnvironmentApi } from "../../test/renderWithEnvironmentApi";
 import type { StagedChange } from "../../hooks/useStaged";
 import type { EnvVar } from "../../types";
@@ -13,9 +13,7 @@ vi.mock("../../api", () => ({
   api: { validatePaths: vi.fn() },
 }));
 
-vi.mock("@tauri-apps/plugin-dialog", () => ({
-  open: vi.fn(),
-}));
+const pickFolder = vi.fn<(defaultPath?: string) => Promise<string | null>>();
 
 const noStaged = new Map<string, StagedChange>();
 
@@ -48,7 +46,7 @@ describe("DetailPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.validatePaths).mockResolvedValue([true]);
-    vi.mocked(open).mockResolvedValue(null);
+    pickFolder.mockResolvedValue(null);
   });
 
   const render_ = (variable: EnvVar | null, elevated = true, staged = noStaged) =>
@@ -64,6 +62,7 @@ describe("DetailPanel", () => {
         onUnstage={onUnstage}
       />,
       api as unknown as EnvironmentApi,
+      { platform: fakePlatformApi({ pickFolder }) },
     );
 
   it("shows empty state when no variable selected", () => {
@@ -107,17 +106,13 @@ describe("DetailPanel", () => {
 
   it("updates the value with the selected folder path", async () => {
     const user = userEvent.setup();
-    vi.mocked(open).mockResolvedValue("C:\\Program Files\\Java\\jdk-22");
+    pickFolder.mockResolvedValue("C:\\Program Files\\Java\\jdk-22");
     render_(simpleVar);
 
     await user.click(screen.getByRole("button", { name: /browse for folder/i }));
     await user.click(screen.getByRole("button", { name: /^stage$/i }));
 
-    expect(open).toHaveBeenCalledWith({
-      directory: true,
-      multiple: false,
-      defaultPath: simpleVar.value,
-    });
+    expect(pickFolder).toHaveBeenCalledWith(simpleVar.value);
     expect(onStage).toHaveBeenCalledWith("JAVA_HOME", "User", "C:\\Program Files\\Java\\jdk-22");
   });
 

@@ -1,8 +1,8 @@
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { useMemo, useState } from "react";
 import packageMetadata from "../../../package.json";
 import licensesData from "../../assets/oss-licenses.json";
 import { cn } from "../../lib/cn";
+import { usePlatformApi } from "../../platform/platformApiContext";
 import { Icon } from "../ui/Icon";
 
 type TopTab = "envarly" | "third-party";
@@ -61,12 +61,13 @@ function licenseColor(license: string): string {
 }
 
 function RepoLink({ url }: { url: string }) {
+  const platform = usePlatformApi();
   if (!url) return null;
   const display = url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
   return (
     <button
       type="button"
-      onClick={() => openUrl(url)}
+      onClick={() => platform.openUrl(url)}
       title={display}
       className="inline-flex items-center gap-1 text-dim hover:text-accent transition-colors text-[11px] font-mono whitespace-nowrap focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
     >
@@ -77,6 +78,7 @@ function RepoLink({ url }: { url: string }) {
 }
 
 export function LicensesPanel() {
+  const platform = usePlatformApi();
   const [tab, setTab] = useState<TopTab>("envarly");
   const [eco, setEco] = useState<Ecosystem>("npm");
   const [query, setQuery] = useState("");
@@ -130,7 +132,7 @@ export function LicensesPanel() {
             </div>
             <button
               type="button"
-              onClick={() => openUrl("https://github.com/iray-tno/envarly")}
+              onClick={() => platform.openUrl("https://github.com/iray-tno/envarly")}
               className="inline-flex items-center gap-1 text-[11px] font-mono text-dim hover:text-accent transition-colors shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
             >
               <span>github.com/iray-tno/envarly</span>

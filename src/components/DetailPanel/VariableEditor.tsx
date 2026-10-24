@@ -1,9 +1,9 @@
-import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../../hooks/useI18n";
 import type { EnvVar } from "../../types";
 import { ListEditor } from "../ListEditor/ListEditor";
 import { PathEditor } from "../PathEditor/PathEditor";
 import { IconButton } from "../ui/IconButton";
+import { usePlatformApi } from "../../platform/platformApiContext";
 import { Textarea } from "../ui/Textarea";
 
 const PATH_NAME_SUFFIXES = ["_HOME", "_ROOT", "_PATH", "_DIR", "_DIRECTORY"];
@@ -61,16 +61,13 @@ export function VariableEditor({
   onBeforeReorder,
 }: VariableEditorProps) {
   const { t } = useI18n();
+  const platform = usePlatformApi();
   const showFolderPicker =
     !readOnly && separator === null && looksLikeSinglePath(variable.name, value);
 
   const handleBrowseFolder = async () => {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      defaultPath: value.trim() || undefined,
-    });
-    if (typeof selected === "string") {
+    const selected = await platform.pickFolder(value.trim() || undefined);
+    if (selected !== null) {
       onChange(selected);
     }
   };

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { AppServices } from "../contracts";
 import { AppLoading } from "../components/AppLoading/AppLoading";
+import { PlatformApiProvider } from "../platform/platformApiContext";
 import { createProductionServices } from "./createProductionServices";
 import { createUnavailableEnvarlyApi, splitEnvarlyApi } from "./appServices";
 import { syncLegacyApiFacade } from "./wireAppServices";
@@ -52,7 +53,11 @@ export function AppServicesProvider({
     return <AppLoading />;
   }
 
-  return <AppServicesContext.Provider value={services}>{children}</AppServicesContext.Provider>;
+  return (
+    <AppServicesContext.Provider value={services}>
+      <PlatformApiProvider platform={services.platform}>{children}</PlatformApiProvider>
+    </AppServicesContext.Provider>
+  );
 }
 
 export function useAppServices(): AppServices {

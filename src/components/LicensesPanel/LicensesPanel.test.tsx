@@ -1,11 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import packageMetadata from "../../../package.json";
+import { PlatformApiProvider } from "../../platform/platformApiContext";
+import { fakePlatformApi } from "../../test/fakePlatformApi";
 import { LicensesPanel } from "./LicensesPanel";
 
 describe("LicensesPanel", () => {
   it("shows the current product version and copyright years", () => {
-    render(<LicensesPanel />);
+    render(
+      <PlatformApiProvider platform={fakePlatformApi()}>
+        <LicensesPanel />
+      </PlatformApiProvider>,
+    );
 
     expect(screen.getByText(`Version ${packageMetadata.version}`)).toBeInTheDocument();
     expect(screen.getByText(/Copyright © 2025-2026 iray-tno/)).toBeInTheDocument();

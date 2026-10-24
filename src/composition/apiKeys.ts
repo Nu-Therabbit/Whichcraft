@@ -79,6 +79,7 @@ export const PLATFORM_API_KEYS = [
   "restartAsAdmin",
   "checkForUpdate",
   "openUrl",
+  "pickFolder",
   "openFolder",
   "openTerminal",
   "getWhichcraftSettings",

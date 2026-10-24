@@ -1,9 +1,9 @@
-import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
 import { lintPathValue } from "../../lib/lint";
 import type { EnvVar } from "../../types";
 import type { ListEntry } from "../ListEditor/SortableListEditor";
+import { usePlatformApi } from "../../platform/platformApiContext";
 import { SortableListEditor } from "../ListEditor/SortableListEditor";
 
 export type PathEntry = ListEntry;
@@ -32,6 +32,7 @@ export function PathEditor({
   onBeforeReorder,
 }: Props) {
   const environment = useEnvironmentApi();
+  const platform = usePlatformApi();
   const [entries, setEntries] = useState<ListEntry[]>([]);
   // Linting operates on `lintedValue`, updated on blur or when external changes occur while unfocused.
   const [lintedValue, setLintedValue] = useState(rawValue);
@@ -89,23 +90,10 @@ export function PathEditor({
     onChange(next.map((e) => e.value).join(";"));
   };
 
-  const handleBrowseEntry = async (entry: ListEntry) => {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      defaultPath: entry.value.trim() || undefined,
-    });
-    return typeof selected === "string" ? selected : null;
-  };
+  const handleBrowseEntry = (entry: ListEntry) => platform.pickFolder(entry.value.trim() || undefined);
 
-  const handleBrowseNewEntry = async (currentValue: string) => {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      defaultPath: currentValue.trim() || undefined,
-    });
-    return typeof selected === "string" ? selected : null;
-  };
+  const handleBrowseNewEntry = (currentValue: string) =>
+    platform.pickFolder(currentValue.trim() || undefined);
 
   const invalidCount = entries.filter((e) => e.exists === false).length;
 
