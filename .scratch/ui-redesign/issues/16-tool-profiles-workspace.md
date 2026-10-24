@@ -4,12 +4,19 @@
 
 **Blocked by:** 08: สลับการติดตั้งผ่านแผนจริงและ Undo; 13: ตั้งค่าที่เก็บและติดตั้งเครื่องมือจาก desktop UI.
 
-**Status:** ready-for-agent
+**Status:** in-review
 
 **Kind:** Vertical slice / profile journey
 
-- [ ] ใช้ saved profiles จริงและ vendor/full-version pins ตาม domain; ไม่มี active-profile mode หรือการใช้ Snapshot แทน Tool Profile.
-- [ ] create/delete/review/apply กระทบเฉพาะ tools ที่รวมในโปรไฟล์ และสถานะ match ถูกรีเฟรชหลัง external/environment changes.
-- [ ] กรณี unavailable/missing pins ไม่ Apply ครึ่งชุด; install-missing/store confirmation/download information ใช้ workflow จริงและไม่เสนอสิ่งที่ติดตั้งผ่านแอปไม่ได้.
-- [ ] รู้จัก affected profile/repoint outcomes จาก update/uninstall โดยไม่ทำ duplicate write; conflicting Environment staging ใช้ coordinator เดิม.
+- [x] ใช้ saved profiles จริงและ vendor/full-version pins ตาม domain; ไม่มี active-profile mode หรือการใช้ Snapshot แทน Tool Profile.
+- [x] create/delete/review/apply กระทบเฉพาะ tools ที่รวมในโปรไฟล์ และสถานะ match ถูกรีเฟรชหลัง external/environment changes.
+- [x] กรณี unavailable/missing pins ไม่ Apply ครึ่งชุด; install-missing/store confirmation/download information ใช้ workflow จริงและไม่เสนอสิ่งที่ติดตั้งผ่านแอปไม่ได้.
+- [x] รู้จัก affected profile/repoint outcomes จาก update/uninstall โดยไม่ทำ duplicate write; conflicting Environment staging ใช้ coordinator เดิม.
 - [ ] ทดสอบ app/API partial profile, duplicate-installation pin, unavailable/missing และ profile refresh พร้อมลอง partial-profile/install-missing ที่ควบคุมได้บน Windows.
+
+## Comments
+
+- **Shell:** Nav `Tool profiles` opens `ShellProfilesWorkspace` with production `ProfilesSection` wired to app-lifetime tools store (`loadProfiles`, create/delete/apply/check-missing/install-missing).
+- **Refresh:** Profile match reload follows ticket 10 `tools-profiles` invalidation on environment/tool readback.
+- **Tests:** `desktopShellProfiles.test.tsx` (partial apply via `planProfile`, refresh after invalidation, unavailable → install-missing gate).
+- **Windows manual (partial profile / install-missing):** Not run in this agent environment. Leave checkbox open.

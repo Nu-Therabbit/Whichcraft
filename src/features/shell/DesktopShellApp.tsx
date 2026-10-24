@@ -21,7 +21,9 @@ import {
 } from "./toolOverviewModel";
 import { ShellInstallationDetail } from "./ShellInstallationDetail";
 import { ShellEnvironmentWorkspace } from "./ShellEnvironmentWorkspace";
+import { ShellAppRecoveryBanner } from "./ShellAppRecoveryBanner";
 import { ShellInstallView } from "./ShellInstallView";
+import { ShellProfilesWorkspace } from "./ShellProfilesWorkspace";
 import { ShellSettingsView } from "./ShellSettingsView";
 import { ShellToolsProvider, useShellTools } from "./ShellToolsContext";
 import { useShellNavigation } from "./useShellNavigation";
@@ -83,14 +85,13 @@ function DesktopShellAppInner() {
   const pageTitle =
     activePage === "environment"
       ? t("desktop_shell.page_environment")
-      : activePage === "settings"
-        ? t("desktop_shell.page_settings")
-        : t("desktop_shell.page_tools");
+      : activePage === "profiles"
+        ? t("desktop_shell.page_profiles")
+        : activePage === "settings"
+          ? t("desktop_shell.page_settings")
+          : t("desktop_shell.page_tools");
 
-  const navHref = (id: ShellPage) => {
-    if (id === "profiles") return legacyPresentationHref();
-    return shellNavigationHref({ page: id });
-  };
+  const navHref = (id: ShellPage) => shellNavigationHref({ page: id });
 
   return (
     <ThemeContext.Provider value={theme}>
@@ -111,7 +112,6 @@ function DesktopShellAppInner() {
               key={id}
               href={navHref(id)}
               onClick={(e) => {
-                if (id === "profiles") return;
                 e.preventDefault();
                 goPage(id);
               }}
@@ -121,11 +121,6 @@ function DesktopShellAppInner() {
               aria-current={activePage === id ? "page" : undefined}
             >
               {label}
-              {id === "profiles" && (
-                <span className="block text-[11px] text-dim font-normal">
-                  {t("desktop_shell.legacy_entry")}
-                </span>
-              )}
             </a>
           ))}
           <div className="mt-auto px-3 pt-3 border-t border-rim-subtle">
@@ -152,6 +147,8 @@ function DesktopShellAppInner() {
               />
             </div>
           </header>
+
+          <ShellAppRecoveryBanner />
 
           {activePage === "tools" && (
             <>
@@ -387,6 +384,8 @@ function DesktopShellAppInner() {
           {activePage === "environment" && (
             <ShellEnvironmentWorkspace envTab={envTab} onEnvTab={goEnvTab} />
           )}
+
+          {activePage === "profiles" && <ShellProfilesWorkspace />}
 
           {activePage === "settings" && <ShellSettingsView />}
 
