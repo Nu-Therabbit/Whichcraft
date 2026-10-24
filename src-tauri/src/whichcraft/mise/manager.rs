@@ -365,19 +365,28 @@ const PINNED: MisePins<'static> = MisePins {
 };
 
 fn ensure_mise() -> Result<PathBuf, EnvarlyError> {
-    // Hashing 230 MB costs about a second, so check once per process.
-    static VERIFIED: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    // Hashing 230 MB costs about a second, so a verified copy is reused.
+    static VERIFIED: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
     // The background fetch and an install started meanwhile must not download twice.
     static DOWNLOAD: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    if let Some(exe) = VERIFIED.get() {
-        return Ok(exe.clone());
+    let dir = mise_store_dir()?;
+    if let Some(exe) = reusable_mise(&VERIFIED, &dir) {
+        return Ok(exe);
     }
     let _guard = DOWNLOAD.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some(exe) = VERIFIED.get() {
-        return Ok(exe.clone());
+    if let Some(exe) = reusable_mise(&VERIFIED, &dir) {
+        return Ok(exe);
     }
-    let exe = verified_mise(&mise_store_dir()?, &PINNED, download_mise_zip)?;
-    Ok(VERIFIED.get_or_init(|| exe).clone())
+    let exe = verified_mise(&dir, &PINNED, download_mise_zip)?;
+    *VERIFIED.lock().unwrap_or_else(|e| e.into_inner()) = Some(exe.clone());
+    Ok(exe)
+}
+
+/// The cached verified mise.exe, but only for the current data dir and while it is still on
+/// disk: a changed data dir or a deleted copy is verified (and fetched) again.
+fn reusable_mise(cache: &std::sync::Mutex<Option<PathBuf>>, dir: &Path) -> Option<PathBuf> {
+    let cached = cache.lock().unwrap_or_else(|e| e.into_inner()).clone()?;
+    (cached.parent() == Some(dir) && cached.is_file()).then_some(cached)
 }
 
 fn mise_root() -> Result<PathBuf, EnvarlyError> {
@@ -507,6 +516,21 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("mise.exe"), version).unwrap();
         dir.join("mise.exe")
+    }
+
+    #[test]
+    fn a_verified_mise_is_reused_only_for_its_own_data_dir_while_on_disk() {
+        let first = tempfile::tempdir().unwrap();
+        let second = tempfile::tempdir().unwrap();
+        let exe = put_mise(first.path(), "2026.1.0");
+        let dir = exe.parent().unwrap().to_path_buf();
+        let cache = std::sync::Mutex::new(Some(exe.clone()));
+
+        assert_eq!(reusable_mise(&cache, &dir), Some(exe.clone()));
+        assert_eq!(reusable_mise(&cache, &second.path().join("2026.1.0")), None, "another data dir");
+        std::fs::remove_file(&exe).unwrap();
+        assert_eq!(reusable_mise(&cache, &dir), None, "deleted since it was verified");
+        assert_eq!(reusable_mise(&std::sync::Mutex::new(None), &dir), None);
     }
 
     #[test]
