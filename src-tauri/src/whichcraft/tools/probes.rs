@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::domain::ToolInstallation;
+use crate::whichcraft::tools::background::background_command;
 use crate::whichcraft::tools::fs_util::is_reparse_point;
 
 pub fn probe_tool_root(tool: ToolKind, root: &Path, managed: bool) -> Option<ToolInstallation> {
@@ -136,7 +137,7 @@ fn probe_git(root: &Path, managed: bool) -> Option<ToolInstallation> {
 }
 
 fn run_version_cmd(exe: &Path, args: &[&str]) -> Option<String> {
-    let output = std::process::Command::new(exe).args(args).output().ok()?;
+    let output = background_command(exe).args(args).output().ok()?;
     if !output.status.success() && output.stdout.is_empty() {
         return None;
     }

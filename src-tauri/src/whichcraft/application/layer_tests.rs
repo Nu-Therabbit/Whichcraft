@@ -107,6 +107,46 @@ mod tests {
         }
     }
 
+    fn production_rust_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+        for entry in std::fs::read_dir(dir).unwrap().flatten() {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().into_owned();
+            // Test-only modules: declared under #[cfg(test)] by their parents.
+            if name == "fake" || name == "contract" || name.ends_with("_tests.rs") {
+                continue;
+            }
+            if path.is_dir() {
+                production_rust_files(&path, out);
+            } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+                out.push(path);
+            }
+        }
+    }
+
+    /// The GUI has no console, so a console program started without `CREATE_NO_WINDOW` pops up a
+    /// window (a Windows Terminal window on Windows 11) — once per version probe. Background
+    /// programs go through `background_command`; only the process adapter opens windows on purpose
+    /// (the user's terminal, Explorer).
+    #[test]
+    fn background_programs_start_without_a_window() {
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let allowed = ["tools/background.rs", "adapters/win/process.rs"];
+        let mut files = Vec::new();
+        production_rust_files(&src, &mut files);
+        assert!(files.len() > 50, "scanned {} files", files.len());
+        for path in files {
+            let shown = path.to_string_lossy().replace('\\', "/");
+            if allowed.iter().any(|a| shown.ends_with(a)) {
+                continue;
+            }
+            let code = production_rust_source(&std::fs::read_to_string(&path).unwrap());
+            assert!(
+                !code.contains("Command::new("),
+                "{shown} starts a program directly; use tools::background::background_command"
+            );
+        }
+    }
+
     #[test]
     fn production_scan_keeps_code_after_an_early_test_only_module() {
         let sample = r#"

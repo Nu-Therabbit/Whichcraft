@@ -3,12 +3,13 @@
 use std::path::PathBuf;
 
 use crate::whichcraft::ports::sdk::SdkProbe;
+use crate::whichcraft::tools::background::background_command;
 
 pub struct WinSdkProbe;
 
 impl SdkProbe for WinSdkProbe {
     fn py_launcher_list(&self) -> Option<String> {
-        let out = std::process::Command::new("py").arg("-0p").output().ok()?;
+        let out = background_command("py").arg("-0p").output().ok()?;
         Some(String::from_utf8_lossy(&out.stdout).into_owned())
     }
 
@@ -27,7 +28,7 @@ impl SdkProbe for WinSdkProbe {
         if !exe.is_file() {
             return None;
         }
-        let out = std::process::Command::new(exe)
+        let out = background_command(exe)
             .args(["-products", "*", "-format", "json", "-utf8"])
             .output()
             .ok()?;

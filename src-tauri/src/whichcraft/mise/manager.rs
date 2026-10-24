@@ -1,11 +1,11 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use sha2::{Digest, Sha256};
 
 use crate::error::EnvarlyError;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::mise::pins::{self, MISE_VERSION};
+use crate::whichcraft::tools::background::background_command;
 use crate::whichcraft::ports::tool_manager::{ToolManager};
 use crate::whichcraft::domain::versions::{RemoteVersion};
 
@@ -54,7 +54,7 @@ impl ProcessMiseRunner {
 impl MiseRunner for ProcessMiseRunner {
     fn run(&self, args: &[&str]) -> Result<MiseOutput, EnvarlyError> {
         let exe = if self.maintenance { maintenance_mise()? } else { ensure_mise()? };
-        let mut cmd = Command::new(&exe);
+        let mut cmd = background_command(&exe);
         for (k, v) in mise_env(&self.store) {
             cmd.env(k, v);
         }
