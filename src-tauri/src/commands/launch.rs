@@ -60,6 +60,43 @@ pub fn presentation_init_script(presentation: &str) -> String {
     format!("window.__WHICHCRAFT_PRESENTATION__ = {presentation:?};")
 }
 
+/// The launch arguments as one Windows command line, so a relaunch (such as Run as admin)
+/// keeps `--legacy-ui` and demo flags. Quoted the way `CommandLineToArgvW` reads them back.
+pub fn relaunch_parameters(args: &[String]) -> String {
+    args.iter()
+        .map(|arg| quote_windows_arg(arg))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn quote_windows_arg(arg: &str) -> String {
+    if !arg.is_empty() && !arg.contains([' ', '\t', '"']) {
+        return arg.to_string();
+    }
+    let mut quoted = String::from('"');
+    let mut backslashes = 0usize;
+    for ch in arg.chars() {
+        match ch {
+            '\\' => backslashes += 1,
+            '"' => {
+                // Backslashes before a quote are doubled, plus one to escape the quote.
+                quoted.extend(std::iter::repeat_n('\\', backslashes * 2 + 1));
+                quoted.push('"');
+                backslashes = 0;
+            }
+            _ => {
+                quoted.extend(std::iter::repeat_n('\\', backslashes));
+                quoted.push(ch);
+                backslashes = 0;
+            }
+        }
+    }
+    // Trailing backslashes are doubled so the closing quote stays a quote.
+    quoted.extend(std::iter::repeat_n('\\', backslashes * 2));
+    quoted.push('"');
+    quoted
+}
+
 #[tauri::command]
 pub fn read_demo_fixture(path: String) -> Result<String, EnvarlyError> {
     std::fs::read_to_string(path).map_err(EnvarlyError::Registry)
@@ -94,6 +131,24 @@ mod tests {
         assert!(is_gui_launch(&args(&["--legacy-ui"])));
         assert!(is_gui_launch(&args(&["--demo-fixture", "fixture.json"])));
         assert!(!is_gui_launch(&args(&["list"])));
+    }
+
+    #[test]
+    fn relaunch_keeps_launch_flags_and_quotes_paths() {
+        assert_eq!(relaunch_parameters(&args(&[])), "");
+        assert_eq!(relaunch_parameters(&args(&["--legacy-ui"])), "--legacy-ui");
+        assert_eq!(
+            relaunch_parameters(&args(&["--demo-fixture", r"C:\My Fixtures\a.json"])),
+            r#"--demo-fixture "C:\My Fixtures\a.json""#
+        );
+        assert_eq!(
+            relaunch_parameters(&args(&[r"C:\dir with space\"])),
+            r#""C:\dir with space\\""#
+        );
+        assert_eq!(
+            relaunch_parameters(&args(&[r#"say "hi""#])),
+            r#""say \"hi\"""#
+        );
     }
 
     #[test]

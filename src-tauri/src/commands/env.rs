@@ -96,6 +96,12 @@ pub fn restart_as_admin(app: tauri::AppHandle) -> Result<(), EnvarlyError> {
             .chain(Some(0))
             .collect();
         let verb: Vec<u16> = "runas\0".encode_utf16().collect();
+        // Relaunch with the same flags, so a --legacy-ui session stays in the legacy UI.
+        let launch_args: Vec<String> = std::env::args().skip(1).collect();
+        let params_wide: Vec<u16> = crate::commands::launch::relaunch_parameters(&launch_args)
+            .encode_utf16()
+            .chain(Some(0))
+            .collect();
         // ShellExecuteW with "runas" verb triggers UAC elevation directly
         // without needing an intermediate PowerShell process.
         let result = unsafe {
@@ -103,7 +109,7 @@ pub fn restart_as_admin(app: tauri::AppHandle) -> Result<(), EnvarlyError> {
                 std::ptr::null_mut(),
                 verb.as_ptr(),
                 exe_wide.as_ptr(),
-                std::ptr::null(),
+                params_wide.as_ptr(),
                 std::ptr::null(),
                 windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL,
             )
