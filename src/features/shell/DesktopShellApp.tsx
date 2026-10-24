@@ -1,3 +1,4 @@
+import { PythonLauncherInfo, SdkInventory } from "../../components/ToolsPanel/SupplementalInfo";
 import { useEffect, useMemo } from "react";
 import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import { scopesNeedShellRescan } from "../../coordination/scopeGroups";
@@ -177,9 +178,9 @@ function DesktopShellAppInner() {
           <header className="flex items-center justify-between px-5 py-3 border-b border-rim-subtle shrink-0">
             <h1 className="text-lg font-semibold">{pageTitle}</h1>
             <div className="flex items-center gap-3 text-xs text-dim">
-              <span className="inline-flex items-center gap-1" title={t(thisPc.titleKey)}>
+              <span role="status" className="inline-flex items-center gap-1 max-w-56" title={t(thisPc.titleKey)}>
                 <span className={`size-2 rounded-full ${thisPc.dot}`} aria-hidden />
-                {t("desktop_shell.this_pc")}
+                <span>{t("desktop_shell.this_pc")}<span className="block text-[10px]">{t(thisPc.titleKey)}</span></span>
               </span>
               <ShellAppHeaderActions />
             </div>
@@ -213,7 +214,7 @@ function DesktopShellAppInner() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => void overview.rescan()}
+                  onClick={() => void overview.rescan(true).then(() => shellTools.dispatch({ type: "refresh" }))}
                   disabled={overview.rescanning}
                 >
                   <Icon name="refresh" size={14} />
@@ -257,7 +258,7 @@ function DesktopShellAppInner() {
               )}
 
               {overview.accountError && (
-                <div className="px-5 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0">
+                <div role="alert" className="px-5 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0">
                   {overview.accountError}
                 </div>
               )}
@@ -274,6 +275,8 @@ function DesktopShellAppInner() {
                       const slice = overview.byTool[tool];
                       const meta = TOOL_DISPLAY[tool];
                       const effective = pickEffective(slice.installations);
+                      const health = toolHealth(slice);
+                      const healthLabel = t({ loading: "desktop_shell.loading", error: "desktop_shell.load_error", missing: "desktop_shell.not_detected", mismatch: "desktop_shell.selection_mismatch", ok: "tools.effective" }[health]);
                       return (
                         <button
                           type="button"
@@ -284,7 +287,7 @@ function DesktopShellAppInner() {
                               : "border-rim-subtle bg-panel hover:bg-hover"
                           }`}
                           aria-pressed={overview.selectedTool === tool}
-                          aria-label={
+                          aria-label={`${
                             slice.loading
                               ? t("desktop_shell.tool_card_scanning_label", { name: meta.title })
                               : t("desktop_shell.tool_card_label", {
@@ -292,7 +295,7 @@ function DesktopShellAppInner() {
                                   effective: formatInstallationLabel(effective),
                                   count: slice.installations.length,
                                 })
-                          }
+                          }. ${healthLabel}`}
                           onClick={() => overview.selectTool(tool)}
                         >
                           <ToolMark tool={tool} small />
@@ -300,7 +303,7 @@ function DesktopShellAppInner() {
                             <strong className="block text-sm">{meta.title}</strong>
                             <span className="flex items-center gap-1 text-xs font-mono text-muted">
                               <span
-                                className={`size-1.5 rounded-full ${TOOL_HEALTH_DOT[toolHealth(slice)]}`}
+                                className={`size-1.5 rounded-full ${TOOL_HEALTH_DOT[health]}`}
                                 aria-hidden
                               />
                               {slice.loading
@@ -315,6 +318,7 @@ function DesktopShellAppInner() {
                                   : t("desktop_shell.installation_count", {
                                       count: slice.installations.length,
                                     })}
+                              {health === "mismatch" ? ` · ${healthLabel}` : ""}
                               {meta.switchOnly ? ` · ${t("desktop_shell.switch_only")}` : ""}
                               {unavailableCount(slice.installations) > 0
                                 ? ` · ${t("desktop_shell.unavailable_count", {
@@ -344,48 +348,12 @@ function DesktopShellAppInner() {
                     {overview.sdkIncomplete && (
                       <p className="text-xs text-warn">{t("desktop_shell.sdk_incomplete")}</p>
                     )}
-                    <ul className="space-y-2">
-                      {overview.sdks.android && (
-                        <li className="rounded border border-rim-subtle px-3 py-2 text-sm bg-panel">
-                          <strong>{t("desktop_shell.android_sdk")}</strong>
-                          <div className="text-xs text-dim mt-1 font-mono break-all">
-                            {overview.sdks.android.sdkRoot ?? t("desktop_shell.not_detected")}
-                          </div>
-                        </li>
-                      )}
-                      {overview.sdks.msvc && (
-                        <li className="rounded border border-rim-subtle px-3 py-2 text-sm bg-panel">
-                          <strong>{t("desktop_shell.msvc")}</strong>
-                          <div className="text-xs text-dim mt-1">
-                            {overview.sdks.msvc.instances.length > 0
-                              ? overview.sdks.msvc.instances
-                                  .map((item) => item.displayName)
-                                  .join(", ")
-                              : t("desktop_shell.not_detected")}
-                          </div>
-                        </li>
-                      )}
-                      {overview.pythonInfo && (
-                        <li className="rounded border border-rim-subtle px-3 py-2 text-sm bg-panel">
-                          <strong>{t("desktop_shell.python_supplemental")}</strong>
-                          <div className="text-xs text-dim mt-1 space-y-1">
-                            {overview.pythonInfo.launcherLines.length > 0 && (
-                              <div>
-                                {t("desktop_shell.python_launcher")}:{" "}
-                                <code className="font-mono">
-                                  {overview.pythonInfo.launcherLines.map((line) => line.path).join("; ")}
-                                </code>
-                              </div>
-                            )}
-                            {overview.pythonInfo.storeStub && (
-                              <div>
-                                {t("desktop_shell.python_store_stub")}: {overview.pythonInfo.storeStub}
-                              </div>
-                            )}
-                          </div>
-                        </li>
-                      )}
-                    </ul>
+                    {!overview.sdkLoading && (
+                      <div className="space-y-4 mt-2">
+                        <SdkInventory android={overview.sdks.android} msvc={overview.sdks.msvc} />
+                        {overview.pythonInfo && <PythonLauncherInfo info={overview.pythonInfo} />}
+                      </div>
+                    )}
                   </section>
                 </main>
 
@@ -443,7 +411,7 @@ function DesktopShellAppInner() {
 
           {activePage === "settings" && <ShellSettingsView />}
 
-          <footer className="shrink-0 flex items-center gap-4 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim">
+          <footer aria-live="polite" aria-atomic="true" className="shrink-0 flex items-center gap-4 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim">
             <span className="truncate">{statusLine}</span>
             <span className="ml-auto truncate">{inventoryLine}</span>
           </footer>

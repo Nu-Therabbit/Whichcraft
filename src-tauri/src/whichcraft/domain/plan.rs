@@ -2,6 +2,9 @@
 
 use serde::{Deserialize, Serialize};
 
+pub const RESTART_LIMITATION_NOTICE: &str =
+    "Programs already running and IDEs with their own SDK settings will not pick up these changes until restarted.";
+
 use crate::model::{EnvSnapshot, EnvValueKind, VarScope};
 
 use super::installation::ToolInstallation;

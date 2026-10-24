@@ -1,3 +1,4 @@
+use crate::whichcraft::domain::plan::RESTART_LIMITATION_NOTICE;
 
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
@@ -152,9 +153,7 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
         tool: installation.tool,
         requires_uac,
         warnings,
-        limitation_notice:
-            "Programs already running and IDEs with their own SDK settings will not pick up these changes until restarted."
-                .into(),
+        limitation_notice: RESTART_LIMITATION_NOTICE.into(),
         user_diffs,
         system_diffs,
         baseline,

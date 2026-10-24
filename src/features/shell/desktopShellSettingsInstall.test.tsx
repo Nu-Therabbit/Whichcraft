@@ -53,10 +53,79 @@ function renderDesktopShell(services: ReturnType<typeof splitEnvarlyApi>) {
   );
 }
 
+function renderInstallShell(overrides: Parameters<typeof fakeToolsRuntime>[0]) {
+  window.history.replaceState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
+  return renderDesktopShell(splitEnvarlyApi(fakeToolsRuntime({
+    ...sdkMocks,
+    getMiseStatus: async () => ({ version: "2026.10.1", present: true, downloadBytes: 1, oldVersions: [], fetching: false }),
+    ...overrides,
+  }).api));
+}
+
 describe("desktop shell settings and install", () => {
   beforeEach(() => {
     configureProductionServices(null);
     window.history.replaceState(null, "", "/?presentation=desktop-shell");
+  });
+
+  it("loads the new tool's catalogue and clears the previous version selection", async () => {
+    const listRemoteVersions = vi.fn(async (tool: string) => [
+      { version: tool === "node" ? "22.0.1" : "3.13.0", downloadBytes: null, installBytes: null },
+    ]);
+    const installManaged = vi.fn(async () => "installed");
+    renderInstallShell({ listRemoteVersions, installManaged, downloadSize: async () => ({ downloadBytes: null, diskBytes: null }) });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Node\.js,/i }));
+    await user.click(await screen.findByRole("button", { name: "22.0.1" }));
+    expect(screen.getByRole("button", { name: /^install$/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^Python,/i }));
+    await screen.findByRole("button", { name: "3.13.0" });
+    expect(listRemoteVersions).toHaveBeenCalledWith("python");
+    expect(screen.queryByRole("button", { name: "22.0.1" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^install$/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "3.13.0" }));
+    await user.click(screen.getByRole("button", { name: /^install$/i }));
+    await waitFor(() => expect(installManaged).toHaveBeenCalledWith("python", "3.13.0"));
+  });
+
+  it("loads the new catalogue while an old tool's request is still pending", async () => {
+    let finishNode!: (versions: { version: string; downloadBytes: null; installBytes: null }[]) => void;
+    const nodeVersions = new Promise<{ version: string; downloadBytes: null; installBytes: null }[]>((resolve) => { finishNode = resolve; });
+    const listRemoteVersions = vi.fn(async (tool: string) => tool === "node" ? nodeVersions : [
+      { version: "3.13.0", downloadBytes: null, installBytes: null },
+    ]);
+    renderInstallShell({ listRemoteVersions });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Node\.js,/i }));
+    await waitFor(() => expect(listRemoteVersions).toHaveBeenCalledWith("node"));
+    await user.click(screen.getByRole("button", { name: /^Python,/i }));
+    await screen.findByRole("button", { name: "3.13.0" });
+    finishNode([{ version: "22.0.1", downloadBytes: null, installBytes: null }]);
+    await waitFor(() => expect(listRemoteVersions).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("button", { name: "3.13.0" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "22.0.1" })).not.toBeInTheDocument();
+  });
+
+  it("keeps catalogue failures visible across navigation and retries only on Refresh", async () => {
+    const listRemoteVersions = vi.fn()
+      .mockRejectedValueOnce(new Error("catalogue offline"))
+      .mockResolvedValue([{ version: "22.0.1", downloadBytes: null, installBytes: null }]);
+    renderInstallShell({ listRemoteVersions });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Node\.js,/i }));
+    const region = await screen.findByRole("region", { name: /install node/i });
+    expect(await within(region).findByRole("alert")).toHaveTextContent("catalogue offline");
+    await user.click(screen.getByRole("link", { name: /^settings/i }));
+    await user.click(screen.getByRole("link", { name: /^developer tools/i }));
+    await user.click(screen.getByRole("button", { name: /install tool/i }));
+    const reopened = await screen.findByRole("region", { name: /install node/i });
+    expect(within(reopened).getByRole("alert")).toHaveTextContent("catalogue offline");
+    expect(listRemoteVersions).toHaveBeenCalledTimes(1);
+    await user.click(within(reopened).getByRole("button", { name: /^refresh$/i }));
+    await within(reopened).findByRole("button", { name: "22.0.1" });
+    expect(listRemoteVersions).toHaveBeenCalledTimes(2);
+    expect(within(reopened).queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("saves scan roots and terminal, keeps previous store history, and lists old-store installs after store change", async () => {

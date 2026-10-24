@@ -31,8 +31,8 @@ async fn off_main<T: Send + 'static>(
 }
 
 #[tauri::command]
-pub async fn whichcraft_list_tools(tool: ToolKind) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
-    off_main(move || windows_app().list_tools(tool)).await
+pub async fn whichcraft_list_tools(tool: ToolKind, refresh_catalog: Option<bool>) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
+    off_main(move || windows_app().list_tools_with_refresh(tool, refresh_catalog.unwrap_or(false))).await
 }
 
 #[tauri::command]

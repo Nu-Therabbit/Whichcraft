@@ -52,10 +52,6 @@ export function ShellEnvironmentUiProvider({ children }: { children: ReactNode }
   const stagedDiff = useMemo(() => stagedToDiff(staged), [staged]);
 
   useEffect(() => {
-    if (diffEntries.length > 0) setDialog("changes");
-  }, [diffEntries.length]);
-
-  useEffect(() => {
     if (stagedError || stagedBusy) setDialog("staged");
   }, [stagedBusy, stagedError]);
 

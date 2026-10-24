@@ -1,4 +1,5 @@
-import { PlanDiffList } from "../../components/ToolsPanel/PlanDiffList";
+import { installStoreGate } from "./installStoreGate";
+import { ShellPlanReview } from "./ShellPlanReview";
 import { ShellCheckResult } from "../../components/ToolsPanel/ShellCheckResult";
 import { UninstallSection } from "../../components/ToolsPanel/UninstallSection";
 import { UpdateList } from "../../components/ToolsPanel/UpdateList";
@@ -18,22 +19,11 @@ interface Props {
 
 export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
   const { t } = useI18n();
-  const { installations, loading, error, plan, uninstall, unfinished, shellCheck, update, settings } = state;
+  const { installations, loading, error, plan, uninstall, shellCheck, update, settings } = state;
   const applyBusy = plan.applying;
   const current = plan.current;
   const canInstall = tool !== "git";
-  const storeGate = settings
-    ? {
-        confirmed: settings.installStoreConfirmed ?? false,
-        installStore: settings.installStore,
-        onConfirm: (installStore: string) =>
-          dispatch({
-            type: "saveSettings",
-            settings: { ...settings, installStore, installStoreConfirmed: true },
-          }),
-      }
-    : { confirmed: false, installStore: "", onConfirm: () => {} };
-
+  const storeGate = installStoreGate(settings, dispatch);
   if (state.tool !== tool) {
     return <p className="text-xs text-dim py-2">{t("desktop_shell.loading")}</p>;
   }
@@ -45,36 +35,6 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
           {error}
         </div>
       )}
-
-      {unfinished.map((u) => (
-        <div
-          key={u.id}
-          className="text-xs border border-warning/40 rounded-md px-3 py-2 flex flex-col gap-2"
-        >
-          <p className="text-warning">
-            {t("tools.uninstall.unfinished", {
-              name: `${u.installation.vendor} ${u.installation.version}`,
-              path: u.installation.root,
-            })}
-          </p>
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant="secondary"
-              size="xs"
-              onClick={() => dispatch({ type: "openFolder", path: u.installation.root })}
-            >
-              {t("tools.uninstall.open_folder")}
-            </Button>
-            <Button
-              variant="secondary"
-              size="xs"
-              onClick={() => dispatch({ type: "dismissUnfinished", id: u.id })}
-            >
-              {t("tools.uninstall.rescan")}
-            </Button>
-          </div>
-        </div>
-      ))}
 
       <ShellUndoResult state={state} dispatch={dispatch} />
 
@@ -155,23 +115,7 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
       )}
 
       {current && current.tool === tool && plan.source !== "profile" && plan.source !== "cleanup" && (
-        <section className="border border-rim-subtle rounded-md p-3 flex flex-col gap-3 bg-surface/40">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold text-sm">{t("tools.plan_title")}</h3>
-            <Button variant="ghost" size="xs" onClick={() => dispatch({ type: "clearPlan" })}>
-              {t("tools.dismiss_plan")}
-            </Button>
-          </div>
-          <PlanDiffList plan={current} />
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => dispatch({ type: "applyPlan" })}
-            disabled={applyBusy || plan.building}
-          >
-            {applyBusy ? t("tools.applying") : t("tools.apply_plan")}
-          </Button>
-        </section>
+        <ShellPlanReview current={current} applying={applyBusy} building={plan.building} dispatch={dispatch} />
       )}
 
       <UninstallSection

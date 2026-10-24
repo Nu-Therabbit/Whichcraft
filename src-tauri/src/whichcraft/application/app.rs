@@ -91,6 +91,14 @@ impl<B: EnvBackend> App<B> {
 
     /// The installations of `tool`, with the remembered choice shown even if it vanished (D-5).
     pub fn list_tools(&self, tool: ToolKind) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
+        self.list_tools_with_refresh(tool, false)
+    }
+
+    /// A user-requested rescan must observe external installer changes immediately.
+    pub fn list_tools_with_refresh(&self, tool: ToolKind, refresh_catalog: bool) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
+        if refresh_catalog {
+            self.catalogs.invalidate();
+        }
         let selection = self.store.selection(tool)?;
         let catalog = self.catalogs.load()?;
         let views = list_tool_installations(

@@ -141,3 +141,14 @@ Run with the user's approval. `HKCU\Environment` was diffed against a baseline a
 - **Fixed `2d74f51` — one window per launch:** `whichcraft.exe` was a console app, so each launch from Explorer left one window. Release `whichcraft.exe` is now a GUI app, and the CLI ships as a console `whichcraft.com` beside it (PATHEXT tries .COM first, so the shell still waits).
   - Checked: an Explorer launch adds no window; `whichcraft get JAVA_HOME` runs through the .com and waits; `whichcraft` alone opens the GUI and returns in about 0.2 s; `whichcraft.exe get JAVA_HOME` (the installers' path) still prints and exits 0; the MSI contains `whichcraft.com`.
   - Not run: installing the MSI or NSIS package.
+
+
+### Review corrections (2026-10-24, working tree)
+
+- Registry/account failures have alert semantics; the duplicate Environment registry banner is removed. This PC has live text status, and tool tiles expose selection/effective mismatch in both visible text and their accessible names (including the supported translations).
+- The desktop overview now reuses the full Inventory Only SDK and Python launcher/Store-alias presentations, retaining Android component versions, MSVC/Windows SDK details, launcher tags/defaults, notes and alias warnings.
+- Unfinished uninstall notices and their open-folder/rescan actions live in the app recovery area, across navigation and with the inspector closed. External-change review is opened explicitly from Environment rather than automatically covering Developer tools.
+- Explicit Rescan requests a fresh installer catalog once before listing the remaining tools and refreshes the selected-tool store too. Automatic readback continues reusing the short-lived catalog; the optional IPC input preserves existing callers.
+- Install-store confirmation, single-tool/profile plan presentation and the ADR-0001 restart notice each have one shared implementation/source.
+- The earlier three review fixes are also in this working tree: catalog ownership/selection reset on tool change, persistent catalog errors with deliberate retry, and shared inventory invalidation after update/install-missing completion or partial failure.
+- Verification: all 542 frontend unit tests pass (15 added across the two review rounds), lint and TypeScript/frontend build pass, and Rust application tests pass (97 passed, 3 real-machine contracts ignored). Frontend/Rust architecture checks are included. This is not packaged Windows acceptance; ticket 18 and suites 19/20 retain their existing open gates, and legacy fallback remains.

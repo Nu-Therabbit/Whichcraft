@@ -15,10 +15,14 @@ const SCOPES_AFTER_INSTALL: InvalidationScope[] = [
   "shell-overview",
 ];
 
+/** All installation paths may change inventory, even when only part of an attempt succeeds. */
+function invalidateInstalledInventory(ctx: EffectContext): void {
+  ctx.runtime.coordination.invalidate(SCOPES_AFTER_INSTALL);
+}
+
 /** Notify shell overview and refresh the active tool panel after any install attempt ends. */
 async function afterInstallAttempt(ctx: EffectContext, originTool: ToolKind): Promise<void> {
-  const { coordination } = ctx.runtime;
-  coordination.invalidate(SCOPES_AFTER_INSTALL);
+  invalidateInstalledInventory(ctx);
   const panelTool = ctx.getState().tool;
   if (panelTool === originTool) {
     await reload(ctx, originTool);
@@ -291,23 +295,27 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       return;
     case "update": {
       const originTool = tool;
-      const old = state.installations.find((v) => v.root === msg.candidate.root);
-      const result = await tools.updateInstallation(originTool, msg.candidate.latest);
-      if (ctx.getState().tool !== originTool) return;
-      const names = old ? await tools.profilesUsing(old) : [];
-      dispatch({
-        type: "updateInstalled",
-        tool: originTool,
-        candidateRoot: msg.candidate.root,
-        plan: result.plan,
-        pending: {
-          replacedRoot: msg.candidate.root,
-          installed: result.installation,
-          repoint: old && names.length > 0 ? { from: old, names, checked: true } : null,
-        },
-      });
-      coordination.registerReviewedPlan(result.plan);
-      return reload(ctx, originTool);
+      try {
+        const old = state.installations.find((v) => v.root === msg.candidate.root);
+        const result = await tools.updateInstallation(originTool, msg.candidate.latest);
+        if (ctx.getState().tool !== originTool) return;
+        const names = old ? await tools.profilesUsing(old) : [];
+        dispatch({
+          type: "updateInstalled",
+          tool: originTool,
+          candidateRoot: msg.candidate.root,
+          plan: result.plan,
+          pending: {
+            replacedRoot: msg.candidate.root,
+            installed: result.installation,
+            repoint: old && names.length > 0 ? { from: old, names, checked: true } : null,
+          },
+        });
+        coordination.registerReviewedPlan(result.plan);
+        return reload(ctx, originTool);
+      } finally {
+        invalidateInstalledInventory(ctx);
+      }
     }
     case "toggleRepoint":
       return;
@@ -394,10 +402,14 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     case "installMissing":
       // F-3: install what is missing, then go straight on to the profile's plan.
       // Installing without switching does not require resolving staged environment edits.
-      await tools.installMissing(msg.profile);
-      dispatch({ type: "missingInstalled" });
-      await loadProfiles(ctx);
-      dispatch({ type: "planProfile", profile: msg.profile });
+      try {
+        await tools.installMissing(msg.profile);
+        dispatch({ type: "missingInstalled" });
+        await loadProfiles(ctx);
+        dispatch({ type: "planProfile", profile: msg.profile });
+      } finally {
+        invalidateInstalledInventory(ctx);
+      }
       return;
 
     case "planCleanup": {

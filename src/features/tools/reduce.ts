@@ -49,6 +49,9 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
         tool: msg.tool,
         loading: true,
         installations: [],
+        install: sameTool
+          ? s.install
+          : { ...s.install, catalogTool: null, catalogError: null, versions: [], chosen: null, loading: false, miseStatus: null, retainErrorOnRefresh: false },
         update: {
           ...s.update,
           list: null,
@@ -196,7 +199,7 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
 
     // --- install ---
     case "openInstallList":
-      return { ...s, error: null, install: { ...s.install, loading: true, chosen: null } };
+      return { ...s, error: null, install: { ...s.install, catalogTool: s.tool, catalogError: null, versions: [], loading: true, chosen: null } };
     case "versionsLoaded":
       return { ...s, install: { ...s.install, loading: false, miseStatus: msg.miseStatus, versions: msg.versions } };
     case "chooseVersion":
@@ -284,7 +287,7 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
     case "failed": {
       const next = endBusy({ ...s, error: msg.error }, msg.op);
       if (msg.op !== "install") return next;
-      return { ...next, install: { ...next.install, retainErrorOnRefresh: true } };
+      return { ...next, install: { ...next.install, catalogError: s.install.loading ? msg.error : s.install.catalogError, retainErrorOnRefresh: true } };
     }
   }
 }

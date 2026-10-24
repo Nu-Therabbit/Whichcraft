@@ -761,6 +761,44 @@ describe("tools effects", () => {
     expect(h.state.install.busy).toBe(false);
   });
 
+  for (const operation of ["update", "installMissing"] as const) {
+    it.each(["success", "failure", "tool-change"] as const)(
+      `invalidates inventory after ${operation}: %s`,
+      async (outcome) => {
+        let finish!: () => void;
+        const gate = new Promise<void>((resolve) => { finish = resolve; });
+        const attempt = async () => {
+          await gate;
+          if (outcome === "failure") throw new Error("partially installed then cancelled");
+        };
+        const profile = { id: "profile", name: "Work", tools: [] };
+        const { runtime, coordination } = updateRuntime({
+          updateInstallation: vi.fn(async () => {
+            await attempt();
+            return { installation: jdk21new, plan: planFor(jdk21new) };
+          }),
+          installMissing: vi.fn(attempt),
+          planProfile: vi.fn(async () => planFor(jdk21new)),
+        });
+        const invalidated = vi.fn();
+        coordination.subscribeInvalidation(invalidated);
+        const h = harness(runtime, { installations: [jdk21] });
+        if (operation === "update") {
+          h.dispatch({ type: "update", candidate: { root: jdk21.root, current: jdk21.version, latest: jdk21new.version } });
+        } else {
+          h.dispatch({ type: "installMissing", profile });
+        }
+        if (outcome === "tool-change") h.dispatch({ type: "selectTool", tool: "node" });
+        finish();
+        await h.settle();
+        expect(invalidated).toHaveBeenCalledWith(expect.arrayContaining([
+          "shell-overview", "tools-installations", "tools-profiles", "tools-shell-check",
+        ]));
+        if (outcome === "failure") expect(h.state.error).toContain("partially installed then cancelled");
+      },
+    );
+  }
+
   it("reads the mise status after listing versions, so a finished download unlocks Install", async () => {
     let fetching = true;
     const status = (f: boolean) => ({ version: "2026.10.1", present: !f, downloadBytes: 1, oldVersions: [], fetching: f });

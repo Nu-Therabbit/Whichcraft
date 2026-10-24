@@ -38,7 +38,6 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
     vars,
     effectiveVars,
     loading,
-    error,
     staged,
     elevated,
     diagnostics,
@@ -188,14 +187,8 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
         />
       )}
 
-      {error && (
-        <div className="px-4 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0">
-          {t("app.registry_error", { error })}
-        </div>
-      )}
-
       {accountSwitchError && (
-        <div className="px-4 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0">
+        <div role="alert" className="px-4 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0">
           {t("app.account_switch_error", { error: accountSwitchError })}
         </div>
       )}

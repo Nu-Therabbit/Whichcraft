@@ -178,7 +178,7 @@ describe("write coordination across workspaces", () => {
     await user.click(screen.getByRole("button", { name: /^rescan$/i }));
     await waitFor(() => expect(getSelectedAccount.mock.calls.length).toBeGreaterThan(callsBefore));
     await waitFor(() => expect(listToolInstallations.mock.calls.length).toBeGreaterThanOrEqual(12));
-    expect(screen.getByText(/This PC/i)).toBeInTheDocument();
+    expect(screen.getByText(/^This PC$/i)).toBeInTheDocument();
     void user;
   });
 });

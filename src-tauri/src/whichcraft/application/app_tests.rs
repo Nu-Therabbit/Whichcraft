@@ -202,8 +202,12 @@ fn installs_and_uninstalls_read_the_installer_catalog_afresh() {
     assert_eq!(count(), 1, "after an install");
     w.app.list_tools(ToolKind::Node).unwrap();
     assert_eq!(count(), 1, "listing reuses the snapshot");
+    w.app.list_tools_with_refresh(ToolKind::Node, true).unwrap();
+    assert_eq!(count(), 2, "explicit Rescan bypasses a recent installer catalog");
+    w.app.list_tools(ToolKind::Node).unwrap();
+    assert_eq!(count(), 2, "the remaining tools reuse the refreshed snapshot");
     w.app.uninstall(ToolKind::Node, &root, None).unwrap();
-    assert!(count() >= 3, "before planning the removal and after it: {}", count());
+    assert!(count() >= 4, "before planning the removal and after it: {}", count());
 }
 
 #[test]

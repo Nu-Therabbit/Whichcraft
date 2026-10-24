@@ -1,3 +1,4 @@
+import { installStoreGate } from "./installStoreGate";
 import { useEffect } from "react";
 import { InstallSection } from "../../components/ToolsPanel/InstallSection";
 import { useI18n } from "../../hooks/useI18n";
@@ -23,9 +24,9 @@ export function ShellInstallView({ tool, onPickTool, onClose }: Props) {
 
   useEffect(() => {
     if (!tool || tool === "git" || state.tool !== tool) return;
-    if (install.busy || install.loading || install.versions.length > 0) return;
+    if (install.busy || install.catalogTool === tool) return;
     dispatch({ type: "openInstallList" });
-  }, [tool, state.tool, install.busy, install.loading, install.versions.length, dispatch]);
+  }, [tool, state.tool, install.busy, install.catalogTool, dispatch]);
 
   if (tool === "git") {
     return (
@@ -79,31 +80,35 @@ export function ShellInstallView({ tool, onPickTool, onClose }: Props) {
     return <p className="px-5 py-4 text-sm text-dim">{t("app.loading")}</p>;
   }
 
-  const confirmStore = (store: string) => {
-    dispatch({
-      type: "saveSettings",
-      settings: { ...settings, installStore: store, installStoreConfirmed: true },
-    });
-  };
+  const catalogError = install.catalogTool === tool ? install.catalogError : null;
+  const catalogReady = state.tool === tool && install.catalogTool === tool;
+
+  const storeGate = installStoreGate(settings, dispatch);
 
   return (
     <section className="px-5 py-4 border-b border-rim-subtle shrink-0" aria-labelledby="shell-install-heading">
       {header}
-      {state.error && (
-        <div className="text-sm text-danger border border-danger/30 rounded-md px-3 py-2 mb-3">
-          {state.error}
+      {(catalogError || state.error) && (
+        <div role="alert" className="text-sm text-danger border border-danger/30 rounded-md px-3 py-2 mb-3">
+          {catalogError || state.error}
         </div>
       )}
+      {catalogReady && !install.loading && !install.busy && install.versions.length === 0 && (
+        <button type="button" className="text-xs text-accent hover:underline mb-3" onClick={() => dispatch({ type: "openInstallList" })}>
+          {t("tools.refresh")}
+        </button>
+      )}
       <InstallSection
+        key={tool}
         tool={tool}
-        versions={install.versions}
-        loading={install.loading}
+        versions={catalogReady ? install.versions : []}
+        loading={!catalogReady || install.loading}
         busy={install.busy}
         miseStatus={install.miseStatus}
         settings={settings}
-        chosen={install.chosen}
+        chosen={catalogReady ? install.chosen : null}
         onChoose={(version) => dispatch({ type: "chooseVersion", version })}
-        onConfirmStore={confirmStore}
+        onConfirmStore={storeGate.onConfirm}
         onInstall={() => dispatch({ type: "install" })}
       />
     </section>

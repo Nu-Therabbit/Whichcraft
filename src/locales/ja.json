@@ -465,6 +465,7 @@
     "LANGCHAIN_TRACING_V2": "LLM パイプラインおよびチェーンの LangSmith V2 実行トレースを有効にするフラグ（\"true\" を設定）。"
   },
   "desktop_shell": {
+    "selection_mismatch": "選択したインストールと実際に使われるインストールが異なります",
     "nav_label": "Primary navigation",
     "nav_tools": "Developer tools",
     "nav_profiles": "Tool profiles",

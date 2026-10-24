@@ -16,7 +16,7 @@ export type ToolsOverviewState = ToolsOverviewModel & {
   setQuery: (value: string) => void;
   selectTool: (tool: ToolKind | null) => void;
   closeDetail: () => void;
-  rescan: () => Promise<void>;
+  rescan: (refreshCatalog?: boolean) => Promise<void>;
 };
 
 type ActiveScan = { generation: number; accountToken: string };
@@ -46,14 +46,14 @@ export function useToolsOverview(
   const activeScan = useRef<ActiveScan>(RETIRED_SCAN);
 
   const loadTool = useCallback(
-    async (tool: ToolKind, generation: number, accountToken: string) => {
+    async (tool: ToolKind, generation: number, accountToken: string, refreshCatalog = false) => {
       dispatch({ type: "toolScanStarted", tool, generation });
       const coordBinding = coordination?.beginRead({ kind: "overview-inventory", tool });
       const stillCurrent = () =>
         !(coordBinding && coordination && !coordination.isReadCurrent(coordBinding)) &&
         resultStillValid(generation, accountToken, requestId.current, activeScan.current);
       try {
-        const installations = await tools.listToolInstallations(tool);
+        const installations = await (refreshCatalog ? tools.listToolInstallations(tool, true) : tools.listToolInstallations(tool));
         dispatch(
           stillCurrent()
             ? { type: "toolScanned", tool, generation, accountToken, installations }
@@ -70,7 +70,7 @@ export function useToolsOverview(
     [coordination, tools],
   );
 
-  const rescan = useCallback(async () => {
+  const rescan = useCallback(async (refreshCatalog = false) => {
     const generation = ++requestId.current;
     dispatch({ type: "scanStarted" });
 
@@ -115,7 +115,10 @@ export function useToolsOverview(
       incomplete: [python, android, msvc].some((result) => result.status === "rejected"),
     });
 
-    await Promise.all(OVERVIEW_TOOL_KINDS.map((tool) => loadTool(tool, generation, accountToken)));
+    const [first, ...remaining] = OVERVIEW_TOOL_KINDS;
+    if (refreshCatalog) await loadTool(first, generation, accountToken, true);
+    if (generation !== requestId.current) return;
+    await Promise.all((refreshCatalog ? remaining : OVERVIEW_TOOL_KINDS).map((tool) => loadTool(tool, generation, accountToken)));
     if (generation === requestId.current) dispatch({ type: "scanFinished" });
   }, [coordination, environment, loadTool, tools]);
 

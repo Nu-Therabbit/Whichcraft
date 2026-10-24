@@ -24,7 +24,7 @@ import type {
 } from "./types";
 
 export interface ToolsApi {
-  listToolInstallations: (tool: ToolKind) => Promise<ToolInstallationView[]>;
+  listToolInstallations: (tool: ToolKind, refreshCatalog?: boolean) => Promise<ToolInstallationView[]>;
   planToolApply: (tool: ToolKind, root: string) => Promise<ToolApplyPlan>;
   applyToolPlan: (plan: ToolApplyPlan) => Promise<ApplyToolResult>;
   applyToolPlanWithUac: (plan: ToolApplyPlan) => Promise<ApplyToolResult>;

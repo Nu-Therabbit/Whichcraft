@@ -1,3 +1,4 @@
+import { installStoreGate } from "./installStoreGate";
 import { useEffect } from "react";
 import { ProfilesSection } from "../../components/ToolsPanel/ProfilesSection";
 import { useI18n } from "../../hooks/useI18n";
@@ -15,18 +16,7 @@ export function ShellProfilesWorkspace() {
     dispatch({ type: "loadProfiles" });
   }, [dispatch]);
 
-  const storeGate = settings
-    ? {
-        confirmed: settings.installStoreConfirmed ?? false,
-        installStore: settings.installStore,
-        onConfirm: (installStore: string) =>
-          dispatch({
-            type: "saveSettings",
-            settings: { ...settings, installStore, installStoreConfirmed: true },
-          }),
-      }
-    : { confirmed: false, installStore: "", onConfirm: () => {} };
-
+  const storeGate = installStoreGate(settings, dispatch);
   return (
     <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
       <div>

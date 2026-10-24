@@ -73,6 +73,77 @@ describe("desktop shell maintenance and recovery", () => {
     );
   });
 
+  it("shows one registry failure alert on Environment", async () => {
+    renderShell({ getEnvVars: async () => { throw new Error("registry denied"); } });
+    await waitFor(() => {
+      expect(screen.getAllByRole("alert").filter((alert) => alert.textContent?.includes("registry denied"))).toHaveLength(1);
+    });
+  });
+
+  it("keeps unfinished-uninstall actions available across pages and outside the inspector", async () => {
+    const installation = inst("java", "21.0.1", "C:\\unfinished");
+    let unfinished = [{ id: "remove-1", startedAt: "2026-10-24T00:00:00Z", installation }];
+    const openFolder = vi.fn(async () => {});
+    const dismissUnfinishedUninstall = vi.fn(async () => { unfinished = []; });
+    renderShell({ unfinishedUninstalls: async () => unfinished, openFolder, dismissUnfinishedUninstall });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /open folder/i }));
+    expect(openFolder).toHaveBeenCalledWith(installation.root);
+    await user.click(screen.getByRole("link", { name: /^developer tools/i }));
+    await user.click(await screen.findByRole("button", { name: /^Java,/i }));
+    expect(screen.getAllByRole("button", { name: /open folder/i })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: /close installation details/i }));
+    await user.click(screen.getByRole("link", { name: /^settings/i }));
+    await user.click(screen.getByRole("button", { name: /rescan/i }));
+    await waitFor(() => expect(dismissUnfinishedUninstall).toHaveBeenCalledWith("remove-1"));
+    await waitFor(() => expect(screen.queryByRole("button", { name: /open folder/i })).not.toBeInTheDocument());
+  });
+
+  it("keeps external-change review opt-in while navigating to Developer tools", async () => {
+    let value = "before";
+    const getRegistrySnapshot = vi.fn(async () => ({ user: [{ name: "REVIEW_TEST", value, valueKind: "String" as const }], system: [] }));
+    renderShell({ getRegistrySnapshot });
+    const user = userEvent.setup();
+    const toolbar = await screen.findByRole("toolbar", { name: /environment actions/i });
+    await waitFor(() => expect(getRegistrySnapshot).toHaveBeenCalled());
+    value = "after";
+    await user.click(within(toolbar).getByRole("button", { name: /^refresh$/i }));
+    await screen.findByRole("button", { name: /1 external change/i });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: /^developer tools/i }));
+    expect(screen.getByRole("heading", { name: /^developer tools$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: /^environment/i }));
+    await user.click(screen.getByRole("button", { name: /1 external change/i }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("preserves Inventory Only SDK and Python launcher details", async () => {
+    window.history.replaceState(null, "", shellNavigationHref({ page: "tools" }));
+    renderShell({
+      getAndroidInventory: async () => ({ sdkRoot: "C:\\Android", rootSource: "ANDROID_HOME", platforms: ["android-35"], buildTools: ["35.0.0"], ndk: ["27.2.0"], platformTools: "35.0.2", emulator: "35.2.0", cmake: ["3.22.1"] }),
+      getMsvcInventory: async () => ({ instances: [{ path: "C:\\VS", displayName: "Visual Studio", version: "17.0", msvcToolsets: ["14.40"] }], windowsSdks: ["10.0.26100.0"] }),
+      getPythonLauncherInfo: async () => ({ launcherInstalled: true, launcherLines: [{ tag: "3.13", path: "C:\\Python313\\python.exe", isDefault: true }], storeStub: "C:\\WindowsApps\\python.exe", note: "Launcher resolution is separate from PATH." }),
+    });
+    const sdk = await screen.findByRole("region", { name: /other sdks/i });
+    await waitFor(() => expect(sdk).toHaveTextContent("android-35"));
+    for (const detail of ["35.0.0", "27.2.0", "35.0.2", "35.2.0", "3.22.1", "14.40", "10.0.26100.0", "py -V:3.13", "default", "Launcher resolution is separate from PATH.", "C:\\WindowsApps\\python.exe"]) {
+      expect(sdk).toHaveTextContent(detail);
+    }
+    expect(within(sdk).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("exposes inventory status and selection mismatch without relying on color", async () => {
+    window.history.replaceState(null, "", shellNavigationHref({ page: "tools" }));
+    renderShell({ listToolInstallations: async (tool: string) => tool === "java" ? [
+      inst("java", "21.0.1", "C:\\effective", { effective: true }),
+      inst("java", "17.0.1", "C:\\selected", { selected: true }),
+    ] : [] });
+    const java = await screen.findByRole("button", { name: /^Java,.*selection differs from the effective installation/i });
+    expect(java).toHaveTextContent(/selection differs from the effective installation/i);
+    expect(screen.getByRole("status")).toHaveTextContent(/inventory of this pc is up to date/i);
+  });
+
   it("shows recovery readback and runs resume/rollback from the app banner without opening the inspector", async () => {
     const recovery = {
       journalId: "j-1",

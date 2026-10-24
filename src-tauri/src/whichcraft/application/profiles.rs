@@ -1,3 +1,4 @@
+use crate::whichcraft::domain::plan::RESTART_LIMITATION_NOTICE;
 use std::collections::HashMap;
 
 use crate::env_store::{EnvBackend, MemBackend};
@@ -143,9 +144,7 @@ fn plan_profile_apply_with<B: EnvBackend>(
         tool: first.tool,
         requires_uac: !system_diffs.is_empty(),
         warnings,
-        limitation_notice:
-            "Programs already running and IDEs with their own SDK settings will not pick up these changes until restarted."
-                .into(),
+        limitation_notice: RESTART_LIMITATION_NOTICE.into(),
         user_diffs,
         system_diffs,
         baseline,

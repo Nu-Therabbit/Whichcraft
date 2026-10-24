@@ -60,6 +60,23 @@ function makeTools(overrides: Partial<ToolsApi> = {}): ToolsApi {
 }
 
 describe("useToolsOverview rescan identity", () => {
+  it("bypasses the catalog cache once for an explicit rescan", async () => {
+    let registryVersion = "20.0.0";
+    let cachedVersion = registryVersion;
+    const listToolInstallations = vi.fn(async (tool: Parameters<ToolsApi["listToolInstallations"]>[0], refreshCatalog?: boolean) => {
+      if (refreshCatalog) cachedVersion = registryVersion;
+      return [inst(tool, cachedVersion, "C:/tool")];
+    });
+    const tools = makeTools({ listToolInstallations });
+    const environment = makeEnvironment({ getSelectedAccount: async () => null });
+    const { result } = renderHook(() => useToolsOverview(tools, environment));
+    await waitFor(() => expect(result.current.byTool.node.installations[0]?.version).toBe("20.0.0"));
+    registryVersion = "22.0.0";
+    await act(() => result.current.rescan(true));
+    expect(result.current.byTool.node.installations[0]?.version).toBe("22.0.0");
+    expect(listToolInstallations.mock.calls.filter(([, refresh]) => refresh)).toHaveLength(1);
+  });
+
   it("drops stale inventory when a newer rescan wins and clears abandoned loading", async () => {
     let unblockFirstAccount!: (value: { sid: string } | null) => void;
     let unblockStaleJava!: (value: ToolInstallationView[]) => void;

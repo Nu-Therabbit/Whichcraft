@@ -59,6 +59,9 @@ export interface ToolsState {
     cleanup: { duplicates: string[]; missing: string[] } | null;
   };
   install: {
+    /** Tool whose catalogue was requested, including an empty or failed response. */
+    catalogTool: ToolKind | null;
+    catalogError: string | null;
     versions: RemoteVersion[];
     loading: boolean;
     busy: boolean;
@@ -99,6 +102,8 @@ export function initialToolsState(tool: ToolKind = "java"): ToolsState {
     shellCheck: null,
     plan: { current: null, building: false, applying: false, undoResult: null, source: null, cleanup: null },
     install: {
+      catalogTool: null,
+      catalogError: null,
       versions: [],
       loading: false,
       busy: false,

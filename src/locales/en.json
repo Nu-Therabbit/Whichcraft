@@ -646,6 +646,7 @@
     "LANGCHAIN_TRACING_V2": "Set to \"true\" to enable LangSmith V2 execution tracing for LLM pipelines and chains."
   },
   "desktop_shell": {
+    "selection_mismatch": "Selection differs from the effective installation",
     "nav_label": "Primary navigation",
     "nav_tools": "Developer tools",
     "nav_profiles": "Tool profiles",
