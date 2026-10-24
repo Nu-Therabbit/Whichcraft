@@ -118,11 +118,15 @@ Run with the user's approval. `HKCU\Environment` was diffed against a baseline a
   - **Fixed `0d4476e`:** Undo used to drop an empty Path segment (`;;`) that the original value had. An untouched PATH is now restored verbatim.
 - **Pass after fix — PATH cleanup:** the plan lists two duplicate `go\bin` entries and a missing Ollama folder (User only). Apply, then Undo, restores Path exactly.
   - **Fixed `8ae4930`:** after the cleanup was applied, the only Undo left was inside a tool inspector. Undo now sits in the Environment toolbar.
-- **Finding — slow readback:** a write's readback takes about 45 s.
+- **Fixed `7ba4465` — slow readback:** a write's readback took about 45 s.
   - Each `whichcraft_list_tools` call costs about 1.8 s even for a tool with no installations, because `App::list_tools` reloads the Windows installer catalog every call.
   - One apply triggers about 13 such calls (overview ×6, tools store, profile status ×6).
   - Meanwhile the inspector header (from the overview) and its installation list (from the tools store) briefly disagree on the Effective Installation.
-  - Proposed: cache the catalog per refresh/short TTL and invalidate it after install/uninstall.
+  - The catalog is now reused for 15 s and re-read after install, update and uninstall, and before planning an uninstall.
+  - Re-measured on the same machine:
+    - `list_tools`: 1.8–2 s → 6–236 ms per tool; all six tools 4.2 s → 0.27 s.
+    - Java switch: the inspector and tile agree after 1.0 s; after its Undo, 2.9 s.
+    - HKCU is identical to the baseline after Undo.
 - **Finding — Selection after Undo:** Undo leaves `selection.json` at the undone version (Java 21.0.12), so after Undo the inspector shows Selection 21.0.12 against Effective 21.0.11. This is already on main, and the spec does not say whether Undo should restore Selection; needs a product decision.
 - **Left on the machine:**
   - five snapshots in `%LOCALAPPDATA%\Envarly\snapshots` (four automatic "before apply" and "whichcraft-ui-test"); the agent was not allowed to delete them.
