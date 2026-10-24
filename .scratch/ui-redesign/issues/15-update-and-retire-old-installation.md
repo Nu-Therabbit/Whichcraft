@@ -4,7 +4,7 @@
 
 **Blocked by:** 13: ตั้งค่าที่เก็บและติดตั้งเครื่องมือจาก desktop UI; 14: ถอนการติดตั้งพร้อมเลือกตัวแทนและตรวจการใช้งาน.
 
-**Status:** in-review
+**Status:** resolved
 
 **Kind:** Vertical slice / update journey
 
@@ -46,3 +46,9 @@
 - **Shell in-flight lock:** Late `planUninstall` release runs inside `act` (await promise + microtask flush) before asserting the Java offer heading is absent; exactly one `Uninstall` button remains (inventory row only, not offer confirm). Row click must not call `tools.uninstall` with Node and the Java root.
 - **Confirm wedge:** Cross-tool confirm harness starts with `uninstall.busy: true` so the test fails if `toolMutationDropped` does not clear busy when reduce drops the intent.
 - **Verification:** `npm test -- --run` (497 passed), `npm run lint` (clean).
+
+### Review round 4 approval (`c3ac956`)
+
+- Approved. `await act` flushes the React 19 `useReducer` update before the synchronous heading check, so deleting the late-plan drop paints **Uninstall Eclipse Adoptium 21.0.12** and a second Uninstall button and fails `does not apply a late java uninstall offer to another tool when planUninstall is in flight`.
+- `does not call uninstall or leave busy when confirming a plan stored for another tool` starts at `busy: true` and fails if `toolMutationDropped` does not clear it. `tools.uninstall` is not called.
+- The Windows same-line update checkbox stays open and is not a pass.
