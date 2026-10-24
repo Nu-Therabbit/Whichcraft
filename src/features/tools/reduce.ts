@@ -1,5 +1,11 @@
 import { isIntent, type Operation, type ToolsMsg } from "./messages";
 import { isSingleToolPlan, type ToolsState } from "./model";
+import {
+  isSwitchPlannedEvent,
+  isUninstallPlannedEvent,
+  reduceSwitchPlanned,
+  reduceUninstallPlanned,
+} from "./uninstallPlanEvents";
 
 const STALE = "Environment changed since the plan was created. Refresh and try again.";
 const NEEDS_UAC = "This plan requires UAC approval for System PATH changes.";
@@ -10,6 +16,8 @@ export function isApplyPlanOutcomeError(error: string | null): boolean {
 
 /** The only place the panel's state changes. Pure: no API calls, no time, no randomness. */
 export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
+  if (isUninstallPlannedEvent(msg)) return reduceUninstallPlanned(s, msg);
+  if (isSwitchPlannedEvent(msg)) return reduceSwitchPlanned(s, msg);
   // A slow result for the tool the panel has since left must not land on the new one.
   if (!isIntent(msg) && msg.type === "planBuilt" && msg.tool !== s.tool) {
     if (msg.source === "profile" || !isSingleToolPlan(msg.plan)) {
@@ -20,14 +28,7 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
     }
     return { ...s, plan: { ...s.plan, building: false } };
   }
-  if (
-    !isIntent(msg) &&
-    "tool" in msg &&
-    msg.type !== "toolMutationDropped" &&
-    msg.type !== "uninstallPlanned" &&
-    msg.type !== "switchPlanned" &&
-    msg.tool !== s.tool
-  )
+  if (!isIntent(msg) && "tool" in msg && msg.type !== "toolMutationDropped" && msg.tool !== s.tool)
     return s;
   switch (msg.type) {
     // --- inventory ---
@@ -231,19 +232,8 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
           defaultReplacement: msg.defaultReplacement ?? null,
         },
       };
-    case "uninstallPlanned": {
-      const plannedFor = msg.tool ?? msg.plan.installation.tool;
-      if (plannedFor !== s.tool) return { ...s, uninstall: { ...s.uninstall, busy: false } };
-      return { ...s, uninstall: { ...s.uninstall, busy: false, plan: msg.plan } };
-    }
     case "chooseReplacement":
       return { ...s, uninstall: { ...s.uninstall, switchPlan: null } };
-    case "switchPlanned": {
-      if (!msg.plan) return { ...s, uninstall: { ...s.uninstall, switchPlan: null } };
-      const plannedFor = msg.tool ?? msg.plan.tool;
-      if (plannedFor !== s.tool) return s;
-      return { ...s, uninstall: { ...s.uninstall, switchPlan: msg.plan } };
-    }
     case "confirmUninstall":
       if (!canConfirmUninstall(s, msg.replacementRoot)) return s;
       if (s.uninstall.plan && s.uninstall.plan.installation.tool !== s.tool) return s;

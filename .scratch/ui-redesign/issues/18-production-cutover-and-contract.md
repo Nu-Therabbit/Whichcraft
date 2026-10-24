@@ -29,3 +29,8 @@
 - **Tests:** `App.presentation.test.tsx` — default shell vs legacy startup, no flip after query change; `appPresentation.test.ts` — parse/freeze and shell href without `presentation` param.
 - **Packaged / relaunch evidence:** Not produced in this agent environment (`npm run tauri build` not run here). Windows manual checkboxes for 19/20 remain open.
 - **Verification:** `npm test -- --run` (504 passed), `npm run lint` (clean). `npm run build` failed in this environment on existing `src/features/tools/effects.ts` / `reduce.ts` TS errors (not introduced by cutover). `npm run tauri build` not run.
+
+### Build fix (follow-up)
+
+- **TypeScript:** `applyPlan` stale rebuild uses a mutable box so CFA sees the post-`withToolsWrite` dispatch; `uninstallPlanned` / `switchPlanned` reduce via dedicated type guards in `uninstallPlanEvents.ts` (generic tool gate unchanged for other events).
+- **Verification:** `npx tsc --noEmit` (clean), `npm test -- --run` (504 passed), `npm run lint` (clean), `npm run build` (succeeded).

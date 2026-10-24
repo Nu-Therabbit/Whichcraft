@@ -140,7 +140,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       if (!plan) return;
       const originTool = tool;
       const planSource = state.plan.source;
-      let staleRebuild: { tool: ToolKind; root: string } | null = null;
+      const staleRebuild: { value: { tool: ToolKind; root: string } | null } = { value: null };
       await withToolsWrite(ctx, "apply-plan", "apply", async () => {
         const resultBinding = coordination.beginToolResult(originTool);
         const planBinding = coordination.beginPlanApply(plan.planId, plan.tool);
@@ -157,7 +157,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         }
         dispatch({ type: "applyFinished", tool: originTool, result });
         if (result.stale) {
-          if (isSingleToolPlan(plan)) staleRebuild = { tool: plan.tool, root: plan.selected.root };
+          if (isSingleToolPlan(plan)) staleRebuild.value = { tool: plan.tool, root: plan.selected.root };
           await readbackToolsState(ctx, originTool);
           return "failure";
         }
@@ -171,11 +171,11 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
           dispatch({ type: "planUninstall", root: pending.replacedRoot, defaultReplacement: pending.installed.root });
         }
       });
-      if (staleRebuild) {
+      if (staleRebuild.value) {
         dispatch({
           type: "buildPlan",
-          root: staleRebuild.root,
-          tool: staleRebuild.tool,
+          root: staleRebuild.value.root,
+          tool: staleRebuild.value.tool,
           keepPending: true,
           source: planSource === "profile" ? "profile" : "inventory",
         });
