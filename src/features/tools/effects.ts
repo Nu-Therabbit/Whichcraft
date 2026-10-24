@@ -137,6 +137,10 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       await withToolsWrite(ctx, "apply-plan", "apply", async () => {
         const resultBinding = coordination.beginToolResult(originTool);
         const planBinding = coordination.beginPlanApply(plan.planId, plan.tool);
+        if (!coordination.isPlanApplyCurrent(planBinding)) {
+          dropToolMutation(ctx, originTool);
+          return "cancel";
+        }
         const result = plan.requiresUac
           ? await tools.applyToolPlanWithUac(plan)
           : await tools.applyToolPlan(plan);
@@ -152,11 +156,11 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         }
         if (result.needsElevation) return "cancel";
         await readbackToolsState(ctx, originTool);
-        const pending = state.update.pending;
+        const pending = ctx.getState().tool === originTool ? ctx.getState().update.pending : null;
         if (pending) {
           // The update's switch is in: move the profiles if left ticked, then offer removing the old one.
           if (pending.repoint?.checked) await tools.repointProfiles(pending.repoint.from, pending.installed);
-          dispatch({ type: "updateSwitched" });
+          dispatch({ type: "updateSwitched", tool: originTool });
           dispatch({ type: "planUninstall", root: pending.replacedRoot, defaultReplacement: pending.installed.root });
         }
       });
@@ -267,11 +271,14 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       dispatch({ type: "updatesChecked", tool, list: await tools.updateCandidates(tool) });
       return;
     case "update": {
+      const originTool = tool;
       const old = state.installations.find((v) => v.root === msg.candidate.root);
-      const result = await tools.updateInstallation(tool, msg.candidate.latest);
+      const result = await tools.updateInstallation(originTool, msg.candidate.latest);
+      if (ctx.getState().tool !== originTool) return;
       const names = old ? await tools.profilesUsing(old) : [];
       dispatch({
         type: "updateInstalled",
+        tool: originTool,
         candidateRoot: msg.candidate.root,
         plan: result.plan,
         pending: {
@@ -281,7 +288,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         },
       });
       coordination.registerReviewedPlan(result.plan);
-      return reload(ctx, tool);
+      return reload(ctx, originTool);
     }
     case "toggleRepoint":
       return;

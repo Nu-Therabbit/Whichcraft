@@ -20,3 +20,10 @@
 - **Binding:** Same `registerReviewedPlan` / `applyToolPlan(reviewed)` path as legacy tools effects; repoint + `planUninstall` after successful switch unchanged.
 - **Tests:** `desktopShellUpdate.test.tsx` asserts `applyToolPlan` receives the on-screen `planId` after update install; Git has no update button.
 - **Windows manual (controlled update):** Not run in this agent environment. Leave checkbox open.
+
+### Review round 1 (Grok 4.7 on cb458b4)
+
+- **Plan-id gate:** `applyPlan` checks `isPlanApplyCurrent` before `applyToolPlan`; stale baseline, failed apply, and UAC/cancel paths assert no `repointProfiles` / `planUninstall`. Shell + effects tests cover invalidated reviewed plan after update install.
+- **Tool scoping:** `updateInstalled` / `updateSwitched` carry `tool`; `selectTool` drops another tool’s pending update, plan, and uninstall; late cross-tool update results are dropped in reduce.
+- **Git / happy-path assertions:** `/check for updates/i`, no Update button; `updateInstallation("java", "21.0.13")`, no `applyToolPlan` before Apply, repoint roots and uninstall offer on success.
+- **Verification:** `npm test -- --run` (478 passed), `npm run lint` (clean).

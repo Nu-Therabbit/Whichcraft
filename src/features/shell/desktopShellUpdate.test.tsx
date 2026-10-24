@@ -12,6 +12,7 @@ import { DesktopShellApp } from "./DesktopShellApp";
 
 const jdk21 = inst("java", "21.0.12", "C:\\jdk21", { effective: true, selected: true });
 const jdk21new = inst("java", "21.0.13", "C:\\store\\jdk21.0.13", { managed: true });
+const node = inst("node", "20.0.0", "C:\\node20", { effective: true, selected: true });
 
 const sdkMocks = {
   getSelectedAccount: async () => null,
@@ -117,14 +118,77 @@ describe("desktop shell update journey", () => {
     await user.click(within(details).getByRole("button", { name: /check for updates/i }));
     await waitFor(() => expect(updateCandidates).toHaveBeenCalled());
     await user.click(await screen.findByRole("button", { name: /^update$/i }));
-    await waitFor(() => expect(updateInstallation).toHaveBeenCalled());
+    await waitFor(() => expect(updateInstallation).toHaveBeenCalledWith("java", "21.0.13"));
+    expect(applyToolPlan).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByRole("button", { name: /^apply plan$/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /^apply plan$/i }));
     await waitFor(() =>
       expect(applyToolPlan).toHaveBeenCalledWith(expect.objectContaining({ planId: "update-switch-plan" })),
     );
-    await waitFor(() => expect(repointProfiles).toHaveBeenCalled());
+    await waitFor(() => expect(repointProfiles).toHaveBeenCalledWith(jdk21, jdk21new));
     await waitFor(() => expect(planUninstall).toHaveBeenCalledWith("java", "C:\\jdk21"));
+    expect(screen.getAllByText(/C:\\jdk21/i).length).toBeGreaterThan(0);
+  });
+
+  it("does not repoint or offer uninstall when the reviewed plan baseline went stale", async () => {
+    const switchPlan = planFor(jdk21new, { planId: "update-switch-plan" });
+    const updateInstallation = vi.fn(async () => ({ installation: jdk21new, plan: switchPlan }));
+    const applyToolPlan = vi.fn(async () => ({ planId: "update-switch-plan", stale: false, needsElevation: false }));
+    const repointProfiles = vi.fn(async () => []);
+    const planUninstall = vi.fn(async () => uninstallPlanStub());
+    const { coordination } = renderShell({
+      listToolInstallations: vi.fn(async (tool: string) => (tool === "java" ? [jdk21] : [])),
+      updateCandidates: vi.fn(async () => [{ root: "C:\\jdk21", current: "21.0.12", latest: "21.0.13" }]),
+      updateInstallation,
+      applyToolPlan,
+      repointProfiles,
+      profilesUsing: vi.fn(async () => ["Work"]),
+      planUninstall,
+    });
+
+    const user = userEvent.setup();
+    await openJavaDetail(user);
+    await user.click(screen.getByRole("button", { name: /check for updates/i }));
+    await user.click(await screen.findByRole("button", { name: /^update$/i }));
+    await waitFor(() => expect(updateInstallation).toHaveBeenCalled());
+    coordination.invalidate(["environment-variables"]);
+    await user.click(screen.getByRole("button", { name: /^apply plan$/i }));
+    await waitFor(() => expect(applyToolPlan).not.toHaveBeenCalled());
+    expect(repointProfiles).not.toHaveBeenCalled();
+    expect(planUninstall).not.toHaveBeenCalled();
+  });
+
+  it("clears java update uninstall offer when switching to another tool", async () => {
+    const switchPlan = planFor(jdk21new, { planId: "update-switch-plan" });
+    const applyToolPlan = vi.fn(async () => ({ planId: "update-switch-plan", stale: false, needsElevation: false }));
+    const planUninstall = vi.fn(async () => uninstallPlanStub());
+    renderShell({
+      listToolInstallations: vi.fn(async (tool: string) => {
+        if (tool === "java") return [jdk21];
+        if (tool === "node") return [node];
+        return [];
+      }),
+      updateCandidates: vi.fn(async () => [{ root: "C:\\jdk21", current: "21.0.12", latest: "21.0.13" }]),
+      updateInstallation: vi.fn(async () => ({ installation: jdk21new, plan: switchPlan })),
+      applyToolPlan,
+      repointProfiles: vi.fn(async () => []),
+      profilesUsing: vi.fn(async () => []),
+      planUninstall,
+      uninstall: vi.fn(async () => ({ status: "removed" as const })),
+      planToolApply: vi.fn(async () => switchPlan),
+    });
+
+    const user = userEvent.setup();
+    await openJavaDetail(user);
+    await user.click(screen.getByRole("button", { name: /check for updates/i }));
+    await user.click(await screen.findByRole("button", { name: /^update$/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^apply plan$/i })).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /^apply plan$/i }));
+    await waitFor(() => expect(planUninstall).toHaveBeenCalled());
+    expect(await screen.findByText(/uninstall eclipse adoptium/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Node\.js/i }));
+    await waitFor(() => expect(screen.queryByText(/uninstall eclipse adoptium/i)).not.toBeInTheDocument());
   });
 
   it("does not offer update for git", async () => {
@@ -136,6 +200,20 @@ describe("desktop shell update journey", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /Git/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /Git/i }));
     const details = await screen.findByRole("complementary", { name: /installation details/i });
-    expect(within(details).queryByRole("button", { name: /check updates/i })).not.toBeInTheDocument();
+    expect(within(details).queryByRole("button", { name: /check for updates/i })).not.toBeInTheDocument();
+    expect(within(details).queryByRole("button", { name: /^update$/i })).not.toBeInTheDocument();
   });
 });
+
+function uninstallPlanStub(): UninstallPlan {
+  return {
+    installation: jdk21,
+    method: { kind: "recycleFolder" },
+    usage: { processes: [], folderLocked: false },
+    needsReplacement: true,
+    replacements: [jdk21new],
+    affectedProfiles: [],
+    gradleHint: false,
+    noConfirmation: false,
+  };
+}

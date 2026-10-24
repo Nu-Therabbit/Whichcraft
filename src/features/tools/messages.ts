@@ -88,8 +88,8 @@ export type ToolsEvent =
   | { type: "versionSized"; tool: ToolKind; chosen: ChosenVersion }
   | { type: "installed" }
   | { type: "updatesChecked"; tool: ToolKind; list: UpdateCandidate[] }
-  | { type: "updateInstalled"; candidateRoot: string; plan: ToolApplyPlan; pending: PendingUpdate }
-  | { type: "updateSwitched" }
+  | { type: "updateInstalled"; tool: ToolKind; candidateRoot: string; plan: ToolApplyPlan; pending: PendingUpdate }
+  | { type: "updateSwitched"; tool: ToolKind }
   | { type: "uninstallPlanned"; plan: UninstallPlan }
   | { type: "switchPlanned"; plan: ToolApplyPlan | null }
   | { type: "uninstallFinished"; tool: ToolKind; outcome: UninstallOutcome }

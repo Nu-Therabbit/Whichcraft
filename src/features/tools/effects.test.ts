@@ -67,6 +67,30 @@ describe("tools effects", () => {
     expect(api.planUninstall).toHaveBeenCalled();
   });
 
+  it("does not repoint or offer uninstall when update switch baseline went stale before apply", async () => {
+    const { api, runtime, coordination } = updateRuntime();
+    const h = harness(runtime, { installations: [jdk21] });
+    h.dispatch({ type: "update", candidate: { root: "C:\\jdk21", current: "21.0.12", latest: "21.0.13" } });
+    await h.settle();
+    coordination.invalidate(["environment-variables"]);
+    h.dispatch({ type: "applyPlan" });
+    await h.settle();
+    expect(api.repointProfiles).not.toHaveBeenCalled();
+    expect(api.planUninstall).not.toHaveBeenCalled();
+  });
+
+  it("does not repoint or offer uninstall when update switch apply needs UAC", async () => {
+    const applyToolPlan = vi.fn(async () => ({ planId: "p", stale: false, needsElevation: true }));
+    const { api, runtime } = updateRuntime({ applyToolPlan });
+    const h = harness(runtime, { installations: [jdk21] });
+    h.dispatch({ type: "update", candidate: { root: "C:\\jdk21", current: "21.0.12", latest: "21.0.13" } });
+    await h.settle();
+    h.dispatch({ type: "applyPlan" });
+    await h.settle();
+    expect(api.repointProfiles).not.toHaveBeenCalled();
+    expect(api.planUninstall).not.toHaveBeenCalled();
+  });
+
   it("a stale update switch is rebuilt and still leads to the uninstall offer", async () => {
     const applyToolPlan = vi
       .fn()
@@ -400,7 +424,7 @@ describe("tools effects", () => {
     releaseApply({ planId: "p", stale: false, needsElevation: false });
     await h.settle();
     expect(h.state.tool).toBe("node");
-    expect(h.state.plan.current?.selected.root).toBe("C:\\jdk21");
+    expect(h.state.plan.current).toBeNull();
   });
 
   it("keeps the newer shell check when an older response returns later", async () => {
@@ -451,7 +475,7 @@ describe("tools effects", () => {
     runtime.coordination.registerReviewedPlan(reviewed);
     h.dispatch({ type: "applyPlan" });
     await h.settle();
-    expect(applyToolPlan).toHaveBeenCalledWith(onScreen);
+    expect(applyToolPlan).not.toHaveBeenCalled();
     expect(h.state.plan.current?.planId).toBe("other-plan-id");
     expect(h.state.plan.applying).toBe(false);
   });

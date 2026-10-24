@@ -25,15 +25,35 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
     // --- inventory ---
     case "started":
       return s;
-    case "selectTool":
-      // The update list belongs to the tool it was checked for.
+    case "selectTool": {
+      const leaving = s.tool;
+      const sameTool = leaving === msg.tool;
       return {
         ...s,
         tool: msg.tool,
         loading: true,
         installations: [],
-        update: { ...s.update, list: null },
+        update: {
+          ...s.update,
+          list: null,
+          busy: false,
+          pending: sameTool ? s.update.pending : null,
+        },
+        plan: sameTool
+          ? s.plan
+          : { ...s.plan, current: null, cleanup: null, building: false, applying: false },
+        uninstall: sameTool
+          ? s.uninstall
+          : {
+              ...s.uninstall,
+              plan: null,
+              outcome: null,
+              defaultReplacement: null,
+              switchPlan: null,
+              busy: false,
+            },
       };
+    }
     case "refresh":
       return { ...s, loading: true };
     case "refreshed":
@@ -175,7 +195,7 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
       return { ...s, update: { ...s.update, pending: { ...pending, repoint: { ...pending.repoint, checked: msg.checked } } } };
     }
     case "updateSwitched":
-      return { ...s, update: { ...s.update, pending: null } };
+      return s.tool === msg.tool ? { ...s, update: { ...s.update, pending: null } } : s;
 
     // --- uninstall ---
     case "planUninstall":

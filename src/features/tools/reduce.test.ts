@@ -142,4 +142,34 @@ describe("reduce", () => {
     expect(next.tool).toBe("node");
     expect(next.update.list).toBeNull();
   });
+
+  it("switching tools drops another tool's pending update plan and uninstall offer", () => {
+    const base = initialToolsState();
+    const pending = { replacedRoot: "C:\\jdk21", installed: jdk17, repoint: null };
+    const s = {
+      ...base,
+      tool: "java",
+      plan: { ...base.plan, current: planFor(jdk17) },
+      update: { ...base.update, pending },
+      uninstall: { ...base.uninstall, plan: uninstallPlan(), defaultReplacement: "C:\\jdk17" },
+    };
+    const next = reduce(s, { type: "selectTool", tool: "node" });
+    expect(next.update.pending).toBeNull();
+    expect(next.plan.current).toBeNull();
+    expect(next.uninstall.plan).toBeNull();
+  });
+
+  it("drops a late updateInstalled event for another tool", () => {
+    const base = initialToolsState();
+    const s = { ...base, tool: "node" };
+    const next = reduce(s, {
+      type: "updateInstalled",
+      tool: "java",
+      candidateRoot: "C:\\jdk21",
+      plan: planFor(jdk21),
+      pending: { replacedRoot: "C:\\jdk21", installed: jdk21, repoint: null },
+    });
+    expect(next.plan.current).toBeNull();
+    expect(next.update.pending).toBeNull();
+  });
 });
