@@ -529,6 +529,7 @@
     "this_pc_scanned": "Danh mục của máy này đã cập nhật",
     "view_source": "Mã nguồn",
     "view_source_title": "Xem mã nguồn trên GitHub",
-    "sdk_incomplete": "Không tải được một phần danh mục bổ sung."
+    "sdk_incomplete": "Không tải được một phần danh mục bổ sung.",
+    "this_pc_incomplete": "Không quét được một số công cụ; danh mục của máy này chưa đầy đủ"
   }
 }

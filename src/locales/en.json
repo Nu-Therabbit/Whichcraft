@@ -738,6 +738,7 @@
     "this_pc_scanned": "Inventory of this PC is up to date",
     "view_source": "Source",
     "view_source_title": "View the source code on GitHub",
-    "sdk_incomplete": "Some supplemental inventory could not be loaded."
+    "sdk_incomplete": "Some supplemental inventory could not be loaded.",
+    "this_pc_incomplete": "Some tools could not be scanned; this PC's inventory is incomplete"
   }
 }

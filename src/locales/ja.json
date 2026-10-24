@@ -529,6 +529,7 @@
     "this_pc_scanned": "この PC のインベントリは最新です",
     "view_source": "ソース",
     "view_source_title": "GitHub でソースコードを表示",
-    "sdk_incomplete": "一部の補足インベントリを読み込めませんでした。"
+    "sdk_incomplete": "一部の補足インベントリを読み込めませんでした。",
+    "this_pc_incomplete": "一部のツールをスキャンできませんでした。この PC のインベントリは不完全です"
   }
 }

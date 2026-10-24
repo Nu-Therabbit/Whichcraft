@@ -30,10 +30,13 @@ export function toolMatchesQuery(tool: ToolKind, query: string, meta: { title: s
   return haystack.includes(query.trim().toLowerCase());
 }
 
+type InventoryCounts = { installations: number; unavailable: number; failedTools: number };
+
+/** `incomplete`: some tools could not be scanned, so the machine must not look healthy. */
 export type InventorySummary =
   | { kind: "scanning" }
   | { kind: "account-error" }
-  | { kind: "scanned"; installations: number; unavailable: number; failedTools: number };
+  | ({ kind: "scanned" | "incomplete" } & InventoryCounts);
 
 /** What the status bar and the This PC indicator say about the last inventory scan. */
 export function summarizeInventory(
@@ -42,10 +45,23 @@ export function summarizeInventory(
 ): InventorySummary {
   if (scan.accountError) return { kind: "account-error" };
   if (scan.rescanning || slices.some((slice) => slice.loading)) return { kind: "scanning" };
+  const failedTools = slices.filter((slice) => slice.error !== null).length;
   return {
-    kind: "scanned",
+    kind: failedTools > 0 ? "incomplete" : "scanned",
     installations: slices.reduce((sum, slice) => sum + slice.installations.length, 0),
     unavailable: slices.reduce((sum, slice) => sum + unavailableCount(slice.installations), 0),
-    failedTools: slices.filter((slice) => slice.error !== null).length,
+    failedTools,
   };
+}
+
+/** Status dot of one tool tile: a failed or empty scan is never shown as healthy. */
+export function toolHealth(slice: {
+  loading: boolean;
+  error: string | null;
+  installations: ToolInstallationView[];
+}): "loading" | "error" | "missing" | "mismatch" | "ok" {
+  if (slice.loading) return "loading";
+  if (slice.error !== null) return "error";
+  if (!pickEffective(slice.installations)) return "missing";
+  return selectionDiffers(slice.installations) ? "mismatch" : "ok";
 }

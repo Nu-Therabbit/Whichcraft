@@ -16,8 +16,8 @@ import {
   type InventorySummary,
   pickEffective,
   pickSelected,
-  selectionDiffers,
   summarizeInventory,
+  toolHealth,
   toolMatchesQuery,
   unavailableCount,
 } from "./toolOverviewModel";
@@ -54,7 +54,8 @@ function inventoryStatusLine(t: Translate, summary: InventorySummary): string {
       return t("desktop_shell.scanning_installations");
     case "account-error":
       return t("desktop_shell.status_inventory_account_error");
-    case "scanned": {
+    case "scanned":
+    case "incomplete": {
       const parts = [
         t("desktop_shell.status_inventory", {
           count: summary.installations,
@@ -75,7 +76,16 @@ function inventoryStatusLine(t: Translate, summary: InventorySummary): string {
 const THIS_PC_STATE: Record<InventorySummary["kind"], { dot: string; titleKey: string }> = {
   scanning: { dot: "bg-warn", titleKey: "desktop_shell.this_pc_scanning" },
   "account-error": { dot: "bg-danger", titleKey: "desktop_shell.this_pc_account_error" },
+  incomplete: { dot: "bg-warn", titleKey: "desktop_shell.this_pc_incomplete" },
   scanned: { dot: "bg-success", titleKey: "desktop_shell.this_pc_scanned" },
+};
+
+const TOOL_HEALTH_DOT: Record<ReturnType<typeof toolHealth>, string> = {
+  loading: "bg-rim",
+  error: "bg-danger",
+  missing: "bg-rim",
+  mismatch: "bg-warn",
+  ok: "bg-success",
 };
 
 function DesktopShellAppInner() {
@@ -266,7 +276,6 @@ function DesktopShellAppInner() {
                       const slice = overview.byTool[tool];
                       const meta = TOOL_DISPLAY[tool];
                       const effective = pickEffective(slice.installations);
-                      const differs = selectionDiffers(slice.installations);
                       return (
                         <button
                           type="button"
@@ -293,7 +302,7 @@ function DesktopShellAppInner() {
                             <strong className="block text-sm">{meta.title}</strong>
                             <span className="flex items-center gap-1 text-xs font-mono text-muted">
                               <span
-                                className={`size-1.5 rounded-full ${differs ? "bg-warn" : "bg-success"}`}
+                                className={`size-1.5 rounded-full ${TOOL_HEALTH_DOT[toolHealth(slice)]}`}
                                 aria-hidden
                               />
                               {slice.loading

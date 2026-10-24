@@ -431,5 +431,24 @@ describe("desktop shell settings and install", () => {
     await waitFor(() =>
       expect(footer).toHaveTextContent(/2 installations across 6 tools · 1 unavailable/i),
     );
+    expect(screen.getByTitle(/inventory of this pc is up to date/i)).toBeInTheDocument();
+  });
+
+  it("does not present a partly failed scan as an up-to-date PC", async () => {
+    const services = splitEnvarlyApi(
+      fakeToolsRuntime({
+        ...sdkMocks,
+        listToolInstallations: async (tool: string) => {
+          if (tool === "go") throw new Error("scan root unreadable");
+          return [];
+        },
+      }).api,
+    );
+    renderDesktopShell(services);
+
+    const footer = await screen.findByRole("contentinfo");
+    await waitFor(() => expect(footer).toHaveTextContent(/1 tool could not be scanned/i));
+    expect(screen.getByTitle(/inventory is incomplete/i)).toBeInTheDocument();
+    expect(screen.queryByTitle(/up to date/i)).not.toBeInTheDocument();
   });
 });
