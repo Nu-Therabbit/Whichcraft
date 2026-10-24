@@ -40,3 +40,9 @@
 - **In-flight:** Shell late `planUninstall` test releases the pending promise after switching tools, then asserts no cross-tool offer or `uninstall`; effects cover late `chooseReplacement` / `switchPlanned` the same way.
 - **Confirm wedge:** Reduce refuses `confirmUninstall` busy when the stored plan is for another tool; effect clears `uninstall.busy` via `toolMutationDropped` when a mismatched confirm would otherwise stick.
 - **Verification:** `npm test -- --run` (497 passed), `npm run lint` (clean).
+
+### Review round 4 (Grok re-review on 217f4fc)
+
+- **Shell in-flight lock:** Late `planUninstall` release runs inside `act` (await promise + microtask flush) before asserting the Java offer heading is absent; exactly one `Uninstall` button remains (inventory row only, not offer confirm). Row click must not call `tools.uninstall` with Node and the Java root.
+- **Confirm wedge:** Cross-tool confirm harness starts with `uninstall.busy: true` so the test fails if `toolMutationDropped` does not clear busy when reduce drops the intent.
+- **Verification:** `npm test -- --run` (497 passed), `npm run lint` (clean).

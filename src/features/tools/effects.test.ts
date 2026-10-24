@@ -417,7 +417,7 @@ describe("tools effects", () => {
       uninstall: {
         plan: uninstallPlanFor(jdk21),
         outcome: null,
-        busy: false,
+        busy: true,
         switchPlan: shown,
         defaultReplacement: null,
       },

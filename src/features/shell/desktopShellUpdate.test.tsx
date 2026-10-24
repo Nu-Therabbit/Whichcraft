@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { splitEnvarlyApi } from "../../composition/appServices";
@@ -197,18 +197,21 @@ describe("desktop shell update journey", () => {
     const planPromise = lastPlanCall?.value as Promise<UninstallPlan>;
 
     await user.click(screen.getByRole("button", { name: /Node\.js/i }));
-    await waitFor(() => expect(screen.getByRole("complementary", { name: /installation details/i })).toBeInTheDocument());
+    const details = await screen.findByRole("complementary", { name: /installation details/i });
 
-    releaseUninstallPlan(uninstallPlanStub());
-    await planPromise;
+    await act(async () => {
+      releaseUninstallPlan(uninstallPlanStub());
+      await planPromise;
+      await Promise.resolve();
+    });
 
-    await waitFor(() => expect(screen.queryByText(/uninstall eclipse adoptium/i)).not.toBeInTheDocument());
-    const uninstallButton = screen.queryByRole("button", { name: /^uninstall$/i });
-    if (uninstallButton) {
-      await user.click(uninstallButton);
-      await waitFor(() => expect(uninstall).not.toHaveBeenCalled());
-    }
-    expect(uninstall).not.toHaveBeenCalled();
+    expect(within(details).queryByRole("heading", { name: /^uninstall eclipse adoptium/i })).not.toBeInTheDocument();
+    const uninstallButtons = within(details).getAllByRole("button", { name: /^uninstall$/i });
+    expect(uninstallButtons).toHaveLength(1);
+    const [rowUninstall] = uninstallButtons;
+    expect(rowUninstall).toBeDefined();
+    await user.click(rowUninstall);
+    await waitFor(() => expect(planUninstall).toHaveBeenLastCalledWith("node", "C:\\node20"));
     expect(uninstall).not.toHaveBeenCalledWith("node", "C:\\jdk21", expect.anything());
   });
 
