@@ -125,12 +125,12 @@ mod tests {
 
     /// The GUI has no console, so a console program started without `CREATE_NO_WINDOW` pops up a
     /// window (a Windows Terminal window on Windows 11) — once per version probe. Background
-    /// programs go through `background_command`; only the process adapter opens windows on purpose
-    /// (the user's terminal, Explorer).
+    /// programs go through `background_command`. Exempt: the process adapter, which opens windows on
+    /// purpose (the user's terminal, Explorer), and the console launcher starting the GUI.
     #[test]
     fn background_programs_start_without_a_window() {
         let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-        let allowed = ["tools/background.rs", "adapters/win/process.rs"];
+        let allowed = ["tools/background.rs", "adapters/win/process.rs", "commands/launch.rs"];
         let mut files = Vec::new();
         production_rust_files(&src, &mut files);
         assert!(files.len() > 50, "scanned {} files", files.len());

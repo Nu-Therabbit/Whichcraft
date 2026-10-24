@@ -1,26 +1,19 @@
-// Build as a console subsystem app so the shell waits for the process when CLI
-// args are present. For GUI launches (no args, or GUI flags such as --legacy-ui),
-// we hide the console window immediately so users never see a flash.
+// Release builds are GUI apps, so starting Whichcraft from Explorer or the Start menu opens no
+// console window (on Windows 11 that console became a Windows Terminal window left behind).
+// The CLI goes through `whichcraft.com` (src/bin/whichcraft-cli.rs), a console program the
+// shell waits for. Debug builds stay console apps so `npm run tauri dev` shows their logs.
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 fn main() {
     #[cfg(windows)]
-    if whichcraft_lib::is_gui_launch() {
-        // GUI mode: detach from the console Windows allocated so its window
-        // closes without a minimize/hide animation, then restore focus to
-        // whatever was active before our console stole it.
-        unsafe {
-            let prev = windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow();
-            windows_sys::Win32::System::Console::FreeConsole();
-            if !prev.is_null() {
-                windows_sys::Win32::UI::WindowsAndMessaging::SetForegroundWindow(prev);
-            }
+    {
+        if whichcraft_lib::is_gui_launch() {
+            whichcraft_lib::detach_console();
+            whichcraft_lib::run();
+        } else {
+            // Installers run `whichcraft.exe path-cleanup`; print to their console if they have one.
+            whichcraft_lib::attach_parent_console();
+            whichcraft_lib::run_cli();
         }
     }
-
-    // If a CLI subcommand is present (e.g. `envarly --help`, `envarly list`),
-    // handle it and exit. The console subsystem ensures the shell waits for us.
-    #[cfg(windows)]
-    whichcraft_lib::try_run_cli();
-    #[cfg(windows)]
-    whichcraft_lib::run();
 }

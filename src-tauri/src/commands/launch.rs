@@ -1,6 +1,43 @@
+use std::path::{Path, PathBuf};
+
 use serde::Serialize;
 
 use crate::error::EnvarlyError;
+
+/// The GUI program installed beside the console launcher (`whichcraft.com`, or
+/// `whichcraft-cli.exe` in a cargo build).
+pub fn gui_exe_beside(cli_exe: &Path) -> PathBuf {
+    cli_exe.with_file_name("whichcraft.exe")
+}
+
+/// Starts the GUI beside this console launcher with `args` (GUI flags only) and does not wait.
+/// The GUI is a windows-subsystem program, so it gets no console window. It must not inherit
+/// this launcher's stdio: a caller capturing the output (a script, `whichcraft | more`) would
+/// otherwise wait on the pipe until the window is closed. `Command` always lets the child inherit
+/// inheritable handles, so the launcher's own standard handles are made non-inheritable first.
+pub fn open_gui_beside(args: &[String]) -> std::io::Result<()> {
+    use std::process::Stdio;
+    use windows_sys::Win32::Foundation::{SetHandleInformation, HANDLE_FLAG_INHERIT};
+    use windows_sys::Win32::System::Console::{
+        GetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    };
+    for which in [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE] {
+        unsafe {
+            let handle = GetStdHandle(which);
+            if !handle.is_null() {
+                SetHandleInformation(handle, HANDLE_FLAG_INHERIT, 0);
+            }
+        }
+    }
+    let gui = gui_exe_beside(&std::env::current_exe()?);
+    std::process::Command::new(gui)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map(|_| ())
+}
 
 /// Starts the legacy Envarly-style presentation instead of the desktop shell.
 /// Read once at startup; switching needs a relaunch.
@@ -148,6 +185,18 @@ mod tests {
         assert_eq!(
             relaunch_parameters(&args(&[r#"say "hi""#])),
             r#""say \"hi\"""#
+        );
+    }
+
+    #[test]
+    fn the_console_launcher_opens_the_gui_installed_beside_it() {
+        assert_eq!(
+            gui_exe_beside(Path::new(r"C:\Program Files\Whichcraft\whichcraft.com")),
+            PathBuf::from(r"C:\Program Files\Whichcraft\whichcraft.exe")
+        );
+        assert_eq!(
+            gui_exe_beside(Path::new(r"E:\target\release\whichcraft-cli.exe")),
+            PathBuf::from(r"E:\target\release\whichcraft.exe")
         );
     }
 

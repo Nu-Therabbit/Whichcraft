@@ -65,6 +65,21 @@ both themes, and interaction tests in Storybook. Generated `*.hozo.css` files ar
 ignored build artifacts. Interactive components keep their current DOM APIs
 until their event, focus, ref, and accessibility contracts can be preserved.
 
+## Windows binaries: GUI and CLI
+
+Release builds ship two programs side by side in the install folder:
+
+- `whichcraft.exe` is the GUI (a windows-subsystem app, so Explorer and the Start menu open no
+  console window). Given a subcommand it still runs it, which the installers rely on for
+  `whichcraft.exe path-cleanup`.
+- `whichcraft.com` is the console launcher (`src-tauri/src/bin/whichcraft-cli.rs`, copied by
+  `scripts/build-cli-launcher.mjs` before bundling). PATHEXT tries `.COM` before `.EXE`, so
+  `whichcraft list` in a terminal runs it and the shell waits; with no subcommand it opens the GUI
+  and returns.
+
+Debug builds (`npm run tauri dev`) stay console apps so their logs show. Programs Whichcraft runs
+in the background go through `background_command` (no window); a layer test enforces it.
+
 ## Adding or updating translations
 
 Envarly supports multiple languages using `react-i18next`. Translation resources live under `src/locales/`:

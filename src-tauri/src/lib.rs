@@ -32,14 +32,46 @@ pub fn is_gui_launch() -> bool {
     commands::launch::is_gui_launch(&launch_args())
 }
 
-/// If CLI subcommand args are present, execute them and exit the process.
-/// Returns normally (unit) when there are no subcommand args, so the caller can launch the GUI.
+/// Runs the CLI subcommand in the arguments and exits (0 on success, 1 on error).
 #[cfg(windows)]
-pub fn try_run_cli() {
-    if is_gui_launch() {
-        return;
+pub fn run_cli() -> ! {
+    cli::run()
+}
+
+/// The GUI build started with a CLI subcommand (installers run `whichcraft.exe path-cleanup`):
+/// output goes to the console of whoever started it, when there is one.
+#[cfg(windows)]
+pub fn attach_parent_console() {
+    use windows_sys::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
+    unsafe {
+        AttachConsole(ATTACH_PARENT_PROCESS);
     }
-    cli::run() // -> !  (either exits 0 on success or exits 1 on error)
+}
+
+/// A GUI launch of a debug build (a console app, so `tauri dev` shows logs): drop the console
+/// Windows allocated, then give focus back to whatever had it. Release builds have no console.
+#[cfg(windows)]
+pub fn detach_console() {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, SetForegroundWindow};
+    unsafe {
+        let prev = GetForegroundWindow();
+        if windows_sys::Win32::System::Console::FreeConsole() != 0 && !prev.is_null() {
+            SetForegroundWindow(prev);
+        }
+    }
+}
+
+/// `whichcraft.com` started without a subcommand: open the GUI installed beside it with the
+/// same flags and return, so the shell is not held until the window closes.
+#[cfg(windows)]
+pub fn open_gui_beside_cli() -> ! {
+    match commands::launch::open_gui_beside(&launch_args()) {
+        Ok(()) => std::process::exit(0),
+        Err(e) => {
+            eprintln!("Cannot start the Whichcraft window: {e}");
+            std::process::exit(1)
+        }
+    }
 }
 
 #[cfg(windows)]

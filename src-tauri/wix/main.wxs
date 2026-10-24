@@ -176,6 +176,15 @@
                 {{/each~}}
                 {{/each~}}
             </Component>
+            <!--
+              The console launcher (scripts/build-cli-launcher.mjs puts it beside the main binary).
+              PATHEXT tries .COM before .EXE, so "whichcraft <command>" in a terminal runs it and
+              the shell waits, while Explorer and the Start menu run the GUI whichcraft.exe.
+              The path is relative to target/release/wix/x64, where the bundler runs candle/light.
+            -->
+            <Component Id="CliLauncher" Guid="{6B0E8C1A-3F57-4E2B-9A8D-5C4F1E7B2D90}" Win64="$(var.Win64)">
+                <File Id="CliLauncher" Name="whichcraft.com" Source="..\..\whichcraft.com" KeyPath="yes" Checksum="yes"/>
+            </Component>
             {{#each binaries as |bin| ~}}
             <Component Id="{{ bin.id }}" Guid="{{bin.guid}}" Win64="$(var.Win64)">
                 <File Id="Bin_{{ bin.id }}" Source="{{bin.path}}" KeyPath="yes"/>
@@ -249,6 +258,7 @@
                 Absent="disallow">
 
             <ComponentRef Id="RegistryEntries"/>
+            <ComponentRef Id="CliLauncher"/>
 
             {{#each resource_file_ids as |resource_file_id| ~}}
                 <ComponentRef Id="{{ resource_file_id }}"/>

@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Windows developer tool discovery, switching, and installation"
 authors = ["zigza"]
 edition = "2021"
+# The GUI; src/bin/whichcraft-cli.rs is the console launcher shipped as whichcraft.com.
+default-run = "whichcraft"
 
 [lib]
 name = "whichcraft_lib"

@@ -7,6 +7,7 @@
     "beforeDevCommand": "npm run dev:web",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
+    "beforeBundleCommand": "node scripts/build-cli-launcher.mjs",
     "frontendDist": "../dist"
   },
   "app": {
