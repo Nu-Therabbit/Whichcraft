@@ -1,27 +1,22 @@
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 import { IconButton } from "../../components/ui/IconButton";
 import { Select } from "../../components/ui/Select";
-import { useI18n, type Language } from "../../hooks/useI18n";
+import { LANGUAGE_OPTIONS, useI18n, type Language } from "../../hooks/useI18n";
+import { useAppServices } from "../../composition/AppServicesContext";
 import { useUpdateCheck } from "../../hooks/useUpdateCheck";
 import { useTheme } from "../../hooks/useTheme";
 import { useShellEnvironmentUi } from "./ShellEnvironmentUiContext";
 
-const languageOptions = [
-  { value: "en", label: "English" },
-  { value: "ja", label: "日本語" },
-  { value: "zh-CN", label: "简体中文" },
-  { value: "ru", label: "Русский" },
-  { value: "ko", label: "한국어" },
-  { value: "vi", label: "Tiếng Việt" },
-] as const;
+/** Whichcraft is a fork of Envarly; its upstream source carries the inherited attribution. */
+const SOURCE_URL = "https://github.com/iray-tno/envarly";
 
-/** Language, update notice, licences, and theme — same production hooks as legacy AppHeader. */
+/** Language, update notice, source, licences, and theme — same production hooks as legacy AppHeader. */
 export function ShellAppHeaderActions() {
   const { t, language, setLanguage } = useI18n();
   const { theme, toggle: toggleTheme } = useTheme();
-  const updateInfo = useUpdateCheck();
+  const { platform } = useAppServices();
+  const updateInfo = useUpdateCheck(platform);
   const { setDialog } = useShellEnvironmentUi();
 
   return (
@@ -31,7 +26,7 @@ export function ShellAppHeaderActions() {
           variant="ghost"
           size="xs"
           icon="info"
-          onClick={() => openUrl(updateInfo.url)}
+          onClick={() => void platform.openUrl(updateInfo.url)}
           title={t("header.update_available_title")}
           className="text-accent"
         >
@@ -44,7 +39,7 @@ export function ShellAppHeaderActions() {
           aria-label="Language"
           value={language}
           onValueChange={(v) => setLanguage(v as Language)}
-          options={languageOptions}
+          options={LANGUAGE_OPTIONS}
           density="compact"
           className="text-xs"
         />
@@ -55,6 +50,17 @@ export function ShellAppHeaderActions() {
         onClick={toggleTheme}
         title={theme === "dark" ? t("header.light_mode") : t("header.dark_mode")}
       />
+      <Button
+        variant="ghost"
+        size="xs"
+        icon="external-link"
+        iconPosition="right"
+        onClick={() => void platform.openUrl(SOURCE_URL)}
+        title={t("desktop_shell.view_source_title")}
+        className="text-dim"
+      >
+        {t("desktop_shell.view_source")}
+      </Button>
       <Button variant="ghost" size="xs" onClick={() => setDialog("licenses")} className="text-dim">
         {t("header.licenses")}
       </Button>

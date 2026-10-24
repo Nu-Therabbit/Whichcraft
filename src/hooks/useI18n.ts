@@ -3,6 +3,16 @@ import i18n from "../i18n";
 
 export type Language = "en" | "ja" | "zh-CN" | "ru" | "ko" | "vi";
 
+/** Language switcher entries, shared by the legacy header and the desktop shell. */
+export const LANGUAGE_OPTIONS: readonly { value: Language; label: string }[] = [
+  { value: "en", label: "English" },
+  { value: "ja", label: "日本語" },
+  { value: "zh-CN", label: "简体中文" },
+  { value: "ru", label: "Русский" },
+  { value: "ko", label: "한국어" },
+  { value: "vi", label: "Tiếng Việt" },
+];
+
 const STORAGE_KEY = "envarly-language";
 
 export function useI18n() {

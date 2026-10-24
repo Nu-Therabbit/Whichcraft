@@ -75,7 +75,7 @@ Envarly supports multiple languages using `react-i18next`. Translation resources
 When adding a new language:
 1. Create `src/locales/<lang>/` with `translation.json` and `descriptions.json`.
 2. Register the language resource in `src/i18n.ts`.
-3. Add the language option to the header language switcher in `src/components/AppHeader/LanguageMenu.tsx`.
+3. Add the language to `Language` and `LANGUAGE_OPTIONS` in `src/hooks/useI18n.ts` (both headers read the switcher entries from there).
 
 ## Setting up branch protection
 

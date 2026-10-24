@@ -25,11 +25,14 @@ function renderDefaultShell() {
 }
 
 describe("desktop shell header parity", () => {
+  const openUrl = vi.fn(async (_url: string) => {});
+
   beforeEach(() => {
     configureProductionServices(null);
     vi.mocked(isTauri).mockReturnValue(true);
     localStorage.removeItem("envarly.lastUpdateCheck");
     void i18n.changeLanguage("en");
+    openUrl.mockClear();
     const checkForUpdate = vi.fn(async () => ({
       version: "9.9.9",
       url: "https://example.com/release",
@@ -38,8 +41,19 @@ describe("desktop shell header parity", () => {
       getEnvVars: vi.fn(async () => []),
       prepareMise: vi.fn(async () => false),
       checkForUpdate,
+      openUrl,
     });
     configureProductionServices(splitEnvarlyApi(fake));
+  });
+
+  it("opens the update page and the upstream source through the platform API", async () => {
+    renderDefaultShell();
+
+    await userEvent.click(await screen.findByRole("button", { name: /9\.9\.9/ }));
+    expect(openUrl).toHaveBeenCalledWith("https://example.com/release");
+
+    await userEvent.click(screen.getByRole("button", { name: en.desktop_shell.view_source }));
+    expect(openUrl).toHaveBeenCalledWith("https://github.com/iray-tno/envarly");
   });
 
   it("exposes language, update notice, and licences on the default shell header", async () => {

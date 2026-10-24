@@ -26,6 +26,7 @@ export function fakeApi(overrides: Partial<EnvarlyApi>): EnvarlyApi {
     })),
     isElevated: vi.fn(async () => false),
     checkForUpdate: vi.fn(async () => null),
+    openUrl: vi.fn(async () => {}),
     getRecoveryStatus: vi.fn(async () => null),
     unfinishedUninstalls: vi.fn(async () => []),
     getWhichcraftSettings: vi.fn(async () => ({

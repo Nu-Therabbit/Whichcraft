@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { EnvarlyApi } from "../contracts";
 import type {
   ApplyProgressEvent,
@@ -36,6 +37,7 @@ export const tauriEnvarlyApi: EnvarlyApi = {
   getPathProposal: (scope) => invoke<string | null>("get_path_proposal", { scope }),
   checkCommand: (input) => invoke<CheckCommandResult>("check_command", { input }),
   checkForUpdate: () => invoke<UpdateInfo | null>("check_for_update"),
+  openUrl: (url) => openUrl(url),
   listLocalAccounts: () => invoke<LocalAccount[]>("list_local_accounts"),
   selectAccount: (sid) => invoke<LocalAccount | null>("select_account", { sid }),
   getSelectedAccount: () => invoke<LocalAccount | null>("get_selected_account"),

@@ -14,6 +14,7 @@ import { useI18n } from "../../hooks/useI18n";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import { useTheme } from "../../hooks/useTheme";
 import { useUpdateCheck } from "../../hooks/useUpdateCheck";
+import { useAppServices } from "../../composition/AppServicesContext";
 import type { DiagnosticAction, EnvironmentDiagnostic } from "../../lib/environmentDiagnostics";
 import { stagedToDiff } from "../../lib/stagedToDiff";
 import type { EnvVar, VarScope } from "../../types";
@@ -106,7 +107,8 @@ export function LegacyEnvironmentView({ tools, sendTools }: LegacyEnvironmentVie
 
   useKeyboardShortcuts(undo, redo, localUndoRef);
 
-  const updateInfo = useUpdateCheck();
+  const { platform } = useAppServices();
+  const updateInfo = useUpdateCheck(platform);
 
   const effectiveSelected = useMemo<EnvVar | null>(() => {
     if (!selected) return null;

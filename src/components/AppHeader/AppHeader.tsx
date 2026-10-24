@@ -1,6 +1,6 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../../api";
-import { useI18n } from "../../hooks/useI18n";
+import { LANGUAGE_OPTIONS, useI18n } from "../../hooks/useI18n";
 import type { LocalAccount, UpdateInfo } from "../../types";
 import { Button } from "../ui/Button";
 import { Dropdown } from "../ui/Dropdown";
@@ -61,14 +61,6 @@ export function AppHeader({
     { value: "", label: t("account_picker.my_variables") },
     ...selectableAccounts.map((a) => ({ value: a.sid, label: a.username })),
   ];
-  const languageOptions = [
-    { value: "en", label: "English" },
-    { value: "ja", label: "日本語" },
-    { value: "zh-CN", label: "简体中文" },
-    { value: "ru", label: "Русский" },
-    { value: "ko", label: "한국어" },
-    { value: "vi", label: "Tiếng Việt" },
-  ] as const;
 
   return (
     <header
@@ -176,7 +168,7 @@ export function AppHeader({
               aria-label="Language"
               value={language}
               onValueChange={setLanguage}
-              options={languageOptions}
+              options={LANGUAGE_OPTIONS}
               density="compact"
               className="text-xs"
             />
@@ -260,7 +252,7 @@ export function AppHeader({
                 aria-label="Language"
                 value={language}
                 onValueChange={setLanguage}
-                options={languageOptions}
+                options={LANGUAGE_OPTIONS}
                 density="compact"
                 containerClassName="flex-1"
                 className="w-full"
