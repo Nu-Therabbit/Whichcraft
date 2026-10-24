@@ -17,7 +17,7 @@ import { useUpdateCheck } from "../../hooks/useUpdateCheck";
 import { useAppServices } from "../../composition/AppServicesContext";
 import type { DiagnosticAction, EnvironmentDiagnostic } from "../../lib/environmentDiagnostics";
 import { stagedToDiff } from "../../lib/stagedToDiff";
-import type { EnvVar, VarScope } from "../../types";
+import type { EnvVar, VarScope } from "./types";
 import type { ToolsDispatch } from "../tools/useToolsStore";
 import type { ToolsState } from "../tools/model";
 

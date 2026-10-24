@@ -1,4 +1,4 @@
-import type { ToolKind } from "../types";
+import type { ToolKind } from "../features/tools/types";
 
 export type InvalidationScope =
   | "environment-variables"
@@ -46,11 +46,6 @@ export type CoordinatorReadBinding = {
   toolsRevision: number;
   environmentRevision: number;
 };
-
-/** @deprecated alias for tools inventory reads */
-export type ToolsReadBinding = CoordinatorReadBinding;
-
-export type EnvironmentReadBinding = CoordinatorReadBinding;
 
 export type PlanApplyBinding = {
   planId: string;

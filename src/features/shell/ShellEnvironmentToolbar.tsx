@@ -1,5 +1,5 @@
 import { useI18n } from "../../hooks/useI18n";
-import type { LocalAccount } from "../../types";
+import type { LocalAccount } from "../environment/types";
 import { Button } from "../../components/ui/Button";
 import { Select } from "../../components/ui/Select";
 

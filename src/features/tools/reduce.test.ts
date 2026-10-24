@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { UninstallPlan } from "../../types";
+import type { UninstallPlan } from "./types";
 import { initialToolsState, type ToolsState } from "./model";
 import type { ToolsMsg } from "./messages";
 import { isApplyPlanOutcomeError, reduce } from "./reduce";

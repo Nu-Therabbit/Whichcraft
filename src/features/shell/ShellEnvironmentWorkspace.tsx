@@ -11,7 +11,7 @@ import { useI18n } from "../../hooks/useI18n";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import type { DiagnosticAction, EnvironmentDiagnostic } from "../../lib/environmentDiagnostics";
 import type { ShellEnvironmentTab } from "../../lib/shellNavigation";
-import type { EnvVar, VarScope } from "../../types";
+import type { EnvVar, VarScope } from "../environment/types";
 import { useEnvironment } from "../environment/EnvironmentContext";
 import { ShellEnvironmentPathMaintenance } from "./ShellEnvironmentPathMaintenance";
 import { ShellEnvironmentToolbar } from "./ShellEnvironmentToolbar";

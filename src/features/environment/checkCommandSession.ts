@@ -1,5 +1,5 @@
 import type { WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
-import type { CheckCommandResult } from "../../types";
+import type { CheckCommandResult } from "./types";
 import type { EnvironmentApi } from "./api";
 
 /** Resolves a command through the backend API only (never runs the binary locally). */

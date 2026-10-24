@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { AppModals } from "../../components/AppModals/AppModals";
 import { stagedToDiff } from "../../lib/stagedToDiff";
-import type { EnvVar } from "../../types";
+import type { EnvVar } from "../environment/types";
 import { useEnvironment } from "../environment/EnvironmentContext";
 
 export type ShellEnvironmentDialog =

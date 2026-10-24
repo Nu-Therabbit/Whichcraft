@@ -5,7 +5,7 @@ import { useWriteCoordinator } from "./coordination/WriteCoordinatorContext";
 import { EnvironmentProvider } from "./features/environment/EnvironmentContext";
 import { LegacyEnvironmentView } from "./features/environment/LegacyEnvironmentView";
 import { DesktopShellApp } from "./features/shell/DesktopShellApp";
-import { scopesNeedToolsRefresh } from "./features/shell/useShellToolsWrite";
+import { scopesNeedToolsRefresh } from "./coordination/scopeGroups";
 import { useToolsStore } from "./features/tools/useToolsStore";
 import type { AppPresentation } from "./lib/appPresentation";
 

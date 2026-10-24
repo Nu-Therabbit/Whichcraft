@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
-import type { InvalidationScope } from "../../coordination/types";
+import { scopesNeedShellRescan } from "../../coordination/scopeGroups";
 import { ThemeContext } from "../../context/ThemeContext";
 import { useAppServices } from "../../composition/AppServicesContext";
 import { useI18n } from "../../hooks/useI18n";
@@ -37,17 +37,6 @@ import { useShellToolsWrite } from "./useShellToolsWrite";
 import { useToolsOverview } from "./useToolsOverview";
 
 type ShellPage = "tools" | "profiles" | "environment" | "settings";
-
-function scopesNeedShellRescan(scopes: InvalidationScope[]): boolean {
-  return scopes.some(
-    (scope) =>
-      scope === "shell-overview" ||
-      scope === "tools-installations" ||
-      scope === "tools-profiles" ||
-      scope === "account-context" ||
-      scope.startsWith("environment-"),
-  );
-}
 
 type Translate = ReturnType<typeof useI18n>["t"];
 

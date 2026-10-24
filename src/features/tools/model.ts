@@ -13,13 +13,13 @@ import type {
   ToolInstallationRef,
   ToolInstallationView,
   ToolKind,
-  UndoResult,
   UnfinishedUninstall,
   UninstallOutcome,
   UninstallPlan,
   UpdateCandidate,
-  WhichcraftSettings,
-} from "../../types";
+} from "./types";
+import type { UndoResult } from "../../shared/applyUndo";
+import type { WhichcraftSettings } from "../../platform/types";
 
 /** The version picked on the install list, with what it costs on disk once known. */
 export interface ChosenVersion {

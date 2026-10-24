@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { changesEnvironment } from "../../coordination/scopeGroups";
 import { useOptionalWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import { resolveCheckCommand } from "../../features/environment/checkCommandSession";
 import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
@@ -21,7 +22,7 @@ export function CheckCommandPanel() {
   useEffect(() => {
     if (!coordination) return;
     return coordination.subscribeInvalidation((scopes) => {
-      if (scopes.some((scope) => scope.startsWith("environment-"))) {
+      if (changesEnvironment(scopes)) {
         setResult(null);
         setError(null);
       }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ENVIRONMENT_PENDING_TOOLS_MESSAGE } from "../../coordination/types";
-import type { UninstallPlan } from "../../types";
+import type { UninstallPlan } from "./types";
 import { initialToolsState } from "./model";
 import { fakeToolsRuntime, harness, inst, planFor } from "./testHarness";
 

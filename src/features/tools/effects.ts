@@ -1,6 +1,6 @@
 import type { WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
 import type { InvalidationScope, ToolsWriteKind, WriteAdmission, WriteOutcome } from "../../coordination/types";
-import type { ProfileToolPin, ToolKind, ToolProfile } from "../../types";
+import type { ProfileToolPin, ToolKind, ToolProfile } from "./types";
 import type { ToolsRuntime } from "./runtime";
 import type { Operation, ToolsIntent, ToolsMsg } from "./messages";
 import { isSingleToolPlan, type ToolsState } from "./model";
@@ -88,6 +88,18 @@ function dropToolMutation(ctx: EffectContext, originTool: ToolKind) {
   ctx.dispatch({ type: "toolMutationDropped", tool: originTool });
 }
 
+/** Drops a write's result that arrived after its tool, account or plan moved on. True when dropped. */
+function droppedAsStale(
+  ctx: EffectContext,
+  originTool: ToolKind,
+  resultBinding: ReturnType<WriteCoordinatorFacade["beginToolResult"]>,
+  planBinding?: ReturnType<WriteCoordinatorFacade["beginPlanApply"]>,
+): boolean {
+  if (shouldCommitToolMutation(ctx, originTool, resultBinding, planBinding)) return false;
+  dropToolMutation(ctx, originTool);
+  return true;
+}
+
 function guardConflictingToolWork(ctx: EffectContext, op: Operation): boolean {
   const gate = ctx.runtime.coordination.checkToolsWriteAllowed();
   if (!gate.ok) {
@@ -151,10 +163,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         const result = plan.requiresUac
           ? await tools.applyToolPlanWithUac(plan)
           : await tools.applyToolPlan(plan);
-        if (!shouldCommitToolMutation(ctx, originTool, resultBinding, planBinding)) {
-          dropToolMutation(ctx, originTool);
-          return "cancel";
-        }
+        if (droppedAsStale(ctx, originTool, resultBinding, planBinding)) return "cancel";
         dispatch({ type: "applyFinished", tool: originTool, result });
         if (result.stale) {
           if (isSingleToolPlan(plan)) staleRebuild.value = { tool: plan.tool, root: plan.selected.root };
@@ -187,10 +196,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         const originTool = tool;
         const resultBinding = coordination.beginToolResult(originTool);
         const result = await tools.undoLastWhichcraftApply();
-        if (!shouldCommitToolMutation(ctx, originTool, resultBinding)) {
-          dropToolMutation(ctx, originTool);
-          return "cancel";
-        }
+        if (droppedAsStale(ctx, originTool, resultBinding)) return "cancel";
         dispatch({ type: "undone", tool: originTool, result });
         await readbackToolsState(ctx, originTool);
       });
@@ -203,17 +209,11 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         try {
           if (msg.action === "resume") {
             await tools.resumeApply(recovery.journalId);
-            if (!shouldCommitToolMutation(ctx, originTool, resultBinding)) {
-              dropToolMutation(ctx, originTool);
-              return "cancel";
-            }
+            if (droppedAsStale(ctx, originTool, resultBinding)) return "cancel";
             dispatch({ type: "recoveryResolved", tool: originTool, result: null });
           } else {
             const result = await tools.rollBackApply(recovery.journalId);
-            if (!shouldCommitToolMutation(ctx, originTool, resultBinding)) {
-              dropToolMutation(ctx, originTool);
-              return "cancel";
-            }
+            if (droppedAsStale(ctx, originTool, resultBinding)) return "cancel";
             dispatch({ type: "recoveryResolved", tool: originTool, result });
           }
         } finally {
@@ -346,10 +346,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
           }
         }
         const outcome = await tools.uninstall(originTool, plan.installation.root, replacement);
-        if (!shouldCommitToolMutation(ctx, originTool, resultBinding, planBinding)) {
-          dropToolMutation(ctx, originTool);
-          return "cancel";
-        }
+        if (droppedAsStale(ctx, originTool, resultBinding, planBinding)) return "cancel";
         dispatch({ type: "uninstallFinished", tool: originTool, outcome });
         // A switch gone stale must be shown again before it is applied.
         if (outcome.status === "blocked") dispatch({ type: "chooseReplacement", root: msg.replacementRoot });

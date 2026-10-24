@@ -1,5 +1,6 @@
 import type { ToolApplyPlan } from "../features/tools/types";
-import type { ToolKind } from "../types";
+import type { ToolKind } from "../features/tools/types";
+import { changesAccount, changesEnvironment, changesTools } from "./scopeGroups";
 import {
   ENVIRONMENT_PENDING_TOOLS_MESSAGE,
   type CoordinatorReadBinding,
@@ -15,6 +16,31 @@ import {
   WRITE_BUSY_MESSAGE,
   readScopeKey,
 } from "./types";
+
+/**
+ * Runs an environment write under admission. A refused admission is reported through
+ * `onRefused`; a write that resolves false or throws ends as a failure.
+ */
+export async function runEnvironmentWrite(
+  coordination: Pick<WriteCoordinatorFacade, "tryBeginEnvironmentWrite" | "endEnvironmentWrite">,
+  kind: EnvironmentWriteKind,
+  onRefused: (reason: string) => void,
+  write: () => Promise<boolean>,
+): Promise<boolean> {
+  const gate = coordination.tryBeginEnvironmentWrite(kind);
+  if (!gate.ok) {
+    onRefused(gate.reason);
+    return false;
+  }
+  try {
+    const ok = await write();
+    coordination.endEnvironmentWrite(gate.admission, ok ? "success" : "failure");
+    return ok;
+  } catch (err) {
+    coordination.endEnvironmentWrite(gate.admission, "failure");
+    throw err;
+  }
+}
 
 export type WriteCoordinatorFacade = {
   setEnvironmentPending: (pending: boolean) => void;
@@ -118,9 +144,9 @@ export function createWriteCoordinator(): WriteCoordinatorFacade {
   const invalidate = (scopes: InvalidationScope[]) => {
     const unique = [...new Set(scopes)];
     if (unique.length === 0) return;
-    if (unique.some((s) => s.startsWith("tools-") || s === "shell-overview")) toolsRevision += 1;
-    if (unique.some((s) => s.startsWith("environment-"))) environmentRevision += 1;
-    if (unique.includes("account-context")) {
+    if (changesTools(unique)) toolsRevision += 1;
+    if (changesEnvironment(unique)) environmentRevision += 1;
+    if (changesAccount(unique)) {
       toolsRevision += 1;
       environmentRevision += 1;
     }

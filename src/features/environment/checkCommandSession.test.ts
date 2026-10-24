@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
-import type { CheckCommandResult } from "../../types";
+import type { CheckCommandResult } from "./types";
 import type { EnvironmentApi } from "./api";
 import { resolveCheckCommand } from "./checkCommandSession";
 

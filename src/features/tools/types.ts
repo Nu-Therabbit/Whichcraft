@@ -1,5 +1,27 @@
-import type { PlanVariableDiff, RecoveryItem } from "../environment/types";
+import type { EnvValueKind } from "../../shared/envValueKind";
+import type { VarScope } from "../../shared/varScope";
 import type { TerminalKind } from "../../platform/types";
+
+/** One variable a tool plan writes, as shown before it is applied. */
+export interface PlanVariableDiff {
+  name: string;
+  scope: VarScope;
+  before: string | null;
+  after: string;
+  valueKind: EnvValueKind;
+}
+
+export type ChangeState = "written" | "notWritten" | "changedElsewhere";
+
+/** One journalled write of an unfinished apply. */
+export interface RecoveryItem {
+  name: string;
+  scope: VarScope;
+  state: ChangeState;
+  before: string | null;
+  after: string | null;
+  current: string | null;
+}
 
 export type ToolKind = "java" | "node" | "python" | "go" | "flutter" | "git";
 

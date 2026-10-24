@@ -14,13 +14,13 @@ import type {
   ToolInstallationView,
   ToolKind,
   ToolProfile,
-  UndoResult,
   UnfinishedUninstall,
   UninstallOutcome,
   UninstallPlan,
   UpdateCandidate,
-  WhichcraftSettings,
-} from "../../types";
+} from "./types";
+import type { UndoResult } from "../../shared/applyUndo";
+import type { WhichcraftSettings } from "../../platform/types";
 import type { ChosenVersion, PendingUpdate } from "./model";
 
 /** What the user (or the panel itself) asks for. */

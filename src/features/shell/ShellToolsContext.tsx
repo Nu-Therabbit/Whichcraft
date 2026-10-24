@@ -1,12 +1,16 @@
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
-import type { ShellCheck } from "../../types";
+import type { ShellCheck } from "../tools/types";
 import { createToolsRuntime } from "../../composition/appServices";
 import { useAppServices } from "../../composition/AppServicesContext";
 import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import type { ToolsDispatch } from "../tools/useToolsStore";
 import { useToolsStore } from "../tools/useToolsStore";
 import type { ToolsState } from "../tools/model";
-import { scopesNeedProfileReload, scopesNeedToolsRefresh } from "./useShellToolsWrite";
+import {
+  changesEnvironment,
+  scopesNeedProfileReload,
+  scopesNeedToolsRefresh,
+} from "../../coordination/scopeGroups";
 
 type ShellToolsContextValue = {
   state: ToolsState;
@@ -37,7 +41,7 @@ export function ShellToolsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     return coordination.subscribeInvalidation((scopes) => {
-      const environmentChanged = scopes.some((scope) => scope.startsWith("environment-"));
+      const environmentChanged = changesEnvironment(scopes);
       if (environmentChanged) {
         shellCheckRef.current = null;
         dispatch({ type: "clearShellCheck" });

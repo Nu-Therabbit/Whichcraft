@@ -1,6 +1,7 @@
 export type { VarScope } from "../../shared/varScope";
 import type { VarScope } from "../../shared/varScope";
-export type EnvValueKind = "String" | "ExpandString";
+export type { EnvValueKind } from "../../shared/envValueKind";
+import type { EnvValueKind } from "../../shared/envValueKind";
 export type EnvValueKindSelection = "Auto" | EnvValueKind;
 
 export interface SnapshotValue {
@@ -97,25 +98,6 @@ export interface PathStatusView {
   systemHasEntry: boolean;
   /** `null` when no other-user account is selected. */
   otherUserHasEntry: boolean | null;
-}
-
-export interface PlanVariableDiff {
-  name: string;
-  scope: VarScope;
-  before: string | null;
-  after: string;
-  valueKind: EnvValueKind;
-}
-
-export type ChangeState = "written" | "notWritten" | "changedElsewhere";
-
-export interface RecoveryItem {
-  name: string;
-  scope: VarScope;
-  state: ChangeState;
-  before: string | null;
-  after: string | null;
-  current: string | null;
 }
 
 export type { UndoConflict, UndoResult } from "../../shared/applyUndo";

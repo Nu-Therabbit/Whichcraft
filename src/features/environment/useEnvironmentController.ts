@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { runEnvironmentWrite } from "../../coordination/createWriteCoordinator";
 import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
-import type { InvalidationScope } from "../../coordination/types";
+import { scopesNeedEnvironmentRefresh } from "../../coordination/scopeGroups";
 import { useUndo } from "../../contexts/UndoContext";
 import { useAccountSwitch } from "../../hooks/useAccountSwitch";
 import { useAppInit } from "../../hooks/useAppInit";
@@ -14,25 +15,12 @@ import { useStaged } from "../../hooks/useStaged";
 import { useStagingHandlers } from "../../hooks/useStagingHandlers";
 import type { PlatformApi } from "../../platform/api";
 import { EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES } from "./externalDiffInvalidation";
-import type { EnvironmentRuntime } from "./runtime";
+import type { EnvironmentApi } from "./api";
 
 type PlatformInitSlice = Pick<PlatformApi, "isElevated">;
 
-function scopesNeedEnvironmentRefresh(scopes: InvalidationScope[]): boolean {
-  return scopes.some(
-    (scope) =>
-      scope === "environment-variables" ||
-      scope === "environment-diagnostics" ||
-      scope === "environment-external-diff" ||
-      scope === "account-context" ||
-      scope.startsWith("tools-") ||
-      scope === "shell-overview",
-  );
-}
-
-export function useEnvironmentController(runtime: EnvironmentRuntime, platform: PlatformInitSlice) {
+export function useEnvironmentController(environment: EnvironmentApi, platform: PlatformInitSlice) {
   const coordination = useWriteCoordinator();
-  const { environment } = runtime;
   const { vars, loading, error, refresh } = useEnvVars(environment, coordination);
   const {
     staged,
@@ -149,40 +137,18 @@ export function useEnvironmentController(runtime: EnvironmentRuntime, platform: 
   });
 
   const handleApplyStaged = useCallback(
-    async (takeSnapshot: boolean) => {
-      const gate = coordination.tryBeginEnvironmentWrite("apply-staged");
-      if (!gate.ok) {
-        setStagedError(gate.reason);
-        return false;
-      }
-      try {
-        const ok = await applyStagedCore(takeSnapshot);
-        coordination.endEnvironmentWrite(gate.admission, ok ? "success" : "failure");
-        return ok;
-      } catch (err) {
-        coordination.endEnvironmentWrite(gate.admission, "failure");
-        throw err;
-      }
-    },
+    (takeSnapshot: boolean) =>
+      runEnvironmentWrite(coordination, "apply-staged", setStagedError, () =>
+        applyStagedCore(takeSnapshot),
+      ),
     [applyStagedCore, coordination, setStagedError],
   );
 
   const handleDiffApply = useCallback(
-    async (...args: Parameters<typeof handleDiffApplyRaw>) => {
-      const gate = coordination.tryBeginEnvironmentWrite("apply-external-diff");
-      if (!gate.ok) {
-        setDiffApplyError(gate.reason);
-        return false;
-      }
-      try {
-        const ok = await handleDiffApplyRaw(...args);
-        coordination.endEnvironmentWrite(gate.admission, ok ? "success" : "failure");
-        return ok;
-      } catch (err) {
-        coordination.endEnvironmentWrite(gate.admission, "failure");
-        throw err;
-      }
-    },
+    (...args: Parameters<typeof handleDiffApplyRaw>) =>
+      runEnvironmentWrite(coordination, "apply-external-diff", setDiffApplyError, () =>
+        handleDiffApplyRaw(...args),
+      ),
     [coordination, handleDiffApplyRaw, setDiffApplyError],
   );
 

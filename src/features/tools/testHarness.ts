@@ -4,7 +4,7 @@ import { createToolsRuntime, splitEnvarlyApi } from "../../composition/appServic
 import { createIsolatedWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import type { WriteCoordinatorFacade } from "../../coordination/createWriteCoordinator";
 import type { ToolsRuntime } from "./runtime";
-import type { ToolApplyPlan, ToolInstallationRef, ToolInstallationView, ToolKind } from "../../types";
+import type { ToolApplyPlan, ToolInstallationRef, ToolInstallationView, ToolKind } from "./types";
 import { runEffects } from "./effects";
 import { isIntent, type ToolsIntent, type ToolsMsg } from "./messages";
 import { initialToolsState, type ToolsState } from "./model";

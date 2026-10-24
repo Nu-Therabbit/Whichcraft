@@ -7,7 +7,7 @@ import { UndoProvider } from "../../contexts/UndoContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
-import type { UninstallPlan } from "../../types";
+import type { UninstallPlan } from "../tools/types";
 import { fakeToolsRuntime, inst, planFor } from "../tools/testHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 

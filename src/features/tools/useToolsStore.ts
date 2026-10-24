@@ -1,5 +1,5 @@
 import { useCallback, useReducer, useRef } from "react";
-import type { ToolKind } from "../../types";
+import type { ToolKind } from "./types";
 import { runEffects } from "./effects";
 import { isIntent, type ToolsIntent, type ToolsMsg } from "./messages";
 import { initialToolsState, type ToolsState } from "./model";

@@ -16,7 +16,7 @@ import {
 } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { shellNavigationHref } from "../../lib/shellNavigation";
-import type { EnvSnapshot, SnapshotMeta } from "../../types";
+import type { EnvSnapshot, SnapshotMeta } from "../environment/types";
 import { fakeToolsRuntime, inst } from "../tools/testHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 

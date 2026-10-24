@@ -1,6 +1,5 @@
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext } from "react";
 import { useAppServices } from "../../composition/AppServicesContext";
-import { createEnvironmentRuntime } from "./runtime";
 import { EnvironmentApiProvider } from "./environmentApiContext";
 import { useEnvironmentController } from "./useEnvironmentController";
 
@@ -10,11 +9,7 @@ const EnvironmentControllerContext = createContext<EnvironmentController | null>
 
 export function EnvironmentProvider({ children }: { children: React.ReactNode }) {
   const services = useAppServices();
-  const runtime = useMemo(
-    () => createEnvironmentRuntime(services.environment),
-    [services.environment],
-  );
-  const controller = useEnvironmentController(runtime, services.platform);
+  const controller = useEnvironmentController(services.environment, services.platform);
 
   return (
     <EnvironmentApiProvider environment={services.environment}>

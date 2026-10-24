@@ -1,4 +1,4 @@
-import type { ToolKind, ToolApplyPlan, UninstallPlan } from "../../types";
+import type { ToolApplyPlan, ToolKind, UninstallPlan } from "./types";
 import type { ToolsState } from "./model";
 
 export type UninstallPlannedEvent = {
