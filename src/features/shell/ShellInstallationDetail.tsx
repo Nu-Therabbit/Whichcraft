@@ -173,7 +173,7 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
         <p className="text-xs text-dim">{t("tools.building_plan")}</p>
       )}
 
-      {current && current.tool === tool && (
+      {current && current.tool === tool && plan.source !== "profile" && plan.source !== "cleanup" && (
         <section className="border border-rim-subtle rounded-md p-3 flex flex-col gap-3 bg-surface/40">
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-semibold text-sm">{t("tools.plan_title")}</h3>

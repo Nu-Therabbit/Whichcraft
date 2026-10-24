@@ -88,7 +88,11 @@ function dropToolMutation(ctx: EffectContext, originTool: ToolKind) {
   ctx.dispatch({ type: "toolMutationDropped", tool: originTool });
 }
 
-/** Drops a write's result that arrived after its tool, account or plan moved on. True when dropped. */
+/**
+ * Drops a write's result that arrived after its tool, account or plan moved on. True when dropped.
+ * The backend call has already run, so callers end the write as a failure: the coordinator then
+ * invalidates and every view reads the Registry back instead of trusting the dropped result.
+ */
 function droppedAsStale(
   ctx: EffectContext,
   originTool: ToolKind,
@@ -163,7 +167,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         const result = plan.requiresUac
           ? await tools.applyToolPlanWithUac(plan)
           : await tools.applyToolPlan(plan);
-        if (droppedAsStale(ctx, originTool, resultBinding, planBinding)) return "cancel";
+        if (droppedAsStale(ctx, originTool, resultBinding, planBinding)) return "failure";
         dispatch({ type: "applyFinished", tool: originTool, result });
         if (result.stale) {
           if (isSingleToolPlan(plan)) staleRebuild.value = { tool: plan.tool, root: plan.selected.root };
@@ -196,7 +200,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         const originTool = tool;
         const resultBinding = coordination.beginToolResult(originTool);
         const result = await tools.undoLastWhichcraftApply();
-        if (droppedAsStale(ctx, originTool, resultBinding)) return "cancel";
+        if (droppedAsStale(ctx, originTool, resultBinding)) return "failure";
         dispatch({ type: "undone", tool: originTool, result });
         await readbackToolsState(ctx, originTool);
       });
@@ -209,11 +213,11 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         try {
           if (msg.action === "resume") {
             await tools.resumeApply(recovery.journalId);
-            if (droppedAsStale(ctx, originTool, resultBinding)) return "cancel";
+            if (droppedAsStale(ctx, originTool, resultBinding)) return "failure";
             dispatch({ type: "recoveryResolved", tool: originTool, result: null });
           } else {
             const result = await tools.rollBackApply(recovery.journalId);
-            if (droppedAsStale(ctx, originTool, resultBinding)) return "cancel";
+            if (droppedAsStale(ctx, originTool, resultBinding)) return "failure";
             dispatch({ type: "recoveryResolved", tool: originTool, result });
           }
         } finally {
@@ -346,7 +350,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
           }
         }
         const outcome = await tools.uninstall(originTool, plan.installation.root, replacement);
-        if (droppedAsStale(ctx, originTool, resultBinding, planBinding)) return "cancel";
+        if (droppedAsStale(ctx, originTool, resultBinding, planBinding)) return "failure";
         dispatch({ type: "uninstallFinished", tool: originTool, outcome });
         // A switch gone stale must be shown again before it is applied.
         if (outcome.status === "blocked") dispatch({ type: "chooseReplacement", root: msg.replacementRoot });

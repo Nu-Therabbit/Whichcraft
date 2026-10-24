@@ -566,6 +566,54 @@ describe("tools effects", () => {
     expect(h.state.plan.current).toBeNull();
   });
 
+  it("keeps showing a running apply after switching tools, then reads the Registry back", async () => {
+    const jdk = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
+    const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });
+    let releaseApply: (value: { planId: string; stale: boolean; needsElevation: boolean }) => void = () => {};
+    const applyToolPlan = vi.fn(
+      () =>
+        new Promise<{ planId: string; stale: boolean; needsElevation: boolean }>((resolve) => {
+          releaseApply = resolve;
+        }),
+    );
+    const { runtime, coordination } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async (tool: string) => (tool === "java" ? [jdk] : [node])),
+      applyToolPlan,
+    });
+    const invalidated: string[][] = [];
+    coordination.subscribeInvalidation((scopes) => invalidated.push([...scopes]));
+    const h = harness(runtime, {
+      tool: "java",
+      installations: [jdk],
+      plan: { ...initialToolsState().plan, current: planFor(jdk) },
+    });
+
+    h.dispatch({ type: "applyPlan" });
+    h.dispatch({ type: "selectTool", tool: "node" });
+    expect(h.state.plan.applying).toBe(true);
+    expect(coordination.checkToolsWriteAllowed().ok).toBe(false);
+
+    releaseApply({ planId: "p", stale: false, needsElevation: false });
+    await h.settle();
+    expect(h.state.plan.applying).toBe(false);
+    expect(coordination.checkToolsWriteAllowed().ok).toBe(true);
+    expect(invalidated.some((scopes) => scopes.includes("tools-installations"))).toBe(true);
+  });
+
+  it("keeps a reviewed profile plan when another tool is opened", () => {
+    const jdk = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
+    const node = inst("node", "22.0.0", "C:\\node", { selected: true, effective: true });
+    const profilePlan = { ...planFor(jdk), additionalSelections: [planFor(node).selected] };
+    const { runtime } = fakeToolsRuntime({});
+    const h = harness(runtime, {
+      tool: "java",
+      plan: { ...initialToolsState().plan, current: profilePlan, source: "profile" },
+    });
+    h.dispatch({ type: "selectTool", tool: "node" });
+    expect(h.state.plan.current).toBe(profilePlan);
+    expect(h.state.plan.source).toBe("profile");
+  });
+
   it("keeps the newer shell check when an older response returns later", async () => {
     const jdk = inst("java", "21.0.12", "C:\\jdk21", { selected: true, effective: true });
     const shellPayload = (path: string) => ({

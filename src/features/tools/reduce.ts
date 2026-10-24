@@ -37,6 +37,13 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
     case "selectTool": {
       const leaving = s.tool;
       const sameTool = leaving === msg.tool;
+      // A write still running, and profile or PATH cleanup plans (not owned by the tool being
+      // left), outlive the switch; the effect drops a late result for the old tool itself.
+      const current = s.plan.current;
+      const keepPlan =
+        s.plan.applying ||
+        (current !== null &&
+          (s.plan.source === "profile" || s.plan.source === "cleanup" || !isSingleToolPlan(current)));
       return {
         ...s,
         tool: msg.tool,
@@ -48,11 +55,13 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
           busy: false,
           pending: sameTool ? s.update.pending : null,
         },
-        plan: sameTool
-          ? s.plan
-          : { ...s.plan, current: null, cleanup: null, source: null, building: false, applying: false },
-        uninstall: sameTool
-          ? s.uninstall
+        plan:
+          sameTool || keepPlan
+            ? s.plan
+            : { ...s.plan, current: null, cleanup: null, source: null, building: false },
+        uninstall:
+          sameTool || s.uninstall.busy
+            ? s.uninstall
           : {
               ...s.uninstall,
               plan: null,
@@ -102,12 +111,20 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
           source: msg.source ?? s.plan.source,
         },
       };
-    case "toolMutationDropped":
+    case "toolMutationDropped": {
+      // The write kept running after the panel moved to another tool; once it ends, the
+      // left tool's own plan has nothing more to show.
+      const current = s.plan.current;
+      const leftPlan =
+        msg.tool !== s.tool && current?.tool === msg.tool && s.plan.source !== "profile" && s.plan.source !== "cleanup";
       return {
         ...s,
-        plan: { ...s.plan, applying: false },
+        plan: leftPlan
+          ? { ...s.plan, applying: false, current: null, source: null, cleanup: null }
+          : { ...s.plan, applying: false },
         uninstall: { ...s.uninstall, busy: false },
       };
+    }
     case "planCleanup":
       return {
         ...s,
