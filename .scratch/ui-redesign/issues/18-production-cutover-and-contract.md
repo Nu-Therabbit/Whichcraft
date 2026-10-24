@@ -56,3 +56,18 @@ Status moved back from `resolved` to `ready-for-human`: three acceptance boxes a
 - **Architecture dependency checks:** `src/architecture.test.ts` adds the frontend side next to the Rust `layer_tests.rs`. Feature policy has no Tauri, transport, demo or barrel imports. The `api` singleton is reached only from composition and the legacy-only `AppHeader`. Shell feature code now opens URLs and checks updates through `PlatformApi`.
 - **Parity rows fixed:** UI-23 (the shell header's Source link), UI-26 (Check in shell and Open terminal in the command bar) and story 5 (inventory status in the status bar).
 - **Still open (human):** `npm run tauri build`, starting both modes from the package, closing and relaunching across modes with persisted state/recovery readback, and running without a separate Envarly. Tickets 19/20 stay blocked on this ticket.
+
+### Agent Windows run (2026-10-24, Windows 11 Pro 10.0.26300)
+
+Release build (`npm run tauri build -- --no-bundle`, no installers) driven through WebView2 remote debugging with Playwright `connectOverCDP`. All app launches used `--demo`, so nothing was written to the Registry or `%LOCALAPPDATA%\Whichcraft` (checked afterwards: only the existing `journal` folders, unchanged).
+
+- **Pass — build:** `whichcraft.exe` builds with the embedded frontend. Installers (`--bundle`, WiX/NSIS) were not built.
+- **Pass — read-only contracts:** the five read-only ignored tests pass on this machine: tool discovery, SDK/vswhere/py inventory, MSI catalog, PATH cleanup plan and the real PowerShell/cmd shell check.
+- **Pass — default mode:** `whichcraft.exe --demo` sets `__WHICHCRAFT_PRESENTATION__ = "desktop-shell"` and mounts the shell. One `get_launch_options` IPC call, so there is a single bootstrap.
+- **Pass — fallback:** `whichcraft.exe --demo --legacy-ui` mounts the legacy UI with no shell nav, again with one `get_launch_options` call. Modes were switched by closing and relaunching.
+- **Pass — window sizes:** at 1200×760 and 900×600 there is no horizontal overflow.
+- **Fixed — inspector at 900×600:** the list shrank to 196 px with clipped names and left a blank band. Fixed in `5386d9b`: the list is now 340 px beside the 352 px inspector.
+- **Pass — keyboard and theme:** keyboard Tab order runs nav → header → command bar → search, with visible focus. Enter on the Environment link navigates and updates the URL. The theme toggle switches between light and dark.
+- **Finding — tabs:** the Environment tablist does not move with ArrowLeft/ArrowRight.
+- **Finding — list height:** at 900×600 the variable list shows about two rows.
+- **Not run:** real (non-demo) launch, which downloads the pinned mise on first start; installers; the Run as admin relaunch with `--legacy-ui` (needs UAC); recovery/readback across modes with real data; the separate-Envarly check on a clean machine.
