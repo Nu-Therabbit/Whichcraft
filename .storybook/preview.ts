@@ -1,6 +1,9 @@
 import type { Preview } from "@storybook/react-vite";
 import { createElement } from "react";
 import { create } from "storybook/theming/create";
+import { api } from "../src/api";
+import type { EnvironmentApi } from "../src/features/environment/api";
+import { EnvironmentApiProvider } from "../src/features/environment/environmentApiContext";
 import type { PlatformApi } from "../src/platform/api";
 import { PlatformApiProvider } from "../src/platform/platformApiContext";
 import "../src/index.css";
@@ -26,6 +29,18 @@ const storyPlatform: PlatformApi = {
   getWhichcraftSettings: async () => ({ installStore: "", scanRoots: [], terminal: "windows_terminal" }),
   saveWhichcraftSettings: async () => {},
 };
+
+/**
+ * Stories mock backend calls by reassigning methods on the legacy `api` object
+ * (`api.checkCommand = …`), so the injected EnvironmentApi forwards each call to it at call time.
+ */
+const storyEnvironment = new Proxy({} as EnvironmentApi, {
+  get: (_target, method) => {
+    if (typeof method !== "string" || method === "then") return undefined;
+    return (...args: unknown[]) =>
+      (api as unknown as Record<string, (...a: unknown[]) => unknown>)[method](...args);
+  },
+});
 
 const BG: Record<string, string> = {
   dark: "#0f1117",
@@ -90,7 +105,13 @@ const preview: Preview = {
       return Story();
     },
     (Story) =>
-      createElement(PlatformApiProvider, { platform: storyPlatform, children: createElement(Story) }),
+      createElement(PlatformApiProvider, {
+        platform: storyPlatform,
+        children: createElement(EnvironmentApiProvider, {
+          environment: storyEnvironment,
+          children: createElement(Story),
+        }),
+      }),
   ],
 };
 
