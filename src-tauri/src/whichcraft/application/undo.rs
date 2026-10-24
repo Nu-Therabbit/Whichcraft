@@ -95,15 +95,17 @@ pub fn revert_journal<B: EnvBackend>(
             .unwrap_or_else(|| mutation.name.clone());
 
         if mutation.name.eq_ignore_ascii_case("path") {
-            // PATH is a list: undo entry by entry, so entries added by others survive.
             let current_val = current_value.as_deref().unwrap_or("");
             let before_val = mutation.before.as_ref().map(|v| v.value.as_str()).unwrap_or("");
-            let restored = restore_path_value(
-                current_val,
-                &mutation.path_added,
-                &mutation.path_removed,
-                before_val,
-            );
+            let untouched_since = mutation.after.as_ref().is_some_and(|a| a.value == current_val);
+            // Still exactly what Whichcraft wrote: put the old value back verbatim (empty
+            // segments and spelling included). Otherwise PATH is a list: undo entry by entry,
+            // so entries added by others survive.
+            let restored = if untouched_since && mutation.before.is_some() {
+                before_val.to_string()
+            } else {
+                restore_path_value(current_val, &mutation.path_added, &mutation.path_removed, before_val)
+            };
             if restored == current_val {
                 continue;
             }
@@ -275,6 +277,21 @@ mod tests {
         let result = undo_last_apply(&backend, &FileStore, None).expect("undo");
         assert!(result.conflicts.is_empty());
         assert_eq!(backend.read_user().unwrap()["Path"].value, "C:\\old");
+    }
+
+    #[test]
+    fn undo_puts_an_untouched_path_back_exactly_including_empty_segments() {
+        // U-1: found on a real machine whose User Path held ";;" — Undo dropped the empty entry.
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let before = "C:\\old;;C:\\other;";
+        let after = compute_prepend(before, "C:\\jdk\\bin").unwrap();
+        let backend = MemBackend::new().with_user([("Path", leak(after.clone()))]);
+        save_completed(vec![path_mutation(VarScope::User, before, &after)], &backend);
+
+        let result = undo_last_apply(&backend, &FileStore, None).expect("undo");
+        assert!(result.conflicts.is_empty());
+        assert_eq!(backend.read_user().unwrap()["Path"].value, before);
     }
 
     #[test]
