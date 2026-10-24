@@ -26,3 +26,10 @@
 - `ShellProfilePlanPanel` shows plan diff + Apply on the profiles page; `planProfile` dispatches `planBuilt` with `plan.tool` and `source: "profile"`.
 - Single app-level recovery via `ShellAppRecoveryBanner` (removed duplicate inspector banner).
 - Shell tests lock staged-env block, no `createSnapshot` on profile apply, unavailable pins idle, environment-only invalidation refresh, and full `applyToolPlan` on Apply plan.
+
+### Review round 2 (Grok re-review on 865ad79)
+
+- Node-first profile test clicks Apply plan and asserts `applyToolPlan(reviewedPlan)` with diff row; stale rebuild uses `plan.tool` via explicit `buildPlan.tool`.
+- `plan.source` tracks profile vs inventory vs cleanup; `ShellProfilePlanPanel` shows profile-sourced plans only.
+- Install-missing shell test reaches `planProfile` and `applyToolPlan` after Install the missing.
+- **Verification:** `npm test -- --run` (487 passed), `npm run lint` (clean).

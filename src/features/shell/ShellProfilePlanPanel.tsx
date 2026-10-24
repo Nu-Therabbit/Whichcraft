@@ -9,7 +9,7 @@ export function ShellProfilePlanPanel({ state, dispatch }: { state: ToolsState; 
   const { t } = useI18n();
   const { plan } = state;
   const current = plan.current;
-  if (!current) return null;
+  if (!current || plan.source !== "profile") return null;
 
   const applyBusy = plan.applying || plan.building;
 

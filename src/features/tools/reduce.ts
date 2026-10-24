@@ -13,7 +13,10 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
   // A slow result for the tool the panel has since left must not land on the new one.
   if (!isIntent(msg) && msg.type === "planBuilt" && msg.tool !== s.tool) {
     if (msg.source === "profile" || !isSingleToolPlan(msg.plan)) {
-      return { ...s, plan: { ...s.plan, current: msg.plan, building: false } };
+      return {
+        ...s,
+        plan: { ...s.plan, current: msg.plan, building: false, source: msg.source ?? s.plan.source },
+      };
     }
     return { ...s, plan: { ...s.plan, building: false } };
   }
@@ -44,7 +47,7 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
         },
         plan: sameTool
           ? s.plan
-          : { ...s.plan, current: null, cleanup: null, building: false, applying: false },
+          : { ...s.plan, current: null, cleanup: null, source: null, building: false, applying: false },
         uninstall: sameTool
           ? s.uninstall
           : {
@@ -83,11 +86,19 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
       return {
         ...s,
         error: msg.type === "buildPlan" && msg.keepPending ? s.error : null,
-        plan: { ...s.plan, current: null, building: true },
+        plan: { ...s.plan, current: null, source: null, building: true },
         update: { ...s.update, pending: msg.type === "buildPlan" && msg.keepPending ? s.update.pending : null },
       };
     case "planBuilt":
-      return { ...s, plan: { ...s.plan, current: msg.plan, building: false } };
+      return {
+        ...s,
+        plan: {
+          ...s.plan,
+          current: msg.plan,
+          building: false,
+          source: msg.source ?? s.plan.source,
+        },
+      };
     case "toolMutationDropped":
       return {
         ...s,
@@ -98,7 +109,7 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
       return {
         ...s,
         error: null,
-        plan: { ...s.plan, current: null, building: true, cleanup: null },
+        plan: { ...s.plan, current: null, source: null, building: true, cleanup: null },
         update: { ...s.update, pending: null },
       };
     case "cleanupPlanned":
@@ -108,6 +119,7 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
           ...s.plan,
           current: msg.plan,
           building: false,
+          source: "cleanup",
           cleanup: { duplicates: msg.duplicates, missing: msg.missing },
         },
       };
@@ -121,10 +133,14 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
         return { ...s, error: STALE, plan: keep ? plan : { ...plan, current: null } };
       }
       if (msg.result.needsElevation) return { ...s, error: NEEDS_UAC, plan };
-      return { ...s, plan: { ...plan, current: null, cleanup: null } };
+      return { ...s, plan: { ...plan, current: null, source: null, cleanup: null } };
     }
     case "clearPlan":
-      return { ...s, plan: { ...s.plan, current: null, cleanup: null }, update: { ...s.update, pending: null } };
+      return {
+        ...s,
+        plan: { ...s.plan, current: null, source: null, cleanup: null },
+        update: { ...s.update, pending: null },
+      };
     case "undoLast":
     case "resolveRecovery":
       return { ...s, error: null, plan: { ...s.plan, applying: true } };

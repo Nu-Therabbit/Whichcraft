@@ -53,6 +53,8 @@ export interface ToolsState {
     building: boolean;
     applying: boolean;
     undoResult: UndoResult | null;
+    /** Where the on-screen plan came from (profiles page shows profile-sourced plans only). */
+    source: "inventory" | "profile" | "cleanup" | null;
     /** Why each entry goes, while a PATH cleanup plan is on screen. */
     cleanup: { duplicates: string[]; missing: string[] } | null;
   };
@@ -95,7 +97,7 @@ export function initialToolsState(tool: ToolKind = "java"): ToolsState {
     pythonInfo: null,
     sdks: { android: null, msvc: null },
     shellCheck: null,
-    plan: { current: null, building: false, applying: false, undoResult: null, cleanup: null },
+    plan: { current: null, building: false, applying: false, undoResult: null, source: null, cleanup: null },
     install: {
       versions: [],
       loading: false,

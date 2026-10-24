@@ -124,8 +124,15 @@ describe("desktop shell tool profiles", () => {
 
   it("shows profile apply plan when the first pin is not the default open tool", async () => {
     const profile = { id: "p1", name: "Node only", tools: [nodePin] };
-    const reviewedPlan = planFor(inst("node", "20.0.0", "C:\\node20"), { planId: "node-profile-plan" });
+    const reviewedPlan = planFor(inst("node", "20.0.0", "C:\\node20"), {
+      planId: "node-profile-plan",
+      userDiffs: [{ name: "PATH", scope: "User" as const, kind: "changed" as const, before: "C:\\old", after: "C:\\node20\\bin" }],
+    });
     const planProfile = vi.fn(async () => reviewedPlan);
+    const applyToolPlan = vi.fn(async () => ({ planId: "node-profile-plan", stale: false, needsElevation: false }));
+    const planToolApply = vi.fn(async () => {
+      throw new Error("applyToolPlan must be used for profile apply, not planToolApply(java, …)");
+    });
     renderShell({
       listProfiles: async () => [profile],
       profileStatus: async () => ({
@@ -134,6 +141,8 @@ describe("desktop shell tool profiles", () => {
         unavailable: [],
       }),
       planProfile,
+      applyToolPlan,
+      planToolApply,
       listToolInstallations: async (tool: string) =>
         tool === "node" ? [inst("node", "22.0.0", "C:\\node22", { effective: true, selected: true })] : [],
     });
@@ -143,6 +152,12 @@ describe("desktop shell tool profiles", () => {
     await user.click(screen.getByRole("button", { name: /^apply$/i }));
     await waitFor(() => expect(planProfile).toHaveBeenCalled());
     expect(await screen.findByRole("button", { name: /^apply plan$/i })).toBeInTheDocument();
+    expect(screen.getByText(/User PATH/i)).toBeInTheDocument();
+    expect(applyToolPlan).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: /^apply plan$/i }));
+    await waitFor(() => expect(applyToolPlan).toHaveBeenCalledWith(reviewedPlan));
+    expect(reviewedPlan.tool).toBe("node");
+    expect(planToolApply).not.toHaveBeenCalled();
   });
 
   it("reloads profile match status after environment invalidation without tools-profiles scope", async () => {
@@ -233,13 +248,18 @@ describe("desktop shell tool profiles", () => {
     expect(createSnapshot).not.toHaveBeenCalled();
   });
 
-  it("blocks apply when pins are unavailable and keeps planning idle", async () => {
+  it("install-missing reaches profile plan and applyToolPlan", async () => {
     const profile = { id: "p1", name: "Android", tools: [javaPin, nodePin] };
+    const reviewedPlan = planFor(inst("java", "17.0.2", "C:\\jdk17"), {
+      planId: "after-install-plan",
+      userDiffs: [{ name: "JAVA_HOME", scope: "User" as const, kind: "changed" as const, before: "a", after: "C:\\jdk17" }],
+    });
     const profileMissing = vi.fn(async () => [
       { pin: nodePin, installVersion: "20.19.0", downloadBytes: 1024 },
     ]);
-    const planProfile = vi.fn(async () => planFor(inst("java", "17.0.2", "C:\\jdk17")));
-    const applyToolPlan = vi.fn(async () => ({ planId: "p", stale: false, needsElevation: false }));
+    const installMissing = vi.fn(async () => {});
+    const planProfile = vi.fn(async () => reviewedPlan);
+    const applyToolPlan = vi.fn(async () => ({ planId: "after-install-plan", stale: false, needsElevation: false }));
     renderShell({
       listProfiles: async () => [profile],
       profileStatus: async () => ({
@@ -248,6 +268,7 @@ describe("desktop shell tool profiles", () => {
         unavailable: [nodePin],
       }),
       profileMissing,
+      installMissing,
       planProfile,
       applyToolPlan,
       listToolInstallations: async () => [],
@@ -259,7 +280,11 @@ describe("desktop shell tool profiles", () => {
     await user.click(screen.getByRole("button", { name: /what is missing/i }));
     await waitFor(() => expect(profileMissing).toHaveBeenCalledWith(profile));
     expect(planProfile).not.toHaveBeenCalled();
-    expect(applyToolPlan).not.toHaveBeenCalled();
-    expect(await screen.findByRole("button", { name: /install the missing/i })).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /install the missing/i }));
+    await waitFor(() => expect(installMissing).toHaveBeenCalledWith(profile));
+    await waitFor(() => expect(planProfile).toHaveBeenCalledWith(profile));
+    expect(await screen.findByText(/User JAVA_HOME/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^apply plan$/i }));
+    await waitFor(() => expect(applyToolPlan).toHaveBeenCalledWith(reviewedPlan));
   });
 });

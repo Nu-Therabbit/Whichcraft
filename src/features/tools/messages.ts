@@ -29,7 +29,7 @@ export type ToolsIntent =
   | { type: "selectTool"; tool: ToolKind }
   | { type: "refresh" }
   /** `keepPending` when the same switch is rebuilt because it went stale, not a new choice. */
-  | { type: "buildPlan"; root: string; keepPending?: boolean }
+  | { type: "buildPlan"; root: string; tool?: ToolKind; keepPending?: boolean; source?: "inventory" | "profile" }
   | { type: "applyPlan" }
   | { type: "clearPlan" }
   | { type: "undoLast" }

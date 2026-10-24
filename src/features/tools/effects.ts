@@ -124,16 +124,23 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
 
     case "buildPlan": {
       if (!guardConflictingToolWork(ctx, "plan")) return;
-      const plan = await tools.planToolApply(tool, msg.root);
+      const planTool = msg.tool ?? tool;
+      const plan = await tools.planToolApply(planTool, msg.root);
       coordination.registerReviewedPlan(plan);
-      dispatch({ type: "planBuilt", tool, plan, source: "inventory" });
+      dispatch({
+        type: "planBuilt",
+        tool: plan.tool,
+        plan,
+        source: msg.source ?? "inventory",
+      });
       return;
     }
     case "applyPlan": {
       const plan = state.plan.current;
       if (!plan) return;
       const originTool = tool;
-      let staleRebuildRoot: string | null = null;
+      const planSource = state.plan.source;
+      let staleRebuild: { tool: ToolKind; root: string } | null = null;
       await withToolsWrite(ctx, "apply-plan", "apply", async () => {
         const resultBinding = coordination.beginToolResult(originTool);
         const planBinding = coordination.beginPlanApply(plan.planId, plan.tool);
@@ -150,7 +157,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
         }
         dispatch({ type: "applyFinished", tool: originTool, result });
         if (result.stale) {
-          if (isSingleToolPlan(plan)) staleRebuildRoot = plan.selected.root;
+          if (isSingleToolPlan(plan)) staleRebuild = { tool: plan.tool, root: plan.selected.root };
           await readbackToolsState(ctx, originTool);
           return "failure";
         }
@@ -164,7 +171,15 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
           dispatch({ type: "planUninstall", root: pending.replacedRoot, defaultReplacement: pending.installed.root });
         }
       });
-      if (staleRebuildRoot) dispatch({ type: "buildPlan", root: staleRebuildRoot, keepPending: true });
+      if (staleRebuild) {
+        dispatch({
+          type: "buildPlan",
+          root: staleRebuild.root,
+          tool: staleRebuild.tool,
+          keepPending: true,
+          source: planSource === "profile" ? "profile" : "inventory",
+        });
+      }
       return;
     }
     case "undoLast":

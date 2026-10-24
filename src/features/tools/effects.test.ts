@@ -91,6 +91,31 @@ describe("tools effects", () => {
     expect(api.planUninstall).not.toHaveBeenCalled();
   });
 
+  it("rebuilds a stale single-tool profile plan with the plan tool, not the open store tool", async () => {
+    const nodePlan = planFor(inst("node", "20.0.0", "C:\\node20"), { planId: "node-prof" });
+    const applyToolPlan = vi
+      .fn()
+      .mockResolvedValueOnce({ planId: "node-prof", stale: true, needsElevation: false })
+      .mockResolvedValueOnce({ planId: "node-prof", stale: false, needsElevation: false });
+    const planToolApply = vi.fn(async () => nodePlan);
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async () => []),
+      planToolApply,
+      applyToolPlan,
+      listProfiles: vi.fn(async () => []),
+      profileStatus: vi.fn(async (p) => ({ profile: p, matches: true })),
+    });
+    const h = harness(runtime, {
+      tool: "java",
+      plan: { ...initialToolsState().plan, current: nodePlan, source: "profile" },
+    });
+    h.dispatch({ type: "applyPlan" });
+    await h.settle();
+    expect(planToolApply).toHaveBeenCalledWith("node", "C:\\node20");
+    expect(planToolApply).not.toHaveBeenCalledWith("java", expect.anything());
+    expect(h.state.plan.source).toBe("profile");
+  });
+
   it("a stale update switch is rebuilt and still leads to the uninstall offer", async () => {
     const applyToolPlan = vi
       .fn()
