@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
@@ -151,6 +151,40 @@ describe("desktop shell maintenance and recovery", () => {
     await user.click(screen.getByRole("button", { name: /^apply plan$/i }));
     await waitFor(() => expect(applyToolPlan).toHaveBeenCalled());
     expect(applyEnvChanges).not.toHaveBeenCalled();
+  });
+
+  it("keeps Undo on the Environment toolbar after a PATH cleanup is applied", async () => {
+    const cleanupPlan = {
+      ...planFor(inst("java", "21.0.1", "C:\\jdk21"), {
+        planId: "path-cleanup",
+        recordsSelection: false,
+      }),
+      removedDuplicates: ["C:\\dup"],
+      removedMissing: [],
+      userDiffs: [
+        { name: "PATH", scope: "User" as const, kind: "changed" as const, before: "a", after: "b" },
+      ],
+    };
+    const undoLastWhichcraftApply = vi.fn(async () => ({ restored: 1, conflicts: [] }));
+    renderShell({
+      getEnvVars: async () => [],
+      planPathCleanup: async () => cleanupPlan,
+      applyToolPlan: vi.fn(async () => ({ planId: "path-cleanup", stale: false, needsElevation: false })),
+      undoLastWhichcraftApply,
+      listToolInstallations: async () => [
+        inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true }),
+      ],
+    });
+
+    const user = userEvent.setup();
+    const toolbar = await screen.findByRole("toolbar", { name: /environment actions/i });
+    await user.click(within(toolbar).getByRole("button", { name: /clean up path$/i }));
+    await user.click(await screen.findByRole("button", { name: /^apply plan$/i }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^apply plan$/i })).not.toBeInTheDocument());
+
+    await user.click(within(toolbar).getByRole("button", { name: /undo last whichcraft apply/i }));
+    await waitFor(() => expect(undoLastWhichcraftApply).toHaveBeenCalled());
+    expect(await screen.findByText(/undo restored 1 variable/i)).toBeInTheDocument();
   });
 
   it("offers undo on the PATH cleanup band", async () => {

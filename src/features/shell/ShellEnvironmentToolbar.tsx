@@ -60,6 +60,14 @@ export function ShellEnvironmentToolbar({
       >
         {t("tools.cleanup.button")}
       </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => tools.dispatch({ type: "undoLast" })}
+        disabled={toolsBusy}
+      >
+        {t("tools.undo_last")}
+      </Button>
       {stagedCount > 0 && (
         <Button variant="primary" size="sm" onClick={onApplyStaged}>
           {t("header.staged_count", { count: stagedCount })}

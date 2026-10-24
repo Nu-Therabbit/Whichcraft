@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/Button";
 import type { ToolsDispatch } from "../tools/useToolsStore";
 import type { ToolsState } from "../tools/model";
 import { useI18n } from "../../hooks/useI18n";
+import { ShellUndoResult } from "./ShellUndoResult";
 import type { ToolInstallationView, ToolKind } from "../tools/types";
 
 interface Props {
@@ -75,27 +76,7 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
         </div>
       ))}
 
-      {plan.undoResult && (
-        <div className="text-xs border border-rim-subtle rounded-md px-3 py-2 space-y-1">
-          {plan.undoResult.conflicts.length > 0 ? (
-            <>
-              <p className="text-warn font-medium">{t("desktop_shell.undo_conflicts")}</p>
-              <ul className="list-disc pl-4 text-dim">
-                {plan.undoResult.conflicts.map((c) => (
-                  <li key={`${c.scope}-${c.name}`}>
-                    {c.scope} {c.name}: {c.message}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <p className="text-success">{t("desktop_shell.undo_restored", { count: plan.undoResult.restored })}</p>
-          )}
-          <Button variant="ghost" size="xs" onClick={() => dispatch({ type: "clearUndoResult" })}>
-            {t("desktop_shell.dismiss_undo_result")}
-          </Button>
-        </div>
-      )}
+      <ShellUndoResult state={state} dispatch={dispatch} />
 
       <div>
         <h3 className="text-[11px] uppercase tracking-wide text-dim flex justify-between">
