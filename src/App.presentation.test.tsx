@@ -45,7 +45,7 @@ describe("App presentation cutover", () => {
       expect(screen.getByRole("navigation", { name: en.desktop_shell.nav_label })).toBeInTheDocument(),
     );
     expect(screen.queryByRole("button", { name: en.header.snapshots })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: en.desktop_shell.open_legacy })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /legacy ui/i })).not.toBeInTheDocument();
   });
 
   it("mounts legacy only when presentation=legacy was frozen at startup", async () => {
