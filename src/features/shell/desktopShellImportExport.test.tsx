@@ -109,6 +109,31 @@ describe("desktop shell import export", () => {
     expect(setEnvVar).not.toHaveBeenCalled();
   });
 
+  it("reads a chosen .reg file and parses it in REG format", async () => {
+    const parseImport = vi.fn(async () => IMPORT_SNAP);
+    renderShell({
+      getEnvVars: async () => [],
+      parseImport,
+      getRegistrySnapshot: async () => ({ user: {}, system: {} }),
+    });
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("radio", { name: /^import$/i }));
+    const regFile = new File(
+      ['Windows Registry Editor Version 5.00\r\n\r\n[HKEY_CURRENT_USER\\Environment]\r\n"FOO"="bar"\r\n'],
+      "backup.reg",
+      { type: "text/plain" },
+    );
+    await user.upload(screen.getByLabelText(/^import file$/i), regFile);
+    const contents = screen.getByPlaceholderText(/paste file contents/i) as HTMLTextAreaElement;
+    await waitFor(() => expect(contents.value).toContain('"FOO"="bar"'));
+    await user.click(screen.getByRole("button", { name: /^parse$/i }));
+    await waitFor(() =>
+      expect(parseImport).toHaveBeenCalledWith(expect.stringContaining('"FOO"="bar"'), "reg"),
+    );
+    expect(await screen.findByRole("button", { name: /stage 1 variable/i })).toBeInTheDocument();
+  });
+
   it("reports parse errors without staging", async () => {
     const parseImport = vi.fn(async () => {
       throw new Error("invalid json");

@@ -248,9 +248,10 @@ function InstallationSwitchRow({
         {item.effective && <Badge variant="user">{t("tools.effective")}</Badge>}
         {item.selected && !item.effective && <Badge variant="muted">{t("tools.selected")}</Badge>}
         {!item.available && <Badge variant="warn">{t("tools.unavailable")}</Badge>}
+        <Badge variant="muted">{t(`tools.installer.${item.installerKind}`)}</Badge>
       </div>
       <code className="block mt-1 text-xs text-muted break-all">{item.root}</code>
-      {!item.available && item.mismatchReason && (
+      {item.mismatchReason && (
         <p className="text-[11px] text-dim mt-1">{item.mismatchReason}</p>
       )}
       <div className="flex flex-wrap gap-2 mt-2">

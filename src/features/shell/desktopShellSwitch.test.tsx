@@ -313,4 +313,92 @@ describe("desktop shell switch apply and undo", () => {
     await user.click(screen.getByRole("button", { name: /Undo last Whichcraft apply/i }));
     await waitFor(() => expect(screen.getByText(/Undo restored 2/i)).toBeInTheDocument());
   });
+
+  it("shows who owns each installation in the inspector", async () => {
+    const managed = inst("java", "21.0.1", "C:\\store\\jdk21", {
+      effective: true,
+      selected: true,
+      managed: true,
+      installerKind: "managed_by_whichcraft",
+    });
+    const external = inst("java", "17.0.2", "C:\\jdk17", { installerKind: "msi" });
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [managed, external] : []),
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    expect(await within(details).findByText("Installed by Whichcraft")).toBeInTheDocument();
+    expect(within(details).getByText("MSI")).toBeInTheDocument();
+  });
+
+  it("writes nothing when a reviewed switch plan is dismissed", async () => {
+    const current = inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17");
+    const plan = planFor(target, {
+      userDiffs: [{ name: "JAVA_HOME", scope: "User", kind: "changed", before: "C:\\jdk21", after: "C:\\jdk17" }],
+    });
+    const applyToolPlan = vi.fn();
+    const applyToolPlanWithUac = vi.fn();
+    const applyEnvChanges = vi.fn();
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [current, target] : []),
+      planToolApply: vi.fn(async () => plan),
+      applyToolPlan,
+      applyToolPlanWithUac,
+      applyEnvChanges,
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await user.click(await screen.findByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/i }));
+    expect(await within(details).findByText(/User JAVA_HOME/i)).toBeInTheDocument();
+
+    await user.click(within(details).getByRole("button", { name: /^Dismiss$/i }));
+    await waitFor(() => expect(within(details).queryByText(/User JAVA_HOME/i)).not.toBeInTheDocument());
+    expect(applyToolPlan).not.toHaveBeenCalled();
+    expect(applyToolPlanWithUac).not.toHaveBeenCalled();
+    expect(applyEnvChanges).not.toHaveBeenCalled();
+  });
+
+  it("shows the switched JAVA_HOME in the Environment workspace after a tool apply", async () => {
+    const current = inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17");
+    const plan = planFor(target, {
+      userDiffs: [{ name: "JAVA_HOME", scope: "User", kind: "changed", before: "C:\\jdk21", after: "C:\\jdk17" }],
+    });
+    let applied = false;
+    const getEnvVars = vi.fn(async () => [
+      {
+        name: "JAVA_HOME",
+        value: applied ? "C:\\jdk17" : "C:\\jdk21",
+        valueKind: "String" as const,
+        scope: "User" as const,
+        listSeparator: null,
+      },
+    ]);
+    renderShell({
+      getEnvVars,
+      listToolInstallations: async (tool: string) =>
+        tool !== "java"
+          ? []
+          : applied
+            ? [{ ...current, effective: false, selected: false }, { ...target, effective: true, selected: true }]
+            : [current, target],
+      planToolApply: vi.fn(async () => plan),
+      applyToolPlan: vi.fn(async (reviewed: typeof plan) => {
+        applied = true;
+        return { planId: reviewed.planId, stale: false, needsElevation: false };
+      }),
+    });
+    const user = userEvent.setup();
+    await openJavaDetail(user);
+    await user.click(await screen.findByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/i }));
+    const apply = await screen.findByRole("button", { name: /^Apply plan$/i });
+    const readsBefore = getEnvVars.mock.calls.length;
+    await user.click(apply);
+    await waitFor(() => expect(getEnvVars.mock.calls.length).toBeGreaterThan(readsBefore));
+
+    await user.click(screen.getByRole("link", { name: /^environment$/i }));
+    await user.click(await screen.findByText("JAVA_HOME"));
+    expect(await screen.findByLabelText(/^value$/i)).toHaveValue("C:\\jdk17");
+  });
 });
