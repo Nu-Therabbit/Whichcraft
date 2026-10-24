@@ -128,6 +128,22 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
         className="flex gap-1 px-4 pt-3 border-b border-rim-subtle shrink-0"
         role="tablist"
         aria-label={t("desktop_shell.env_tabs_label")}
+        onKeyDown={(e) => {
+          // WAI-ARIA tabs: arrows, Home and End move between tabs and select them.
+          const current = TAB_IDS.findIndex(({ id }) => id === envTab);
+          const last = TAB_IDS.length - 1;
+          const next =
+            e.key === "ArrowRight" ? (current + 1) % TAB_IDS.length
+            : e.key === "ArrowLeft" ? (current + last) % TAB_IDS.length
+            : e.key === "Home" ? 0
+            : e.key === "End" ? last
+            : null;
+          if (next === null) return;
+          e.preventDefault();
+          const { id } = TAB_IDS[next];
+          onEnvTab(id);
+          document.getElementById(`shell-env-tab-${id}`)?.focus();
+        }}
       >
         {TAB_IDS.map(({ id, labelKey }) => (
           <button
@@ -137,6 +153,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
             id={`shell-env-tab-${id}`}
             aria-selected={envTab === id}
             aria-controls={tabPanelId(id)}
+            tabIndex={envTab === id ? 0 : -1}
             className={`px-3 py-2 text-sm rounded-t border border-b-0 ${
               envTab === id
                 ? "border-rim-subtle bg-panel font-medium"

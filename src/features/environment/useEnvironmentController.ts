@@ -112,7 +112,7 @@ export function useEnvironmentController(environment: EnvironmentApi, platform: 
     checkForExternalChanges,
   });
 
-  const diagnostics = useDiagnostics(vars, environment);
+  const diagnostics = useDiagnostics(vars, environment, !initializing);
 
   const stagingHandlers = useStagingHandlers({
     staged,

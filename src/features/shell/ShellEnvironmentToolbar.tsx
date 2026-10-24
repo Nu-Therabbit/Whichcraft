@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 import { Select } from "../../components/ui/Select";
 import { usePlatformApi } from "../../platform/platformApiContext";
+import { useTools } from "../tools/ToolsContext";
 
 interface Props {
   loading: boolean;
@@ -34,6 +35,8 @@ export function ShellEnvironmentToolbar({
 }: Props) {
   const { t } = useI18n();
   const platform = usePlatformApi();
+  const tools = useTools();
+  const toolsBusy = tools.state.plan.applying || tools.state.plan.building;
   const selectableAccounts = accounts.filter((a) => a.hasProfile);
   const accountOptions = [
     { value: "", label: t("account_picker.my_variables") },
@@ -48,6 +51,14 @@ export function ShellEnvironmentToolbar({
     >
       <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
         {t("header.refresh")}
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => tools.dispatch({ type: "planCleanup" })}
+        disabled={toolsBusy}
+      >
+        {t("tools.cleanup.button")}
       </Button>
       {stagedCount > 0 && (
         <Button variant="primary" size="sm" onClick={onApplyStaged}>

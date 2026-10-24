@@ -106,6 +106,31 @@ describe("desktop shell environment workspace", () => {
     expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument();
   });
 
+  it("moves between Environment tabs with the arrow, Home and End keys", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      shellNavigationHref({ page: "environment", envTab: "variables" }),
+    );
+    renderDesktopShell();
+    const user = userEvent.setup();
+    const variables = await screen.findByRole("tab", { name: /^variables$/i });
+    expect(screen.getByRole("tab", { name: /^snapshots$/i })).toHaveAttribute("tabindex", "-1");
+
+    variables.focus();
+    await user.keyboard("{ArrowRight}");
+    const snapshots = screen.getByRole("tab", { name: /^snapshots$/i });
+    expect(snapshots).toHaveFocus();
+    expect(snapshots).toHaveAttribute("aria-selected", "true");
+
+    await user.keyboard("{End}");
+    expect(screen.getByRole("tab", { name: /^check command$/i })).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: /^variables$/i })).toHaveFocus();
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("tab", { name: /^check command$/i })).toHaveAttribute("aria-selected", "true");
+  });
+
   it("offers Run as admin from the Environment toolbar, but not over staged edits", async () => {
     const restartAsAdmin = vi.fn(async () => {});
     const getEnvVars = vi.fn(async () => [
