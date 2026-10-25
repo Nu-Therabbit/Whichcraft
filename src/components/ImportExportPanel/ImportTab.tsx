@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
 import { useI18n } from "../../hooks/useI18n";
+import { usePlatformApi } from "../../platform/platformApiContext";
 import { validateEnvInput } from "../../lib/envValidation";
 import { resolveSecret } from "../../lib/secrets";
 import type { EnvValueKind, VarScope } from "../../types";
@@ -36,6 +37,7 @@ interface ImportTabProps {
 
 export function ImportTab({ onStage, onStatus, pendingStagedCount = 0 }: ImportTabProps) {
   const environment = useEnvironmentApi();
+  const platform = usePlatformApi();
   const { t } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
   const [format, setFormat] = useState<ExportFormat>("json");
@@ -94,11 +96,11 @@ export function ImportTab({ onStage, onStatus, pendingStagedCount = 0 }: ImportT
     }
     if (
       selected.some((variable) => variable.valueKind === null) &&
-      !confirm(t("import.confirm_legacy_types"))
+      !(await platform.confirm(t("import.confirm_legacy_types")))
     ) {
       return;
     }
-    if (pendingStagedCount > 0 && !confirm(t("import.confirm_replace_staged"))) {
+    if (pendingStagedCount > 0 && !(await platform.confirm(t("import.confirm_replace_staged")))) {
       return;
     }
     setApplying(true);

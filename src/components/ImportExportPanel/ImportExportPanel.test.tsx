@@ -1,15 +1,17 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import type { EnvironmentApi } from "../../features/environment/api";
+import { fakePlatformApi } from "../../test/fakePlatformApi";
 import { renderWithEnvironmentApi } from "../../test/renderWithEnvironmentApi";
 import { ImportExportPanel } from "./ImportExportPanel";
 
-function renderPanel(onStage = vi.fn()) {
+function renderPanel(onStage = vi.fn(), platform = fakePlatformApi()) {
   return renderWithEnvironmentApi(
     <ImportExportPanel onStage={onStage} />,
     api as unknown as EnvironmentApi,
+    { platform },
   );
 }
 
@@ -256,6 +258,25 @@ describe("ImportExportPanel — Import tab", () => {
     await waitFor(() => expect(onStage).toHaveBeenCalledTimes(1));
     const [sets] = onStage.mock.calls[0];
     expect(sets).toHaveLength(3);
+  });
+
+  it("waits for native legacy-type confirmation and leaves staging untouched on cancel", async () => {
+    let answer!: (value: boolean) => void;
+    const pending = new Promise<boolean>((resolve) => { answer = resolve; });
+    const confirm = vi.fn(async () => pending);
+    const onStage = vi.fn();
+    vi.mocked(api.parseImport).mockResolvedValueOnce({ user: { LEGACY: "value" }, system: {} });
+    renderPanel(onStage, fakePlatformApi({ confirm }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("radio", { name: /^import$/i }));
+    fireEvent.change(screen.getByPlaceholderText(/paste file contents/i), { target: { value: "{}" } });
+    await user.click(screen.getByRole("button", { name: /^parse$/i }));
+    await user.click(await screen.findByRole("button", { name: /stage 1 variable/i }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(onStage).not.toHaveBeenCalled();
+    await act(async () => { answer(false); });
+    expect(onStage).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /stage 1 variable/i })).toBeInTheDocument();
   });
 
   it("Parse button disabled when textarea is empty", async () => {

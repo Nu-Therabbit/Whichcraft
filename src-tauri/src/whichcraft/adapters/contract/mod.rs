@@ -623,3 +623,86 @@ fn contract_cancelled_uac_preserves_both_environment_scopes() {
     assert!(same_values(&WinregBackend.read_system().unwrap(), &system_before));
     assert!(result.is_err_and(|e| e.to_string().contains("UAC was cancelled")), "expected the native prompt to be cancelled");
 }
+
+/// A-6: interrupt the real apply process after its first HKCU write, then recover from disk.
+#[test]
+#[ignore = "contract: kills its own helper process mid-apply and restores two WHICHCRAFT_TEST_CRASH variables"]
+fn contract_process_interruption_keeps_a_recoverable_journal() {
+    use crate::whichcraft::application::recovery::{inspect_pending, resume_pending, roll_back_pending, ChangeState};
+    use crate::whichcraft::tools::background::background_command;
+    const FIRST: &str = "WHICHCRAFT_TEST_CRASH_FIRST";
+    const SECOND: &str = "WHICHCRAFT_TEST_CRASH_SECOND";
+    const CHILD_DIR: &str = "WHICHCRAFT_CRASH_CONTRACT_DIR";
+
+    if let Some(dir) = std::env::var_os(CHILD_DIR) {
+        let dir = PathBuf::from(dir);
+        use_test_data_dir(&dir);
+        struct PauseAfterWrite(PathBuf);
+        impl EnvBackend for PauseAfterWrite {
+            fn read_user(&self) -> Result<HashMap<String, EnvValue>, crate::error::EnvarlyError> { WinregBackend.read_user() }
+            fn read_system(&self) -> Result<HashMap<String, EnvValue>, crate::error::EnvarlyError> { WinregBackend.read_system() }
+            fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), crate::error::EnvarlyError> {
+                assert_eq!(name, FIRST, "the helper can only reach its first owned fixture");
+                WinregBackend.write_user(name, value)?;
+                std::fs::write(self.0.join("first-written"), b"written").unwrap();
+                loop { std::thread::park(); }
+            }
+            fn write_system(&self, _: &str, _: &EnvValue) -> Result<(), crate::error::EnvarlyError> { panic!("no System write") }
+            fn delete_user(&self, _: &str) -> Result<(), crate::error::EnvarlyError> { panic!("parent owns cleanup") }
+            fn delete_system(&self, _: &str) -> Result<(), crate::error::EnvarlyError> { panic!("no System write") }
+            fn is_elevated(&self) -> bool { false }
+            fn broadcast_changes(&self) {}
+        }
+        let mut plan = set_variable_plan(VarScope::User, FIRST, "first");
+        plan.user_diffs.extend(set_variable_plan(VarScope::User, SECOND, "second").user_diffs);
+        apply_tool_plan(&PauseAfterWrite(dir), &FileStore, &SystemOperationIds, &plan).unwrap();
+        panic!("the parent must interrupt the helper before apply completes");
+    }
+
+    let before_user = WinregBackend.read_user().unwrap();
+    let before_system = WinregBackend.read_system().unwrap();
+    assert!(!before_user.contains_key(FIRST) && !before_user.contains_key(SECOND));
+    struct Cleanup;
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            let _ = WinregBackend.delete_user(FIRST);
+            let _ = WinregBackend.delete_user(SECOND);
+            WinregBackend.broadcast_changes();
+        }
+    }
+    let _cleanup = Cleanup;
+    for finish in [true, false] {
+        let data = tempfile::tempdir().unwrap();
+        use_test_data_dir(data.path());
+        let mut child = background_command(std::env::current_exe().unwrap())
+            .args(["--ignored", "--exact", "whichcraft::adapters::contract::contract_process_interruption_keeps_a_recoverable_journal"])
+            .env(CHILD_DIR, data.path())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn().unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        while !data.path().join("first-written").exists() && std::time::Instant::now() < deadline {
+            if child.try_wait().unwrap().is_some() { break; }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        let first_written = data.path().join("first-written").exists();
+        let _ = child.kill();
+        child.wait().unwrap();
+        assert!(first_written, "helper reached its real Registry write");
+        let pending = inspect_pending(&WinregBackend, &FileStore).unwrap().expect("durable unfinished journal");
+        assert_eq!(pending.items.len(), 2);
+        assert_eq!(pending.items[0].state, ChangeState::Written);
+        assert_eq!(pending.items[1].state, ChangeState::NotWritten);
+        assert!(pending.can_resume);
+        if finish {
+            resume_pending(&WinregBackend, &FileStore, None, &pending.journal_id).unwrap();
+            assert_eq!(WinregBackend.read_user().unwrap()[SECOND].value, "second");
+            undo_last_apply(&WinregBackend, &FileStore, None).unwrap();
+        } else {
+            roll_back_pending(&WinregBackend, &FileStore, None, &pending.journal_id).unwrap();
+        }
+        assert!(inspect_pending(&WinregBackend, &FileStore).unwrap().is_none());
+        assert!(same_values(&WinregBackend.read_user().unwrap(), &before_user));
+        assert!(same_values(&WinregBackend.read_system().unwrap(), &before_system));
+    }
+}

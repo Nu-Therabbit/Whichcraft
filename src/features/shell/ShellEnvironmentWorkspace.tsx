@@ -108,7 +108,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
   const tabPanelId = (tab: ShellEnvironmentTab) => `shell-env-panel-${tab}`;
 
   return (
-    <div className="flex flex-1 flex-col min-h-0">
+    <div className="flex flex-1 flex-col min-h-0 min-w-0">
       <ShellEnvironmentToolbar
         loading={loading}
         stagedCount={staged.size}
@@ -193,13 +193,13 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
         </div>
       )}
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
         {envTab === "variables" && (
           <div
             id={tabPanelId("variables")}
             role="tabpanel"
             aria-labelledby="shell-env-tab-variables"
-            className="flex flex-1 min-h-0"
+            className="flex flex-1 min-h-0 min-w-0"
           >
             <Sidebar
               vars={effectiveVars}
@@ -211,7 +211,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
               personalScope={personalScope}
               personalScopeLabel={selectedAccount?.username}
             />
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 min-w-0 overflow-hidden">
               <DetailPanel
                 variable={effectiveSelected}
                 allVars={effectiveVars}

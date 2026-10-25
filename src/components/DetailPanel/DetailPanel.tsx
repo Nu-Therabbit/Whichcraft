@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
+import { usePlatformApi } from "../../platform/platformApiContext";
 import { useLocalHistory } from "../../hooks/useLocalHistory";
 import type { StagedChange } from "../../hooks/useStaged";
 import { stagedKey } from "../../hooks/useStaged";
@@ -47,6 +48,7 @@ export function DetailPanel({
   onRegisterLocalUndo,
 }: Props) {
   const { t } = useI18n();
+  const platform = usePlatformApi();
   const [overrideSeparator, setOverrideSeparator] = useState<";" | "," | "plain" | null>(null);
   const [valueKindSelection, setValueKindSelection] = useState<EnvValueKindSelection>("Auto");
   const prevVarRef = useRef<{ name: string; scope: string } | null>(null);
@@ -132,8 +134,8 @@ export function DetailPanel({
     else onStage(variable.name, variable.scope, value, valueKindSelection);
   };
 
-  const handleDelete = () => {
-    if (!confirm(t("detail.confirm_delete", { name: variable.name, scope: variable.scope })))
+  const handleDelete = async () => {
+    if (!(await platform.confirm(t("detail.confirm_delete", { name: variable.name, scope: variable.scope }))))
       return;
     onStageDelete(variable.name, variable.scope);
   };
@@ -185,7 +187,7 @@ export function DetailPanel({
     : null;
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
       <DetailHeader
         name={variable.name}
         scope={variable.scope}
@@ -271,7 +273,7 @@ export function DetailPanel({
             )}
           </div>
           {/* Editor label + mode toggle */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap gap-2 items-center justify-between">
             <div className="flex items-center gap-3">
               <p className="text-sm font-semibold text-muted uppercase tracking-wide">
                 {editorLabel}

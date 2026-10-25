@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useEnvironmentApi } from "../../features/environment/environmentApiContext";
 import { useI18n } from "../../hooks/useI18n";
+import { usePlatformApi } from "../../platform/platformApiContext";
 import type { DiffEntry } from "../../lib/diff";
 import { computeDiff } from "../../lib/diff";
 import type { EnvSnapshot, SnapshotMeta } from "../../types";
@@ -16,13 +17,15 @@ interface Status {
   message: string;
 }
 
-export type StageSnapshotOptions = { replacePendingStaged?: boolean };
+export type { SnapshotStageOptions as StageSnapshotOptions } from "../../hooks/stagingLogic";
+import type { SnapshotStageOptions as StageSnapshotOptions } from "../../hooks/stagingLogic";
 
 export function useSnapshotPanel(
   onStageSnapshot: (snap: EnvSnapshot, options?: StageSnapshotOptions) => void,
   pendingStagedCount = 0,
 ) {
   const environment = useEnvironmentApi();
+  const platform = usePlatformApi();
   const { t } = useI18n();
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);
   const [label, setLabel] = useState("");
@@ -30,6 +33,7 @@ export function useSnapshotPanel(
   const [status, setStatus] = useState<Status | null>(null);
   const [previewing, setPreviewing] = useState<SnapshotMeta | null>(null);
   const [previewDiff, setPreviewDiff] = useState<DiffEntry[]>([]);
+  const [previewRegistry, setPreviewRegistry] = useState<EnvSnapshot | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -72,6 +76,7 @@ export function useSnapshotPanel(
   const closePreview = () => {
     setPreviewing(null);
     setPreviewDiff([]);
+    setPreviewRegistry(null);
   };
 
   const handlePreview = async (snap: SnapshotMeta) => {
@@ -79,6 +84,7 @@ export function useSnapshotPanel(
     setStatus(null);
     try {
       const current = await environment.getRegistrySnapshot();
+      setPreviewRegistry(current);
       setPreviewDiff(computeDiff(current, snap.snapshot));
       setPreviewing(snap);
     } catch (e) {
@@ -88,16 +94,17 @@ export function useSnapshotPanel(
     }
   };
 
-  const handleRestore = () => {
+  const handleRestore = async () => {
     if (!previewing) return;
-    if (previewing.version < 2 && !confirm(t("snapshot.confirm_legacy_restore"))) {
+    if (previewing.version < 2 && !(await platform.confirm(t("snapshot.confirm_legacy_restore")))) {
       return;
     }
-    if (pendingStagedCount > 0 && !confirm(t("snapshot.confirm_replace_staged"))) {
+    if (pendingStagedCount > 0 && !(await platform.confirm(t("snapshot.confirm_replace_staged")))) {
       return;
     }
     onStageSnapshot(previewing.snapshot, {
       replacePendingStaged: pendingStagedCount > 0,
+      registrySnapshot: previewRegistry ?? undefined,
     });
     const count = previewDiff.length;
     setStatus({

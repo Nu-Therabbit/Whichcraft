@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { resolveEnvValueKind } from "../lib/envValueKind";
 import type { EnvSnapshot, EnvValueKind, EnvValueKindSelection, EnvVar, VarScope } from "../types";
 import type { StagedChange } from "./useStaged";
+import type { SnapshotStageOptions } from "./stagingLogic";
 import type { Command } from "./useUndoStack";
 
 interface Params {
@@ -23,7 +24,7 @@ interface Params {
     deletes: Array<{ name: string; scope: VarScope }>,
     options?: { replacePendingStaged?: boolean },
   ) => void;
-  stageSnapshot: (snap: EnvSnapshot, options?: { replacePendingStaged?: boolean }) => void;
+  stageSnapshot: (snap: EnvSnapshot, options?: SnapshotStageOptions) => void;
   unstage: (name: string, scope: VarScope) => void;
   clearStaged: () => void;
   restoreStaged: (map: Map<string, StagedChange>) => void;
@@ -133,7 +134,7 @@ export function useStagingHandlers({
   );
 
   const handleStageSnapshot = useCallback(
-    (snap: EnvSnapshot, options?: { replacePendingStaged?: boolean }) => {
+    (snap: EnvSnapshot, options?: SnapshotStageOptions) => {
       const snapshot = new Map(staged);
       stageSnapshot(snap, options);
       push({

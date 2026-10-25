@@ -80,6 +80,7 @@ export const PLATFORM_API_KEYS = [
   "checkForUpdate",
   "openUrl",
   "pickFolder",
+  "confirm",
   "openFolder",
   "openTerminal",
   "getWhichcraftSettings",

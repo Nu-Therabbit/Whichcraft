@@ -5,7 +5,6 @@ use crate::whichcraft::domain::journal::{JournalStatus, WhichcraftJournal};
 use crate::whichcraft::ports::store::Store;
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
 use crate::whichcraft::domain::env::get_var;
-use crate::whichcraft::domain::path::path_entries;
 
 #[derive(Debug, Clone, serde::Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -30,16 +29,21 @@ fn restore_path_value(
     removed: &[String],
     before: &str,
 ) -> String {
-    let mut entries = path_entries(current);
+    // Keep untouched raw segments, including empty entries and original spacing.
+    let raw_entries = |value: &str| -> Vec<String> {
+        if value.is_empty() { Vec::new() }
+        else { value.split(';').map(str::to_string).collect() }
+    };
+    let mut entries = raw_entries(current);
     for a in added {
-        entries.retain(|e| !e.eq_ignore_ascii_case(a));
+        entries.retain(|e| !e.trim().eq_ignore_ascii_case(a.trim()));
     }
-    let before_entries = path_entries(before);
+    let before_entries = raw_entries(before);
     for r in removed {
-        if entries.iter().any(|e| e.eq_ignore_ascii_case(r)) {
+        if entries.iter().any(|e| e.trim().eq_ignore_ascii_case(r.trim())) {
             continue;
         }
-        if let Some(pos) = before_entries.iter().position(|e| e.eq_ignore_ascii_case(r)) {
+        if let Some(pos) = before_entries.iter().position(|e| e.trim().eq_ignore_ascii_case(r.trim())) {
             let insert_at = pos.min(entries.len());
             entries.insert(insert_at, r.clone());
         } else {
@@ -306,6 +310,21 @@ mod tests {
         let result = undo_last_apply(&backend, &FileStore, None).expect("undo");
         assert!(result.conflicts.is_empty());
         assert_eq!(backend.read_user().unwrap()["Path"].value, "C:\\old;C:\\installer");
+    }
+
+    #[test]
+    fn undo_preserves_raw_path_segments_when_an_installer_appended_an_entry() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let before = r"C:\old;; C:\other";
+        let after = compute_prepend(before, r"C:\jdk\bin").unwrap();
+        let current = format!(r"{after};C:\installer;");
+        let backend = MemBackend::new().with_user([("Path", leak(current))]);
+        save_completed(vec![path_mutation(VarScope::User, before, &after)], &backend);
+
+        let result = undo_last_apply(&backend, &FileStore, None).unwrap();
+        assert!(result.conflicts.is_empty());
+        assert_eq!(backend.read_user().unwrap()["Path"].value, format!(r"{before};C:\installer;"));
     }
 
     #[test]

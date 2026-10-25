@@ -36,9 +36,9 @@ export function DetailHeader({
   const services = useContext(AppServicesContext);
 
   return (
-    <div className="flex items-center gap-3 px-6 h-[60px] border-b border-rim-subtle shrink-0">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <h2 className="font-mono font-semibold text-base text-fg truncate">{name}</h2>
+    <div className="flex flex-wrap items-center gap-3 px-6 py-3 min-h-[60px] border-b border-rim-subtle shrink-0">
+      <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+        <h2 className="font-mono font-semibold text-base text-fg max-w-full truncate">{name}</h2>
         <Badge variant={scope === "User" ? "user" : scope === "System" ? "system" : "otherUser"}>
           {scope}
         </Badge>

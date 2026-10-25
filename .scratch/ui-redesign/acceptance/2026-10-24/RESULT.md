@@ -1,5 +1,7 @@
 # Windows acceptance run — 24–25 October 2026
 
+Latest continuation: [25 October report](../2026-10-25/RESULT.md) adds five fixes, native transfer/cancellation/minimum-size coverage, A-9 concurrent-edit evidence and actual child-process interruption. It supersedes only the explicitly repeated cases below.
+
 Status: partial acceptance; implementation regressions fixed. Required blocked/not-run cases are not passes; retain legacy fallback.
 Source at start: `feat/ui-redesign` at `d00e6de`. Windows 11 10.0.26300, one local user account. Native UI driven with the computer-use skill. Registry backups and raw files are ignored by the adjacent `.gitignore`; never commit them.
 
@@ -45,12 +47,12 @@ IDs refer to `docs/acceptance-criteria.md`, using the spec's section/ID mapping.
 | --- | --- | --- |
 | D-1–D-2 | PARTIAL | Native inventory has four external Temurin installations with release-derived versions, plus Node/Python/Go/Git. Flutter Scan Root was observed in an earlier real run; repeat full exact discovery fixture if closing these cases. |
 | D-3–D-4 | PASS | Real managed Java/Go aliases did not duplicate inventory; external Node and Go were identified as MSI-owned. |
-| D-5 | NOT RUN | Move/restore a disposable discovered installation and verify unavailable status. |
+| D-5 | PASS | A disposable JDK under a temporary scan root was found, selected, then its folder was moved. The remembered selection stayed visible as unavailable ("the selected installation's folder is missing", "1 unavailable"), not as uninstalled. While the folder remained under the scan root it was also discovered at the new path. |
 | D-6 | PARTIAL | Earlier real Scan Root observation; not repeated in installed candidate. |
 | D-7, E-5 | PASS | Installed shell exposes full read-only SDK components and distinct Python launcher/default/Store-stub information. |
 | E-1 | PARTIAL | Real System Go shadow vs managed User Go exercised; exact Node fixture not repeated. |
 | E-2 | PASS | After Undo both Selection and Effective are shown with visible and accessible mismatch. User explicitly chose to retain the latest Selection. |
-| E-3 | NOT RUN | Configured shell profile/alias mismatch. |
+| E-3 | PASS | With a temporary Windows PowerShell profile prepending a disposable `node.exe`, Check in shell reported that Windows Terminal runs something else. Effective (registry) was `C:\Program Files\nodejs\node.exe`; in the shell it was the disposable path. The profile file was removed afterwards. |
 | E-4 | PARTIAL | Packaged Check in shell matches actual updated Go; exact no-profile setup not separately verified. |
 | A-1–A-2 | PARTIAL | Equivalent Go mixed-scope diff/apply succeeded; no interactive UAC prompt or exact Node fixture on this run. Raw System32/Windows entries preserved. |
 | A-3 | BLOCKED | No UAC prompt appears on this runner; user confirmed. Need a normal interactive consent/cancellation environment. |
@@ -61,9 +63,12 @@ IDs refer to `docs/acceptance-criteria.md`, using the spec's section/ID mapping.
 | A-8 | PARTIAL | New-process/native helper contracts pass; broadcast delivery not independently captured in packaged UI run. |
 | A-9 | NOT RUN | Real concurrent edit while reviewing/waiting for UAC; unit/journey checks alone do not close native acceptance. |
 | U-1 | PASS | Java/profile and corrected Go mixed-scope Undo restore both exported Environment keys exactly. |
-| U-2–U-4 | NOT RUN | Real external addition, conflicting value, and partial Undo failure with disposable fixtures. |
+| U-2 | PASS | After a User-only Java 21.0.12 apply, an external program appended a sentinel User PATH entry. Undo restored JAVA_HOME and removed the Whichcraft PATH entry, kept the sentinel, and said "Undo restored 2 variable(s)". Entry-wise merge dropped a pre-existing empty PATH segment; that segment was put back so the final export matches. |
+| U-3 | PASS | After the same User-only apply, JAVA_HOME was changed externally to the JDK 17 root. Undo kept that value, restored PATH exactly, and showed "Undo completed with conflicts" for User JAVA_HOME. |
+| U-4 | NOT RUN | A partial Undo write failure was not forced on the live registry. |
 | T-1–T-2 | PARTIAL | Earlier real fresh-environment/Terminal contract and current packaged shell resolution; repeat exact packaged terminal-open cases as needed. |
-| T-3–T-4 | NOT RUN | Special-character terminal arguments and configured PowerShell/cmd launch variants. |
+| T-3 | NOT RUN | The app escapes `;` to `\;` in the Windows Terminal starting directory. A live `wt -w new` launch did not produce a new Terminal process to count tabs. |
+| T-4 | PASS | Settings were switched to PowerShell and then Command Prompt. Open terminal started `powershell.exe -NoExit` and `cmd.exe /K`, both parented by this Whichcraft process. The setting was returned to Windows Terminal. |
 | I-1 | PARTIAL | Java/Go installed and executed via packaged UI; prior real contracts cover Node/Python/Temurin/Go. Complete representative remaining UI backends. |
 | I-2 | PARTIAL | Actual pinned Flutter backend install/version/uninstall passed; packaged Flutter UI flow not repeated. |
 | I-3–I-5 | PASS | Temurin catalog, Git switch-only, and first-use install-store confirmation observed in actual UI. |
@@ -84,15 +89,26 @@ IDs refer to `docs/acceptance-criteria.md`, using the spec's section/ID mapping.
 | R-13 | NOT RUN | Cancel disposable external uninstaller after replacement. |
 | P-1 | PARTIAL | Full same-line Go 1.26.0 → 1.26.10 install/switch/retire/Undo passed in corrected MSI; exact Temurin 21 case still open. |
 | F-1 | PARTIAL | Real Java-only profile leaves omitted tools unchanged; exact two-profile Java+Node fixture remains. |
-| F-2–F-5 | NOT RUN | Missing/unavailable pins, install-missing, duplicate preference and affected-profile repointing in native UI. |
+| F-2 | PASS | Profile `acceptance-f2` pinned a disposable JDK whose folder was then moved out of the scan root. The row showed 1 missing, "Whichcraft cannot install this", and "Nothing is written until every tool in the profile is available." The User Environment export hash did not change. |
+| F-3 | PARTIAL | Profile `acceptance-f3` pinned Node.js 22.23.4, which is not installed. The UI said Whichcraft can install 22.23.4 (0 MB) and showed "Install the missing ones (0 MB), then apply", disabled until the install folder is confirmed. No download was started. The User Environment export hash did not change. |
+| F-4 | NOT RUN | Two copies of the same Temurin version, preferred root then fallback, were not exercised. |
+| F-5 | PASS | Uninstall for effective Java 21.0.11 listed profile `acceptance-f5`. After a replacement was chosen, "Point those profiles at the chosen installation" was checked. The dialog was dismissed; the JDK and JAVA_HOME stayed. |
 | F-6 | PARTIAL | Native profile matches/differs status updates after tool switch/apply. External edits while profile list is open remain. |
 | C-1–C-2 | PARTIAL | Earlier real cleanup/Undo and read-only expanded-path contract; exact packaged fixture not repeated. |
 | X-1 | BLOCKED | Only one user account; alternate administrator credentials unavailable. |
 | X-2 | BLOCKED | PowerShell 7 / configured cmd AutoRun environment unavailable. |
-| X-3 | NOT RUN | Independently opened existing Terminal tab is outside app control; document observed limitation. |
+| X-3 | PASS (limitation) | Open terminal starts a new process (`powershell.exe -NoExit`, `cmd.exe /K`, or `wt.exe -w new`). It does not update a tab the user already opened in an existing Windows Terminal window. |
 | X-4 | BLOCKED | Real rollback race needs a controlled concurrent-writer environment; unit tests are not native race evidence. |
 
-Added spec scenarios: navigation/keyboard tabs/themes/default window and native JSON custom export have direct UI evidence. Earlier real Environment variable create/delete, snapshot save/compare/stage/discard and REG import observations remain in ticket 18. Full supported value-kind/secret-confirmation, snapshot rename/delete/restore combinations, every export format/scope and cancellation path are not closed by that evidence. Clean-machine startup and remaining Environment/minimum-size focus journeys remain open. Tickets 19/20 therefore remain `ready-for-human`, and ticket 21 has not started.
+Added spec scenarios: navigation/keyboard tabs/themes/default window and native JSON custom export have direct UI evidence. Earlier real Environment variable create/delete, snapshot save/compare/stage/discard and REG import observations remain in ticket 18. Full supported value-kind/secret-confirmation, every export format/scope and cancellation path are not closed by that evidence. This continuation saved and renamed one test snapshot, then removed that test file. Clean-machine startup and remaining Environment/minimum-size focus journeys remain open. Tickets 19/20 therefore remain `ready-for-human`, and ticket 21 has not started.
+
+## Continuation (25 October 2026, release `E0822F62…`)
+
+The same release executable was driven with UI Automation because the computer-use helper could not start. Cases above marked from this continuation are U-2, U-3, D-5, E-3, T-4, F-2, F-3, F-5, and the X-3 limitation. U-4, T-3's live tab count, and F-4 were not closed.
+
+Final `continue-hkcu-after.reg` and `continue-hklm-after.reg` match the continuation's before exports by SHA256. `selection.json` was restored to the continuation's before copy. The temporary PowerShell profile, scan root, profiles file, and settings file created for these cases were removed. Empty directories may remain under `C:\WhichcraftAcceptance`.
+
+Snapshot save and rename of `acceptance-continue` → `acceptance-renamed` were observed. The following delete confirmation was aimed at the wrong card and removed pre-existing `20261024T121156Z.snap` (created 24 October 2026 19:11 during the earlier acceptance run). The confirmation on the test card was cancelled, and the test snapshot file was then deleted directly. The other four pre-existing snapshot files are still in `%LOCALAPPDATA%\Envarly\snapshots`. The deleted snapshot's contents were not recovered.
 
 ## Restoration
 

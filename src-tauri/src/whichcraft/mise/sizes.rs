@@ -41,12 +41,43 @@ pub fn http_content_length(url: &str) -> Result<Option<u64>, EnvarlyError> {
     if !response.status().is_success() {
         return Ok(None);
     }
-    Ok(response.content_length())
+    // A HEAD response has an empty body, so reqwest's body size hint is zero even
+    // when the archive's advertised Content-Length is present.
+    Ok(response
+        .headers()
+        .get(reqwest::header::CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|bytes| *bytes > 0))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn head_uses_archive_header_and_leaves_missing_or_empty_sizes_unknown() {
+        fn lookup(reply: &'static str) -> Option<u64> {
+            use std::io::{Read, Write};
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = std::thread::spawn(move || {
+                let (mut socket, _) = listener.accept().unwrap();
+                socket.set_read_timeout(Some(std::time::Duration::from_secs(5))).unwrap();
+                let mut request = [0; 4096];
+                let count = socket.read(&mut request).unwrap();
+                assert!(request[..count].starts_with(b"HEAD "));
+                socket.write_all(reply.as_bytes()).unwrap();
+            });
+            let result = http_content_length(&format!("http://{address}/archive.zip")).unwrap();
+            server.join().unwrap();
+            result
+        }
+        assert_eq!(lookup("HTTP/1.1 200 OK\r\nContent-Length: 35604229\r\nConnection: close\r\n\r\n"), Some(35_604_229));
+        assert_eq!(lookup("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n"), None);
+        assert_eq!(lookup("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"), None);
+        assert_eq!(lookup("HTTP/1.1 404 Not Found\r\nContent-Length: 12\r\nConnection: close\r\n\r\n"), None);
+    }
 
     #[test]
     fn node_go_and_flutter_sizes_come_from_their_archive_urls() {

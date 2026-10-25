@@ -9,6 +9,8 @@ export interface PlatformApi {
   openUrl: (url: string) => Promise<void>;
   /** Native folder picker; null when the user cancels. */
   pickFolder: (defaultPath?: string) => Promise<string | null>;
+  /** Waits for an explicit answer to a native confirmation dialog. */
+  confirm: (message: string) => Promise<boolean>;
   openFolder: (path: string) => Promise<void>;
   openTerminal: () => Promise<void>;
   getWhichcraftSettings: () => Promise<WhichcraftSettings>;

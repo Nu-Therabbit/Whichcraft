@@ -10,6 +10,12 @@ import type {
 
 export type StagedKind = "set" | "delete";
 
+export type SnapshotStageOptions = {
+  replacePendingStaged?: boolean;
+  /** The actual Registry state used to show the restore preview. */
+  registrySnapshot?: EnvSnapshot;
+};
+
 interface StagedChangeBase {
   name: string;
   scope: VarScope;
@@ -168,12 +174,32 @@ export function computeStageSnapshot(
   prev: StagedMap,
   snap: EnvSnapshot,
   replacePendingStaged = false,
+  registrySnapshot?: EnvSnapshot,
 ): StagedMap {
+  const previewVars: EnvVar[] = registrySnapshot
+    ? (["User", "System", "OtherUser"] as const).flatMap((scope) => {
+        const values =
+          scope === "User" ? registrySnapshot.user
+          : scope === "System" ? registrySnapshot.system
+          : registrySnapshot.otherUser ?? {};
+        return Object.entries(values).map(([name, entry]) => {
+          const value = typeof entry === "string" ? entry : entry.value;
+          return {
+            name, scope, value,
+            valueKind: typeof entry === "string" ? inferEnvValueKind(entry) : entry.kind ?? inferEnvValueKind(value),
+            listSeparator: inferListSeparator(name, value),
+          };
+        });
+      })
+    : registryVars;
+  const previewByKey = registrySnapshot
+    ? new Map(previewVars.map((v) => [stagedKey(v.name, v.scope), v]))
+    : registryByKey;
   const next = replacePendingStaged ? new Map<StagedKey, StagedChange>() : new Map(prev);
 
   const stageValue = (name: string, scope: VarScope, value: SnapshotValue) => {
     const k = stagedKey(name, scope);
-    const registryValue = registryByKey.get(stagedKey(name, scope));
+    const registryValue = previewByKey.get(stagedKey(name, scope));
     const original = registryValue?.value ?? null;
     const originalValueKind = registryValue
       ? (registryValue.valueKind ?? inferEnvValueKind(registryValue.value))
@@ -206,7 +232,7 @@ export function computeStageSnapshot(
   }
 
   // Stage deletes for registry vars not present in the snapshot
-  for (const v of registryVars) {
+  for (const v of previewVars) {
     const inSnap =
       v.scope === "User" ? snap.user : v.scope === "System" ? snap.system : (snap.otherUser ?? {});
     if (!(v.name in inSnap)) {

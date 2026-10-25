@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
@@ -49,7 +49,7 @@ describe("DetailPanel", () => {
     pickFolder.mockResolvedValue(null);
   });
 
-  const render_ = (variable: EnvVar | null, elevated = true, staged = noStaged) =>
+  const render_ = (variable: EnvVar | null, elevated = true, staged = noStaged, platform = fakePlatformApi({ pickFolder })) =>
     renderWithEnvironmentApi(
       <DetailPanel
         variable={variable}
@@ -62,7 +62,7 @@ describe("DetailPanel", () => {
         onUnstage={onUnstage}
       />,
       api as unknown as EnvironmentApi,
-      { platform: fakePlatformApi({ pickFolder }) },
+      { platform },
     );
 
   it("shows empty state when no variable selected", () => {
@@ -154,6 +154,22 @@ describe("DetailPanel", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render_(simpleVar);
     await user.click(screen.getByRole("button", { name: /delete/i }));
+    expect(onStageDelete).toHaveBeenCalledWith("JAVA_HOME", "User");
+  });
+
+  it("does not stage a delete until native confirmation resolves and respects cancel", async () => {
+    let answer!: (value: boolean) => void;
+    const pending = new Promise<boolean>((resolve) => { answer = resolve; });
+    const confirm = vi.fn(async () => pending);
+    render_(simpleVar, true, noStaged, fakePlatformApi({ confirm }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(onStageDelete).not.toHaveBeenCalled();
+    await act(async () => { answer(false); });
+    expect(onStageDelete).not.toHaveBeenCalled();
+    confirm.mockImplementationOnce(async () => true);
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
     expect(onStageDelete).toHaveBeenCalledWith("JAVA_HOME", "User");
   });
 

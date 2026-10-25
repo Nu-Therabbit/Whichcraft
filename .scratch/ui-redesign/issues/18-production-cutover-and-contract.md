@@ -168,3 +168,10 @@ Current evidence supersedes earlier “not built/not installed/every case blocke
 ### Minimum-size follow-up (25 October 2026)
 
 Real non-demo tools inventory and the Java review plan were inspected at 900×600 without Apply. The user-supplied final screenshot confirms the Python Store-alias warning wraps inside the inventory column and its horizontal scrollbar is gone after adding `break-words`. The rebuilt release GUI hash and local screenshot evidence are in the [run report](../acceptance/2026-10-24/RESULT.md). Supplemental-info tests 3/3, lint and TypeScript/frontend/release build passed. Remaining Environment/focus coverage and the required 19/20 cases stay open; legacy fallback remains. Candidate is left open for the user.
+
+
+### Autonomous continuation (25 October 2026)
+
+Current continuation adds native minimum-size Environment/transfer/cancellation coverage, real concurrent-edit stale-plan protection, and a real child-process interruption contract. Five newly exposed regressions are fixed; final checks and candidate packages are recorded in the report. This does not close the complete Windows gates or authorize removing legacy. See [evidence and precise remaining gates](../acceptance/2026-10-25/RESULT.md).
+
+Final production packages were rebuilt and separately installed/launched/uninstalled (all installer exits 0); CLI readback and MSI legacy startup passed. Final hashes and the installed NSIS raw-PATH Undo retest are in the continuation report. Frontend 546 passed; Rust 271 passed, 17 ignored; one manually run process-interruption contract passed separately. Both Registry scopes and Selection match the original backups.

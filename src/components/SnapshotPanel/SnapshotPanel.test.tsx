@@ -119,6 +119,7 @@ describe("SnapshotPanel", () => {
     await user.click(screen.getByRole("button", { name: /stage restore/i }));
     expect(onStageSnapshot).toHaveBeenCalledWith(MOCK_SNAPSHOT.snapshot, {
       replacePendingStaged: false,
+      registrySnapshot: CURRENT,
     });
   });
 

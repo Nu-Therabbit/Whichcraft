@@ -10,6 +10,7 @@ export function fakePlatformApi(overrides: Partial<PlatformApi> = {}): PlatformA
     checkForUpdate: vi.fn(async () => null),
     openUrl: vi.fn(async () => {}),
     pickFolder: vi.fn(async () => null),
+    confirm: vi.fn(async (message: string) => window.confirm(message)),
     openFolder: vi.fn(async () => {}),
     openTerminal: vi.fn(async () => {}),
     getWhichcraftSettings: vi.fn(async () => ({

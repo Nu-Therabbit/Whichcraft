@@ -171,6 +171,34 @@ describe("desktop shell environment snapshots", () => {
     expect(applyEnvChanges).not.toHaveBeenCalled();
   });
 
+  it("stages the previewed external value and type even when Variables still has the saved value", async () => {
+    const saved: SnapshotMeta = {
+      ...SNAP,
+      snapshot: { user: { TARGET: { value: "%USERPROFILE%\\tools", kind: "ExpandString" } }, system: {} },
+    };
+    const applyEnvChanges = vi.fn(async () => {});
+    renderShell({
+      getEnvVars: async () => [{ name: "TARGET", value: "%USERPROFILE%\\tools", valueKind: "ExpandString", scope: "User", listSeparator: null }],
+      listSnapshots: async () => [saved],
+      onApplyProgress: async () => () => {},
+      getRegistrySnapshot: async () => ({ user: { TARGET: { value: "outside-change", kind: "String" } }, system: {} }),
+      applyEnvChanges,
+      getUnsupportedEnvValues: async () => [],
+      validatePaths: async () => [],
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^preview$/i }));
+    await user.click(await screen.findByRole("button", { name: /^stage restore$/i }));
+    await user.click(await screen.findByRole("button", { name: /1 staged/i }));
+    const review = await screen.findByRole("dialog");
+    expect(within(review).getByText("outside-change")).toBeInTheDocument();
+    expect(applyEnvChanges).not.toHaveBeenCalled();
+    await user.click(within(review).getByRole("button", { name: /apply 1 change to registry/i }));
+    await waitFor(() => expect(applyEnvChanges).toHaveBeenCalledWith([
+      expect.objectContaining({ changeType: "set", name: "TARGET", value: "%USERPROFILE%\\tools", valueKind: "ExpandString", scope: "User" }),
+    ]));
+  });
+
   it("asks before replacing existing staged work when restoring a snapshot", async () => {
     const confirmSpy = vi
       .spyOn(window, "confirm")

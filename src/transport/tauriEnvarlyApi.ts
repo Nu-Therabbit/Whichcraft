@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { open } from "@tauri-apps/plugin-dialog";
+import { confirm as nativeConfirm, open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { EnvarlyApi } from "../contracts";
 import type {
@@ -39,6 +39,7 @@ export const tauriEnvarlyApi: EnvarlyApi = {
   checkCommand: (input) => invoke<CheckCommandResult>("check_command", { input }),
   checkForUpdate: () => invoke<UpdateInfo | null>("check_for_update"),
   openUrl: (url) => openUrl(url),
+  confirm: (message) => nativeConfirm(message),
   pickFolder: async (defaultPath) => {
     const selected = await open({ directory: true, multiple: false, defaultPath });
     return typeof selected === "string" ? selected : null;

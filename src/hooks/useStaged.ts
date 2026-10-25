@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { EnvSnapshot, EnvValueKind, EnvValueKindSelection, EnvVar, VarScope } from "../types";
-import type { StagedChange, StagedKey } from "./stagingLogic";
+import type { SnapshotStageOptions, StagedChange, StagedKey } from "./stagingLogic";
 import {
   computeEffectiveVars,
   computeStageDelete,
@@ -81,7 +81,7 @@ export function useStaged(registryVars: EnvVar[], onPendingChange?: (pending: bo
 
   /** Stage all changes needed to make the registry match a snapshot. */
   const stageSnapshot = useCallback(
-    (snap: EnvSnapshot, options?: { replacePendingStaged?: boolean }) => {
+    (snap: EnvSnapshot, options?: SnapshotStageOptions) => {
       setStaged((prev) =>
         publishPending(
           computeStageSnapshot(
@@ -90,6 +90,7 @@ export function useStaged(registryVars: EnvVar[], onPendingChange?: (pending: bo
             prev,
             snap,
             options?.replacePendingStaged ?? false,
+            options?.registrySnapshot,
           ),
         ),
       );

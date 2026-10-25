@@ -253,6 +253,7 @@ export function createDemoApi(
     checkForUpdate: async () => null,
     openUrl: (url) => fallbackApi.openUrl(url),
     pickFolder: (defaultPath) => fallbackApi.pickFolder(defaultPath),
+    confirm: (message) => fallbackApi.confirm(message),
     // Demo mode has no other-user accounts to switch between.
     listLocalAccounts: async () => [],
     selectAccount: async () => null,
