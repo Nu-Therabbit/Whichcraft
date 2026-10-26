@@ -141,6 +141,8 @@ prototype ล่าสุดแสดงตำแหน่งและ flow ไ�
 
 ### Implementation branch and design source
 
+Integration update (26 October 2026): implementation through `4a12a9f` is merged into `main`. Design history is retained under tag `archive/ui-redesign-prototype-2026-10-26`; the former feature/prototype branches and temporary worktrees have been removed. See [integration status and retained evidence](integration.md). The instructions below record the original implementation plan.
+
 - Start the implementation branch from `main` at implementation time, using the normal `codex/` branch prefix. At this review, the production baseline on main is `7dff397`; check the actual main state when starting rather than silently losing newer production changes.
 - Carry the reviewed spec, architecture, tickets and baseline inventory into that branch as documentation only. Do not merge the throwaway prototype branch or cherry-pick its UI changes into production. The selected A desktop/Environment design is viewed from prototype source commit `6bc41ad` (with its earlier design history), then rewritten as production components.
 - Do not copy prototype components, fixture CSS/state, the prototype app gate or prototype task-runner wiring into the implementation branch. Retaining the tested legacy production UI as a temporary fallback is separate from importing throwaway prototype code.

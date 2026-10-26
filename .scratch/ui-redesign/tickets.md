@@ -47,6 +47,6 @@ Implementation begins from main with documentation transferred separately. The p
 Publishing tickets does not start or complete their implementation. Record pass/fail/blocked Windows outcomes honestly; a fixture UI does not constitute production acceptance.
 
 
-## Current acceptance checkpoint (25 October 2026)
+## Current integration and acceptance checkpoint (26 October 2026)
 
-Implementation and review corrections are in the production worktree. [Installed-candidate evidence and remaining case matrix](acceptance/2026-10-24/RESULT.md) cover actual MSI/NSIS, Registry restoration, Java/profile flows, managed Go update/retirement, Flutter contract and discovered fixes. Tickets 18–20 remain `ready-for-human` because required coverage is incomplete; ticket 21 remains unstarted behind 19/20. Required blocked/not-run cases are not passes.
+Implementation through `4a12a9f` is merged into `main`, including all specifications, architecture/review notes, issue history and acceptance reports. [Latest acceptance evidence and remaining gates](acceptance/2026-10-26/RESULT.md) cover the current candidate. Tickets 02–17 are resolved; 18–20 remain `ready-for-human` because required coverage is incomplete; 21 remains unstarted behind 19/20. Legacy fallback stays available. Required blocked/not-run cases are not passes. See [integration, archived prototype and local artifact locations](integration.md).

@@ -11,9 +11,9 @@ The current home renders the inherited Envarly environment editor. Developer too
 
 ## Prototype
 
-Primary source: branch `codex/prototype-tools-redesign`.
+Archived source: tag `archive/ui-redesign-prototype-2026-10-26` (formerly branch `codex/prototype-tools-redesign`). The tag retains the complete design history after branch cleanup; see [main integration and retained evidence](../integration.md).
 
-Run `npm run prototype:ui`. Existing `/` route; development-only `?variant=A|B|C` rendering alternatives. No new production route or dependencies.
+In the archived source, run `npm run prototype:ui`. Existing `/` route; development-only `?variant=A|B|C` rendering alternatives. No new production route or dependencies. These prototype commands and fixtures are excluded from production `main`.
 
 - A — Desktop overview: compact app navigation and command bar, effective versions on compact tool tiles, mismatch strip, docked installation details, status bar. Original web-style A is preserved in commit `e20ffee`.
 - B — Workbench: compact inventory table, always-visible installation inspector, Windows resolution preview.
