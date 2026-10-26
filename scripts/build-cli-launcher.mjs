@@ -14,3 +14,7 @@ if (build.status !== 0) process.exit(build.status ?? 1);
 const release = join("src-tauri", "target", "release");
 copyFileSync(join(release, "whichcraft-cli.exe"), join(release, "whichcraft.com"));
 console.log("whichcraft.com ready in", release);
+
+// A successful Rust invocation alone does not prove the GUI embedded this Vite build.
+const verified = spawnSync(process.execPath, [join("scripts", "check-embedded-frontend.mjs")], { stdio: "inherit" });
+if (verified.status !== 0) process.exit(verified.status ?? 1);

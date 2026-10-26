@@ -1,6 +1,6 @@
 import type { InvalidationScope } from "../../coordination/types";
 
-/** Cross-feature readback when the registry diverges from baseline (once per diff episode). */
+/** Cross-feature readback for each distinct externally observed registry state. */
 export const EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES: InvalidationScope[] = [
   "environment-variables",
   "environment-diagnostics",

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import type { WriteCoordinatorFacade } from "../coordination/createWriteCoordinator";
 import type { EnvironmentApi } from "../features/environment/api";
 import type { DiffEntry } from "../lib/diff";
 import { applyAccepted, computeDiff, snapshotsEqual } from "../lib/diff";
@@ -19,31 +20,38 @@ export function useDiff(
   environment: EnvironmentApi,
   refresh: () => Promise<void>,
   onExternalDiffDetected?: () => void,
+  coordination?: Pick<WriteCoordinatorFacade, "isWriteInProgress" | "beginRead" | "isReadCurrent">,
 ): UseDiffResult {
   const baselineRef = useRef<EnvSnapshot | null>(null);
-  const externalCrossInvalidateSent = useRef(false);
+  const lastInvalidatedSnapshot = useRef<EnvSnapshot | null>(null);
   const [diffEntries, setDiffEntries] = useState<DiffEntry[]>([]);
   const [applyBusy, setApplyBusy] = useState(false);
   const [applyError, setApplyErrorState] = useState<string | null>(null);
 
   const checkForExternalChanges = useCallback(async () => {
-    if (!baselineRef.current) return;
+    if (!baselineRef.current || coordination?.isWriteInProgress()) return;
+    const binding = coordination?.beginRead({ kind: "external-diff" });
     try {
       const current = await environment.getRegistrySnapshot();
+      // UAC can return focus while Apply is still writing. Never invalidate its result
+      // from partial state, or commit a read overtaken by a write/account/newer read.
+      if (
+        coordination && binding &&
+        (coordination.isWriteInProgress() || !coordination.isReadCurrent(binding))
+      ) return;
       const entries = snapshotsEqual(baselineRef.current, current)
         ? []
         : computeDiff(baselineRef.current, current);
       setDiffEntries(entries);
-      if (entries.length === 0) {
-        externalCrossInvalidateSent.current = false;
-        return;
-      }
-      if (!externalCrossInvalidateSent.current) {
-        externalCrossInvalidateSent.current = true;
+      // Read back each distinct external state, including restoration to baseline.
+      // Re-reading the same state during invalidation must not start a refresh loop.
+      const previous = lastInvalidatedSnapshot.current ?? baselineRef.current;
+      if (!snapshotsEqual(previous, current)) {
+        lastInvalidatedSnapshot.current = current;
         onExternalDiffDetected?.();
       }
     } catch {}
-  }, [environment, onExternalDiffDetected]);
+  }, [environment, onExternalDiffDetected, coordination]);
 
   const handleDiffApply = useCallback(
     async (accepted: DiffEntry[], reverted: DiffEntry[]) => {

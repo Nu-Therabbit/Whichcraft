@@ -572,6 +572,13 @@ fn contract_install_with_old_mise_and_uninstall_with_the_new_one() {
     assert!(!root.exists());
 }
 
+/// Select an installed/release helper explicitly when collecting packaged acceptance evidence.
+fn contract_helper_exe() -> PathBuf {
+    std::env::var_os("WHICHCRAFT_CONTRACT_HELPER_EXE")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target").join("debug").join("whichcraft.exe"))
+}
+
 /// A-2 and U-1 for System scope: the write goes through UAC to the app's elevated helper (two UAC
 /// prompts: apply, then Undo). Needs `cargo build` first so target\debug\whichcraft.exe is current.
 #[test]
@@ -580,7 +587,7 @@ fn contract_system_apply_through_uac_and_undo_restores_the_key() {
     use crate::whichcraft::adapters::win::elevation::HelperExeElevator;
     let data = tempfile::tempdir().unwrap();
     use_test_data_dir(data.path());
-    let helper = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target").join("debug").join("whichcraft.exe");
+    let helper = contract_helper_exe();
     assert!(helper.is_file(), "build the app first: {}", helper.display());
     let elevator = HelperExeElevator(helper);
     let before = WinregBackend.read_system().unwrap();
@@ -605,7 +612,7 @@ fn contract_cancelled_uac_preserves_both_environment_scopes() {
     use crate::whichcraft::adapters::win::elevation::HelperExeElevator;
     let data = tempfile::tempdir().unwrap();
     use_test_data_dir(data.path());
-    let helper = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target").join("debug").join("whichcraft.exe");
+    let helper = contract_helper_exe();
     let elevator = HelperExeElevator(helper);
     let user_before = WinregBackend.read_user().unwrap();
     let system_before = WinregBackend.read_system().unwrap();
@@ -706,3 +713,5 @@ fn contract_process_interruption_keeps_a_recoverable_journal() {
         assert!(same_values(&WinregBackend.read_system().unwrap(), &before_system));
     }
 }
+
+mod failure_contracts;

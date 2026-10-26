@@ -34,6 +34,7 @@ export type ReadScopeKey =
   | { kind: "profiles" }
   | { kind: "shell-check"; tool: ToolKind }
   | { kind: "environment" }
+  | { kind: "external-diff" }
   | { kind: "check-command" }
   | { kind: "tool-result"; tool: ToolKind };
 
@@ -73,6 +74,8 @@ export function readScopeKey(scope: ReadScopeKey): string {
       return `shell:${scope.tool}`;
     case "environment":
       return "environment";
+    case "external-diff":
+      return "external-diff";
     case "check-command":
       return "check-command";
     case "tool-result":

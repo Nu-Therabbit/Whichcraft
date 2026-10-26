@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
@@ -187,8 +187,66 @@ describe("desktop shell tool profiles", () => {
     await waitFor(() => expect(profileStatus.mock.calls.length).toBeGreaterThan(before));
   });
 
+  it("does not invalidate an Apply result when focus returns during its UAC write", async () => {
+    const profile = { id: "p1", name: "UAC profile", tools: [javaPin] };
+    const reviewedPlan = planFor(inst("java", "17.0.2", "C:\\jdk17"), { planId: "focus-during-uac", requiresUac: true });
+    let value = "before";
+    let finish!: (result: { planId: string; stale: boolean; needsElevation: boolean }) => void;
+    const applyToolPlanWithUac = vi.fn(() => new Promise<{ planId: string; stale: boolean; needsElevation: boolean }>((resolve) => { finish = resolve; }));
+    const { coordination } = renderShell({
+      listProfiles: async () => [profile],
+      profileStatus: async () => ({ profile, matchesEffective: false, unavailable: [] }),
+      planProfile: async () => reviewedPlan,
+      applyToolPlanWithUac,
+      getRegistrySnapshot: async () => ({ user: [{ name: "JAVA_HOME", value, valueKind: "String" as const }], system: [] }),
+      listToolInstallations: async () => [],
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^apply$/i }));
+    await user.click(await screen.findByRole("button", { name: /^apply plan$/i }));
+    await waitFor(() => expect(applyToolPlanWithUac).toHaveBeenCalled());
+    const binding = coordination.beginPlanApply(reviewedPlan.planId, reviewedPlan.tool);
+    expect(coordination.isPlanApplyCurrent(binding)).toBe(true);
+    value = "partly-written-by-helper";
+    await act(async () => { fireEvent.focus(window); });
+    expect(coordination.isPlanApplyCurrent(binding)).toBe(true);
+    await act(async () => { finish({ planId: reviewedPlan.planId, stale: false, needsElevation: false }); });
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^applying/i })).not.toBeInTheDocument());
+  });
+
+  it("refreshes profile matches on focus after successive external edits and restoration", async () => {
+    const profile = { id: "p1", name: "Live Java", tools: [javaPin] };
+    let root = "C:\\jdk17";
+    const getRegistrySnapshot = vi.fn(async () => ({
+      user: [{ name: "JAVA_HOME", value: root, valueKind: "String" as const }],
+      system: [],
+    }));
+    renderShell({
+      getRegistrySnapshot,
+      listProfiles: async () => [profile],
+      profileStatus: async () => ({ profile, matchesEffective: root === "C:\\jdk17", unavailable: [] }),
+      listToolInstallations: async () => [],
+    });
+    await screen.findByText("Live Java");
+    await waitFor(() => expect(getRegistrySnapshot).toHaveBeenCalled());
+    expect(await screen.findByText(/^matches what is in effect$/i)).toBeInTheDocument();
+
+    root = "C:\\jdk21";
+    fireEvent.focus(window);
+    expect(await screen.findByText(/^differs from what is in effect$/i)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Another edit while external changes have not been accepted must refresh too.
+    root = "C:\\jdk17";
+    fireEvent.focus(window);
+    expect(await screen.findByText(/^matches what is in effect$/i)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("blocks profile planning while staged environment edits are pending", async () => {
     const profile = { id: "p1", name: "Work", tools: [javaPin] };
+    let value = "x";
+    const getEnvVars = vi.fn(async () => [{ name: "BLOCK", value, valueKind: "String" as const, scope: "User" as const, listSeparator: null }]);
     const planProfile = vi.fn(async () => planFor(inst("java", "17.0.2", "C:\\jdk17")));
     renderShell({
       listProfiles: async () => [profile],
@@ -198,15 +256,8 @@ describe("desktop shell tool profiles", () => {
         unavailable: [],
       }),
       planProfile,
-      getEnvVars: async () => [
-        {
-          name: "BLOCK",
-          value: "x",
-          valueKind: "String" as const,
-          scope: "User" as const,
-          listSeparator: null,
-        },
-      ],
+      getEnvVars,
+      getRegistrySnapshot: async () => ({ user: [{ name: "BLOCK", value, valueKind: "String" as const }], system: [] }),
       listToolInstallations: async () => [],
     });
 
@@ -220,6 +271,12 @@ describe("desktop shell tool profiles", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument(),
     );
+
+    const readsBeforeFocus = getEnvVars.mock.calls.length;
+    value = "external-edit";
+    fireEvent.focus(window);
+    await waitFor(() => expect(getEnvVars.mock.calls.length).toBeGreaterThan(readsBeforeFocus));
+    expect(screen.getByRole("button", { name: /1 staged/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("link", { name: /tool profiles/i }));
     await user.click(screen.getByRole("button", { name: /^apply$/i }));

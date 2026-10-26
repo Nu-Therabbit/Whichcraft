@@ -1,5 +1,7 @@
 # Windows acceptance run — 24–25 October 2026
 
+Latest continuation: [26 October report](../2026-10-26/RESULT.md) supersedes F-4/F-6/R-10/R-11 and adds real installed-helper UAC plus controlled Registry failure/concurrency evidence. Other cases retain their recorded scope.
+
 Latest continuation: [25 October report](../2026-10-25/RESULT.md) adds five fixes, native transfer/cancellation/minimum-size coverage, A-9 concurrent-edit evidence and actual child-process interruption. It supersedes only the explicitly repeated cases below.
 
 Status: partial acceptance; implementation regressions fixed. Required blocked/not-run cases are not passes; retain legacy fallback.

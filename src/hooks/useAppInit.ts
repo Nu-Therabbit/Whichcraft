@@ -40,6 +40,12 @@ export function useAppInit({
     void refresh().finally(() => setInitializing(false));
   }, [baselineRef, environment, platform, setElevated, refreshPathStatus, refresh]);
 
+  useEffect(() => {
+    const onFocus = () => { void checkForExternalChanges(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [checkForExternalChanges]);
+
   const handleRefresh = useCallback(async () => {
     await refresh();
     await checkForExternalChanges();

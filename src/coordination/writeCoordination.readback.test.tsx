@@ -66,7 +66,7 @@ describe("write coordination readback and admission", () => {
     configureProductionServices(null);
   });
 
-  it("fires external-diff cross invalidation only once until the diff clears", async () => {
+  it("does not repeat cross invalidation for an unchanged external snapshot", async () => {
     const coordination = createWriteCoordinator();
     const invalidate = vi.fn(coordination.invalidate.bind(coordination));
     coordination.invalidate = invalidate;
@@ -92,6 +92,52 @@ describe("write coordination readback and admission", () => {
     await result.current.checkForExternalChanges();
     expect(invalidate).toHaveBeenCalledTimes(1);
     expect(invalidate).toHaveBeenCalledWith([...EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES]);
+  });
+
+  it("invalidates each distinct external snapshot including a return to baseline", async () => {
+    const baseline = { user: { A: { value: "1", kind: "String" as const } }, system: {} };
+    const changed = { user: { A: { value: "2", kind: "String" as const } }, system: {} };
+    const changedAgain = { user: { A: { value: "3", kind: "String" as const } }, system: {} };
+    const getRegistrySnapshot = vi.fn().mockResolvedValue(changed);
+    const onExternalChange = vi.fn();
+    const { result } = renderHook(() => useDiff(
+      { getRegistrySnapshot } as unknown as Parameters<typeof useDiff>[0],
+      async () => {}, onExternalChange,
+    ));
+    result.current.baselineRef.current = baseline;
+    await result.current.checkForExternalChanges();
+    await result.current.checkForExternalChanges();
+    expect(onExternalChange).toHaveBeenCalledTimes(1);
+    getRegistrySnapshot.mockResolvedValue(changedAgain);
+    await result.current.checkForExternalChanges();
+    expect(onExternalChange).toHaveBeenCalledTimes(2);
+    getRegistrySnapshot.mockResolvedValue(baseline);
+    await result.current.checkForExternalChanges();
+    expect(onExternalChange).toHaveBeenCalledTimes(3);
+    await result.current.checkForExternalChanges();
+    expect(onExternalChange).toHaveBeenCalledTimes(3);
+  });
+
+  it("drops external readback overtaken by a complete write", async () => {
+    const baseline = { user: { A: { value: "1", kind: "String" as const } }, system: {} };
+    const oldRead = { user: { A: { value: "2", kind: "String" as const } }, system: {} };
+    let finish!: (value: typeof baseline) => void;
+    const getRegistrySnapshot = vi.fn(() => new Promise<typeof baseline>((resolve) => { finish = resolve; }));
+    const coordination = createWriteCoordinator();
+    const onExternalChange = vi.fn();
+    const { result } = renderHook(() => useDiff(
+      { getRegistrySnapshot } as unknown as Parameters<typeof useDiff>[0],
+      async () => {}, onExternalChange, coordination,
+    ));
+    result.current.baselineRef.current = baseline;
+    const read = result.current.checkForExternalChanges();
+    const gate = coordination.tryBeginToolsWrite("apply-plan");
+    if (!gate.ok) throw new Error(gate.reason);
+    coordination.endToolsWrite(gate.admission, "success");
+    finish(oldRead);
+    await read;
+    expect(onExternalChange).not.toHaveBeenCalled();
+    expect(result.current.diffEntries).toEqual([]);
   });
 
   it("does not invalidate again when invalidation subscribers refresh after external diff", async () => {

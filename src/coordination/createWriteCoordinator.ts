@@ -43,6 +43,7 @@ export async function runEnvironmentWrite(
 }
 
 export type WriteCoordinatorFacade = {
+  isWriteInProgress: () => boolean;
   setEnvironmentPending: (pending: boolean) => void;
   tryBeginEnvironmentWrite: (kind: EnvironmentWriteKind) => WriteAdmissionResult;
   endEnvironmentWrite: (admission: WriteAdmission, outcome: WriteOutcome) => void;
@@ -191,6 +192,8 @@ export function createWriteCoordinator(): WriteCoordinatorFacade {
   };
 
   return {
+    isWriteInProgress: () => activeWrite !== null,
+
     setEnvironmentPending(pending: boolean) {
       environmentPending = pending;
     },

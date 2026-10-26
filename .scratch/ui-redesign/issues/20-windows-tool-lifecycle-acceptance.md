@@ -41,3 +41,8 @@ Continuation on 25 October: D-5 passed with a disposable JDK that became unavail
 ### Autonomous continuation (25 October 2026)
 
 Corrected the 0 MB download estimate: real missing Node.js 22.23.4 now displays 34 MB in the row and action. No download/install-missing flow was started in this continuation, so F-3 remains partial. Remaining lifecycle scenarios and status are unchanged. See [evidence and precise remaining gates](../acceptance/2026-10-25/RESULT.md).
+
+
+### Continuation (26 October 2026)
+
+F-4 passed in the verified production release GUI with real identical-version managed/external Temurin copies, actual preferred-root Apply, disappearance/restart/fallback Apply, and exact native Undo. R-10 named the owned running Java process with the Gradle hint and refused removal; R-11 refused while an owned process held the test folder. F-6 exposed a stale-focus regression, now fixed and verified in final installed NSIS across two successive external edits and restoration. The isolated JDK and package were removed; working tools and original app data remain intact. These cases no longer remain missing; other lifecycle cases are unchanged. Status stays ready-for-human; see [current report](../acceptance/2026-10-26/RESULT.md).

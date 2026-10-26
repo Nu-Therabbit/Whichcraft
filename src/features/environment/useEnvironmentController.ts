@@ -63,10 +63,10 @@ export function useEnvironmentController(environment: EnvironmentApi, platform: 
     applyError,
     setApplyError: setDiffApplyError,
   } = useDiff(environment, refresh, () => {
-    // Cross-feature readback only once per external-diff episode; omit environment-external-diff
+    // Cross-feature readback for each distinct external state; omit environment-external-diff
     // so invalidation subscribers do not re-enter detection and loop revisions.
     coordination.invalidate([...EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES]);
-  });
+  }, coordination);
 
   const [elevated, setElevated] = useState(false);
 

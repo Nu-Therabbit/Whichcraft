@@ -1,5 +1,7 @@
 # Windows acceptance continuation - 25 October 2026
 
+Latest continuation: [26 October report](../2026-10-26/RESULT.md) supersedes F-4/F-6/R-10/R-11 and adds real installed-helper UAC plus controlled Registry failure/concurrency evidence. Other cases retain their recorded scope.
+
 Status: partial acceptance; five discovered regressions corrected. Keep the legacy fallback until the complete Windows gates pass.
 
 Implementation worktree: `feat/ui-redesign`, starting at `af5a844`. The primary workspace is the prototype/docs checkout and was not changed. Windows 11 10.0.26300, one local account. Raw Registry exports, app-data backups, fixture exports and logs are ignored by the adjacent `.gitignore`.
