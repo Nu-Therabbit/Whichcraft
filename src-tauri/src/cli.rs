@@ -89,7 +89,7 @@ enum Command {
         #[arg(long)]
         apply: bool,
     },
-    /// Internal: remove Envarly install directory from PATH. Called by the uninstaller.
+    /// Internal: remove Whichcraft install directory from PATH. Called by the uninstaller.
     #[command(name = "path-cleanup", hide = true)]
     PathCleanup {
         /// Print what would change without modifying the registry.

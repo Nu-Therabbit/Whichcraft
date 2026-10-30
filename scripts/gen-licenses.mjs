@@ -19,7 +19,7 @@ const rawNpm = await new Promise((resolve, reject) => {
       start: root,
       production: false,
       excludePrivatePackages: true,
-      excludePackages: "envarly@0.1.0",
+      excludePackages: "whichcraft@0.1.0",
       fields: ["licenses", "repository", "description"],
     },
     (err, data) => (err ? reject(err) : resolve(data)),

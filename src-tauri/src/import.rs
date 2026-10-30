@@ -1,5 +1,5 @@
 //! Computes the diff (as `EnvChange`s) between the current registry state and
-//! an imported `EnvSnapshot`, for `envarly import`. Backend-agnostic and pure
+//! an imported `EnvSnapshot`, for `whichcraft import`. Backend-agnostic and pure
 //! — no registry access here, so it's fully covered by unit tests alone.
 //!
 //! This mirrors the merge/replace semantics the GUI computes in the frontend
@@ -42,7 +42,7 @@ pub fn resolve_kind(value: &EnvValue) -> EnvValueKind {
         .unwrap_or_else(|| infer_env_value_kind(&value.value))
 }
 
-/// Resolves the kind for `envarly set`. Mirrors the frontend's
+/// Resolves the kind for `whichcraft set`. Mirrors the frontend's
 /// `resolveEnvValueKind` (`src/lib/envValueKind.ts`): an explicit kind wins
 /// outright; `None` (the CLI's "auto" selection) preserves the target
 /// variable's existing stored kind if it already has one, otherwise infers

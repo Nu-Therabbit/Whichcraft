@@ -50,7 +50,7 @@
     "administrator": "Quản trị viên",
     "licenses": "Giấy phép",
     "update_available": "Có bản cập nhật: v{{version}}",
-    "update_available_title": "Đã có phiên bản mới của Envarly. Nhấp để xem bản phát hành.",
+    "update_available_title": "Đã có phiên bản mới của Whichcraft. Nhấp để xem bản phát hành.",
     "more_options": "Thêm tùy chọn",
     "light_mode": "Chuyển sang chế độ sáng",
     "dark_mode": "Chuyển sang chế độ tối"
@@ -163,7 +163,7 @@
   },
   "diff": {
     "title": "Đã phát hiện thay đổi bên ngoài",
-    "description": "Registry đã bị thay đổi bên ngoài Envarly. Đánh dấu các thay đổi muốn giữ, bỏ đánh dấu để hoàn tác.",
+    "description": "Registry đã bị thay đổi bên ngoài Whichcraft. Đánh dấu các thay đổi muốn giữ, bỏ đánh dấu để hoàn tác.",
     "select_all": "Chọn tất cả",
     "deselect_all": "Bỏ chọn tất cả",
     "selected": "Đã chọn {{accepted}}/{{total}}",

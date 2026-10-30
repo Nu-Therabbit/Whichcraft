@@ -51,7 +51,7 @@
     "administrator": "Administrator",
     "licenses": "Licenses",
     "update_available": "Update available: v{{version}}",
-    "update_available_title": "A new version of Envarly is available. Click to view the release.",
+    "update_available_title": "A new version of Whichcraft is available. Click to view the release.",
     "more_options": "More options",
     "light_mode": "Switch to light mode",
     "dark_mode": "Switch to dark mode"
@@ -164,7 +164,7 @@
   },
   "diff": {
     "title": "External changes detected",
-    "description": "The registry was modified outside Envarly. Check the changes you want to accept, uncheck to revert them.",
+    "description": "The registry was modified outside Whichcraft. Check the changes you want to accept, uncheck to revert them.",
     "select_all": "Select all",
     "deselect_all": "Deselect all",
     "selected": "{{accepted}}/{{total}} selected",

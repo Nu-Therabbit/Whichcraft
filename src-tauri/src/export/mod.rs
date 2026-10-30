@@ -51,7 +51,7 @@ pub struct FormatSpec {
 }
 
 /// Resolve format string and scope to a ready-to-save export. `stem_prefix` is prepended
-/// to the format-specific filename suffix (e.g. "envarly" or "envarly-custom").
+/// to the format-specific filename suffix (e.g. "whichcraft" or "whichcraft-custom").
 pub fn resolve_export(
     snapshot: &EnvSnapshot,
     format: &str,

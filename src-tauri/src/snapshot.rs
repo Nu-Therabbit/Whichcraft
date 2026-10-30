@@ -28,13 +28,35 @@ pub struct SnapshotMeta {
 }
 
 fn snapshots_dir() -> Result<PathBuf, EnvarlyError> {
-    let dir = dirs_next::data_local_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("Envarly")
-        .join("snapshots");
+    let base = dirs_next::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
+    let dir = base.join("Whichcraft").join("snapshots");
+    adopt_legacy_snapshots(&base.join("Envarly").join("snapshots"), &dir)
+        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot copy earlier snapshots: {e}")))?;
     fs::create_dir_all(&dir)
         .map_err(|e| EnvarlyError::Snapshot(format!("Cannot create snapshots dir: {e}")))?;
     Ok(dir)
+}
+
+/// Earlier builds kept snapshots in the folder Envarly itself uses, so they are
+/// copied rather than moved. Only runs while `dir` does not exist, so a snapshot
+/// deleted later stays deleted; the staging folder lets an interrupted copy retry.
+fn adopt_legacy_snapshots(legacy: &Path, dir: &Path) -> std::io::Result<()> {
+    if dir.exists() || !legacy.is_dir() {
+        return Ok(());
+    }
+    let staging = dir.with_extension("adopting");
+    if staging.exists() {
+        fs::remove_dir_all(&staging)?;
+    }
+    fs::create_dir_all(&staging)?;
+    for entry in fs::read_dir(legacy)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) == Some("snap") {
+            fs::copy(&path, staging.join(entry.file_name()))?;
+        }
+    }
+    fs::rename(&staging, dir)
 }
 
 fn write_snap(path: &Path, meta: &SnapshotMeta) -> Result<(), EnvarlyError> {
@@ -296,6 +318,62 @@ mod tests {
         let list = list_snapshots_from(&path).unwrap();
         assert_eq!(list[0].label, "second");
         assert_eq!(list[1].label, "first");
+    }
+
+    #[test]
+    fn adopting_copies_legacy_snapshots_and_keeps_the_originals() {
+        let root = tempfile::tempdir().unwrap();
+        let legacy = root.path().join("Envarly").join("snapshots");
+        let dir = root.path().join("Whichcraft").join("snapshots");
+        let saved = save_snapshot_to(make_snapshot(), "from envarly", &legacy).unwrap();
+        fs::write(legacy.join("notes.txt"), "not a snapshot").unwrap();
+
+        adopt_legacy_snapshots(&legacy, &dir).unwrap();
+
+        let adopted = list_snapshots_from(&dir).unwrap();
+        assert_eq!(adopted.len(), 1);
+        assert_eq!(adopted[0].id, saved.id);
+        assert!(!dir.join("notes.txt").exists());
+        assert_eq!(list_snapshots_from(&legacy).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn adopting_does_not_restore_a_snapshot_deleted_later() {
+        let root = tempfile::tempdir().unwrap();
+        let legacy = root.path().join("legacy");
+        let dir = root.path().join("snapshots");
+        let saved = save_snapshot_to(make_snapshot(), "old", &legacy).unwrap();
+
+        adopt_legacy_snapshots(&legacy, &dir).unwrap();
+        delete_snapshot_from(&saved.id, &dir).unwrap();
+        adopt_legacy_snapshots(&legacy, &dir).unwrap();
+
+        assert!(list_snapshots_from(&dir).unwrap().is_empty());
+    }
+
+    #[test]
+    fn adopting_retries_after_an_interrupted_copy() {
+        let root = tempfile::tempdir().unwrap();
+        let legacy = root.path().join("legacy");
+        let dir = root.path().join("snapshots");
+        save_snapshot_to(make_snapshot(), "old", &legacy).unwrap();
+        fs::create_dir_all(dir.with_extension("adopting")).unwrap();
+        fs::write(dir.with_extension("adopting").join("partial.snap"), "x").unwrap();
+
+        adopt_legacy_snapshots(&legacy, &dir).unwrap();
+
+        assert!(!dir.join("partial.snap").exists());
+        assert_eq!(list_snapshots_from(&dir).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn adopting_without_a_legacy_folder_creates_nothing() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = root.path().join("snapshots");
+
+        adopt_legacy_snapshots(&root.path().join("missing"), &dir).unwrap();
+
+        assert!(!dir.exists());
     }
 
     #[test]

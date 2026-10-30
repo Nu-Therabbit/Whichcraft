@@ -178,9 +178,9 @@ export function createDemoApi(
     isElevated: async () => fixture.elevated,
     restartAsAdmin: async () => undefined,
     exportVars: async (_scope, format) =>
-      `C:\\Users\\Demo\\Downloads\\envarly-demo.${format === "reg" ? "reg" : "json"}`,
+      `C:\\Users\\Demo\\Downloads\\whichcraft-demo.${format === "reg" ? "reg" : "json"}`,
     exportCustomVars: async (_vars, format) =>
-      `C:\\Users\\Demo\\Downloads\\envarly-demo-custom.${format === "reg" ? "reg" : "json"}`,
+      `C:\\Users\\Demo\\Downloads\\whichcraft-demo-custom.${format === "reg" ? "reg" : "json"}`,
     parseImport: async (content, format) => {
       if (format !== "json") {
         return fallbackApi.parseImport(content, format);

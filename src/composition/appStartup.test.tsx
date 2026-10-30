@@ -13,7 +13,7 @@ import { AppServicesProvider } from "./AppServicesContext";
 import { configureProductionServices } from "./createProductionServices";
 import { fakeToolsRuntime } from "../test/toolsTestHarness";
 
-const TAURI_UNAVAILABLE = "Tauri runtime unavailable. Start Envarly with `npm run dev`.";
+const TAURI_UNAVAILABLE = "Tauri runtime unavailable. Start Whichcraft with `npm run dev`.";
 
 function renderProductionApp(search = "") {
   resetAppPresentationForTests();

@@ -50,7 +50,7 @@
     "administrator": "관리자",
     "licenses": "라이선스",
     "update_available": "업데이트 있음: v{{version}}",
-    "update_available_title": "새 버전의 Envarly를 사용할 수 있습니다. 클릭하면 릴리스를 확인할 수 있습니다.",
+    "update_available_title": "새 버전의 Whichcraft를 사용할 수 있습니다. 클릭하면 릴리스를 확인할 수 있습니다.",
     "more_options": "더 보기",
     "light_mode": "라이트 모드로 전환",
     "dark_mode": "다크 모드로 전환"
@@ -163,7 +163,7 @@
   },
   "diff": {
     "title": "외부 변경 감지됨",
-    "description": "Envarly 외부에서 레지스트리가 변경되었습니다. 적용할 변경 사항은 체크하고, 되돌릴 항목은 체크를 해제하세요.",
+    "description": "Whichcraft 외부에서 레지스트리가 변경되었습니다. 적용할 변경 사항은 체크하고, 되돌릴 항목은 체크를 해제하세요.",
     "select_all": "모두 선택",
     "deselect_all": "선택 해제",
     "selected": "{{accepted}}/{{total}}개 선택됨",

@@ -11,7 +11,7 @@ const LAUNCH_OPTIONS_TIMEOUT_MS = 3000;
 
 async function resolveEnvarlyApi(): Promise<EnvarlyApi> {
   if (!isTauri()) {
-    throw new Error("Tauri runtime unavailable. Start Envarly with `npm run dev`.");
+    throw new Error("Tauri runtime unavailable. Start Whichcraft with `npm run dev`.");
   }
   const options = await withTimeout(tauriEnvarlyApi.getLaunchOptions(), LAUNCH_OPTIONS_TIMEOUT_MS, {
     demo: false,

@@ -66,7 +66,7 @@ export const formatExt: Record<AnyFormat, string> = {
 };
 
 export const formatDescriptions: Record<AnyFormat, string> = {
-  json: "Envarly JSON — can be re-imported into Envarly.",
+  json: "Whichcraft JSON — can be re-imported into Whichcraft.",
   reg: "Windows Registry Editor format — double-click to merge into the registry directly.",
   ps1: "PowerShell script — SetEnvironmentVariable calls.",
   dsc_v2: "PowerShell DSC v2 — Configuration block using PSDscResources.",

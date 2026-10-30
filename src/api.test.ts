@@ -20,7 +20,7 @@ describe("api runtime detection", () => {
 
   it("explains how to start the app when opened without Tauri", async () => {
     await expect(api.getEnvVars()).rejects.toThrow(
-      "Tauri runtime unavailable. Start Envarly with `npm run dev`.",
+      "Tauri runtime unavailable. Start Whichcraft with `npm run dev`.",
     );
   });
 });

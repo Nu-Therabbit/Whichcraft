@@ -1,4 +1,4 @@
-; Envarly NSIS installer hooks
+; Whichcraft NSIS installer hooks
 ; Called by the Tauri-generated installer at specific lifecycle points.
 
 !macro NSIS_HOOK_POSTINSTALL
@@ -11,7 +11,7 @@
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
-  ; Remove Envarly from PATH before files are deleted.
+  ; Remove Whichcraft from PATH before files are deleted.
   ; Return code is ignored — a failure leaves a harmless dead PATH entry.
   ExecWait '"$INSTDIR\whichcraft.exe" path-cleanup'
   Delete "$INSTDIR\whichcraft.com"

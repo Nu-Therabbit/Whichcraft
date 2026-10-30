@@ -106,7 +106,7 @@ Name-based heuristics (`*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, …) plus v
 ### File location
 
 ```
-%LOCALAPPDATA%\Envarly\snapshots\<id>.snap
+%LOCALAPPDATA%\Whichcraft\snapshots\<id>.snap
 ```
 
 ### Encryption
@@ -156,7 +156,7 @@ The JSON payload contains a `version` field. Current version is **1**.
 
 | Purpose | Path |
 |---------|------|
-| Snapshots | `%LOCALAPPDATA%\Envarly\snapshots\` |
+| Snapshots | `%LOCALAPPDATA%\Whichcraft\snapshots\` |
 
 No other files are written. Settings are kept in Tauri's default store if added later.
 

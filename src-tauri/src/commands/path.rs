@@ -85,7 +85,7 @@ pub fn get_path_status() -> path_manage::PathStatus {
     path_manage::path_status()
 }
 
-/// Returns the proposed new PATH value (with envarly added) for the given scope,
+/// Returns the proposed new PATH value (with whichcraft added) for the given scope,
 /// or None if the install directory is already present.
 /// scope: "User" | "System" | "OtherUser"
 #[tauri::command]

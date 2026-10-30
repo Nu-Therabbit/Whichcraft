@@ -60,7 +60,7 @@ pub fn list_local_accounts() -> Result<Vec<LocalAccount>, EnvarlyError> {
 }
 
 /// Switch the active other-user hive. `None` deselects (unloading whatever
-/// hive Envarly itself loaded). Replacing an already-active selection
+/// hive Whichcraft itself loaded). Replacing an already-active selection
 /// unloads the previous one first.
 pub fn select_account(sid: Option<&str>) -> Result<Option<LocalAccount>, EnvarlyError> {
     let mut active = ACTIVE_HIVE.lock().unwrap();
@@ -176,13 +176,13 @@ impl Drop for HiveGuard {
     fn drop(&mut self) {
         if self.owns_load {
             if let Err(err) = reg_unload_key(&self.sid) {
-                eprintln!("envarly: failed to unload hive for {}: {err}", self.sid);
+                eprintln!("whichcraft: failed to unload hive for {}: {err}", self.sid);
             }
         }
     }
 }
 
-/// Unload whatever other-user hive Envarly currently owns, if any. Called on
+/// Unload whatever other-user hive Whichcraft currently owns, if any. Called on
 /// app exit so a crash-free shutdown never leaves a hive loaded.
 pub fn unload_active_hive() {
     *ACTIVE_HIVE.lock().unwrap() = None;

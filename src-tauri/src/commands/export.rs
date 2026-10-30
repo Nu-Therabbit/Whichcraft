@@ -27,7 +27,7 @@ pub async fn export_vars(
 
     let export_scope = ExportScope::try_from(scope.as_str())?;
     let snapshot = env_store::read_snapshot()?;
-    let spec = crate::export::resolve_export(&snapshot, &format, export_scope, "envarly");
+    let spec = crate::export::resolve_export(&snapshot, &format, export_scope, "whichcraft");
 
     let default_name = format!(
         "{}-{}.{}",
@@ -100,7 +100,7 @@ pub async fn export_custom(
     }
 
     let spec =
-        crate::export::resolve_export(&snapshot, &format, ExportScope::All, "envarly-custom");
+        crate::export::resolve_export(&snapshot, &format, ExportScope::All, "whichcraft-custom");
 
     let default_name = format!(
         "{}-{}.{}",

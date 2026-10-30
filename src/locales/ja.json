@@ -50,7 +50,7 @@
     "administrator": "管理者モード",
     "licenses": "ライセンス",
     "update_available": "アップデートあり: v{{version}}",
-    "update_available_title": "新しいバージョンのEnvarlyがあります。クリックしてリリースページを見る。",
+    "update_available_title": "新しいバージョンのWhichcraftがあります。クリックしてリリースページを見る。",
     "more_options": "その他のオプション",
     "light_mode": "ライトモードに切り替え",
     "dark_mode": "ダークモードに切り替え"
@@ -163,7 +163,7 @@
   },
   "diff": {
     "title": "外部変更を検出",
-    "description": "Envarly の外部でレジストリが変更されました。受け入れる変更にチェックを入れ、元に戻す変更のチェックを外してください。",
+    "description": "Whichcraft の外部でレジストリが変更されました。受け入れる変更にチェックを入れ、元に戻す変更のチェックを外してください。",
     "select_all": "すべて選択",
     "deselect_all": "すべて選択解除",
     "selected": "{{accepted}}/{{total}} 件選択中",

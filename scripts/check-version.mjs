@@ -9,7 +9,7 @@ const tauri = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json")
 const cargo = readFileSync(join(root, "src-tauri", "Cargo.toml"), "utf8")
   .match(/^version = "([^"]+)"/m)?.[1];
 const cargoLock = readFileSync(join(root, "src-tauri", "Cargo.lock"), "utf8")
-  .match(/\[\[package\]\]\nname = "envarly"\nversion = "([^"]+)"/)?.[1];
+  .match(/\[\[package\]\]\nname = "whichcraft"\nversion = "([^"]+)"/)?.[1];
 const lpContent = readFileSync(join(root, "lp", "src", "lib", "lpContent.ts"), "utf8")
   .match(/export const VERSION = '([^']+)';/)?.[1];
 

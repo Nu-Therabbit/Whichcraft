@@ -1,4 +1,4 @@
-// Drives the real, packaged Envarly app (launched with --demo, which loads
+// Drives the real, packaged Whichcraft app (launched with --demo, which loads
 // src/demo/envarly-demo.json through a fully client-side mocked API — no
 // registry writes) via Playwright connected over CDP to WebView2. This is the
 // only way to reach the actual rendered UI outside Storybook (isTauri() must
@@ -19,12 +19,12 @@ const outDir = join(__dirname, "raw");
 mkdirSync(outDir, { recursive: true });
 
 function resolveExe() {
-  const release = join(repoRoot, "src-tauri", "target", "release", "envarly.exe");
-  const debug = join(repoRoot, "src-tauri", "target", "debug", "envarly.exe");
+  const release = join(repoRoot, "src-tauri", "target", "release", "whichcraft.exe");
+  const debug = join(repoRoot, "src-tauri", "target", "debug", "whichcraft.exe");
   if (existsSync(release)) return release;
   if (existsSync(debug)) return debug;
   throw new Error(
-    "No envarly.exe found. Build first: npm run tauri build (or `npm run tauri dev` once, then Ctrl+C).",
+    "No whichcraft.exe found. Build first: npm run tauri build (or `npm run tauri dev` once, then Ctrl+C).",
   );
 }
 

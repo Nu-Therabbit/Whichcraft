@@ -19,10 +19,10 @@ const cargo = readFileSync(cargoPath, "utf8").replace(
 );
 writeFileSync(cargoPath, cargo);
 
-// Cargo.lock — the envarly package's own (self-referential) locked version
+// Cargo.lock — the whichcraft package's own (self-referential) locked version
 const cargoLockPath = join(root, "src-tauri", "Cargo.lock");
 const cargoLock = readFileSync(cargoLockPath, "utf8").replace(
-  /(\[\[package\]\]\nname = "envarly"\nversion = ")[^"]*(")/,
+  /(\[\[package\]\]\nname = "whichcraft"\nversion = ")[^"]*(")/,
   `$1${version}$2`
 );
 writeFileSync(cargoLockPath, cargoLock);

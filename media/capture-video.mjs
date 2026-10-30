@@ -27,11 +27,11 @@ mkdirSync(framesDir, { recursive: true });
 copyFileSync(join(__dirname, "titlebar.png"), join(publicDir, "titlebar.png"));
 
 function resolveExe() {
-  const release = join(repoRoot, "src-tauri", "target", "release", "envarly.exe");
-  const debug = join(repoRoot, "src-tauri", "target", "debug", "envarly.exe");
+  const release = join(repoRoot, "src-tauri", "target", "release", "whichcraft.exe");
+  const debug = join(repoRoot, "src-tauri", "target", "debug", "whichcraft.exe");
   if (existsSync(release)) return release;
   if (existsSync(debug)) return debug;
-  throw new Error("No envarly.exe found. Build first: npm run tauri build -- --debug");
+  throw new Error("No whichcraft.exe found. Build first: npm run tauri build -- --debug");
 }
 
 async function waitForCdp(url, timeoutMs = 20000) {
@@ -125,7 +125,7 @@ try {
   // 1. Opening shot: default dashboard.
   await page.waitForTimeout(300);
   await shot(page, 33);
-  caption("Envarly finds problems in your environment variables...", 3800);
+  caption("Whichcraft finds problems in your environment variables...", 3800);
   hold(3800);
 
   // 2. Select Path (User) — reveals the "1 path not found on disk" warning.

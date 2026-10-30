@@ -1,4 +1,4 @@
-// Renders a static synthetic Windows titlebar (icon + "Envarly" + min/max/close
+// Renders a static synthetic Windows titlebar (icon + "Whichcraft" + min/max/close
 // glyphs) to titlebar.png. This is composited onto content-only screenshots by
 // compose.mjs instead of capturing the real OS window chrome, which is fragile
 // across DPI/theme/window-focus. Colors match src/index.css's dark theme
@@ -38,7 +38,7 @@ const html = `<!doctype html>
   .btn svg { width: 10px; height: 10px; }
 </style></head>
 <body>
-  <div class="brand"><img src="${iconSrc}"><span>Envarly</span></div>
+  <div class="brand"><img src="${iconSrc}"><span>Whichcraft</span></div>
   <div class="controls">
     <div class="btn"><svg viewBox="0 0 10 10"><line x1="0" y1="5" x2="10" y2="5" stroke="currentColor" stroke-width="1"/></svg></div>
     <div class="btn"><svg viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1"/></svg></div>

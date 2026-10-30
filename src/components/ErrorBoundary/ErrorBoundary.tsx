@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
           overflow: "auto",
         }}
       >
-        <h1 style={{ fontSize: "16px", margin: 0 }}>Envarly crashed</h1>
+        <h1 style={{ fontSize: "16px", margin: 0 }}>Whichcraft crashed</h1>
         <p style={{ fontSize: "13px", opacity: 0.8, margin: 0 }}>
           Please restart the app. If this keeps happening, copy the details below and report it.
         </p>

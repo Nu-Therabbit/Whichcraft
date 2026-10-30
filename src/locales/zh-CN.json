@@ -50,7 +50,7 @@
     "administrator": "管理员",
     "licenses": "许可证",
     "update_available": "有可用更新：v{{version}}",
-    "update_available_title": "Envarly 有新版本可用。点击查看发布内容。",
+    "update_available_title": "Whichcraft 有新版本可用。点击查看发布内容。",
     "more_options": "更多选项",
     "light_mode": "切换到浅色模式",
     "dark_mode": "切换到深色模式"
@@ -163,7 +163,7 @@
   },
   "diff": {
     "title": "检测到外部更改",
-    "description": "注册表在 Envarly 之外被修改。勾选要接受的更改，取消勾选以还原。",
+    "description": "注册表在 Whichcraft 之外被修改。勾选要接受的更改，取消勾选以还原。",
     "select_all": "全选",
     "deselect_all": "取消全选",
     "selected": "已选择 {{accepted}}/{{total}}",

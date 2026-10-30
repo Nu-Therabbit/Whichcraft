@@ -83,7 +83,7 @@ jobs:
         # appendHistory handles either case.
         run: |
           mkdir -p allure-history
-          curl -fsSL https://iray-tno.github.io/envarly/reports/history/allure-history.jsonl -o allure-history/allure-history.jsonl || rm -f allure-history/allure-history.jsonl
+          curl -fsSL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/history/allure-history.jsonl" -o allure-history/allure-history.jsonl || rm -f allure-history/allure-history.jsonl
 
       - name: Build HTML reports
         # Report name and history settings come from allurerc.mjs, auto-

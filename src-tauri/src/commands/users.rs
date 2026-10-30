@@ -7,7 +7,7 @@ pub fn list_local_accounts() -> Result<Vec<LocalAccount>, EnvarlyError> {
 }
 
 /// Switch the active other-user account. `None` deselects (unloading any
-/// hive Envarly itself loaded). The frontend should re-fetch vars/snapshot
+/// hive Whichcraft itself loaded). The frontend should re-fetch vars/snapshot
 /// after this resolves — it doesn't change any other command's signature.
 #[tauri::command]
 pub fn select_account(sid: Option<String>) -> Result<Option<LocalAccount>, EnvarlyError> {
