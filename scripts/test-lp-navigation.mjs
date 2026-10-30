@@ -62,11 +62,11 @@ async function checkFaq(page, width) {
   );
   assert.equal(
     await faq.locator("pre code").innerText(),
-    "envarly --help\nenvarly list --scope user",
+    "whichcraft --help\nwhichcraft list --scope user",
   );
   assert.equal(
     await faq.locator("a").getAttribute("href"),
-    "https://github.com/iray-tno/envarly/blob/main/README.md#cli-usage",
+    "https://github.com/Nu-Therabbit/Whichcraft/blob/main/DESIGN.md#cli-mode",
   );
   const bounds = await faq.locator("h2,h3,p,pre,a").evaluateAll((elements) =>
     elements.map((element) => ({
@@ -84,13 +84,13 @@ before(async () => {
   server = createServer(async (request, response) => {
     try {
       const path = new URL(request.url, "http://localhost").pathname;
-      if (!path.startsWith("/envarly/")) {
+      if (!path.startsWith("/Whichcraft/")) {
         response.writeHead(404).end();
         return;
       }
       const file = resolve(
         dist,
-        path.slice("/envarly/".length),
+        path.slice("/Whichcraft/".length),
         path.endsWith("/") ? "index.html" : "",
       );
       const localPath = relative(dist, file);
@@ -121,7 +121,7 @@ after(async () => {
 test("LP Open Graph image", async () => {
   const page = await browser.newPage();
   try {
-    const response = await page.goto(`${origin}/envarly/og-image.png`);
+    const response = await page.goto(`${origin}/Whichcraft/og-image.png`);
     assert.equal(response.status(), 200);
     assert.equal(response.headers()["content-type"], "image/png");
     const size = await page.locator("img").evaluate(async (image) => {
@@ -148,7 +148,7 @@ for (const [index, locale] of locales.entries()) {
         if (request.url().startsWith(origin) && request.resourceType() === "script")
           scripts.push(request.url());
       });
-      const path = `/envarly/${locale}`;
+      const path = `/Whichcraft/${locale}`;
       for (const width of [320, 375, 768, 1024, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${origin}${path}`);
@@ -217,7 +217,6 @@ for (const [index, locale] of locales.entries()) {
           controlCursors.map((control) => control.id),
           [
             "lang-select",
-            "winget-copy",
             "carousel-prev",
             "carousel-next",
             "dot-0",
@@ -229,7 +228,7 @@ for (const [index, locale] of locales.entries()) {
           assert.equal(control.cursor, "pointer", `${control.id} should use the pointer cursor`);
         }
         assert.equal(await page.locator("h1").count(), 1);
-        assert.equal(await page.locator("h1").innerText(), "Envarly");
+        assert.equal(await page.locator("h1").innerText(), "Whichcraft");
         const heroType = await page
           .locator("main > section > p")
           .first()
@@ -244,11 +243,11 @@ for (const [index, locale] of locales.entries()) {
         assert.equal(heroType.lineHeight / heroType.fontSize, 1.625);
         assert.equal(
           await page.locator("#hero-download").getAttribute("href"),
-          "https://github.com/iray-tno/envarly/releases/latest",
+          "https://github.com/Nu-Therabbit/Whichcraft/releases/latest",
         );
         assert.equal(
           await page.locator("#hero-github").getAttribute("href"),
-          "https://github.com/iray-tno/envarly",
+          "https://github.com/Nu-Therabbit/Whichcraft",
         );
         assert.equal(await page.locator("header a").first().getAttribute("href"), path);
         assert.equal(await page.locator("header nav").count(), 1);
@@ -298,33 +297,6 @@ for (const [index, locale] of locales.entries()) {
       await page.locator("#nav-download").click();
       await page.locator("#hero-github").click();
       await page.locator("#hero-download").click();
-      await page.evaluate(() => {
-        Object.defineProperty(navigator, "clipboard", {
-          configurable: true,
-          value: {
-            writeText: async (value) => {
-              window.__copiedText = value;
-            },
-          },
-        });
-      });
-      const copy = page.locator("#winget-copy");
-      const label = page.locator("#winget-copy-label");
-      const originalLabel = await label.innerText();
-      const originalWidth = await copy.evaluate((element) => element.getBoundingClientRect().width);
-      await page.clock.install();
-      await copy.click();
-      assert.equal(
-        await page.evaluate(() => window.__copiedText),
-        "winget install Envarly.Envarly",
-      );
-      assert.equal(await label.innerText(), await copy.getAttribute("data-copied-label"));
-      assert.equal(
-        await copy.evaluate((element) => element.getBoundingClientRect().width),
-        originalWidth,
-      );
-      await page.clock.fastForward(1600);
-      assert.equal(await label.innerText(), originalLabel);
       const disabledCursors = await page.locator("button, select").evaluateAll((controls) =>
         controls.flatMap((control) => {
           const results = [];
@@ -348,9 +320,8 @@ for (const [index, locale] of locales.entries()) {
         ["event", "download_click"],
         ["event", "github_link_click"],
         ["event", "download_click"],
-        ["event", "winget_copy_click"],
       ]);
-      const nextPath = `/envarly/${locales[(index + 1) % locales.length]}`;
+      const nextPath = `/Whichcraft/${locales[(index + 1) % locales.length]}`;
       await Promise.all([
         page.waitForURL(`${origin}${nextPath}`),
         page.locator("#lang-select").selectOption(nextPath),
@@ -367,12 +338,12 @@ for (const locale of locales) {
   test(`LP static HTML without JavaScript: ${locale || "en"}`, async () => {
     const page = await browser.newPage({ javaScriptEnabled: false });
     try {
-      const path = `/envarly/${locale}`;
+      const path = `/Whichcraft/${locale}`;
       await page.goto(`${origin}${path}`);
       assert.equal(await page.locator("#lang-select").inputValue(), path);
       assert.equal(await page.getByRole("combobox", { name: "Language" }).count(), 1);
       assert.equal(await page.locator("#lang-select option").count(), 6);
-      assert.equal(await page.getByRole("heading", { name: "Envarly", level: 1 }).count(), 1);
+      assert.equal(await page.getByRole("heading", { name: "Whichcraft", level: 1 }).count(), 1);
       assert.ok((await page.locator("main > section > p").first().innerText()).length);
       assert.ok((await page.locator("#hero-download").innerText()).length);
       assert.ok((await page.locator("#features h3").first().innerText()).length);

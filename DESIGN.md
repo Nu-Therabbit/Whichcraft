@@ -1,4 +1,4 @@
-# Envarly — Design Notes
+# Whichcraft — Design Notes
 
 Architecture decisions, security model, and data format specs. Not a tutorial; read this when you need to understand *why* something works the way it does.
 
@@ -26,7 +26,7 @@ src/                    React frontend (TypeScript)
     DetailPanel/        Edit → stage locally; local Ctrl+Z undo before staging
     PathEditor/         Drag-and-drop path list + per-entry validation + %VAR% lint
     ListEditor/         Generic sortable list editor (semicolon or comma separator)
-    PathBanner/         Banner shown on launch when Envarly is not yet in User/System PATH
+    PathBanner/         Banner shown on launch when Whichcraft is not yet in User/System PATH
     StagedModal/        Apply confirmation: Delta/Full diff view for semicolon-separated values
     NewVarModal/        New variable creation dialog
     DiffPanel/          Unified diff view (external-change detection)
@@ -46,7 +46,7 @@ src-tauri/src/          Rust backend
   snapshot.rs           Snapshot save/list/restore + DPAPI encryption
   crypto.rs             DPAPI wrapper (protect/unprotect)
   export/               JSON, .reg, and IaC format (PS1, DSC v2/v3, Ansible) export implementations
-  import.rs             Backend-agnostic diff for `envarly import`/`set` (merge/replace, kind inference)
+  import.rs             Backend-agnostic diff for `whichcraft import`/`set` (merge/replace, kind inference)
   user_hive.rs          Loading and editing other local accounts' registry hives
   cli.rs                CLI subcommands (clap): get/list/export are read-only; import/set/delete write behind --apply
   error.rs              EnvarlyError (thiserror)
@@ -89,7 +89,7 @@ The CLI's `get`/`list`/`export` are read-only. `import`/`set`/`delete` are a sep
 
 ### Content Security Policy
 
-`tauri.conf.json` uses a strict CSP. `default-src 'self'` is intentional — Envarly handles environment variables which may contain secrets (API keys, tokens), so no external resource loading is allowed.
+`tauri.conf.json` uses a strict CSP. `default-src 'self'` is intentional — Whichcraft handles environment variables which may contain secrets (API keys, tokens), so no external resource loading is allowed.
 
 ### External links
 
@@ -169,12 +169,12 @@ When launched with arguments, `try_run_cli()` intercepts before the GUI starts a
 `get`/`list`/`export` call `env_store::read_all()` / `export::*` directly and never write. `import`/`set`/`delete` are dry-run by default and only call `env_store::apply_changes()` when `--apply` is passed. This is the GUI's shared apply path with best-effort rollback of completed mutations. Restoration checks for conflicting external changes and reports unresolved entries; it does not provide crash safety or transactional isolation.
 
 ```
-envarly get <NAME> [--scope user|system]
-envarly list [--scope user|system] [--format text|json]
-envarly export [--scope user|system] [--format json|reg|ps1|dsc-v2|dsc-v3|ansible] [--output <path>]
-envarly import <file> [--format json|reg] [--scope user|system] [--strategy merge|replace] [--apply]
-envarly set <NAME> <VALUE> [--scope user|system] [--kind auto|string|expand-string] [--apply]
-envarly delete <NAME> [--scope user|system] [--apply]
+whichcraft get <NAME> [--scope user|system]
+whichcraft list [--scope user|system] [--format text|json]
+whichcraft export [--scope user|system] [--format json|reg|ps1|dsc-v2|dsc-v3|ansible] [--output <path>]
+whichcraft import <file> [--format json|reg] [--scope user|system] [--strategy merge|replace] [--apply]
+whichcraft set <NAME> <VALUE> [--scope user|system] [--kind auto|string|expand-string] [--apply]
+whichcraft delete <NAME> [--scope user|system] [--apply]
 ```
 
 ---
@@ -196,4 +196,4 @@ Spacing follows a 4px/8px grid. Tailwind class mapping:
 
 ## Storybook
 
-Deployed to GitHub Pages at `/envarly/storybook/` on push to `main` (handled by `pages.yml`). The multi-language landing page (built with Astro in `lp/`) lives at the `/envarly/` root. Theme toggle (dark/light) uses `globalTypes` — the `backgrounds` addon is not used.
+Deployed to GitHub Pages at `/Whichcraft/storybook/` on push to `main` (handled by `pages.yml`). The multi-language landing page (built with Astro in `lp/`) lives at the `/Whichcraft/` root. Theme toggle (dark/light) uses `globalTypes` — the `backgrounds` addon is not used.

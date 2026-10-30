@@ -21,7 +21,7 @@ export default function LandingHeader({ copy }: LandingHeaderProps) {
           href={copy.canonicalPath}
           className="shrink-0 font-semibold text-[var(--color-text)] tracking-tight"
         >
-          Envarly
+          Whichcraft
         </Link>
         <Nav className="flex flex-row shrink items-center gap-2 sm:gap-6">
           <Link

@@ -23,7 +23,7 @@ test("normalizes TypeScript suites and file paths", () => {
 
 test("normalizes Rust suites and module paths", () => {
   const normalized = normalizeJUnit(
-    `<?xml version="1.0"?><testsuites name="nextest-run"><testsuite name="envarly"><testcase classname="envarly" name="env_store::tests::preserves_kind"><failure message="failed">details</failure></testcase></testsuite></testsuites>`,
+    `<?xml version="1.0"?><testsuites name="nextest-run"><testsuite name="whichcraft"><testcase classname="whichcraft" name="env_store::tests::preserves_kind"><failure message="failed">details</failure></testcase></testsuite></testsuites>`,
     "rust",
   );
   const document = parse(normalized);
@@ -38,7 +38,7 @@ test("normalizes Rust suites and module paths", () => {
 
 test("uses a root module for tests without a module path", () => {
   const normalized = normalizeJUnit(
-    `<testsuites><testsuite name="envarly"><testcase classname="envarly" name="smoke"/></testsuite></testsuites>`,
+    `<testsuites><testsuite name="whichcraft"><testcase classname="whichcraft" name="smoke"/></testsuite></testsuites>`,
     "rust",
   );
   const testcase = parse(normalized).getElementsByTagName("testcase")[0];

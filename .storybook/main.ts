@@ -12,7 +12,7 @@ const config: StorybookConfig = {
   },
 
   viteFinal: (config) => {
-    if (isProd) config.base = "/envarly/storybook/";
+    if (isProd) config.base = "/Whichcraft/storybook/";
     return config;
   },
 };

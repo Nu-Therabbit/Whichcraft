@@ -1,8 +1,8 @@
-# Envarly Landing Page
+# Whichcraft Landing Page
 
-This directory contains the multi-language landing page for [Envarly](https://github.com/iray-tno/envarly), built with [Astro](https://astro.build/) and deployed to [GitHub Pages](https://iray-tno.github.io/envarly/).
+This directory contains the multi-language landing page for [Whichcraft](https://github.com/Nu-Therabbit/Whichcraft), built with [Astro](https://astro.build/) and deployed to [GitHub Pages](https://nu-therabbit.github.io/Whichcraft/).
 
-For general information about Envarly, architecture, and desktop app development, see the [main README](../README.md).
+For general information about Whichcraft, architecture, and desktop app development, see the [main README](../README.md).
 
 ## Development
 

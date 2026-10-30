@@ -7,7 +7,7 @@ function getLpUrl(): string {
     try {
       if (document.referrer) {
         const ref = new URL(document.referrer);
-        if (ref.origin === window.location.origin && ref.pathname.startsWith("/envarly/")) {
+        if (ref.origin === window.location.origin && ref.pathname.startsWith("/Whichcraft/")) {
           if (!ref.pathname.includes("/storybook") && !ref.pathname.includes("/reports")) {
             return ref.pathname;
           }
@@ -16,11 +16,11 @@ function getLpUrl(): string {
     } catch {
       // fallback
     }
-    if (window.location.pathname.startsWith("/envarly/")) {
-      return "/envarly/";
+    if (window.location.pathname.startsWith("/Whichcraft/")) {
+      return "/Whichcraft/";
     }
   }
-  return "https://iray-tno.github.io/envarly/";
+  return "https://nu-therabbit.github.io/Whichcraft/";
 }
 
 const lpUrl = getLpUrl();
@@ -28,31 +28,31 @@ const lpUrl = getLpUrl();
 addons.setConfig({
   theme: create({
     base: "light",
-    brandTitle: "← Back to Envarly",
+    brandTitle: "← Back to Whichcraft",
     brandUrl: lpUrl,
     brandTarget: "_self",
   }),
 });
 
-addons.register("envarly/toolbar", () => {
-  addons.add("envarly/toolbar/back", {
+addons.register("whichcraft/toolbar", () => {
+  addons.add("whichcraft/toolbar/back", {
     type: types.TOOL,
-    title: "Back to Envarly LP",
+    title: "Back to Whichcraft LP",
     match: () => true,
     render: () =>
       React.createElement(
         "a",
         {
           href: lpUrl,
-          title: "Back to Envarly LP",
+          title: "Back to Whichcraft LP",
           target: "_self",
-          className: "envarly-back-tool",
+          className: "whichcraft-back-tool",
           onClick: (e: React.MouseEvent<HTMLAnchorElement>) => {
             const url = getLpUrl();
             e.currentTarget.href = url;
           },
         },
-        "← Back to Envarly",
+        "← Back to Whichcraft",
       ),
   });
 });

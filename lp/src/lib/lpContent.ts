@@ -1,19 +1,18 @@
-export const GITHUB_URL = 'https://github.com/iray-tno/envarly';
-export const RELEASE_URL = 'https://github.com/iray-tno/envarly/releases/latest';
-export const STORYBOOK_URL = '/envarly/storybook/';
-export const REPORTS_URL = '/envarly/reports/';
+export const GITHUB_URL = 'https://github.com/Nu-Therabbit/Whichcraft';
+export const RELEASE_URL = 'https://github.com/Nu-Therabbit/Whichcraft/releases/latest';
+export const STORYBOOK_URL = '/Whichcraft/storybook/';
+export const REPORTS_URL = '/Whichcraft/reports/';
 export const VERSION = '0.1.0';
-export const WINGET_COMMAND = 'winget install Envarly.Envarly';
 
 export type LandingLang = 'en' | 'ja' | 'zh-CN' | 'ru' | 'ko' | 'vi';
 
 export const LANGUAGES: Array<{ code: LandingLang; path: string; label: string }> = [
-  { code: 'en', path: '/envarly/', label: 'English' },
-  { code: 'ja', path: '/envarly/ja/', label: '日本語' },
-  { code: 'zh-CN', path: '/envarly/zh-cn/', label: '简体中文' },
-  { code: 'ru', path: '/envarly/ru/', label: 'Русский' },
-  { code: 'ko', path: '/envarly/ko/', label: '한국어' },
-  { code: 'vi', path: '/envarly/vi/', label: 'Tiếng Việt' },
+  { code: 'en', path: '/Whichcraft/', label: 'English' },
+  { code: 'ja', path: '/Whichcraft/ja/', label: '日本語' },
+  { code: 'zh-CN', path: '/Whichcraft/zh-cn/', label: '简体中文' },
+  { code: 'ru', path: '/Whichcraft/ru/', label: 'Русский' },
+  { code: 'ko', path: '/Whichcraft/ko/', label: '한국어' },
+  { code: 'vi', path: '/Whichcraft/vi/', label: 'Tiếng Việt' },
 ];
 
 export type LandingCopy = {
@@ -33,11 +32,6 @@ export type LandingCopy = {
     lead: string;
     download: string;
     github: string;
-  };
-  install: {
-    label: string;
-    copy: string;
-    copied: string;
   };
   screenshots: {
     videoAlt: string;
@@ -90,8 +84,8 @@ export const enCopy: LandingCopy = {
     items: [
       {
         id: 'windows-editor',
-        question: 'How does Envarly differ from the Windows environment variable editor?',
-        answer: 'Envarly lets you stage multiple environment variable changes and review their diffs before applying them. It also includes a PATH list editor with folder selection and path checks, secret detection, and encrypted snapshots.',
+        question: 'How does Whichcraft differ from the Windows environment variable editor?',
+        answer: 'Whichcraft lets you stage multiple environment variable changes and review their diffs before applying them. It also includes a PATH list editor with folder selection and path checks, secret detection, and encrypted snapshots.',
       },
       {
         id: 'path',
@@ -110,28 +104,28 @@ export const enCopy: LandingCopy = {
       },
       {
         id: 'admin',
-        question: 'Can I use Envarly without administrator privileges?',
-        answer: 'Yes. You can view User and System variables and edit your own User variables without elevation. Changing System variables or editing another account requires administrator privileges. Envarly can restart with elevation when needed.',
+        question: 'Can I use Whichcraft without administrator privileges?',
+        answer: 'Yes. You can view User and System variables and edit your own User variables without elevation. Changing System variables or editing another account requires administrator privileges. Whichcraft can restart with elevation when needed.',
       },
       {
         id: 'terminal',
         question: 'Why are my changed environment variables not reflected in the terminal?',
-        answer: 'An already running process keeps its own environment. Envarly notifies Windows after applying changes, but it cannot replace the environment of an existing shell. Restart the terminal or the application that launches it, such as your editor; opening a new tab in an existing terminal may not be enough.',
+        answer: 'An already running process keeps its own environment. Whichcraft notifies Windows after applying changes, but it cannot replace the environment of an existing shell. Restart the terminal or the application that launches it, such as your editor; opening a new tab in an existing terminal may not be enough.',
       },
       {
         id: 'cli',
-        question: 'Can I use Envarly from the command line or scripts?',
-        answer: 'Yes. Envarly provides get, list, and export commands for reading, plus set, delete, and import for changes. These write commands default to a dry run and only modify the registry when you add --apply. Run envarly --help to see the commands and options.',
+        question: 'Can I use Whichcraft from the command line or scripts?',
+        answer: 'Yes. Whichcraft provides get, list, and export commands for reading, plus set, delete, and import for changes. These write commands default to a dry run and only modify the registry when you add --apply. Run whichcraft --help to see the commands and options.',
       },
     ],
-    cliSetup: 'Run these commands from a terminal. Add the Envarly installation folder to PATH using the app, or invoke envarly.exe by its full path.',
+    cliSetup: 'Run these commands from a terminal. Add the Whichcraft installation folder to PATH using the app, or invoke whichcraft.com by its full path.',
     cliDocs: 'CLI usage and examples',
   },
   lang: 'en',
-  title: 'Envarly — Windows Environment Variable Manager',
+  title: 'Whichcraft — Windows Environment Variable Manager',
   description: 'Preview every change as a diff before it touches the registry. Safe PATH editing, secret detection, encrypted snapshots. Free and open source for Windows 10/11.',
   ogDescription: 'Preview every change as a diff before it touches the registry. Safe PATH editing, secret detection, encrypted snapshots. Free and open source for Windows 10/11.',
-  canonicalPath: '/envarly/',
+  canonicalPath: '/Whichcraft/',
   nav: {
     features: 'Features',
     storybook: 'Storybook',
@@ -144,15 +138,10 @@ export const enCopy: LandingCopy = {
     download: `Download v${VERSION} for Windows`,
     github: 'View on GitHub →',
   },
-  install: {
-    label: 'Or install with WinGet:',
-    copy: 'Copy',
-    copied: 'Copied!',
-  },
   screenshots: {
-    videoAlt: 'Envarly — short walkthrough: fixing a broken PATH entry and reviewing the change before applying it',
-    pathEditorAlt: 'Envarly — PATH editor with per-entry validation and staged change',
-    applyModalAlt: 'Envarly — Apply confirmation modal with Full diff view for PATH entries',
+    videoAlt: 'Whichcraft — short walkthrough: fixing a broken PATH entry and reviewing the change before applying it',
+    pathEditorAlt: 'Whichcraft — PATH editor with per-entry validation and staged change',
+    applyModalAlt: 'Whichcraft — Apply confirmation modal with Full diff view for PATH entries',
     videoLabel: 'Walkthrough video',
     firstLabel: 'Screenshot 1',
     secondLabel: 'Screenshot 2',
@@ -175,7 +164,7 @@ export const enCopy: LandingCopy = {
     {
       icon: '⇄',
       title: 'External change detection',
-      desc: 'Detects registry changes made by other processes while Envarly is open. Shows a diff with selective apply per entry.',
+      desc: 'Detects registry changes made by other processes while Whichcraft is open. Shows a diff with selective apply per entry.',
     },
     {
       icon: '📸',
@@ -229,8 +218,8 @@ export const enCopy: LandingCopy = {
   audience: {
     heading: 'Who is it for?',
     paragraphs: [
-      'Envarly is built for developers and power users on Windows 10 and 11 who frequently edit User and System environment variables — and want a safer, more visual alternative to the built-in Windows Settings panel.',
-      'Whether you are managing a cluttered PATH variable, rotating API keys stored as environment variables, importing a team\'s .env baseline, or restoring a snapshot after a bad install — Envarly gives you full visibility before any registry write happens.',
+      'Whichcraft is built for developers and power users on Windows 10 and 11 who frequently edit User and System environment variables — and want a safer, more visual alternative to the built-in Windows Settings panel.',
+      'Whether you are managing a cluttered PATH variable, rotating API keys stored as environment variables, importing a team\'s .env baseline, or restoring a snapshot after a bad install — Whichcraft gives you full visibility before any registry write happens.',
     ],
   },
   stack: {
@@ -239,7 +228,7 @@ export const enCopy: LandingCopy = {
   },
   privacyNote: "No telemetry in the app — its only network call is a daily version check against GitHub. (This website uses analytics; the app doesn't.)",
   footer: {
-    copyright: '© 2026 Envarly · MIT License',
+    copyright: '© 2026 Whichcraft · MIT License',
     releases: 'Releases',
     license: 'License',
   },
@@ -251,8 +240,8 @@ export const jaCopy: LandingCopy = {
     items: [
       {
         id: 'windows-editor',
-        question: 'Envarly は、Windows 標準の環境変数エディターと何が違いますか？',
-        answer: 'Envarly は、複数の環境変数の変更をステージし、適用前に差分をまとめて確認できます。フォルダー選択とパスの存在確認に対応した PATH リストエディター、シークレット検出、暗号化スナップショットも備えています。',
+        question: 'Whichcraft は、Windows 標準の環境変数エディターと何が違いますか？',
+        answer: 'Whichcraft は、複数の環境変数の変更をステージし、適用前に差分をまとめて確認できます。フォルダー選択とパスの存在確認に対応した PATH リストエディター、シークレット検出、暗号化スナップショットも備えています。',
       },
       {
         id: 'path',
@@ -277,22 +266,22 @@ export const jaCopy: LandingCopy = {
       {
         id: 'terminal',
         question: '変更した環境変数がターミナルに反映されないのはなぜですか？',
-        answer: '起動済みのプロセスは、それぞれの環境変数を保持しているためです。Envarly は適用後に Windows へ変更を通知しますが、実行中のシェルの環境変数を置き換えることはできません。ターミナルや、その起動元のエディターなどを再起動してください。既存のターミナルで新しいタブを開くだけでは反映されない場合があります。',
+        answer: '起動済みのプロセスは、それぞれの環境変数を保持しているためです。Whichcraft は適用後に Windows へ変更を通知しますが、実行中のシェルの環境変数を置き換えることはできません。ターミナルや、その起動元のエディターなどを再起動してください。既存のターミナルで新しいタブを開くだけでは反映されない場合があります。',
       },
       {
         id: 'cli',
-        question: 'Envarly をコマンドラインやスクリプトから使えますか？',
-        answer: 'はい。読み取り用の get・list・export と、変更用の set・delete・import を利用できます。変更用コマンドは既定ではドライランになり、--apply を付けたときだけレジストリへ書き込みます。envarly --help でコマンドとオプションを確認できます。',
+        question: 'Whichcraft をコマンドラインやスクリプトから使えますか？',
+        answer: 'はい。読み取り用の get・list・export と、変更用の set・delete・import を利用できます。変更用コマンドは既定ではドライランになり、--apply を付けたときだけレジストリへ書き込みます。whichcraft --help でコマンドとオプションを確認できます。',
       },
     ],
-    cliSetup: 'ターミナルから実行してください。アプリで Envarly のインストール先を PATH に追加するか、envarly.exe をフルパスで指定します。',
+    cliSetup: 'ターミナルから実行してください。アプリで Whichcraft のインストール先を PATH に追加するか、whichcraft.com をフルパスで指定します。',
     cliDocs: 'CLI の使い方と実行例',
   },
   lang: 'ja',
-  title: 'Envarly — Windows 環境変数マネージャー',
+  title: 'Whichcraft — Windows 環境変数マネージャー',
   description: '変更はレジストリに書き込む前に必ず差分プレビュー。安全なPATH編集、シークレット検出、暗号化スナップショットに対応した無料のオープンソースGUI。Windows 10/11向け。',
   ogDescription: '変更はレジストリに書き込む前に必ず差分プレビュー。安全なPATH編集、シークレット検出、暗号化スナップショットに対応した無料のオープンソースGUI。Windows 10/11向け。',
-  canonicalPath: '/envarly/ja/',
+  canonicalPath: '/Whichcraft/ja/',
   nav: {
     features: '機能',
     storybook: 'Storybook',
@@ -305,15 +294,10 @@ export const jaCopy: LandingCopy = {
     download: `Windows 版 v${VERSION} をダウンロード`,
     github: 'GitHub で見る →',
   },
-  install: {
-    label: 'または WinGet でインストール:',
-    copy: 'コピー',
-    copied: 'コピーしました！',
-  },
   screenshots: {
-    videoAlt: 'Envarly — 短いウォークスルー: 壊れた PATH エントリを修正し、適用前に変更内容を確認する',
-    pathEditorAlt: 'Envarly — エントリごとの検証とステージ済み変更を表示する PATH エディター',
-    applyModalAlt: 'Envarly — PATH エントリの詳細差分を表示する適用確認モーダル',
+    videoAlt: 'Whichcraft — 短いウォークスルー: 壊れた PATH エントリを修正し、適用前に変更内容を確認する',
+    pathEditorAlt: 'Whichcraft — エントリごとの検証とステージ済み変更を表示する PATH エディター',
+    applyModalAlt: 'Whichcraft — PATH エントリの詳細差分を表示する適用確認モーダル',
     videoLabel: 'ウォークスルー動画',
     firstLabel: 'スクリーンショット 1',
     secondLabel: 'スクリーンショット 2',
@@ -336,7 +320,7 @@ export const jaCopy: LandingCopy = {
     {
       icon: '⇄',
       title: '外部変更の差分検出',
-      desc: 'Envarly を開いている間に他プロセスがレジストリを変更した場合、差分を検出。項目ごとに受け入れる変更を選べます。',
+      desc: 'Whichcraft を開いている間に他プロセスがレジストリを変更した場合、差分を検出。項目ごとに受け入れる変更を選べます。',
     },
     {
       icon: '📸',
@@ -390,7 +374,7 @@ export const jaCopy: LandingCopy = {
   audience: {
     heading: '誰のためのアプリ？',
     paragraphs: [
-      'Envarly は、Windows 10 / 11 で User / System 環境変数をよく編集する開発者やパワーユーザー向けです。標準の Windows 設定画面より安全で、見通しよく扱える代替手段を目指しています。',
+      'Whichcraft は、Windows 10 / 11 で User / System 環境変数をよく編集する開発者やパワーユーザー向けです。標準の Windows 設定画面より安全で、見通しよく扱える代替手段を目指しています。',
       '散らかった PATH 変数の整理、環境変数に保存された API キーのローテーション、チームの .env ベースラインの取り込み、インストール失敗後のスナップショット復元まで。レジストリに書き込む前に、変更内容をしっかり確認できます。',
     ],
   },
@@ -400,7 +384,7 @@ export const jaCopy: LandingCopy = {
   },
   privacyNote: 'アプリ本体にテレメトリはありません — 唯一の通信は GitHub への日次バージョンチェックだけです。(この Web サイトはアクセス解析を使っていますが、アプリ本体は使っていません。)',
   footer: {
-    copyright: '© 2026 Envarly · MIT License',
+    copyright: '© 2026 Whichcraft · MIT License',
     releases: 'リリース',
     license: 'ライセンス',
   },
@@ -412,8 +396,8 @@ export const zhCNCopy: LandingCopy = {
     items: [
       {
         id: 'windows-editor',
-        question: 'Envarly 与 Windows 自带的环境变量编辑器有什么区别？',
-        answer: 'Envarly 可以暂存多个环境变量的更改，并在应用前集中查看差异。它还提供支持文件夹选择和路径检查的 PATH 列表编辑器、敏感信息检测以及加密快照。',
+        question: 'Whichcraft 与 Windows 自带的环境变量编辑器有什么区别？',
+        answer: 'Whichcraft 可以暂存多个环境变量的更改，并在应用前集中查看差异。它还提供支持文件夹选择和路径检查的 PATH 列表编辑器、敏感信息检测以及加密快照。',
       },
       {
         id: 'path',
@@ -432,28 +416,28 @@ export const zhCNCopy: LandingCopy = {
       },
       {
         id: 'admin',
-        question: '没有管理员权限也能使用 Envarly 吗？',
+        question: '没有管理员权限也能使用 Whichcraft 吗？',
         answer: '可以。无需管理员权限即可查看用户和系统变量，并编辑自己的用户变量。修改系统变量或编辑其他账户需要管理员权限。必要时可以从应用中以管理员身份重新启动。',
       },
       {
         id: 'terminal',
         question: '为什么修改后的环境变量没有在终端中生效？',
-        answer: '已经运行的进程保留自己的环境变量。Envarly 会在应用更改后通知 Windows，但无法替换现有 shell 的环境。请重新启动终端或启动它的应用，例如编辑器；仅在现有终端中打开新标签页可能不够。',
+        answer: '已经运行的进程保留自己的环境变量。Whichcraft 会在应用更改后通知 Windows，但无法替换现有 shell 的环境。请重新启动终端或启动它的应用，例如编辑器；仅在现有终端中打开新标签页可能不够。',
       },
       {
         id: 'cli',
-        question: '可以从命令行或脚本使用 Envarly 吗？',
-        answer: '可以。get、list 和 export 用于读取，set、delete 和 import 用于修改。修改命令默认为试运行，只有添加 --apply 才会写入注册表。运行 envarly --help 可查看命令和选项。',
+        question: '可以从命令行或脚本使用 Whichcraft 吗？',
+        answer: '可以。get、list 和 export 用于读取，set、delete 和 import 用于修改。修改命令默认为试运行，只有添加 --apply 才会写入注册表。运行 whichcraft --help 可查看命令和选项。',
       },
     ],
-    cliSetup: '请在终端中运行。通过应用将 Envarly 安装目录添加到 PATH，或使用 envarly.exe 的完整路径。',
+    cliSetup: '请在终端中运行。通过应用将 Whichcraft 安装目录添加到 PATH，或使用 whichcraft.com 的完整路径。',
     cliDocs: 'CLI 用法和示例',
   },
   lang: 'zh-CN',
-  title: 'Envarly — Windows 环境变量管理器',
+  title: 'Whichcraft — Windows 环境变量管理器',
   description: '每一处更改在写入注册表前都会先以差异形式预览。安全的 PATH 编辑、敏感信息检测、加密快照。免费开源，适用于 Windows 10/11。',
   ogDescription: '每一处更改在写入注册表前都会先以差异形式预览。安全的 PATH 编辑、敏感信息检测、加密快照。免费开源，适用于 Windows 10/11。',
-  canonicalPath: '/envarly/zh-cn/',
+  canonicalPath: '/Whichcraft/zh-cn/',
   nav: {
     features: '功能',
     storybook: 'Storybook',
@@ -466,15 +450,10 @@ export const zhCNCopy: LandingCopy = {
     download: `下载 Windows 版 v${VERSION}`,
     github: '在 GitHub 上查看 →',
   },
-  install: {
-    label: '或使用 WinGet 安装：',
-    copy: '复制',
-    copied: '已复制！',
-  },
   screenshots: {
-    videoAlt: 'Envarly — 简短演示：修复失效的 PATH 条目，并在应用前查看更改内容',
-    pathEditorAlt: 'Envarly — 带逐项校验和暂存更改的 PATH 编辑器',
-    applyModalAlt: 'Envarly — 显示 PATH 条目完整差异的应用确认弹窗',
+    videoAlt: 'Whichcraft — 简短演示：修复失效的 PATH 条目，并在应用前查看更改内容',
+    pathEditorAlt: 'Whichcraft — 带逐项校验和暂存更改的 PATH 编辑器',
+    applyModalAlt: 'Whichcraft — 显示 PATH 条目完整差异的应用确认弹窗',
     videoLabel: '演示视频',
     firstLabel: '截图 1',
     secondLabel: '截图 2',
@@ -497,7 +476,7 @@ export const zhCNCopy: LandingCopy = {
     {
       icon: '⇄',
       title: '外部更改检测',
-      desc: 'Envarly 运行期间，检测其他进程对注册表所做的更改，并显示差异，可逐项选择接受。',
+      desc: 'Whichcraft 运行期间，检测其他进程对注册表所做的更改，并显示差异，可逐项选择接受。',
     },
     {
       icon: '📸',
@@ -551,8 +530,8 @@ export const zhCNCopy: LandingCopy = {
   audience: {
     heading: '适合谁使用？',
     paragraphs: [
-      'Envarly 专为经常在 Windows 10 / 11 上编辑用户和系统环境变量的开发者与高级用户打造 — 提供比内置 Windows 设置面板更安全、更直观的替代方案。',
-      '无论是整理杂乱的 PATH 变量、轮换存储为环境变量的 API 密钥、导入团队的 .env 基线，还是在安装失败后恢复快照 — Envarly 都能让你在写入注册表之前，完全掌握每一处更改。',
+      'Whichcraft 专为经常在 Windows 10 / 11 上编辑用户和系统环境变量的开发者与高级用户打造 — 提供比内置 Windows 设置面板更安全、更直观的替代方案。',
+      '无论是整理杂乱的 PATH 变量、轮换存储为环境变量的 API 密钥、导入团队的 .env 基线，还是在安装失败后恢复快照 — Whichcraft 都能让你在写入注册表之前，完全掌握每一处更改。',
     ],
   },
   stack: {
@@ -561,7 +540,7 @@ export const zhCNCopy: LandingCopy = {
   },
   privacyNote: '应用本身不含任何遥测 — 唯一的网络请求是每天向 GitHub 检查新版本。（本网站使用网站访问分析，应用本身不使用。）',
   footer: {
-    copyright: '© 2026 Envarly · MIT License',
+    copyright: '© 2026 Whichcraft · MIT License',
     releases: '发行版',
     license: '许可证',
   },
@@ -573,8 +552,8 @@ export const ruCopy: LandingCopy = {
     items: [
       {
         id: 'windows-editor',
-        question: 'Чем Envarly отличается от редактора переменных среды Windows?',
-        answer: 'Envarly позволяет подготовить несколько изменений переменных среды и просмотреть их различия перед применением. Также доступны редактор PATH с выбором папок и проверкой путей, обнаружение секретов и зашифрованные снимки.',
+        question: 'Чем Whichcraft отличается от редактора переменных среды Windows?',
+        answer: 'Whichcraft позволяет подготовить несколько изменений переменных среды и просмотреть их различия перед применением. Также доступны редактор PATH с выбором папок и проверкой путей, обнаружение секретов и зашифрованные снимки.',
       },
       {
         id: 'path',
@@ -593,28 +572,28 @@ export const ruCopy: LandingCopy = {
       },
       {
         id: 'admin',
-        question: 'Можно ли пользоваться Envarly без прав администратора?',
+        question: 'Можно ли пользоваться Whichcraft без прав администратора?',
         answer: 'Да. Без повышения прав можно просматривать пользовательские и системные переменные и редактировать свои пользовательские переменные. Для изменения системных переменных или работы с другой учётной записью нужны права администратора. Приложение можно перезапустить с повышением прав.',
       },
       {
         id: 'terminal',
         question: 'Почему изменённые переменные среды не появились в терминале?',
-        answer: 'Уже запущенный процесс сохраняет собственное окружение. Envarly уведомляет Windows после применения изменений, но не может заменить окружение работающей оболочки. Перезапустите терминал или запускающее его приложение, например редактор. Открытия новой вкладки в работающем терминале может быть недостаточно.',
+        answer: 'Уже запущенный процесс сохраняет собственное окружение. Whichcraft уведомляет Windows после применения изменений, но не может заменить окружение работающей оболочки. Перезапустите терминал или запускающее его приложение, например редактор. Открытия новой вкладки в работающем терминале может быть недостаточно.',
       },
       {
         id: 'cli',
-        question: 'Можно ли использовать Envarly из командной строки или скриптов?',
-        answer: 'Да. Команды get, list и export читают данные, а set, delete и import подготавливают изменения. По умолчанию команды изменения работают в пробном режиме и записывают в реестр только с флагом --apply. Команда envarly --help показывает доступные команды и параметры.',
+        question: 'Можно ли использовать Whichcraft из командной строки или скриптов?',
+        answer: 'Да. Команды get, list и export читают данные, а set, delete и import подготавливают изменения. По умолчанию команды изменения работают в пробном режиме и записывают в реестр только с флагом --apply. Команда whichcraft --help показывает доступные команды и параметры.',
       },
     ],
-    cliSetup: 'Запускайте команды из терминала. Добавьте папку установки Envarly в PATH через приложение или укажите полный путь к envarly.exe.',
+    cliSetup: 'Запускайте команды из терминала. Добавьте папку установки Whichcraft в PATH через приложение или укажите полный путь к whichcraft.com.',
     cliDocs: 'Использование CLI и примеры',
   },
   lang: 'ru',
-  title: 'Envarly — менеджер переменных окружения Windows',
+  title: 'Whichcraft — менеджер переменных окружения Windows',
   description: 'Каждое изменение показывается как diff перед записью в реестр. Безопасное редактирование PATH, обнаружение секретов, зашифрованные снимки. Бесплатно, с открытым исходным кодом, для Windows 10/11.',
   ogDescription: 'Каждое изменение показывается как diff перед записью в реестр. Безопасное редактирование PATH, обнаружение секретов, зашифрованные снимки. Бесплатно, с открытым исходным кодом, для Windows 10/11.',
-  canonicalPath: '/envarly/ru/',
+  canonicalPath: '/Whichcraft/ru/',
   nav: {
     features: 'Возможности',
     storybook: 'Storybook',
@@ -627,15 +606,10 @@ export const ruCopy: LandingCopy = {
     download: `Скачать v${VERSION} для Windows`,
     github: 'Смотреть на GitHub →',
   },
-  install: {
-    label: 'Или установите через WinGet:',
-    copy: 'Копировать',
-    copied: 'Скопировано!',
-  },
   screenshots: {
-    videoAlt: 'Envarly — короткая демонстрация: исправление неработающей записи PATH и просмотр изменения перед применением',
-    pathEditorAlt: 'Envarly — редактор PATH с проверкой каждой записи и изменениями в очереди',
-    applyModalAlt: 'Envarly — окно подтверждения применения с полным просмотром различий для записей PATH',
+    videoAlt: 'Whichcraft — короткая демонстрация: исправление неработающей записи PATH и просмотр изменения перед применением',
+    pathEditorAlt: 'Whichcraft — редактор PATH с проверкой каждой записи и изменениями в очереди',
+    applyModalAlt: 'Whichcraft — окно подтверждения применения с полным просмотром различий для записей PATH',
     videoLabel: 'Видео с демонстрацией',
     firstLabel: 'Скриншот 1',
     secondLabel: 'Скриншот 2',
@@ -658,7 +632,7 @@ export const ruCopy: LandingCopy = {
     {
       icon: '⇄',
       title: 'Обнаружение внешних изменений',
-      desc: 'Обнаруживает изменения реестра, сделанные другими процессами, пока Envarly открыт. Показывает различия с выборочным применением по каждой записи.',
+      desc: 'Обнаруживает изменения реестра, сделанные другими процессами, пока Whichcraft открыт. Показывает различия с выборочным применением по каждой записи.',
     },
     {
       icon: '📸',
@@ -712,8 +686,8 @@ export const ruCopy: LandingCopy = {
   audience: {
     heading: 'Для кого это?',
     paragraphs: [
-      'Envarly создан для разработчиков и опытных пользователей Windows 10 и 11, которые часто редактируют пользовательские и системные переменные окружения — и хотят более безопасную и наглядную альтернативу встроенной панели настроек Windows.',
-      'Приводите ли вы в порядок захламлённую переменную PATH, ротируете API-ключи, хранящиеся как переменные окружения, импортируете базовый .env команды или восстанавливаете снимок после неудачной установки — Envarly даёт полную видимость до того, как что-либо будет записано в реестр.',
+      'Whichcraft создан для разработчиков и опытных пользователей Windows 10 и 11, которые часто редактируют пользовательские и системные переменные окружения — и хотят более безопасную и наглядную альтернативу встроенной панели настроек Windows.',
+      'Приводите ли вы в порядок захламлённую переменную PATH, ротируете API-ключи, хранящиеся как переменные окружения, импортируете базовый .env команды или восстанавливаете снимок после неудачной установки — Whichcraft даёт полную видимость до того, как что-либо будет записано в реестр.',
     ],
   },
   stack: {
@@ -722,7 +696,7 @@ export const ruCopy: LandingCopy = {
   },
   privacyNote: 'В приложении нет телеметрии — единственный сетевой запрос — ежедневная проверка новой версии на GitHub. (Этот сайт использует веб-аналитику, само приложение — нет.)',
   footer: {
-    copyright: '© 2026 Envarly · MIT License',
+    copyright: '© 2026 Whichcraft · MIT License',
     releases: 'Релизы',
     license: 'Лицензия',
   },
@@ -734,8 +708,8 @@ export const koCopy: LandingCopy = {
     items: [
       {
         id: 'windows-editor',
-        question: 'Envarly는 Windows 기본 환경 변수 편집기와 무엇이 다른가요?',
-        answer: 'Envarly는 여러 환경 변수의 변경 사항을 스테이징하고 적용 전에 차이를 한 번에 확인할 수 있습니다. 폴더 선택과 경로 확인을 지원하는 PATH 목록 편집기, 비밀 정보 탐지, 암호화된 스냅샷도 제공합니다.',
+        question: 'Whichcraft는 Windows 기본 환경 변수 편집기와 무엇이 다른가요?',
+        answer: 'Whichcraft는 여러 환경 변수의 변경 사항을 스테이징하고 적용 전에 차이를 한 번에 확인할 수 있습니다. 폴더 선택과 경로 확인을 지원하는 PATH 목록 편집기, 비밀 정보 탐지, 암호화된 스냅샷도 제공합니다.',
       },
       {
         id: 'path',
@@ -760,22 +734,22 @@ export const koCopy: LandingCopy = {
       {
         id: 'terminal',
         question: '변경한 환경 변수가 터미널에 반영되지 않는 이유는 무엇인가요?',
-        answer: '이미 실행 중인 프로세스는 자신의 환경을 유지하기 때문입니다. Envarly는 적용 후 Windows에 변경을 알리지만 실행 중인 셸의 환경을 바꿀 수는 없습니다. 터미널이나 터미널을 실행한 편집기 등의 앱을 다시 시작하세요. 기존 터미널에서 새 탭만 여는 것으로는 부족할 수 있습니다.',
+        answer: '이미 실행 중인 프로세스는 자신의 환경을 유지하기 때문입니다. Whichcraft는 적용 후 Windows에 변경을 알리지만 실행 중인 셸의 환경을 바꿀 수는 없습니다. 터미널이나 터미널을 실행한 편집기 등의 앱을 다시 시작하세요. 기존 터미널에서 새 탭만 여는 것으로는 부족할 수 있습니다.',
       },
       {
         id: 'cli',
-        question: '명령줄이나 스크립트에서 Envarly를 사용할 수 있나요?',
-        answer: '네. get, list, export는 읽기에, set, delete, import는 변경에 사용합니다. 변경 명령은 기본적으로 미리 실행만 하며 --apply를 추가할 때만 레지스트리에 기록합니다. envarly --help로 명령과 옵션을 확인할 수 있습니다.',
+        question: '명령줄이나 스크립트에서 Whichcraft를 사용할 수 있나요?',
+        answer: '네. get, list, export는 읽기에, set, delete, import는 변경에 사용합니다. 변경 명령은 기본적으로 미리 실행만 하며 --apply를 추가할 때만 레지스트리에 기록합니다. whichcraft --help로 명령과 옵션을 확인할 수 있습니다.',
       },
     ],
-    cliSetup: '터미널에서 실행하세요. 앱에서 Envarly 설치 폴더를 PATH에 추가하거나 envarly.exe의 전체 경로를 지정하세요.',
+    cliSetup: '터미널에서 실행하세요. 앱에서 Whichcraft 설치 폴더를 PATH에 추가하거나 whichcraft.com의 전체 경로를 지정하세요.',
     cliDocs: 'CLI 사용법과 예제',
   },
   lang: 'ko',
-  title: 'Envarly — Windows 환경 변수 관리자',
+  title: 'Whichcraft — Windows 환경 변수 관리자',
   description: '모든 변경 사항은 레지스트리에 기록되기 전에 diff로 미리 확인할 수 있습니다. 안전한 PATH 편집, 민감 정보 감지, 암호화된 스냅샷. Windows 10/11용 무료 오픈소스 GUI.',
   ogDescription: '모든 변경 사항은 레지스트리에 기록되기 전에 diff로 미리 확인할 수 있습니다. 안전한 PATH 편집, 민감 정보 감지, 암호화된 스냅샷. Windows 10/11용 무료 오픈소스 GUI.',
-  canonicalPath: '/envarly/ko/',
+  canonicalPath: '/Whichcraft/ko/',
   nav: {
     features: '기능',
     storybook: 'Storybook',
@@ -788,15 +762,10 @@ export const koCopy: LandingCopy = {
     download: `Windows용 v${VERSION} 다운로드`,
     github: 'GitHub에서 보기 →',
   },
-  install: {
-    label: '또는 WinGet으로 설치:',
-    copy: '복사',
-    copied: '복사됨!',
-  },
   screenshots: {
-    videoAlt: 'Envarly — 짧은 둘러보기: 손상된 PATH 항목을 수정하고 적용 전에 변경 사항을 검토합니다',
-    pathEditorAlt: 'Envarly — 항목별 검증과 스테이징된 변경 사항을 보여주는 PATH 편집기',
-    applyModalAlt: 'Envarly — PATH 항목의 전체 차이를 보여주는 적용 확인 모달',
+    videoAlt: 'Whichcraft — 짧은 둘러보기: 손상된 PATH 항목을 수정하고 적용 전에 변경 사항을 검토합니다',
+    pathEditorAlt: 'Whichcraft — 항목별 검증과 스테이징된 변경 사항을 보여주는 PATH 편집기',
+    applyModalAlt: 'Whichcraft — PATH 항목의 전체 차이를 보여주는 적용 확인 모달',
     videoLabel: '둘러보기 영상',
     firstLabel: '스크린샷 1',
     secondLabel: '스크린샷 2',
@@ -819,7 +788,7 @@ export const koCopy: LandingCopy = {
     {
       icon: '⇄',
       title: '외부 변경 감지',
-      desc: 'Envarly가 열려 있는 동안 다른 프로세스가 만든 레지스트리 변경을 감지합니다. 항목별로 선택하여 적용할 수 있는 차이를 보여줍니다.',
+      desc: 'Whichcraft가 열려 있는 동안 다른 프로세스가 만든 레지스트리 변경을 감지합니다. 항목별로 선택하여 적용할 수 있는 차이를 보여줍니다.',
     },
     {
       icon: '📸',
@@ -873,8 +842,8 @@ export const koCopy: LandingCopy = {
   audience: {
     heading: '누구를 위한 도구인가요?',
     paragraphs: [
-      'Envarly는 Windows 10과 11에서 사용자 및 시스템 환경 변수를 자주 편집하는 개발자와 파워 유저를 위해 만들어졌습니다 — 기본 Windows 설정 패널보다 더 안전하고 시각적인 대안을 제공합니다.',
-      '어수선한 PATH 변수를 정리하든, 환경 변수로 저장된 API 키를 교체하든, 팀의 .env 기준선을 가져오든, 설치 실패 후 스냅샷을 복원하든 — Envarly는 레지스트리에 어떤 것이 기록되기 전에 완전한 가시성을 제공합니다.',
+      'Whichcraft는 Windows 10과 11에서 사용자 및 시스템 환경 변수를 자주 편집하는 개발자와 파워 유저를 위해 만들어졌습니다 — 기본 Windows 설정 패널보다 더 안전하고 시각적인 대안을 제공합니다.',
+      '어수선한 PATH 변수를 정리하든, 환경 변수로 저장된 API 키를 교체하든, 팀의 .env 기준선을 가져오든, 설치 실패 후 스냅샷을 복원하든 — Whichcraft는 레지스트리에 어떤 것이 기록되기 전에 완전한 가시성을 제공합니다.',
     ],
   },
   stack: {
@@ -883,7 +852,7 @@ export const koCopy: LandingCopy = {
   },
   privacyNote: '앱에는 텔레메트리가 없습니다 — 유일한 네트워크 요청은 GitHub에서 매일 새 버전을 확인하는 것뿐입니다. (이 웹사이트는 방문자 분석을 사용하지만, 앱 자체는 사용하지 않습니다.)',
   footer: {
-    copyright: '© 2026 Envarly · MIT License',
+    copyright: '© 2026 Whichcraft · MIT License',
     releases: '릴리스',
     license: '라이선스',
   },
@@ -895,8 +864,8 @@ export const viCopy: LandingCopy = {
     items: [
       {
         id: 'windows-editor',
-        question: 'Envarly khác gì so với trình chỉnh sửa biến môi trường của Windows?',
-        answer: 'Envarly cho phép chuẩn bị nhiều thay đổi biến môi trường và xem các khác biệt trước khi áp dụng. Ứng dụng còn có trình chỉnh sửa danh sách PATH với tính năng chọn thư mục và kiểm tra đường dẫn, phát hiện thông tin bí mật và ảnh chụp nhanh được mã hóa.',
+        question: 'Whichcraft khác gì so với trình chỉnh sửa biến môi trường của Windows?',
+        answer: 'Whichcraft cho phép chuẩn bị nhiều thay đổi biến môi trường và xem các khác biệt trước khi áp dụng. Ứng dụng còn có trình chỉnh sửa danh sách PATH với tính năng chọn thư mục và kiểm tra đường dẫn, phát hiện thông tin bí mật và ảnh chụp nhanh được mã hóa.',
       },
       {
         id: 'path',
@@ -915,28 +884,28 @@ export const viCopy: LandingCopy = {
       },
       {
         id: 'admin',
-        question: 'Tôi có thể dùng Envarly mà không có quyền quản trị không?',
+        question: 'Tôi có thể dùng Whichcraft mà không có quyền quản trị không?',
         answer: 'Có. Bạn có thể xem biến Người dùng và Hệ thống, đồng thời chỉnh sửa biến Người dùng của mình mà không cần quyền quản trị. Thay đổi biến Hệ thống hoặc chỉnh sửa tài khoản khác cần quyền quản trị. Khi cần, bạn có thể khởi động lại ứng dụng với quyền quản trị.',
       },
       {
         id: 'terminal',
         question: 'Tại sao biến môi trường đã thay đổi chưa được cập nhật trong terminal?',
-        answer: 'Tiến trình đang chạy giữ môi trường riêng của nó. Envarly thông báo cho Windows sau khi áp dụng, nhưng không thể thay môi trường của shell đang chạy. Hãy khởi động lại terminal hoặc ứng dụng mở terminal, chẳng hạn trình soạn thảo; chỉ mở tab mới trong terminal hiện tại có thể chưa đủ.',
+        answer: 'Tiến trình đang chạy giữ môi trường riêng của nó. Whichcraft thông báo cho Windows sau khi áp dụng, nhưng không thể thay môi trường của shell đang chạy. Hãy khởi động lại terminal hoặc ứng dụng mở terminal, chẳng hạn trình soạn thảo; chỉ mở tab mới trong terminal hiện tại có thể chưa đủ.',
       },
       {
         id: 'cli',
-        question: 'Tôi có thể dùng Envarly từ dòng lệnh hoặc script không?',
-        answer: 'Có. get, list và export dùng để đọc; set, delete và import dùng để thay đổi. Các lệnh thay đổi mặc định chỉ chạy thử và chỉ ghi vào registry khi thêm --apply. Chạy envarly --help để xem các lệnh và tùy chọn.',
+        question: 'Tôi có thể dùng Whichcraft từ dòng lệnh hoặc script không?',
+        answer: 'Có. get, list và export dùng để đọc; set, delete và import dùng để thay đổi. Các lệnh thay đổi mặc định chỉ chạy thử và chỉ ghi vào registry khi thêm --apply. Chạy whichcraft --help để xem các lệnh và tùy chọn.',
       },
     ],
-    cliSetup: 'Chạy từ terminal. Thêm thư mục cài đặt Envarly vào PATH bằng ứng dụng, hoặc dùng đường dẫn đầy đủ tới envarly.exe.',
+    cliSetup: 'Chạy từ terminal. Thêm thư mục cài đặt Whichcraft vào PATH bằng ứng dụng, hoặc dùng đường dẫn đầy đủ tới whichcraft.com.',
     cliDocs: 'Cách dùng CLI và ví dụ',
   },
   lang: 'vi',
-  title: 'Envarly — Trình quản lý biến môi trường Windows',
+  title: 'Whichcraft — Trình quản lý biến môi trường Windows',
   description: 'Mọi thay đổi đều được xem trước dạng diff trước khi ghi vào registry. Chỉnh sửa PATH an toàn, phát hiện thông tin nhạy cảm, ảnh chụp nhanh mã hóa. Miễn phí, mã nguồn mở, dành cho Windows 10/11.',
   ogDescription: 'Mọi thay đổi đều được xem trước dạng diff trước khi ghi vào registry. Chỉnh sửa PATH an toàn, phát hiện thông tin nhạy cảm, ảnh chụp nhanh mã hóa. Miễn phí, mã nguồn mở, dành cho Windows 10/11.',
-  canonicalPath: '/envarly/vi/',
+  canonicalPath: '/Whichcraft/vi/',
   nav: {
     features: 'Tính năng',
     storybook: 'Storybook',
@@ -949,15 +918,10 @@ export const viCopy: LandingCopy = {
     download: `Tải xuống v${VERSION} cho Windows`,
     github: 'Xem trên GitHub →',
   },
-  install: {
-    label: 'Hoặc cài đặt bằng WinGet:',
-    copy: 'Sao chép',
-    copied: 'Đã sao chép!',
-  },
   screenshots: {
-    videoAlt: 'Envarly — video ngắn: sửa một mục PATH bị lỗi và xem lại thay đổi trước khi áp dụng',
-    pathEditorAlt: 'Envarly — trình chỉnh sửa PATH với kiểm tra từng mục và thay đổi đang chờ',
-    applyModalAlt: 'Envarly — hộp thoại xác nhận áp dụng với chế độ xem đầy đủ khác biệt cho các mục PATH',
+    videoAlt: 'Whichcraft — video ngắn: sửa một mục PATH bị lỗi và xem lại thay đổi trước khi áp dụng',
+    pathEditorAlt: 'Whichcraft — trình chỉnh sửa PATH với kiểm tra từng mục và thay đổi đang chờ',
+    applyModalAlt: 'Whichcraft — hộp thoại xác nhận áp dụng với chế độ xem đầy đủ khác biệt cho các mục PATH',
     videoLabel: 'Video giới thiệu',
     firstLabel: 'Ảnh chụp màn hình 1',
     secondLabel: 'Ảnh chụp màn hình 2',
@@ -980,7 +944,7 @@ export const viCopy: LandingCopy = {
     {
       icon: '⇄',
       title: 'Phát hiện thay đổi bên ngoài',
-      desc: 'Phát hiện các thay đổi registry do tiến trình khác thực hiện trong khi Envarly đang mở. Hiển thị khác biệt và cho phép áp dụng chọn lọc từng mục.',
+      desc: 'Phát hiện các thay đổi registry do tiến trình khác thực hiện trong khi Whichcraft đang mở. Hiển thị khác biệt và cho phép áp dụng chọn lọc từng mục.',
     },
     {
       icon: '📸',
@@ -1034,8 +998,8 @@ export const viCopy: LandingCopy = {
   audience: {
     heading: 'Dành cho ai?',
     paragraphs: [
-      'Envarly được xây dựng cho các nhà phát triển và người dùng có kinh nghiệm trên Windows 10 và 11, những người thường xuyên chỉnh sửa biến môi trường Người dùng và Hệ thống — và muốn một giải pháp thay thế an toàn hơn, trực quan hơn so với bảng Cài đặt tích hợp sẵn của Windows.',
-      'Dù bạn đang dọn dẹp một biến PATH lộn xộn, xoay vòng API key được lưu dưới dạng biến môi trường, nhập baseline .env của nhóm, hay khôi phục ảnh chụp nhanh sau một lần cài đặt lỗi — Envarly cho bạn toàn quyền kiểm soát trước khi bất kỳ điều gì được ghi vào registry.',
+      'Whichcraft được xây dựng cho các nhà phát triển và người dùng có kinh nghiệm trên Windows 10 và 11, những người thường xuyên chỉnh sửa biến môi trường Người dùng và Hệ thống — và muốn một giải pháp thay thế an toàn hơn, trực quan hơn so với bảng Cài đặt tích hợp sẵn của Windows.',
+      'Dù bạn đang dọn dẹp một biến PATH lộn xộn, xoay vòng API key được lưu dưới dạng biến môi trường, nhập baseline .env của nhóm, hay khôi phục ảnh chụp nhanh sau một lần cài đặt lỗi — Whichcraft cho bạn toàn quyền kiểm soát trước khi bất kỳ điều gì được ghi vào registry.',
     ],
   },
   stack: {
@@ -1044,7 +1008,7 @@ export const viCopy: LandingCopy = {
   },
   privacyNote: 'Ứng dụng không thu thập dữ liệu từ xa — yêu cầu mạng duy nhất là kiểm tra phiên bản mới hằng ngày trên GitHub. (Trang web này sử dụng công cụ phân tích truy cập, bản thân ứng dụng thì không.)',
   footer: {
-    copyright: '© 2026 Envarly · MIT License',
+    copyright: '© 2026 Whichcraft · MIT License',
     releases: 'Bản phát hành',
     license: 'Giấy phép',
   },

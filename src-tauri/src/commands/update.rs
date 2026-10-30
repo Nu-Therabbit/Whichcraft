@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-/// Whichcraft has no published release feed yet, so the check reports nothing.
-/// Set this to the repository's `releases/latest` API URL once it has one.
-const LATEST_RELEASE_URL: Option<&str> = None;
+const REPO_LATEST_RELEASE_URL: &str =
+    "https://api.github.com/repos/Nu-Therabbit/Whichcraft/releases/latest";
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,7 +21,7 @@ struct GithubRelease {
 /// non-critical check and should never surface an error to the user.
 #[tauri::command]
 pub async fn check_for_update() -> Option<UpdateInfo> {
-    match fetch_latest_release(LATEST_RELEASE_URL?).await {
+    match fetch_latest_release().await {
         Ok(info) => info,
         Err(e) => {
             eprintln!("update check failed: {e}");
@@ -31,13 +30,13 @@ pub async fn check_for_update() -> Option<UpdateInfo> {
     }
 }
 
-async fn fetch_latest_release(url: &str) -> Result<Option<UpdateInfo>, reqwest::Error> {
+async fn fetch_latest_release() -> Result<Option<UpdateInfo>, reqwest::Error> {
     let client = reqwest::Client::builder()
         .user_agent(concat!("whichcraft/", env!("CARGO_PKG_VERSION")))
         .build()?;
 
     let release: GithubRelease = client
-        .get(url)
+        .get(REPO_LATEST_RELEASE_URL)
         .send()
         .await?
         .error_for_status()?
@@ -68,11 +67,6 @@ fn is_newer(candidate: &str, current: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn release_feed_is_not_the_upstream_envarly_repository() {
-        assert!(!LATEST_RELEASE_URL.unwrap_or_default().contains("envarly"));
-    }
 
     #[test]
     fn is_newer_detects_patch_bump() {

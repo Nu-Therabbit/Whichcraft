@@ -186,7 +186,7 @@ export function AppHeader({
             size="xs"
             icon="external-link"
             iconPosition="right"
-            onClick={() => platform.openUrl("https://github.com/iray-tno/envarly")}
+            onClick={() => platform.openUrl("https://github.com/Nu-Therabbit/Whichcraft")}
             title="View on GitHub"
           >
             GitHub
@@ -268,7 +268,7 @@ export function AppHeader({
             </button>
             <button
               type="button"
-              onClick={() => platform.openUrl("https://github.com/iray-tno/envarly")}
+              onClick={() => platform.openUrl("https://github.com/Nu-Therabbit/Whichcraft")}
               className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-muted hover:bg-hover hover:text-fg"
             >
               <Icon name="external-link" size={14} />

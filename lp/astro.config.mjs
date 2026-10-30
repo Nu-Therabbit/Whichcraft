@@ -6,8 +6,8 @@ import react from '@astrojs/react';
 import { hozo } from '@hozo/vite';
 
 export default defineConfig({
-  site: 'https://iray-tno.github.io',
-  base: '/envarly',
+  site: 'https://nu-therabbit.github.io',
+  base: '/Whichcraft',
   trailingSlash: 'always',
   integrations: [
     react(),

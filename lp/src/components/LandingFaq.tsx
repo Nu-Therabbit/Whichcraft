@@ -27,10 +27,10 @@ export default function LandingFaq({ copy }: LandingFaqProps) {
                 {copy.cliSetup}
               </Paragraph>
               <Preformatted className="block overflow-x-auto border border-border rounded-lg bg-surface p-4 my-4 text-sm text-text">
-                <Code>{"envarly --help\nenvarly list --scope user"}</Code>
+                <Code>{"whichcraft --help\nwhichcraft list --scope user"}</Code>
               </Preformatted>
               <Link
-                href={`${GITHUB_URL}/blob/main/README.md#cli-usage`}
+                href={`${GITHUB_URL}/blob/main/DESIGN.md#cli-mode`}
                 className="text-sm text-accent underline underline-offset-4 hover:text-text"
               >
                 {copy.cliDocs}

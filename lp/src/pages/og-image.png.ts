@@ -76,7 +76,7 @@ export const GET: APIRoute = async () => {
                 letterSpacing: "-3px",
                 marginBottom: "18px",
               },
-              "Envarly",
+              "Whichcraft",
             ),
 
             // Subtitle

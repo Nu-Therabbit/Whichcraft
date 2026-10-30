@@ -53,7 +53,7 @@ describe("desktop shell header parity", () => {
     expect(openUrl).toHaveBeenCalledWith("https://example.com/release");
 
     await userEvent.click(screen.getByRole("button", { name: en.desktop_shell.view_source }));
-    expect(openUrl).toHaveBeenCalledWith("https://github.com/iray-tno/envarly");
+    expect(openUrl).toHaveBeenCalledWith("https://github.com/Nu-Therabbit/Whichcraft");
   });
 
   it("exposes language, update notice, and licences on the default shell header", async () => {

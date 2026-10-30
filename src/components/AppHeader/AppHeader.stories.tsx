@@ -55,7 +55,7 @@ export const Loading: Story = {
 };
 
 export const UpdateAvailable: Story = {
-  args: { updateInfo: { version: "1.3.0", url: "https://github.com/iray-tno/envarly/releases" } },
+  args: { updateInfo: { version: "1.3.0", url: "https://github.com/Nu-Therabbit/Whichcraft/releases" } },
 };
 
 export const WithAccounts: Story = {
@@ -80,7 +80,7 @@ export const WithAccounts: Story = {
 export const Narrow: Story = {
   args: {
     stagedCount: 5,
-    updateInfo: { version: "1.3.0", url: "https://github.com/iray-tno/envarly/releases" },
+    updateInfo: { version: "1.3.0", url: "https://github.com/Nu-Therabbit/Whichcraft/releases" },
   },
   decorators: [
     (Story) => (

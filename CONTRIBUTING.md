@@ -82,7 +82,7 @@ in the background go through `background_command` (no window); a layer test enfo
 
 ## Adding or updating translations
 
-Envarly supports multiple languages using `react-i18next`. Translation resources live under `src/locales/`:
+Whichcraft supports multiple languages using `react-i18next`. Translation resources live under `src/locales/`:
 
 - `src/locales/<lang>/translation.json` — UI labels, tooltips, dialogs, and messages
 - `src/locales/<lang>/descriptions.json` — Explanations for ~140 standard Windows environment variables

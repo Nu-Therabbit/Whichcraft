@@ -8,8 +8,7 @@ import { useUpdateCheck } from "../../hooks/useUpdateCheck";
 import { useTheme } from "../../hooks/useTheme";
 import { useShellEnvironmentUi } from "./ShellEnvironmentUiContext";
 
-/** Whichcraft is a fork of Envarly; its upstream source carries the inherited attribution. */
-const SOURCE_URL = "https://github.com/iray-tno/envarly";
+const SOURCE_URL = "https://github.com/Nu-Therabbit/Whichcraft";
 
 /** Language, update notice, source, licences, and theme — same production hooks as legacy AppHeader. */
 export function ShellAppHeaderActions() {
