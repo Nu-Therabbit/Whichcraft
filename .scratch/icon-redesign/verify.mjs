@@ -9,6 +9,12 @@ try {
   const page = await browser.newPage({viewport:{width:1200,height:760}, deviceScaleFactor:1});
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
+  // Serve the fixture under the app's CSP, which blocks data: images in the real window.
+  const {app:{security:{csp}}} = JSON.parse(await readFile(new URL('../../src-tauri/tauri.conf.json',import.meta.url),'utf8'));
+  await page.route('**/windows-workbench/index.html*', async route => {
+    const response = await route.fetch();
+    await route.fulfill({response, headers:{...response.headers(),'content-security-policy':csp}});
+  });
   for (const theme of ['light','dark']) {
     await page.goto(`http://127.0.0.1:4173/.scratch/windows-workbench/index.html?theme=${theme}`);
     const icon = page.locator('.shell-brand img');

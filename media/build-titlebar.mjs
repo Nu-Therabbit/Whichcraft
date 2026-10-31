@@ -21,19 +21,19 @@ const html = `<!doctype html>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     width: ${WIDTH}px; height: ${HEIGHT}px;
-    background: #161b22;
-    border-bottom: 1px solid #30363d;
+    background: #272727;
+    border-bottom: 1px solid #3a3a3a;
     display: flex; align-items: center; justify-content: space-between;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   .brand { display: flex; align-items: center; gap: 8px; padding-left: 12px; }
   .brand img { width: 16px; height: 16px; border-radius: 3px; }
-  .brand span { color: #e6edf3; font-size: 13px; font-weight: 600; }
+  .brand span { color: #f3f3f3; font-size: 13px; font-weight: 600; }
   .controls { display: flex; height: 100%; }
   .btn {
     width: 46px; height: 100%;
     display: flex; align-items: center; justify-content: center;
-    color: #a6b0ba;
+    color: #bcbcbc;
   }
   .btn svg { width: 10px; height: 10px; }
 </style></head>
