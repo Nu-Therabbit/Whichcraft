@@ -32,7 +32,7 @@ async function checkFaq(page, width) {
   );
   assert.deepEqual(
     items.map((item) => item.id),
-    ["windows-editor", "path", "preview", "snapshots", "admin", "terminal", "cli"].map(
+    ["tools", "switching", "existing", "mise", "admin", "terminal", "cli"].map(
       (id) => `faq-${id}`,
     ),
   );

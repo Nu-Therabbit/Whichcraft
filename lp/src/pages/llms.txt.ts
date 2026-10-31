@@ -22,7 +22,7 @@ export const GET: APIRoute = ({ site }) => {
 
 > ${enCopy.description}
 
-Whichcraft is a free, open-source GUI (desktop app) for Windows 10/11 (Tauri v2 + React + Rust) that lets developers and power users view, edit, import, and export User and System environment variables — with PATH-entry validation, secret detection, change previews, encrypted snapshots, and a dry-run-by-default CLI mode. No telemetry in the app itself.
+Whichcraft is a free, open-source GUI (desktop app) for Windows 10/11 (Tauri v2 + React + Rust) that lets developers find, install, switch, and uninstall versions of Java, Node.js, Python, Go, Flutter, and Git, and choose which installation Windows uses by default. It writes paths directly with no shims, shows every environment change as a plan before applying it, and can undo it. Named tool profiles apply several selections together. Git is switch-only; Android SDK and NDK, MSVC, and the Windows SDK are inventory only. Per-project versions are out of scope. It also includes an environment variable editor with secret detection, encrypted snapshots, and a dry-run-by-default CLI for environment variables. No telemetry in the app itself.
 
 ## Docs
 

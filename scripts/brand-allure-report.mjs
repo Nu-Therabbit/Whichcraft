@@ -25,7 +25,7 @@ export function brandAllureReportHtml(htmlContent) {
   if (!modified.includes('property="og:site_name"')) {
     const metaAndStyles = `    <meta property="og:site_name" content="Whichcraft" />
     <meta property="og:title" content="Whichcraft — Test Reports" />
-    <meta name="description" content="CI test reports for Whichcraft, the Windows environment variable manager (https://nu-therabbit.github.io/Whichcraft/)." />
+    <meta name="description" content="CI test reports for Whichcraft, the developer tool manager for Windows (https://nu-therabbit.github.io/Whichcraft/)." />
     <style id="whichcraft-back-btn-styles">
       .whichcraft-back-btn {
         position: fixed;

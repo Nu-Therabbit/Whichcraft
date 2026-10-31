@@ -22,12 +22,8 @@ export const GET: APIRoute = async () => {
   ]);
 
   // Screenshot embedded as base64 — process.cwd() is lp/ during astro build
-  const screenshotBuf = readFileSync(join(process.cwd(), "public", "screenshot-path-editor.png"));
+  const screenshotBuf = readFileSync(join(process.cwd(), "public", "screenshot-tools.png"));
   const screenshotSrc = `data:image/png;base64,${screenshotBuf.toString("base64")}`;
-
-  // App icon (src-tauri/icons/icon.png — one level up from lp/)
-  const iconBuf = readFileSync(join(process.cwd(), "../src-tauri/icons/icon.png"));
-  const iconSrc = `data:image/png;base64,${iconBuf.toString("base64")}`;
 
   const svg = await satori(
     el(
@@ -54,17 +50,6 @@ export const GET: APIRoute = async () => {
             flexShrink: 0,
           },
           [
-            // App icon
-            createElement("img", {
-              src: iconSrc,
-              style: {
-                width: "80px",
-                height: "80px",
-                borderRadius: "20px",
-                marginBottom: "32px",
-              },
-            }),
-
             // Title
             el(
               "div",
@@ -89,7 +74,7 @@ export const GET: APIRoute = async () => {
                 lineHeight: 1.45,
                 marginBottom: "40px",
               },
-              "Windows environment variable manager",
+              "Developer tool manager for Windows",
             ),
 
             // Accent bar
