@@ -11,7 +11,7 @@ export function ListDiffDelta({ oldValue, newValue }: { oldValue: string; newVal
 
   if (removed.length === 0 && added.length === 0) {
     return (
-      <p className="font-mono text-[11px] text-muted mt-1">
+      <p className="font-mono text-xs text-muted mt-1">
         {t("staged.order_changed", { count: oldEntries.length })}
       </p>
     );
@@ -20,13 +20,13 @@ export function ListDiffDelta({ oldValue, newValue }: { oldValue: string; newVal
   return (
     <div className="flex flex-col gap-1 mt-1 max-h-48 overflow-y-auto">
       {keyedEntries(removed, "removed").map(({ entry, key }) => (
-        <p key={key} className="font-mono text-[11px] text-danger break-all">
+        <p key={key} className="font-mono text-xs text-danger break-all">
           <span className="select-none mr-1">−</span>
           {entry}
         </p>
       ))}
       {keyedEntries(added, "added").map(({ entry, key }) => (
-        <p key={key} className="font-mono text-[11px] text-success break-all">
+        <p key={key} className="font-mono text-xs text-success break-all">
           <span className="select-none mr-1">+</span>
           {entry}
         </p>
@@ -60,7 +60,7 @@ export function ListDiffFull({ oldValue, newValue }: { oldValue: string; newValu
           <p
             key={`${keyBase}:${count}`}
             className={cn(
-              "font-mono text-[11px] break-all",
+              "font-mono text-xs break-all",
               r.status === "removed" && "text-danger line-through",
               r.status === "added" && "text-success",
               r.status === "unchanged" && "text-muted",
@@ -81,7 +81,7 @@ export function ListEntries({ value, className }: { value: string; className?: s
   return (
     <div className={cn("flex flex-col gap-1 mt-1 max-h-48 overflow-y-auto", className)}>
       {keyedEntries(splitList(value), "entry").map(({ entry, key }) => (
-        <p key={key} className="font-mono text-[11px] break-all">
+        <p key={key} className="font-mono text-xs break-all">
           {entry}
         </p>
       ))}

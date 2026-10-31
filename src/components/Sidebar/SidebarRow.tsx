@@ -61,14 +61,14 @@ export function SidebarRow({
         {secret && !isDelete && (
           <span
             title={secret.label}
-            className="text-[9px] font-medium text-warn shrink-0 max-w-[44px] truncate"
+            className="text-xs font-medium text-warn shrink-0 max-w-14 truncate"
           >
             {secret.service}
           </span>
         )}
-        {isDelete && <span className="text-[9px] font-bold text-danger shrink-0">D</span>}
-        {isNew && <span className="text-[9px] font-bold text-success shrink-0">A</span>}
-        {isSet && !isNew && <span className="text-[9px] font-bold text-warn shrink-0">M</span>}
+        {isDelete && <span className="text-xs font-bold text-danger shrink-0">D</span>}
+        {isNew && <span className="text-xs font-bold text-success shrink-0">A</span>}
+        {isSet && !isNew && <span className="text-xs font-bold text-warn shrink-0">M</span>}
       </button>
       <button
         type="button"
@@ -79,7 +79,7 @@ export function SidebarRow({
         aria-label={`Copy value of ${v.name}`}
         title="Copy value"
         className={cn(
-          "shrink-0 text-[10px] p-1 rounded transition-all",
+          "shrink-0 text-xs p-1 rounded transition-all",
           "opacity-0 group-hover:opacity-100 focus:opacity-100",
           copiedKey === entryKey ? "text-success" : "text-dim hover:text-muted",
         )}
@@ -88,7 +88,7 @@ export function SidebarRow({
       </button>
       <span
         className={cn(
-          "text-[10px] font-semibold w-4 h-4 rounded flex items-center justify-center shrink-0 mr-4",
+          "text-xs font-semibold w-4 h-4 rounded flex items-center justify-center shrink-0 mr-4",
           v.scope === "User" && "bg-accent/15 text-accent",
           v.scope === "System" && "bg-violet/15 text-violet",
           v.scope === "OtherUser" && "bg-warn/15 text-warn",

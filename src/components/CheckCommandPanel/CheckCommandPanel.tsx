@@ -148,7 +148,7 @@ function HitRow({ hit, isActive }: { hit: CommandHit; isActive: boolean }) {
         size={16}
         className={isActive ? "text-success shrink-0" : "text-warn shrink-0"}
       />
-      <span className="font-mono text-xs text-fg break-all">
+      <span className="font-mono text-xs text-fg wrap-anywhere">
         {hit.directory}\{hit.matchedFile}
       </span>
       <span className="ml-auto flex items-center gap-2 shrink-0">

@@ -17,7 +17,7 @@ export function SnapshotPreview({ snap, diff, onRestore, onCancel }: SnapshotPre
     <div className="flex h-full min-h-0 flex-col gap-4">
       <div className="shrink-0 min-w-0">
         <p className="text-sm font-semibold text-fg break-words">{snap.label}</p>
-        <p className="text-[11px] text-dim">{new Date(snap.createdAt).toLocaleString()}</p>
+        <p className="text-xs text-dim">{new Date(snap.createdAt).toLocaleString()}</p>
       </div>
 
       {diff.length === 0 ? (

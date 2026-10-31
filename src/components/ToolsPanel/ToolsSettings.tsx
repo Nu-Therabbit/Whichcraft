@@ -28,12 +28,12 @@ export function ToolsSettings({ settings, busy, onSave }: Props) {
   return (
     <div className="flex flex-col gap-4 text-sm">
       <section className="flex flex-col gap-2">
-        <h4 className="font-semibold">{t("tools.settings.scan_roots")}</h4>
+        <h2 className="font-semibold">{t("tools.settings.scan_roots")}</h2>
         <p className="text-xs text-muted">{t("tools.settings.scan_roots_hint")}</p>
         <ul className="flex flex-col gap-1">
           {settings.scanRoots.map((root) => (
             <li key={root} className="flex items-center justify-between gap-2">
-              <span className="font-mono break-all">{root}</span>
+              <span className="font-mono wrap-anywhere">{root}</span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -47,25 +47,36 @@ export function ToolsSettings({ settings, busy, onSave }: Props) {
         </ul>
         <div className="flex gap-2">
           <input
-            className="flex-1 bg-surface border border-rim rounded-md px-2 py-1 font-mono"
+            className="flex-1 bg-field border border-rim rounded-control px-2 py-1 font-mono"
             aria-label={t("tools.settings.scan_root_input")}
-            placeholder="E:\\Dev"
+            name="scan-root"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="E:\Dev"
             value={newRoot}
             onChange={(e) => setNewRoot(e.target.value)}
           />
-          <Button variant="secondary" size="sm" disabled={busy || !newRoot.trim()} onClick={addRoot}>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={busy || !newRoot.trim()}
+            onClick={addRoot}
+          >
             {t("tools.settings.add")}
           </Button>
         </div>
       </section>
 
       <section className="flex flex-col gap-2">
-        <h4 className="font-semibold">{t("tools.settings.install_store")}</h4>
+        <h2 className="font-semibold">{t("tools.settings.install_store")}</h2>
         <p className="text-xs text-muted">{t("tools.settings.install_store_hint")}</p>
         <div className="flex gap-2">
           <input
-            className="flex-1 bg-surface border border-rim rounded-md px-2 py-1 font-mono"
+            className="flex-1 bg-field border border-rim rounded-control px-2 py-1 font-mono"
             aria-label={t("tools.settings.install_store")}
+            name="install-store"
+            autoComplete="off"
+            spellCheck={false}
             value={store}
             onChange={(e) => setStore(e.target.value)}
           />
@@ -87,9 +98,9 @@ export function ToolsSettings({ settings, busy, onSave }: Props) {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h4 className="font-semibold">{t("tools.settings.terminal")}</h4>
+        <h2 className="font-semibold">{t("tools.settings.terminal")}</h2>
         <select
-          className="bg-surface border border-rim rounded-md px-2 py-1 w-fit"
+          className="bg-field border border-rim rounded-control px-2 py-1 w-fit"
           aria-label={t("tools.settings.terminal")}
           value={settings.terminal}
           disabled={busy}

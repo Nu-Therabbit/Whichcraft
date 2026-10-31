@@ -21,7 +21,7 @@ export function DiffRow({ entry }: { entry: DiffEntry }) {
         <span className="flex items-center gap-1">
           {entry.name}
           {secret && (
-            <span className="inline-flex items-center gap-1 text-[9px] font-medium text-warn">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-warn">
               <Icon name="warning" size={12} />
               {secret.service}
             </span>
@@ -33,7 +33,7 @@ export function DiffRow({ entry }: { entry: DiffEntry }) {
         {entry.kind === "changed" ? (
           <span className="flex flex-col gap-1">
             {entry.oldValueKind !== entry.newValueKind && (
-              <span className="text-[10px] text-dim">
+              <span className="text-xs text-dim">
                 {registryKindLabel(entry.oldValueKind)} → {registryKindLabel(entry.newValueKind)}
               </span>
             )}
@@ -49,7 +49,7 @@ export function DiffRow({ entry }: { entry: DiffEntry }) {
           <button
             type="button"
             onClick={() => setRevealed((r) => !r)}
-            className="text-[10px] text-dim hover:text-muted transition-colors"
+            className="text-xs text-dim hover:text-muted transition-colors"
           >
             {revealed ? "hide" : "show"}
           </button>
@@ -81,7 +81,7 @@ export function DiffTable({ diff }: { diff: DiffEntry[] }) {
       >
         <table className="w-max min-w-full">
           <thead>
-            <tr className="border-b border-rim bg-surface text-muted text-[10px] uppercase tracking-wide">
+            <tr className="border-b border-rim bg-surface text-muted text-xs uppercase tracking-wide">
               <th className="px-2 py-2 w-5">
                 <span className="sr-only">Change</span>
               </th>

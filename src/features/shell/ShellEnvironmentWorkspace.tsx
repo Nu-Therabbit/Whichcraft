@@ -124,7 +124,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
       />
 
       <div
-        className="flex gap-1 px-4 pt-3 border-b border-rim-subtle shrink-0"
+        className="shell-env-tabs flex gap-1 px-4 pt-3 border-b border-rim-subtle shrink-0"
         role="tablist"
         aria-label={t("desktop_shell.env_tabs_label")}
         onKeyDown={(e) => {

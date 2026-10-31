@@ -68,12 +68,12 @@ export function EntryRow({ entry, accepted, onToggle }: EntryRowProps) {
         <span className="font-mono text-xs font-semibold text-fg truncate flex-1">
           {entry.name}
         </span>
-        <span className="text-[10px] uppercase tracking-wide font-semibold shrink-0">
+        <span className="text-xs uppercase tracking-wide font-semibold shrink-0">
           {entry.scope}
         </span>
         <span
           className={cn(
-            "text-[10px] uppercase tracking-wide font-semibold shrink-0 px-2 py-1 rounded",
+            "text-xs uppercase tracking-wide font-semibold shrink-0 px-2 py-1 rounded",
             KIND_COLORS[entry.kind],
           )}
         >
@@ -95,15 +95,15 @@ export function EntryRow({ entry, accepted, onToggle }: EntryRowProps) {
       {!showExpand && (
         <div className="px-3 pb-2 flex flex-col gap-1">
           {entry.kind === "changed" && entry.oldValueKind !== entry.newValueKind && (
-            <p className="font-mono text-[10px] text-muted">
+            <p className="font-mono text-xs text-muted">
               {registryKindLabel(entry.oldValueKind)} → {registryKindLabel(entry.newValueKind)}
             </p>
           )}
           {(entry.kind === "removed" || entry.kind === "changed") && (
-            <p className="font-mono text-[11px] text-danger line-through truncate">{displayOld}</p>
+            <p className="font-mono text-xs text-danger line-through truncate">{displayOld}</p>
           )}
           {(entry.kind === "added" || entry.kind === "changed") && (
-            <p className="font-mono text-[11px] text-success truncate">{displayNew}</p>
+            <p className="font-mono text-xs text-success truncate">{displayNew}</p>
           )}
         </div>
       )}
@@ -111,7 +111,7 @@ export function EntryRow({ entry, accepted, onToggle }: EntryRowProps) {
       {showExpand && expanded && (
         <div className="px-3 pb-3">
           {showDiff ? (
-            <div className="rounded overflow-hidden text-[11px]">
+            <div className="rounded overflow-hidden text-xs">
               <ReactDiffViewer
                 oldValue={pathLines(displayOld)}
                 newValue={pathLines(displayNew)}
@@ -137,12 +137,12 @@ export function EntryRow({ entry, accepted, onToggle }: EntryRowProps) {
           ) : (
             <div className="flex flex-col gap-1">
               {displayOld && (
-                <p className="font-mono text-[11px] text-danger line-through break-all">
+                <p className="font-mono text-xs text-danger line-through break-all">
                   {displayOld}
                 </p>
               )}
               {displayNew && (
-                <p className="font-mono text-[11px] text-success break-all">{displayNew}</p>
+                <p className="font-mono text-xs text-success break-all">{displayNew}</p>
               )}
             </div>
           )}

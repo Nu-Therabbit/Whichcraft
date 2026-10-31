@@ -23,7 +23,7 @@ export function ShellSettingsView() {
 
   return (
     <main
-      className="flex-1 overflow-y-auto px-5 py-4 max-w-2xl"
+      className="shell-settings flex-1 overflow-y-auto"
       data-testid="shell-settings-ready"
     >
       <p className="text-xs text-dim mb-4">{t("desktop_shell.settings_intro")}</p>

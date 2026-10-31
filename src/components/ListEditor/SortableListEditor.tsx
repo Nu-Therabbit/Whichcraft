@@ -140,7 +140,7 @@ function SortableRow({
           spellCheck={false}
           title="Alt+↑/↓ to reorder"
           className={cn(
-            "w-full bg-transparent font-mono text-[11px] text-fg focus:outline-none",
+            "w-full bg-transparent font-mono text-xs text-fg focus:outline-none",
             readOnly && "cursor-default",
           )}
         />

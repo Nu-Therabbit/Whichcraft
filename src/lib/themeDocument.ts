@@ -10,4 +10,11 @@ export function applyThemeToDocument(theme: Theme): void {
   const html = document.documentElement;
   html.classList.toggle("light", theme === "light");
   html.classList.toggle("dark", theme === "dark");
+  let themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!themeColor) {
+    themeColor = document.createElement("meta");
+    themeColor.name = "theme-color";
+    document.head.appendChild(themeColor);
+  }
+  themeColor.content = theme === "light" ? "#f3f3f3" : "#191919";
 }

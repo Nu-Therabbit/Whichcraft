@@ -39,7 +39,7 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
       <ShellUndoResult state={state} dispatch={dispatch} />
 
       <div>
-        <h3 className="text-[11px] uppercase tracking-wide text-dim flex justify-between">
+        <h3 className="shell-detail-heading flex justify-between">
           <span>{t("desktop_shell.installations")}</span>
           <span>{installations.length}</span>
         </h3>
@@ -89,7 +89,7 @@ export function ShellInstallationDetail({ tool, state, dispatch }: Props) {
         )}
       </div>
 
-      <p className="text-[11px] text-dim">{t("desktop_shell.shell_check_hint")}</p>
+      <p className="text-xs text-dim">{t("desktop_shell.shell_check_hint")}</p>
 
       {shellCheck && shellCheck.tool === tool && <ShellCheckResult check={shellCheck} />}
 
@@ -175,9 +175,9 @@ function InstallationSwitchRow({
         {!item.available && <Badge variant="warn">{t("tools.unavailable")}</Badge>}
         <Badge variant="muted">{t(`tools.installer.${item.installerKind}`)}</Badge>
       </div>
-      <code className="block mt-1 text-xs text-muted break-all">{item.root}</code>
+      <code className="block mt-1 text-xs text-muted wrap-anywhere">{item.root}</code>
       {item.mismatchReason && (
-        <p className="text-[11px] text-dim mt-1">{item.mismatchReason}</p>
+        <p className="text-xs text-dim mt-1">{item.mismatchReason}</p>
       )}
       <div className="flex flex-wrap gap-2 mt-2">
         <Button

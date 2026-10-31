@@ -529,6 +529,7 @@
     "view_source_title": "GitHub でソースコードを表示",
     "sdk_incomplete": "一部の補足インベントリを読み込めませんでした。",
     "this_pc_incomplete": "一部のツールをスキャンできませんでした。この PC のインベントリは不完全です",
-    "restart_admin_pending": "管理者として再起動する前に、保留中の変更を適用または破棄してください"
+    "restart_admin_pending": "管理者として再起動する前に、保留中の変更を適用または破棄してください",
+    "skip_to_workspace": "ワークスペースへスキップ"
   }
 }

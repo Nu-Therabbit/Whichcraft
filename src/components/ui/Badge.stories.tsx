@@ -57,18 +57,18 @@ export const AllVariants: Story = {
       const style = getComputedStyle(badge);
       await expect(badge.tagName).toBe("SPAN");
       await expect(style.display).toBe("flex");
-      await expect(style.paddingLeft).toBe("12px");
-      await expect(style.paddingTop).toBe("4px");
+      await expect(style.paddingLeft).toBe("8px");
+      await expect(style.paddingTop).toBe("2px");
     }
   },
 };
 
 export const CustomStyle: Story = {
-  args: { variant: "user", children: "Custom", className: "px-2 normal-case text-danger" },
+  args: { variant: "user", children: "Custom", className: "px-3 normal-case text-danger" },
   play: async ({ canvasElement }) => {
     const badge = within(canvasElement).getByText("Custom");
     const style = getComputedStyle(badge);
-    await expect(style.paddingLeft).toBe("8px");
+    await expect(style.paddingLeft).toBe("12px");
     await expect(style.textTransform).toBe("none");
   },
 };
@@ -78,7 +78,7 @@ export const LightTheme: Story = {
   globals: { theme: "light" },
   play: async ({ canvasElement }) => {
     const style = getComputedStyle(within(canvasElement).getByText("User"));
-    await expect(style.color).toBe("rgb(5, 80, 174)");
+    await expect(style.color).toBe("rgb(0, 90, 158)");
     await expect(style.backgroundColor).toMatch(/(?:, |\/ )0\.15\)$/);
   },
 };
@@ -88,7 +88,7 @@ export const DarkTheme: Story = {
   globals: { theme: "dark" },
   play: async ({ canvasElement }) => {
     const style = getComputedStyle(within(canvasElement).getByText("User"));
-    await expect(style.color).toBe("rgb(88, 166, 255)");
+    await expect(style.color).toBe("rgb(117, 191, 255)");
     await expect(style.backgroundColor).toMatch(/(?:, |\/ )0\.15\)$/);
   },
 };

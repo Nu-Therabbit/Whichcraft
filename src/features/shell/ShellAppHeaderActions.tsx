@@ -19,7 +19,7 @@ export function ShellAppHeaderActions() {
   const { setDialog } = useShellEnvironmentUi();
 
   return (
-    <div className="flex items-center gap-2 text-xs text-dim">
+    <div className="shell-header-actions flex items-center gap-2 text-xs text-dim">
       {updateInfo && (
         <Button
           variant="ghost"

@@ -206,7 +206,7 @@ export function DetailPanel({
         <div className="flex items-center gap-2 px-6 py-2 border-b border-rim-subtle bg-hover/40 shrink-0">
           <Icon name="info" size={14} className="text-dim" />
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-semibold bg-surface border border-rim text-dim shrink-0 select-none">
+            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-surface border border-rim text-dim shrink-0 select-none">
               {t(description.categoryKey)}
             </span>
             <p className="text-xs text-muted leading-relaxed">{t(description.summaryKey)}</p>
@@ -282,7 +282,7 @@ export function DetailPanel({
                 <button
                   type="button"
                   onClick={() => onStageAddToPath(variable.scope as "User" | "System")}
-                  className="text-[10px] text-accent hover:text-accent-hi px-2 py-1 rounded hover:bg-accent/10 transition-colors"
+                  className="text-xs text-accent hover:text-accent-hi px-2 py-1 rounded hover:bg-accent/10 transition-colors"
                   title="Stage adding the Whichcraft install directory to this PATH variable"
                 >
                   {t("detail.add_to_path")}
@@ -294,7 +294,7 @@ export function DetailPanel({
                 <button
                   type="button"
                   onClick={() => setOverrideSeparator("plain")}
-                  className="text-[10px] text-dim hover:text-muted px-2 py-1 rounded hover:bg-hover transition-colors"
+                  className="text-xs text-dim hover:text-muted px-2 py-1 rounded hover:bg-hover transition-colors"
                 >
                   {t("detail.plain_text")}
                 </button>
@@ -303,14 +303,14 @@ export function DetailPanel({
                   <button
                     type="button"
                     onClick={() => setOverrideSeparator(";")}
-                    className="text-[10px] text-dim hover:text-muted px-2 py-1 rounded hover:bg-hover transition-colors"
+                    className="text-xs text-dim hover:text-muted px-2 py-1 rounded hover:bg-hover transition-colors"
                   >
                     {t("detail.list_semicolon")}
                   </button>
                   <button
                     type="button"
                     onClick={() => setOverrideSeparator(",")}
-                    className="text-[10px] text-dim hover:text-muted px-2 py-1 rounded hover:bg-hover transition-colors"
+                    className="text-xs text-dim hover:text-muted px-2 py-1 rounded hover:bg-hover transition-colors"
                   >
                     {t("detail.list_comma")}
                   </button>

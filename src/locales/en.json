@@ -736,6 +736,7 @@
     "view_source_title": "View the source code on GitHub",
     "sdk_incomplete": "Some supplemental inventory could not be loaded.",
     "this_pc_incomplete": "Some tools could not be scanned; this PC's inventory is incomplete",
-    "restart_admin_pending": "Apply or discard pending edits before restarting as administrator"
+    "restart_admin_pending": "Apply or discard pending edits before restarting as administrator",
+    "skip_to_workspace": "Skip to workspace"
   }
 }

@@ -28,7 +28,7 @@ function MethodLine({ method }: { method: UninstallMethod }) {
       return (
         <p>
           {t("tools.uninstall.method_uninstaller")}{" "}
-          <span className="font-mono break-all">{[method.program, ...method.args].join(" ")}</span>
+          <span className="font-mono wrap-anywhere">{[method.program, ...method.args].join(" ")}</span>
         </p>
       );
     case "recycleFolder":
@@ -110,7 +110,7 @@ export function UninstallSection({
 
       {plan && (
         <>
-          <span className="text-xs text-muted font-mono break-all">{plan.installation.root}</span>
+          <span className="text-xs text-muted font-mono wrap-anywhere">{plan.installation.root}</span>
           <MethodLine method={plan.method} />
           {plan.noConfirmation && <p className="text-warning">{t("tools.uninstall.no_confirmation")}</p>}
           {refused && (

@@ -13,8 +13,8 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantCls: Record<Variant, string> = {
-  primary: "bg-accent text-canvas hover:bg-accent-hi",
-  secondary: "border border-rim text-muted hover:bg-hover hover:text-fg",
+  primary: "bg-accent text-on-accent hover:bg-accent-hi transition-opacity",
+  secondary: "bg-field border border-rim text-fg hover:bg-hover",
   ghost: "text-muted hover:bg-hover hover:text-fg",
   danger: "bg-danger/15 text-danger border border-danger hover:bg-danger/25",
   warn: "border border-warn text-warn hover:bg-warn/10",
@@ -22,9 +22,9 @@ const variantCls: Record<Variant, string> = {
 };
 
 const sizeCls: Record<Size, string> = {
-  xs: "px-2 py-1 text-xs",
-  sm: "px-4 py-2 text-sm",
-  md: "px-5 py-3 text-sm font-medium",
+  xs: "min-h-7 px-2 py-1 text-xs",
+  sm: "min-h-command px-3 py-1 text-sm",
+  md: "min-h-10 px-4 py-2 text-sm font-medium",
 };
 
 export function Button({
@@ -41,7 +41,7 @@ export function Button({
       type="button"
       {...props}
       className={cn(
-        "inline-flex items-center gap-1 rounded font-medium transition-colors whitespace-nowrap shrink-0",
+        "inline-flex items-center justify-center gap-1.5 rounded-control font-medium transition-colors whitespace-nowrap shrink-0 active:enabled:opacity-80",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-canvas",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         variantCls[variant],

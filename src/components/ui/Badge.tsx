@@ -23,7 +23,7 @@ export function Badge({ variant, children, className }: Props) {
   return (
     <Text
       className={cn(
-        "inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide shrink-0",
+        "inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-control whitespace-nowrap shrink-0",
         variantCls[variant],
         className,
       )}

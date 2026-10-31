@@ -35,7 +35,7 @@ export function Select<T extends string>({
         value={value}
         onChange={(e) => onValueChange(e.target.value as T)}
         className={cn(
-          "app-select appearance-none bg-transparent text-dim cursor-pointer rounded",
+          "app-select appearance-none bg-field text-dim cursor-pointer rounded-control min-h-7",
           "transition-[color,background-color,border-color,box-shadow] duration-150 ease-out",
           "focus:outline-none focus-visible:ring-1 focus-visible:ring-accent",
           "disabled:opacity-50 disabled:cursor-not-allowed",

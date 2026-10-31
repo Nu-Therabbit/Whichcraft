@@ -47,7 +47,7 @@ export function SegmentedControl<T extends string>({
           />
           {opt.label}
           {opt.count !== undefined && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-hover text-dim leading-none">
+            <span className="text-xs px-1.5 py-0.5 rounded-full bg-hover text-dim leading-none">
               {opt.count}
             </span>
           )}

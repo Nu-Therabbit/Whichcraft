@@ -14,11 +14,11 @@ export function SnapshotCompare({ from, to, diff }: SnapshotCompareProps) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <div className="shrink-0 min-w-0">
-        <p className="text-[10px] text-dim uppercase tracking-wide mb-0.5">
+        <p className="text-xs text-dim uppercase tracking-wide mb-0.5">
           {t("snapshot_compare.heading")}
         </p>
         <p className="text-sm font-semibold text-fg break-words">{from.label}</p>
-        <p className="text-[11px] text-dim break-words">
+        <p className="text-xs text-dim break-words">
           {t("snapshot_compare.to_label", { label: to.label })}
         </p>
       </div>

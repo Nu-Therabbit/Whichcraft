@@ -52,7 +52,7 @@ export function DiagnosticsPanel({ diagnostics, elevated, onStageAction }: Props
                   })}
                 </p>
                 {diagnostic.severity === "info" && (
-                  <p className="text-[10px] text-dim mt-0.5">{t("diagnostics.information")}</p>
+                  <p className="text-xs text-dim mt-0.5">{t("diagnostics.information")}</p>
                 )}
               </div>
               {diagnostic.action && canStage && (

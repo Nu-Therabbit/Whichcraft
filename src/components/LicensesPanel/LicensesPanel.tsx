@@ -69,7 +69,7 @@ function RepoLink({ url }: { url: string }) {
       type="button"
       onClick={() => platform.openUrl(url)}
       title={display}
-      className="inline-flex items-center gap-1 text-dim hover:text-accent transition-colors text-[11px] font-mono whitespace-nowrap focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+      className="inline-flex items-center gap-1 text-dim hover:text-accent transition-colors text-xs font-mono whitespace-nowrap focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
     >
       {display}
       <Icon name="external-link" size={12} />
@@ -133,13 +133,13 @@ export function LicensesPanel() {
             <button
               type="button"
               onClick={() => platform.openUrl("https://github.com/iray-tno/envarly")}
-              className="inline-flex items-center gap-1 text-[11px] font-mono text-dim hover:text-accent transition-colors shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+              className="inline-flex items-center gap-1 text-xs font-mono text-dim hover:text-accent transition-colors shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
             >
               <span>github.com/iray-tno/envarly</span>
               <Icon name="external-link" size={12} />
             </button>
           </div>
-          <pre className="rounded border border-rim bg-surface px-4 py-3 text-[11px] font-mono text-muted leading-relaxed whitespace-pre-wrap select-text">
+          <pre className="rounded border border-rim bg-surface px-4 py-3 text-xs font-mono text-muted leading-relaxed whitespace-pre-wrap select-text">
             {MIT_TEXT}
           </pre>
         </div>
@@ -183,7 +183,7 @@ export function LicensesPanel() {
             ) : (
               <table className="text-xs border-collapse">
                 <thead className="sticky top-0 bg-panel z-10">
-                  <tr className="border-b border-rim text-muted uppercase text-[10px] tracking-wide">
+                  <tr className="border-b border-rim text-muted uppercase text-xs tracking-wide">
                     <th className="px-5 py-2 text-left font-medium whitespace-nowrap">Package</th>
                     <th className="px-3 py-2 text-left font-medium whitespace-nowrap">Version</th>
                     <th className="px-3 py-2 text-left font-medium whitespace-nowrap">License</th>

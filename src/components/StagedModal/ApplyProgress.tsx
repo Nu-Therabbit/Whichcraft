@@ -22,7 +22,7 @@ export function ApplyProgress({ progress, log }: Props) {
               style={{ width: `${percent}%` }}
             />
           </div>
-          <span className="text-[10px] text-dim shrink-0">
+          <span className="text-xs text-dim shrink-0">
             {t("staged.apply_progress_count", {
               current: progress.index + 1,
               total: progress.total,
@@ -31,7 +31,7 @@ export function ApplyProgress({ progress, log }: Props) {
         </div>
       )}
       {log.length > 0 && (
-        <div className="flex flex-col gap-0.5 max-h-32 overflow-y-auto font-mono text-[11px]">
+        <div className="flex flex-col gap-0.5 max-h-32 overflow-y-auto font-mono text-xs">
           {log.map((entry) => (
             <p
               key={`${entry.index}:${entry.scope}:${entry.name}`}

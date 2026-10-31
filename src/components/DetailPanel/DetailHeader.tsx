@@ -50,7 +50,7 @@ export function DetailHeader({
               onClick={() => {
                 if (services) void services.platform.restartAsAdmin();
               }}
-              className="text-[10px] text-accent hover:text-accent-hi px-2 py-1 rounded hover:bg-accent/10 transition-colors shrink-0"
+              className="text-xs text-accent hover:text-accent-hi px-2 py-1 rounded hover:bg-accent/10 transition-colors shrink-0"
               title="Restart as administrator to edit system variables"
             >
               {t("detail.restart_admin")}
@@ -58,12 +58,12 @@ export function DetailHeader({
           </>
         )}
         {isStagedSet && !dirty && (
-          <span className="text-[10px] font-semibold px-2 py-1 rounded bg-accent/15 text-accent shrink-0">
+          <span className="text-xs font-semibold px-2 py-1 rounded bg-accent/15 text-accent shrink-0">
             {t("detail.staged_badge")}
           </span>
         )}
         {isStagedDelete && (
-          <span className="text-[10px] font-semibold px-2 py-1 rounded bg-danger/15 text-danger shrink-0">
+          <span className="text-xs font-semibold px-2 py-1 rounded bg-danger/15 text-danger shrink-0">
             {t("detail.staged_delete_badge")}
           </span>
         )}

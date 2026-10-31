@@ -1,5 +1,5 @@
 import { PythonLauncherInfo, SdkInventory } from "../../components/ToolsPanel/SupplementalInfo";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import { scopesNeedShellRescan } from "../../coordination/scopeGroups";
 import { ThemeContext } from "../../context/ThemeContext";
@@ -99,6 +99,23 @@ function DesktopShellAppInner() {
   const toolsWrite = useShellToolsWrite(overview.detailOpen ? overview.selectedTool : null);
   const { theme } = useTheme();
   const { t } = useI18n();
+  const detailHeadingRef = useRef<HTMLHeadingElement>(null);
+  const detailTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const pageHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousPageRef = useRef(page);
+
+  useEffect(() => {
+    if (previousPageRef.current !== page) {
+      pageHeadingRef.current?.focus({ preventScroll: true });
+      previousPageRef.current = page;
+    }
+  }, [page]);
+
+  useEffect(() => {
+    if (overview.detailOpen && overview.selectedTool)
+      detailHeadingRef.current?.focus({ preventScroll: true });
+    else detailTriggerRef.current?.focus({ preventScroll: true });
+  }, [overview.detailOpen, overview.selectedTool]);
 
   const activePage: ShellPage = page === "profiles" ? "profiles" : page;
   const inventory = summarizeInventory(Object.values(overview.byTool), overview);
@@ -145,11 +162,23 @@ function DesktopShellAppInner() {
 
   return (
     <ThemeContext.Provider value={theme}>
-      <div className="flex h-screen overflow-hidden bg-canvas text-fg @container">
-        <nav
-          className="w-52 shrink-0 border-r border-rim-subtle bg-panel flex flex-col py-3 gap-1"
-          aria-label={t("desktop_shell.nav_label")}
-        >
+      <div className="desktop-workbench flex overflow-hidden text-fg @container">
+        <a className="shell-skip-link" href="#shell-workspace">
+          {t("desktop_shell.skip_to_workspace")}
+        </a>
+        <nav className="shell-nav shrink-0 flex" aria-label={t("desktop_shell.nav_label")}>
+          <div className="shell-brand" translate="no">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+              <path
+                d="M5 5v11a7 7 0 0 0 7 7h2V12a7 7 0 0 1 7-7h2M14 23h9M19 1l4 4-4 4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Whichcraft</span>
+          </div>
           {(
             [
               ["tools", t("desktop_shell.nav_tools")],
@@ -162,275 +191,352 @@ function DesktopShellAppInner() {
               key={id}
               href={navHref(id)}
               onClick={(e) => {
+                if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;
                 e.preventDefault();
                 goPage(id);
               }}
-              className={`mx-2 px-3 py-2 rounded text-sm text-left ${
-                activePage === id ? "bg-surface text-fg font-medium" : "text-muted hover:bg-hover"
-              }`}
+              className="shell-nav-link text-left"
               aria-current={activePage === id ? "page" : undefined}
             >
+              <ShellNavMark page={id} />
               {label}
             </a>
           ))}
+          <div className="shell-platform" translate="no">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M1 3l6-1v5H1V3zm7-1.2L15 1v6H8V1.8zM1 8h6v5l-6-1V8zm7 0h7v6l-7-.8V8z" />
+            </svg>
+            Windows
+          </div>
         </nav>
 
         <div className="flex flex-1 flex-col min-w-0">
-          <header className="flex items-center justify-between px-5 py-3 border-b border-rim-subtle shrink-0">
-            <h1 className="text-lg font-semibold">{pageTitle}</h1>
-            <div className="flex items-center gap-3 text-xs text-dim">
-              <span role="status" className="inline-flex items-center gap-1 max-w-56" title={t(thisPc.titleKey)}>
+          <header className="shell-header flex items-center justify-between shrink-0">
+            <h1 ref={pageHeadingRef} tabIndex={-1} className="font-semibold">
+              {pageTitle}
+            </h1>
+            <div className="shell-header-tools flex items-center gap-4 text-xs text-dim">
+              <span
+                role="status"
+                className="shell-header-status inline-flex items-center gap-2 max-w-56"
+                title={t(thisPc.titleKey)}
+              >
                 <span className={`size-2 rounded-full ${thisPc.dot}`} aria-hidden />
-                <span>{t("desktop_shell.this_pc")}<span className="block text-[10px]">{t(thisPc.titleKey)}</span></span>
+                <span>
+                  {t("desktop_shell.this_pc")}
+                  <small className="block text-xs">{t(thisPc.titleKey)}</small>
+                </span>
               </span>
               <ShellAppHeaderActions />
             </div>
           </header>
 
-          <ShellRegistryErrorBanner />
-          <ShellAppRecoveryBanner />
+          <section
+            id="shell-workspace"
+            tabIndex={-1}
+            className="shell-sheet"
+            aria-label={pageTitle}
+          >
+            <ShellRegistryErrorBanner />
+            <ShellAppRecoveryBanner />
 
-          {activePage === "tools" && (
-            <>
-              <div
-                className="flex items-center gap-2 px-4 py-2 border-b border-rim-subtle shrink-0 flex-wrap"
-                role="toolbar"
-                aria-label={t("desktop_shell.command_bar")}
-              >
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    navigate({
-                      page: "tools",
-                      installOpen: !installOpen,
-                    })
-                  }
-                  aria-pressed={installOpen}
+            {activePage === "tools" && (
+              <>
+                <div
+                  className="shell-command-bar flex items-center border-b border-rim-subtle shrink-0 flex-wrap"
+                  role="toolbar"
+                  aria-label={t("desktop_shell.command_bar")}
                 >
-                  <Icon name="plus" size={14} />
-                  {t("desktop_shell.install_tool")}
-                </Button>
-                <span className="w-px h-5 bg-rim-subtle" aria-hidden />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void overview.rescan(true).then(() => shellTools.dispatch({ type: "refresh" }))}
-                  disabled={overview.rescanning}
-                >
-                  <Icon name="refresh" size={14} />
-                  {overview.rescanning ? t("desktop_shell.rescanning") : t("desktop_shell.rescan")}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => shellTools.dispatch({ type: "checkShell" })}
-                  disabled={!canCheckShell}
-                  title={canCheckShell ? undefined : t("desktop_shell.check_shell_needs_tool")}
-                >
-                  {t("tools.check_in_shell")}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => shellTools.dispatch({ type: "openTerminal" })}
-                  disabled={toolsBusy}
-                >
-                  {t("tools.open_terminal")}
-                </Button>
-                <label className="ml-auto flex items-center gap-2 text-sm min-w-[12rem] flex-1 max-w-md">
-                  <span className="sr-only">{t("desktop_shell.search_label")}</span>
-                  <input
-                    type="search"
-                    value={overview.query}
-                    onChange={(e) => overview.setQuery(e.target.value)}
-                    placeholder={t("desktop_shell.search_placeholder")}
-                    className="w-full bg-surface border border-rim-subtle rounded px-2 py-1 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                  />
-                </label>
-              </div>
-
-              {installOpen && (
-                <ShellInstallView
-                  tool={installTool}
-                  onPickTool={overview.selectTool}
-                  onClose={() => navigate({ installOpen: false })}
-                />
-              )}
-
-              {overview.accountError && (
-                <div role="alert" className="px-5 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0">
-                  {overview.accountError}
-                </div>
-              )}
-
-              <div className="flex flex-1 min-h-0">
-                <main className="@container flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-6">
-                  <div>
-                    <h2 className="text-sm font-semibold">{t("desktop_shell.installed_tools")}</h2>
-                    <p className="text-xs text-dim">{t("desktop_shell.effective_subtitle")}</p>
-                  </div>
-
-                  <div className="grid gap-2 @xl:grid-cols-2">
-                    {visibleTools.map((tool) => {
-                      const slice = overview.byTool[tool];
-                      const meta = TOOL_DISPLAY[tool];
-                      const effective = pickEffective(slice.installations);
-                      const health = toolHealth(slice);
-                      const healthLabel = t({ loading: "desktop_shell.loading", error: "desktop_shell.load_error", missing: "desktop_shell.not_detected", mismatch: "desktop_shell.selection_mismatch", ok: "tools.effective" }[health]);
-                      return (
-                        <button
-                          type="button"
-                          key={tool}
-                          className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors ${
-                            overview.selectedTool === tool
-                              ? "border-accent bg-surface"
-                              : "border-rim-subtle bg-panel hover:bg-hover"
-                          }`}
-                          aria-pressed={overview.selectedTool === tool}
-                          aria-label={`${
-                            slice.loading
-                              ? t("desktop_shell.tool_card_scanning_label", { name: meta.title })
-                              : t("desktop_shell.tool_card_label", {
-                                  name: meta.title,
-                                  effective: formatInstallationLabel(effective),
-                                  count: slice.installations.length,
-                                })
-                          }. ${healthLabel}`}
-                          onClick={() => overview.selectTool(tool)}
-                        >
-                          <ToolMark tool={tool} small />
-                          <span className="flex-1 min-w-0">
-                            <strong className="block text-sm">{meta.title}</strong>
-                            <span className="flex items-center gap-1 text-xs font-mono text-muted">
-                              <span
-                                className={`size-1.5 rounded-full ${TOOL_HEALTH_DOT[health]}`}
-                                aria-hidden
-                              />
-                              {slice.loading
-                                ? t("desktop_shell.loading")
-                                : formatInstallationLabel(effective)}
-                            </span>
-                            <small className="text-[11px] text-dim">
-                              {slice.loading
-                                ? t("desktop_shell.scanning_installations")
-                                : slice.error
-                                  ? t("desktop_shell.load_error")
-                                  : t("desktop_shell.installation_count", {
-                                      count: slice.installations.length,
-                                    })}
-                              {health === "mismatch" ? ` · ${healthLabel}` : ""}
-                              {meta.switchOnly ? ` · ${t("desktop_shell.switch_only")}` : ""}
-                              {unavailableCount(slice.installations) > 0
-                                ? ` · ${t("desktop_shell.unavailable_count", {
-                                    count: unavailableCount(slice.installations),
-                                  })}`
-                                : ""}
-                            </small>
-                          </span>
-                          <span className="text-dim text-lg" aria-hidden>
-                            ›
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {visibleTools.length === 0 && (
-                    <p className="text-sm text-dim text-center py-8">{t("desktop_shell.search_empty")}</p>
-                  )}
-
-                  <section aria-labelledby="sdk-heading">
-                    <h2 id="sdk-heading" className="text-sm font-semibold">
-                      {t("desktop_shell.other_sdks")}
-                    </h2>
-                    <p className="text-xs text-dim mb-2">{t("desktop_shell.inventory_only")}</p>
-                    {overview.sdkLoading && <p className="text-xs text-dim">{t("desktop_shell.loading")}</p>}
-                    {overview.sdkIncomplete && (
-                      <p className="text-xs text-warn">{t("desktop_shell.sdk_incomplete")}</p>
-                    )}
-                    {!overview.sdkLoading && (
-                      <div className="space-y-4 mt-2">
-                        <SdkInventory android={overview.sdks.android} msvc={overview.sdks.msvc} />
-                        {overview.pythonInfo && <PythonLauncherInfo info={overview.pythonInfo} />}
-                      </div>
-                    )}
-                  </section>
-                </main>
-
-                {overview.detailOpen && overview.selectedTool && selectedSlice && (
-                  <aside
-                    className="w-[22rem] shrink-0 border-l border-rim-subtle bg-panel flex flex-col overflow-hidden"
-                    aria-label={t("desktop_shell.installation_details")}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      navigate({
+                        page: "tools",
+                        installOpen: !installOpen,
+                      })
+                    }
+                    aria-pressed={installOpen}
                   >
-                    <div className="flex items-start gap-2 px-4 py-3 border-b border-rim-subtle">
-                      <ToolMark tool={overview.selectedTool} />
-                      <div className="flex-1 min-w-0">
-                        <h2 className="text-base font-semibold">{TOOL_DISPLAY[overview.selectedTool].title}</h2>
-                        <p className="text-xs text-dim">{t(toolDescriptionKey(overview.selectedTool))}</p>
-                      </div>
-                      <IconButton
-                        aria-label={t("desktop_shell.close_details")}
-                        icon="x"
-                        onClick={overview.closeDetail}
-                      />
-                    </div>
-                    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-                      <div>
-                        <h3 className="text-[11px] uppercase tracking-wide text-dim">
-                          {t("desktop_shell.selection")}
-                        </h3>
-                        <p className="text-sm font-mono mt-1">
-                          {formatInstallationLabel(pickSelected(selectedSlice.installations))}
-                        </p>
-                      </div>
-                      <div>
-                        <h3 className="text-[11px] uppercase tracking-wide text-dim">
-                          {t("desktop_shell.effective_installation")}
-                        </h3>
-                        <p className="text-sm font-mono mt-1">
-                          {formatInstallationLabel(pickEffective(selectedSlice.installations))}
-                        </p>
-                      </div>
-                      <ShellInstallationDetail
-                        tool={overview.selectedTool}
-                        state={toolsWrite.state}
-                        dispatch={toolsWrite.dispatch}
-                      />
-                    </div>
-                  </aside>
+                    <Icon name="plus" size={14} />
+                    {t("desktop_shell.install_tool")}
+                  </Button>
+                  <span className="w-px h-5 bg-rim-subtle" aria-hidden />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      void overview
+                        .rescan(true)
+                        .then(() => shellTools.dispatch({ type: "refresh" }))
+                    }
+                    disabled={overview.rescanning}
+                  >
+                    <Icon name="refresh" size={14} />
+                    {overview.rescanning
+                      ? t("desktop_shell.rescanning")
+                      : t("desktop_shell.rescan")}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => shellTools.dispatch({ type: "checkShell" })}
+                    disabled={!canCheckShell}
+                    title={canCheckShell ? undefined : t("desktop_shell.check_shell_needs_tool")}
+                  >
+                    {t("tools.check_in_shell")}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => shellTools.dispatch({ type: "openTerminal" })}
+                    disabled={toolsBusy}
+                  >
+                    {t("tools.open_terminal")}
+                  </Button>
+                  <label className="shell-search ml-auto flex items-center gap-2 text-sm">
+                    <span className="sr-only">{t("desktop_shell.search_label")}</span>
+                    <input
+                      type="search"
+                      name="tool-search"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={overview.query}
+                      onChange={(e) => overview.setQuery(e.target.value)}
+                      placeholder={t("desktop_shell.search_placeholder")}
+                      className="w-full border rounded-control text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    />
+                  </label>
+                </div>
+
+                {installOpen && (
+                  <ShellInstallView
+                    tool={installTool}
+                    onPickTool={overview.selectTool}
+                    onClose={() => navigate({ installOpen: false })}
+                  />
                 )}
-              </div>
-            </>
-          )}
 
-          {activePage === "environment" && (
-            <ShellEnvironmentWorkspace envTab={envTab} onEnvTab={goEnvTab} />
-          )}
+                {overview.accountError && (
+                  <div
+                    role="alert"
+                    className="px-5 py-2 bg-danger/15 border-b border-danger text-danger text-sm shrink-0"
+                  >
+                    {overview.accountError}
+                  </div>
+                )}
 
-          {activePage === "profiles" && <ShellProfilesWorkspace />}
+                <div className="shell-tool-workspace flex flex-1 min-h-0">
+                  <main className="shell-inventory @container flex-1 min-w-0 overflow-y-auto space-y-6">
+                    <div className="shell-section-heading">
+                      <h2>{t("desktop_shell.installed_tools")}</h2>
+                      <p className="text-dim">{t("desktop_shell.effective_subtitle")}</p>
+                    </div>
 
-          {activePage === "settings" && <ShellSettingsView />}
+                    <div className="shell-tool-list">
+                      {visibleTools.map((tool) => {
+                        const slice = overview.byTool[tool];
+                        const meta = TOOL_DISPLAY[tool];
+                        const effective = pickEffective(slice.installations);
+                        const health = toolHealth(slice);
+                        const healthLabel = t(
+                          {
+                            loading: "desktop_shell.loading",
+                            error: "desktop_shell.load_error",
+                            missing: "desktop_shell.not_detected",
+                            mismatch: "desktop_shell.selection_mismatch",
+                            ok: "tools.effective",
+                          }[health],
+                        );
+                        return (
+                          <button
+                            type="button"
+                            key={tool}
+                            className="shell-tool-row text-left transition-colors"
+                            aria-pressed={overview.selectedTool === tool}
+                            aria-label={`${
+                              slice.loading
+                                ? t("desktop_shell.tool_card_scanning_label", { name: meta.title })
+                                : t("desktop_shell.tool_card_label", {
+                                    name: meta.title,
+                                    effective: formatInstallationLabel(effective),
+                                    count: slice.installations.length,
+                                  })
+                            }. ${healthLabel}`}
+                            onClick={(e) => {
+                              detailTriggerRef.current = e.currentTarget;
+                              overview.selectTool(tool);
+                            }}
+                          >
+                            <ToolMark tool={tool} />
+                            <span className="shell-tool-copy min-w-0">
+                              <strong className="shell-tool-name" translate="no">
+                                {meta.title}
+                              </strong>
+                              <span className="shell-tool-version flex items-center gap-2 font-mono">
+                                <span
+                                  className={`size-1.5 rounded-full ${TOOL_HEALTH_DOT[health]}`}
+                                  aria-hidden
+                                />
+                                {slice.loading
+                                  ? t("desktop_shell.loading")
+                                  : formatInstallationLabel(effective)}
+                              </span>
+                              <small
+                                className="shell-tool-meta"
+                                data-attention={health === "mismatch" || health === "error"}
+                              >
+                                {slice.loading
+                                  ? t("desktop_shell.scanning_installations")
+                                  : slice.error
+                                    ? t("desktop_shell.load_error")
+                                    : t("desktop_shell.installation_count", {
+                                        count: slice.installations.length,
+                                      })}
+                                {health === "mismatch" ? ` · ${healthLabel}` : ""}
+                                {meta.switchOnly ? ` · ${t("desktop_shell.switch_only")}` : ""}
+                                {unavailableCount(slice.installations) > 0
+                                  ? ` · ${t("desktop_shell.unavailable_count", {
+                                      count: unavailableCount(slice.installations),
+                                    })}`
+                                  : ""}
+                              </small>
+                            </span>
+                            <span className="text-dim text-lg" aria-hidden>
+                              ›
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-          <footer aria-live="polite" aria-atomic="true" className="shrink-0 flex items-center gap-4 border-t border-rim-subtle px-4 py-1.5 text-[11px] text-dim">
-            <span className="truncate">{statusLine}</span>
-            <span className="ml-auto truncate">{inventoryLine}</span>
-          </footer>
+                    {visibleTools.length === 0 && (
+                      <p className="text-sm text-dim text-center py-8">
+                        {t("desktop_shell.search_empty")}
+                      </p>
+                    )}
+
+                    <section aria-labelledby="sdk-heading" className="shell-section-heading">
+                      <h2 id="sdk-heading">{t("desktop_shell.other_sdks")}</h2>
+                      <p className="text-xs text-dim mb-2">{t("desktop_shell.inventory_only")}</p>
+                      {overview.sdkLoading && (
+                        <p className="text-xs text-dim">{t("desktop_shell.loading")}</p>
+                      )}
+                      {overview.sdkIncomplete && (
+                        <p className="text-xs text-warn">{t("desktop_shell.sdk_incomplete")}</p>
+                      )}
+                      {!overview.sdkLoading && (
+                        <div className="space-y-4 mt-2">
+                          <SdkInventory android={overview.sdks.android} msvc={overview.sdks.msvc} />
+                          {overview.pythonInfo && <PythonLauncherInfo info={overview.pythonInfo} />}
+                        </div>
+                      )}
+                    </section>
+                  </main>
+
+                  {overview.detailOpen && overview.selectedTool && selectedSlice && (
+                    <aside
+                      className="shell-detail shrink-0 border-l border-rim-subtle flex flex-col overflow-hidden"
+                      aria-label={t("desktop_shell.installation_details")}
+                    >
+                      <div className="flex items-start gap-2 px-4 py-3 border-b border-rim-subtle">
+                        <ToolMark tool={overview.selectedTool} />
+                        <div className="flex-1 min-w-0">
+                          <h2
+                            ref={detailHeadingRef}
+                            tabIndex={-1}
+                            className="text-base font-semibold"
+                          >
+                            {TOOL_DISPLAY[overview.selectedTool].title}
+                          </h2>
+                          <p className="text-xs text-dim">
+                            {t(toolDescriptionKey(overview.selectedTool))}
+                          </p>
+                        </div>
+                        <IconButton
+                          aria-label={t("desktop_shell.close_details")}
+                          icon="x"
+                          onClick={overview.closeDetail}
+                        />
+                      </div>
+                      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+                        <div className="shell-resolution">
+                          <div>
+                            <h3>{t("desktop_shell.selection")}</h3>
+                            <p className="text-sm font-mono mt-1">
+                              {formatInstallationLabel(pickSelected(selectedSlice.installations))}
+                            </p>
+                          </div>
+                          <div>
+                            <h3>{t("desktop_shell.effective_installation")}</h3>
+                            <p className="text-sm font-mono mt-1">
+                              {formatInstallationLabel(pickEffective(selectedSlice.installations))}
+                            </p>
+                          </div>
+                        </div>
+                        <ShellInstallationDetail
+                          tool={overview.selectedTool}
+                          state={toolsWrite.state}
+                          dispatch={toolsWrite.dispatch}
+                        />
+                      </div>
+                    </aside>
+                  )}
+                </div>
+              </>
+            )}
+
+            {activePage === "environment" && (
+              <ShellEnvironmentWorkspace envTab={envTab} onEnvTab={goEnvTab} />
+            )}
+
+            {activePage === "profiles" && <ShellProfilesWorkspace />}
+
+            {activePage === "settings" && <ShellSettingsView />}
+
+            <footer
+              aria-live="polite"
+              aria-atomic="true"
+              className="shell-footer shrink-0 flex items-center border-t border-rim-subtle text-dim"
+            >
+              <span className="truncate">{statusLine}</span>
+              <span className="ml-auto truncate">{inventoryLine}</span>
+            </footer>
+          </section>
         </div>
       </div>
     </ThemeContext.Provider>
   );
 }
 
-function ToolMark({ tool, small }: { tool: ToolKind; small?: boolean }) {
+function ShellNavMark({ page }: { page: ShellPage }) {
+  const paths: Record<ShellPage, string> = {
+    tools: "M2 3h12v10H2zM5 6l2 2-2 2m4 0h2",
+    profiles: "M3 2h7v3h3v9H6v-3H3zM6 5h4M6 8h4M8 11h3",
+    environment: "M5 2L2 5l3 3m6 0l3 3-3 3M9 2L7 14",
+    settings: "M2 4h12M2 12h12M5 2v4m6 4v4",
+  };
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={paths[page]} />
+    </svg>
+  );
+}
+
+function ToolMark({ tool }: { tool: ToolKind }) {
   const meta = TOOL_DISPLAY[tool];
   return (
-    <span
-      className={`inline-flex items-center justify-center rounded-md font-semibold shrink-0 ${
-        small ? "size-8 text-xs" : "size-10 text-sm"
-      } bg-surface text-fg border border-rim-subtle`}
-      aria-hidden
-    >
+    <span className="shell-tool-mark" aria-hidden>
       {meta.glyph}
     </span>
   );

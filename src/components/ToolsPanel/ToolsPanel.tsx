@@ -243,7 +243,7 @@ export function ToolsPanel({ open, onClose, state, dispatch }: Props) {
                     {!item.available && <Badge variant="warn">{t("tools.unavailable")}</Badge>}
                     <Badge variant="muted">{t(`tools.installer.${item.installerKind}`)}</Badge>
                   </div>
-                  <span className="text-xs text-muted font-mono break-all">{item.root}</span>
+                  <span className="text-xs text-muted font-mono wrap-anywhere">{item.root}</span>
                   {item.mismatchReason && <span className="text-xs text-warning">{item.mismatchReason}</span>}
                 </button>
                 {item.available && (

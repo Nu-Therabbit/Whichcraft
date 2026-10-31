@@ -529,6 +529,7 @@
     "view_source_title": "Xem mã nguồn trên GitHub",
     "sdk_incomplete": "Không tải được một phần danh mục bổ sung.",
     "this_pc_incomplete": "Không quét được một số công cụ; danh mục của máy này chưa đầy đủ",
-    "restart_admin_pending": "Áp dụng hoặc hủy các thay đổi đang chờ trước khi khởi động lại với quyền quản trị"
+    "restart_admin_pending": "Áp dụng hoặc hủy các thay đổi đang chờ trước khi khởi động lại với quyền quản trị",
+    "skip_to_workspace": "Chuyển đến không gian làm việc"
   }
 }

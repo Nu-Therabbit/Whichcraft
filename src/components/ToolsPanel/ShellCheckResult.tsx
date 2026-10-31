@@ -15,11 +15,11 @@ export function ShellCheckResult({ check }: { check: ShellCheck }) {
       </p>
       <p className="text-xs">
         <span className="text-muted">{t("tools.shell_check.effective")} </span>
-        <span className="font-mono break-all">{check.effectivePath ?? t("tools.shell_check.none")}</span>
+        <span className="font-mono wrap-anywhere">{check.effectivePath ?? t("tools.shell_check.none")}</span>
       </p>
       <p className="text-xs">
         <span className="text-muted">{t("tools.shell_check.in_shell", { shell })} </span>
-        <span className="font-mono break-all">{check.shellPath ?? t("tools.shell_check.none")}</span>
+        <span className="font-mono wrap-anywhere">{check.shellPath ?? t("tools.shell_check.none")}</span>
       </p>
     </div>
   );

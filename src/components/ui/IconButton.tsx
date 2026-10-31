@@ -16,7 +16,7 @@ export function IconButton({ icon, variant = "ghost", className, ...props }: Pro
       type="button"
       {...props}
       className={cn(
-        "inline-flex size-7 items-center justify-center rounded leading-none transition-colors",
+        "inline-flex size-8 items-center justify-center rounded-control leading-none transition-colors active:enabled:opacity-80",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-canvas",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         variant === "ghost" && "text-dim hover:text-fg hover:bg-hover",

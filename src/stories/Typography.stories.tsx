@@ -83,7 +83,7 @@ export const Scale: StoryObj = {
           <p className="text-xs text-muted">
             Descriptive body text that provides context for the user.
           </p>
-          <p className="text-[10px] text-dim">Metadata / timestamp</p>
+          <p className="text-xs text-dim">Metadata / timestamp</p>
           <code className="font-mono text-sm text-fg">MY_VARIABLE=some_value</code>
         </div>
       </Section>

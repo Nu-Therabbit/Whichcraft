@@ -78,7 +78,8 @@ describe("DetailPanel", () => {
   it("renders scope badge", () => {
     render_(simpleVar);
     const badge = screen.getAllByText("User")[0];
-    expect(badge).toHaveClass("rounded-full");
+    expect(badge).toBeVisible();
+    expect(badge).not.toHaveAttribute("role", "button");
   });
 
   it("shows Stage button after editing value", async () => {

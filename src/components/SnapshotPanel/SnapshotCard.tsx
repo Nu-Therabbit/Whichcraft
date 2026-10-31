@@ -106,7 +106,7 @@ export function SnapshotCard({
       )}
 
       <div>
-        <p className="text-[11px] text-dim">{formatDate(snap.createdAt)}</p>
+        <p className="text-xs text-dim">{formatDate(snap.createdAt)}</p>
       </div>
 
       {!isEditing && (

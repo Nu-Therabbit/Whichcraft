@@ -6,7 +6,7 @@ import type { ToolApplyPlan } from "../../types";
 function PathEntryDiff({ before, after }: { before: string | null; after: string }) {
   const { added, removed } = pathEntryChanges(before, after);
   return (
-    <ul className="text-xs break-all">
+    <ul className="text-xs wrap-anywhere">
       {added.map((e) => (
         <li key={`+${e}`} className="text-success">
           + {e}

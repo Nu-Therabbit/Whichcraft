@@ -39,7 +39,7 @@ export function UpdateList({ updates, busy, awaitingSwitch, onUpdate, store, rep
             <li key={u.root} className="flex items-center gap-3 py-2">
               <div className="flex-1 flex flex-col">
                 <span className="font-mono">{t("tools.updates.row", { current: u.current, latest: u.latest })}</span>
-                <span className="text-xs text-muted font-mono break-all">{u.root}</span>
+                <span className="text-xs text-muted font-mono wrap-anywhere">{u.root}</span>
               </div>
               <Button variant="secondary" size="sm" disabled={busy || !store.confirmed} onClick={() => onUpdate(u)}>
                 {busy ? t("tools.updates.updating") : t("tools.updates.update")}

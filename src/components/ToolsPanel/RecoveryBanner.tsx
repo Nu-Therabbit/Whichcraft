@@ -35,7 +35,7 @@ export function RecoveryBanner({ recovery, busy, onResume, onRollBack }: Props) 
               <Badge variant={STATE_VARIANT[item.state]}>{t(`tools.recovery.state.${item.state}`)}</Badge>
             </div>
             {item.state === "changedElsewhere" && (
-              <span className="text-xs text-muted font-mono break-all">{item.current ?? "(empty)"}</span>
+              <span className="text-xs text-muted font-mono wrap-anywhere">{item.current ?? "(empty)"}</span>
             )}
           </li>
         ))}

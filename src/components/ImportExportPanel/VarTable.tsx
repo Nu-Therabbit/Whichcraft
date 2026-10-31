@@ -59,7 +59,7 @@ export function VarTable({ vars, checked, onToggle, onToggleAll }: VarTableProps
       <div className="rounded border border-rim overflow-hidden max-h-72 overflow-y-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-rim bg-surface text-muted uppercase text-[10px] tracking-wide">
+            <tr className="border-b border-rim bg-surface text-muted uppercase text-xs tracking-wide">
               <th className="w-8 px-2 py-2 text-center">
                 <input
                   type="checkbox"
@@ -105,7 +105,7 @@ export function VarTable({ vars, checked, onToggle, onToggleAll }: VarTableProps
                       {secret && (
                         <span
                           title={secret.label}
-                          className="inline-flex items-center gap-1 text-warn text-[10px] font-medium shrink-0"
+                          className="inline-flex items-center gap-1 text-warn text-xs font-medium shrink-0"
                         >
                           <Icon name="warning" size={12} />
                           {secret.service}

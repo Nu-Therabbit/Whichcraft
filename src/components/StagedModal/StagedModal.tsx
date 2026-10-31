@@ -87,7 +87,7 @@ export function StagedModal({
             )}
           </div>
           {hasListValues && (
-            <div className="flex rounded border border-rim overflow-hidden text-[10px]">
+            <div className="flex rounded border border-rim overflow-hidden text-xs">
               {(["delta", "full"] as ViewMode[]).map((mode) => (
                 <button
                   key={mode}
@@ -123,14 +123,14 @@ export function StagedModal({
             >
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-mono font-semibold text-fg">{entry.name}</span>
-                <span className="text-[10px]">{entry.scope}</span>
-                <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide">
+                <span className="text-xs">{entry.scope}</span>
+                <span className="ml-auto text-xs font-semibold uppercase tracking-wide">
                   {t(`staged.kind_${entry.kind}`)}
                 </span>
               </div>
 
               {entry.kind === "changed" && entry.oldValueKind !== entry.newValueKind && (
-                <p className="font-mono text-[10px] text-muted mb-1">
+                <p className="font-mono text-xs text-muted mb-1">
                   {registryKindLabel(entry.oldValueKind)} → {registryKindLabel(entry.newValueKind)}
                 </p>
               )}
@@ -139,14 +139,14 @@ export function StagedModal({
                 (isList(entry.value) ? (
                   <ListEntries value={entry.value} className="line-through" />
                 ) : (
-                  <p className="font-mono text-[11px] line-through break-all">{entry.value}</p>
+                  <p className="font-mono text-xs line-through break-all">{entry.value}</p>
                 ))}
 
               {entry.kind === "added" &&
                 (isList(entry.value) ? (
                   <ListEntries value={entry.value} />
                 ) : (
-                  <p className="font-mono text-[11px] break-all">{entry.value}</p>
+                  <p className="font-mono text-xs break-all">{entry.value}</p>
                 ))}
 
               {entry.kind === "changed" &&
@@ -161,10 +161,10 @@ export function StagedModal({
                   )
                 ) : (
                   <div className="flex flex-col gap-1">
-                    <p className="font-mono text-[11px] text-danger line-through break-all">
+                    <p className="font-mono text-xs text-danger line-through break-all">
                       {entry.oldValue}
                     </p>
-                    <p className="font-mono text-[11px] text-success break-all">{entry.newValue}</p>
+                    <p className="font-mono text-xs text-success break-all">{entry.newValue}</p>
                   </div>
                 ))}
             </div>

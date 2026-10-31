@@ -174,7 +174,7 @@ export function Sidebar({
             type="button"
             onClick={() => setSecretsOnly((v) => !v)}
             className={cn(
-              "inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-colors",
+              "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
               secretsOnly
                 ? "bg-warn/20 text-warn border border-warn/40"
@@ -194,7 +194,7 @@ export function Sidebar({
           onValueChange={setSortBy}
           options={sortOptions}
           density="compact"
-          className="text-[10px]"
+          className="text-xs"
         />
       </div>
 
