@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-
 use crate::error::EnvarlyError;
 use crate::whichcraft::domain::InstallerKind;
 
@@ -22,8 +21,7 @@ pub trait InstallerCatalogSource: Send + Sync {
 }
 
 pub trait InstallerCatalog: Send + Sync {
-    fn entries_for_root(&self, root: &std::path::Path)
-        -> Result<Vec<CatalogEntry>, EnvarlyError>;
+    fn entries_for_root(&self, root: &std::path::Path) -> Result<Vec<CatalogEntry>, EnvarlyError>;
 
     /// How `root` was installed: its uninstall entry's kind, or a plain folder.
     fn kind_for_root(&self, root: &std::path::Path) -> InstallerKind {

@@ -1,10 +1,10 @@
 pub mod app;
 #[cfg(test)]
 mod app_tests;
-#[cfg(test)]
-mod layer_tests;
 pub mod elevation;
 pub mod java_inventory;
+#[cfg(test)]
+mod layer_tests;
 pub mod path_cleanup;
 pub mod profiles;
 pub mod recovery;
@@ -14,8 +14,8 @@ pub mod tool_apply;
 pub mod tool_inventory;
 pub mod tool_plan;
 pub mod undo;
-pub mod update;
 pub mod uninstall;
+pub mod update;
 
 use std::collections::HashMap;
 
@@ -32,32 +32,54 @@ pub fn registry_expander<'a>(
     system: &'a HashMap<String, EnvValue>,
     machine: &'a dyn Machine,
 ) -> impl Fn(&str) -> String + 'a {
-    move |raw| expand_vars(raw, &|name| {
-        get_var(user, name)
-            .or_else(|| get_var(system, name))
-            .map(|v| v.value.clone())
-            .or_else(|| machine.env_var(name))
-    }, 0)
+    move |raw| {
+        expand_vars(
+            raw,
+            &|name| {
+                get_var(user, name)
+                    .or_else(|| get_var(system, name))
+                    .map(|v| v.value.clone())
+                    .or_else(|| machine.env_var(name))
+            },
+            0,
+        )
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
+    use crate::whichcraft::adapters::local::LocalMachine;
 
     fn vars(pairs: &[(&str, &str)]) -> HashMap<String, EnvValue> {
-        pairs.iter().map(|(k, v)| ((*k).to_string(), EnvValue::typed((*v).to_string(), crate::model::EnvValueKind::ExpandString))).collect()
+        pairs
+            .iter()
+            .map(|(k, v)| {
+                (
+                    (*k).to_string(),
+                    EnvValue::typed((*v).to_string(), crate::model::EnvValueKind::ExpandString),
+                )
+            })
+            .collect()
     }
 
     #[test]
     fn registry_values_win_over_this_process() {
         let user = vars(&[("JAVA_HOME", "C:\\jdk21")]);
-        let system = vars(&[("JAVA_HOME", "C:\\jdk17"), ("TOOLS", "%SystemDrive%\\tools")]);
+        let system = vars(&[
+            ("JAVA_HOME", "C:\\jdk17"),
+            ("TOOLS", "%SystemDrive%\\tools"),
+        ]);
         let expand = registry_expander(&user, &system, &LocalMachine);
         assert_eq!(expand("%java_home%\\bin"), "C:\\jdk21\\bin");
-        assert_eq!(expand("%TOOLS%\\x"), format!("{}\\tools\\x", std::env::var("SystemDrive").unwrap()));
-        assert_eq!(expand("%NOT_DEFINED_ANYWHERE_42%\\bin"), "%NOT_DEFINED_ANYWHERE_42%\\bin");
+        assert_eq!(
+            expand("%TOOLS%\\x"),
+            format!("{}\\tools\\x", std::env::var("SystemDrive").unwrap())
+        );
+        assert_eq!(
+            expand("%NOT_DEFINED_ANYWHERE_42%\\bin"),
+            "%NOT_DEFINED_ANYWHERE_42%\\bin"
+        );
         assert_eq!(expand("50%"), "50%");
     }
 }
-

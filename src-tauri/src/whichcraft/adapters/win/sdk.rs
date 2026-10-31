@@ -15,7 +15,12 @@ impl SdkProbe for WinSdkProbe {
 
     fn python_store_alias(&self) -> Option<PathBuf> {
         std::env::var_os("LOCALAPPDATA")
-            .map(|l| PathBuf::from(l).join("Microsoft").join("WindowsApps").join("python.exe"))
+            .map(|l| {
+                PathBuf::from(l)
+                    .join("Microsoft")
+                    .join("WindowsApps")
+                    .join("python.exe")
+            })
             // An app execution alias is a reparse point that `exists()` does not follow.
             .filter(|p| std::fs::symlink_metadata(p).is_ok())
     }
@@ -40,6 +45,8 @@ impl SdkProbe for WinSdkProbe {
         let key = winreg::RegKey::predef(HKEY_LOCAL_MACHINE)
             .open_subkey(r"SOFTWARE\Microsoft\Windows Kits\Installed Roots")
             .ok()?;
-        key.get_value::<String, _>("KitsRoot10").ok().map(PathBuf::from)
+        key.get_value::<String, _>("KitsRoot10")
+            .ok()
+            .map(PathBuf::from)
     }
 }

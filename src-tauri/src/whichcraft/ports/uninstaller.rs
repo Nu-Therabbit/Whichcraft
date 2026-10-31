@@ -19,5 +19,10 @@ pub trait Uninstaller: Send + Sync {
     /// Moves a folder to the Recycle Bin.
     fn recycle_folder(&self, folder: &Path) -> Result<(), EnvarlyError>;
     /// Removes a Whichcraft-managed installation with mise, in the store that holds it.
-    fn uninstall_managed(&self, store: &Path, tool: ToolKind, mise_version: &str) -> Result<(), EnvarlyError>;
+    fn uninstall_managed(
+        &self,
+        store: &Path,
+        tool: ToolKind,
+        mise_version: &str,
+    ) -> Result<(), EnvarlyError>;
 }

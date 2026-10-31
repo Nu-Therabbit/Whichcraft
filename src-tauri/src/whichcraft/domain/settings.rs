@@ -62,7 +62,8 @@ impl WhichcraftSettings {
             return;
         }
         let old = std::mem::replace(&mut self.install_store, store);
-        self.previous_install_stores.retain(|s| *s != self.install_store && *s != old);
+        self.previous_install_stores
+            .retain(|s| *s != self.install_store && *s != old);
         self.previous_install_stores.insert(0, old);
     }
 }

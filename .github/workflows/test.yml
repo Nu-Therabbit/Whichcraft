@@ -61,7 +61,8 @@ jobs:
 
   test-rs:
     name: Test (rust)
-    runs-on: ubuntu-latest
+    # Whichcraft's Rust tests build against the Windows-only adapters.
+    runs-on: windows-latest
     permissions:
       checks: write
     steps:
@@ -71,6 +72,9 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Build frontend
+        # tauri::generate_context! embeds ../dist at compile time on Windows.
+        run: npm run build
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:

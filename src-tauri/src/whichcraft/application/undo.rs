@@ -1,10 +1,12 @@
 use crate::env_store::{self, EnvBackend};
 use crate::error::EnvarlyError;
 use crate::model::{EnvChange, EnvValueKind, VarScope};
-use crate::whichcraft::domain::journal::{JournalStatus, WhichcraftJournal};
-use crate::whichcraft::ports::store::Store;
-use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
 use crate::whichcraft::domain::env::get_var;
+use crate::whichcraft::domain::journal::{JournalStatus, WhichcraftJournal};
+use crate::whichcraft::ports::elevator::{
+    ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange,
+};
+use crate::whichcraft::ports::store::Store;
 
 #[derive(Debug, Clone, serde::Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -23,16 +25,14 @@ pub struct UndoResult {
 
 /// Takes out the entries the app added and puts back the ones it removed, keeping everything
 /// else that is in the current value, including entries other programs added since.
-fn restore_path_value(
-    current: &str,
-    added: &[String],
-    removed: &[String],
-    before: &str,
-) -> String {
+fn restore_path_value(current: &str, added: &[String], removed: &[String], before: &str) -> String {
     // Keep untouched raw segments, including empty entries and original spacing.
     let raw_entries = |value: &str| -> Vec<String> {
-        if value.is_empty() { Vec::new() }
-        else { value.split(';').map(str::to_string).collect() }
+        if value.is_empty() {
+            Vec::new()
+        } else {
+            value.split(';').map(str::to_string).collect()
+        }
     };
     let mut entries = raw_entries(current);
     for a in added {
@@ -40,10 +40,16 @@ fn restore_path_value(
     }
     let before_entries = raw_entries(before);
     for r in removed {
-        if entries.iter().any(|e| e.trim().eq_ignore_ascii_case(r.trim())) {
+        if entries
+            .iter()
+            .any(|e| e.trim().eq_ignore_ascii_case(r.trim()))
+        {
             continue;
         }
-        if let Some(pos) = before_entries.iter().position(|e| e.trim().eq_ignore_ascii_case(r.trim())) {
+        if let Some(pos) = before_entries
+            .iter()
+            .position(|e| e.trim().eq_ignore_ascii_case(r.trim()))
+        {
             let insert_at = pos.min(entries.len());
             entries.insert(insert_at, r.clone());
         } else {
@@ -85,9 +91,9 @@ pub fn revert_journal<B: EnvBackend>(
         let map = match mutation.scope {
             VarScope::User => backend.read_user()?,
             VarScope::System => backend.read_system()?,
-            VarScope::OtherUser => backend
-                .read_other_user()?
-                .ok_or_else(|| EnvarlyError::InvalidInput("no other-user account selected".into()))?,
+            VarScope::OtherUser => backend.read_other_user()?.ok_or_else(|| {
+                EnvarlyError::InvalidInput("no other-user account selected".into())
+            })?,
         };
         let current = get_var(&map, &mutation.name);
         let current_value = current.map(|v| v.value.clone());
@@ -100,15 +106,27 @@ pub fn revert_journal<B: EnvBackend>(
 
         if mutation.name.eq_ignore_ascii_case("path") {
             let current_val = current_value.as_deref().unwrap_or("");
-            let before_val = mutation.before.as_ref().map(|v| v.value.as_str()).unwrap_or("");
-            let untouched_since = mutation.after.as_ref().is_some_and(|a| a.value == current_val);
+            let before_val = mutation
+                .before
+                .as_ref()
+                .map(|v| v.value.as_str())
+                .unwrap_or("");
+            let untouched_since = mutation
+                .after
+                .as_ref()
+                .is_some_and(|a| a.value == current_val);
             // Still exactly what Whichcraft wrote: put the old value back verbatim (empty
             // segments and spelling included). Otherwise PATH is a list: undo entry by entry,
             // so entries added by others survive.
             let restored = if untouched_since && mutation.before.is_some() {
                 before_val.to_string()
             } else {
-                restore_path_value(current_val, &mutation.path_added, &mutation.path_removed, before_val)
+                restore_path_value(
+                    current_val,
+                    &mutation.path_added,
+                    &mutation.path_removed,
+                    before_val,
+                )
             };
             if restored == current_val {
                 continue;
@@ -211,7 +229,9 @@ pub(crate) fn write_changes<B: EnvBackend>(
                 ))
             }
             ElevatedOutcome::Failed(msg) => {
-                return Err(EnvarlyError::InvalidInput(format!("System write failed: {msg}")))
+                return Err(EnvarlyError::InvalidInput(format!(
+                    "System write failed: {msg}"
+                )))
             }
         }
     }
@@ -232,14 +252,14 @@ fn scope_of(change: &EnvChange) -> &VarScope {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::whichcraft::persistence::save_journal;
-    use crate::whichcraft::persistence::FileStore;
     use crate::env_store::MemBackend;
     use crate::model::EnvValue;
-    use crate::whichcraft::persistence::{use_test_data_dir};
+    use crate::whichcraft::application::tool_apply::test_support::FakeElevator;
     use crate::whichcraft::domain::journal::{MutationRecord, WhichcraftJournal};
     use crate::whichcraft::domain::path::{compute_prepend, path_entry_diff};
-    use crate::whichcraft::application::tool_apply::test_support::FakeElevator;
+    use crate::whichcraft::persistence::save_journal;
+    use crate::whichcraft::persistence::use_test_data_dir;
+    use crate::whichcraft::persistence::FileStore;
 
     fn leak(s: String) -> &'static str {
         Box::leak(s.into_boxed_str())
@@ -276,7 +296,10 @@ mod tests {
         use_test_data_dir(dir.path());
         let after = compute_prepend("C:\\old", "C:\\jdk\\bin").unwrap();
         let backend = MemBackend::new().with_user([("Path", leak(after.clone()))]);
-        save_completed(vec![path_mutation(VarScope::User, "C:\\old", &after)], &backend);
+        save_completed(
+            vec![path_mutation(VarScope::User, "C:\\old", &after)],
+            &backend,
+        );
 
         let result = undo_last_apply(&backend, &FileStore, None).expect("undo");
         assert!(result.conflicts.is_empty());
@@ -291,7 +314,10 @@ mod tests {
         let before = "C:\\old;;C:\\other;";
         let after = compute_prepend(before, "C:\\jdk\\bin").unwrap();
         let backend = MemBackend::new().with_user([("Path", leak(after.clone()))]);
-        save_completed(vec![path_mutation(VarScope::User, before, &after)], &backend);
+        save_completed(
+            vec![path_mutation(VarScope::User, before, &after)],
+            &backend,
+        );
 
         let result = undo_last_apply(&backend, &FileStore, None).expect("undo");
         assert!(result.conflicts.is_empty());
@@ -305,11 +331,17 @@ mod tests {
         let after = "C:\\jdk\\bin;C:\\old";
         // An installer appended its own entry after Whichcraft applied.
         let backend = MemBackend::new().with_user([("Path", "C:\\jdk\\bin;C:\\old;C:\\installer")]);
-        save_completed(vec![path_mutation(VarScope::User, "C:\\old", after)], &backend);
+        save_completed(
+            vec![path_mutation(VarScope::User, "C:\\old", after)],
+            &backend,
+        );
 
         let result = undo_last_apply(&backend, &FileStore, None).expect("undo");
         assert!(result.conflicts.is_empty());
-        assert_eq!(backend.read_user().unwrap()["Path"].value, "C:\\old;C:\\installer");
+        assert_eq!(
+            backend.read_user().unwrap()["Path"].value,
+            "C:\\old;C:\\installer"
+        );
     }
 
     #[test]
@@ -320,11 +352,17 @@ mod tests {
         let after = compute_prepend(before, r"C:\jdk\bin").unwrap();
         let current = format!(r"{after};C:\installer;");
         let backend = MemBackend::new().with_user([("Path", leak(current))]);
-        save_completed(vec![path_mutation(VarScope::User, before, &after)], &backend);
+        save_completed(
+            vec![path_mutation(VarScope::User, before, &after)],
+            &backend,
+        );
 
         let result = undo_last_apply(&backend, &FileStore, None).unwrap();
         assert!(result.conflicts.is_empty());
-        assert_eq!(backend.read_user().unwrap()["Path"].value, format!(r"{before};C:\installer;"));
+        assert_eq!(
+            backend.read_user().unwrap()["Path"].value,
+            format!(r"{before};C:\installer;")
+        );
     }
 
     #[test]
@@ -346,7 +384,10 @@ mod tests {
 
         let result = undo_last_apply(&backend, &FileStore, None).expect("undo");
         assert_eq!(result.conflicts.len(), 1);
-        assert_eq!(backend.read_user().unwrap()["JAVA_HOME"].value, "C:\\jdk21-by-installer");
+        assert_eq!(
+            backend.read_user().unwrap()["JAVA_HOME"].value,
+            "C:\\jdk21-by-installer"
+        );
     }
 
     #[test]
@@ -354,15 +395,38 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
         let backend = MemBackend::new().with_user([("Path", "C:\\jdk\\bin;C:\\old")]);
-        save_completed(vec![path_mutation(VarScope::User, "C:\\old", "C:\\jdk\\bin;C:\\old")], &backend);
+        save_completed(
+            vec![path_mutation(
+                VarScope::User,
+                "C:\\old",
+                "C:\\jdk\\bin;C:\\old",
+            )],
+            &backend,
+        );
 
-        assert_eq!(undo_last_apply(&backend, &FileStore, None).unwrap().restored, 1);
+        assert_eq!(
+            undo_last_apply(&backend, &FileStore, None)
+                .unwrap()
+                .restored,
+            1
+        );
         // The user re-adds the JDK by hand; a second Undo must not remove it again.
         backend
-            .write_user("Path", &EnvValue::typed("C:\\jdk\\bin;C:\\old".into(), EnvValueKind::ExpandString))
+            .write_user(
+                "Path",
+                &EnvValue::typed("C:\\jdk\\bin;C:\\old".into(), EnvValueKind::ExpandString),
+            )
             .unwrap();
-        assert_eq!(undo_last_apply(&backend, &FileStore, None).unwrap().restored, 0);
-        assert_eq!(backend.read_user().unwrap()["Path"].value, "C:\\jdk\\bin;C:\\old");
+        assert_eq!(
+            undo_last_apply(&backend, &FileStore, None)
+                .unwrap()
+                .restored,
+            0
+        );
+        assert_eq!(
+            backend.read_user().unwrap()["Path"].value,
+            "C:\\jdk\\bin;C:\\old"
+        );
     }
 
     #[test]
@@ -373,7 +437,11 @@ mod tests {
             .with_system([("Path", "C:\\Windows")])
             .with_elevated(false);
         save_completed(
-            vec![path_mutation(VarScope::System, "C:\\Windows;C:\\Program Files\\nodejs\\", "C:\\Windows")],
+            vec![path_mutation(
+                VarScope::System,
+                "C:\\Windows;C:\\Program Files\\nodejs\\",
+                "C:\\Windows",
+            )],
             &backend,
         );
         let elevator = FakeElevator::new(&backend, vec![]);
@@ -391,7 +459,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
         let backend = MemBackend::new().with_user([("PATH", "C:\\jdk\\bin;C:\\old")]);
-        save_completed(vec![path_mutation(VarScope::User, "C:\\old", "C:\\jdk\\bin;C:\\old")], &backend);
+        save_completed(
+            vec![path_mutation(
+                VarScope::User,
+                "C:\\old",
+                "C:\\jdk\\bin;C:\\old",
+            )],
+            &backend,
+        );
 
         undo_last_apply(&backend, &FileStore, None).expect("undo");
         let user = backend.read_user().unwrap();

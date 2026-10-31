@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::domain::ToolInstallation;
+use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::tools::background::background_command;
 use crate::whichcraft::tools::fs_util::is_reparse_point;
 
@@ -33,12 +33,16 @@ fn probe_node(root: &Path, managed: bool) -> Option<ToolInstallation> {
     if is_reparse_point(&node_exe) || !node_exe.is_file() {
         return None;
     }
-    let version = run_version_cmd(&node_exe, &["-p", "process.version"]).unwrap_or_else(|| "unknown".into());
+    let version =
+        run_version_cmd(&node_exe, &["-p", "process.version"]).unwrap_or_else(|| "unknown".into());
     Some(ToolInstallation {
         tool: ToolKind::Node,
         vendor: "Node.js".into(),
         // `process.version` is "v24.20.0"; profiles and mise use "24.20.0".
-        version: version.trim_matches('\"').trim_start_matches('v').to_string(),
+        version: version
+            .trim_matches('\"')
+            .trim_start_matches('v')
+            .to_string(),
         root: root.to_path_buf(),
         managed,
     })
@@ -181,7 +185,10 @@ pub fn infer_root_from_command_dir(tool: ToolKind, dir: &Path) -> Option<PathBuf
         // Git puts git.exe in `cmd` and `bin`, and its tools in `mingw64\bin`.
         ToolKind::Git => {
             let up = dir.parent()?;
-            if up.file_name().is_some_and(|n| n.eq_ignore_ascii_case("mingw64")) {
+            if up
+                .file_name()
+                .is_some_and(|n| n.eq_ignore_ascii_case("mingw64"))
+            {
                 up.parent().map(Path::to_path_buf)
             } else {
                 Some(up.to_path_buf())
@@ -209,12 +216,30 @@ mod tests {
     #[test]
     fn command_folders_map_to_their_installation_root() {
         let root = |tool, dir: &str| infer_root_from_command_dir(tool, Path::new(dir)).unwrap();
-        assert_eq!(root(ToolKind::Go, "C:\\Program Files\\Go\\bin"), PathBuf::from("C:\\Program Files\\Go"));
-        assert_eq!(root(ToolKind::Flutter, "E:\\Dev\\flutter\\bin"), PathBuf::from("E:\\Dev\\flutter"));
-        assert_eq!(root(ToolKind::Java, "C:\\jdk\\bin"), PathBuf::from("C:\\jdk"));
-        assert_eq!(root(ToolKind::Node, "C:\\Program Files\\nodejs\\"), PathBuf::from("C:\\Program Files\\nodejs"));
-        assert_eq!(root(ToolKind::Git, "C:\\Program Files\\Git\\cmd"), PathBuf::from("C:\\Program Files\\Git"));
-        assert_eq!(root(ToolKind::Git, "C:\\Program Files\\Git\\bin"), PathBuf::from("C:\\Program Files\\Git"));
+        assert_eq!(
+            root(ToolKind::Go, "C:\\Program Files\\Go\\bin"),
+            PathBuf::from("C:\\Program Files\\Go")
+        );
+        assert_eq!(
+            root(ToolKind::Flutter, "E:\\Dev\\flutter\\bin"),
+            PathBuf::from("E:\\Dev\\flutter")
+        );
+        assert_eq!(
+            root(ToolKind::Java, "C:\\jdk\\bin"),
+            PathBuf::from("C:\\jdk")
+        );
+        assert_eq!(
+            root(ToolKind::Node, "C:\\Program Files\\nodejs\\"),
+            PathBuf::from("C:\\Program Files\\nodejs")
+        );
+        assert_eq!(
+            root(ToolKind::Git, "C:\\Program Files\\Git\\cmd"),
+            PathBuf::from("C:\\Program Files\\Git")
+        );
+        assert_eq!(
+            root(ToolKind::Git, "C:\\Program Files\\Git\\bin"),
+            PathBuf::from("C:\\Program Files\\Git")
+        );
         assert_eq!(
             root(ToolKind::Git, "C:\\Program Files\\Git\\mingw64\\bin"),
             PathBuf::from("C:\\Program Files\\Git")

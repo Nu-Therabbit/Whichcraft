@@ -22,10 +22,9 @@ pub fn load_tool_selection(tool: ToolKind) -> Result<Option<ToolSelection>, Enva
     let Some(node) = parsed.get(key) else {
         return Ok(None);
     };
-    Ok(Some(
-        serde_json::from_value(node.clone())
-            .map_err(|e| EnvarlyError::Snapshot(format!("Cannot parse tool selection: {e}")))?,
-    ))
+    Ok(Some(serde_json::from_value(node.clone()).map_err(|e| {
+        EnvarlyError::Snapshot(format!("Cannot parse tool selection: {e}"))
+    })?))
 }
 
 pub fn save_tool_selection(selection: &ToolSelection) -> Result<(), EnvarlyError> {

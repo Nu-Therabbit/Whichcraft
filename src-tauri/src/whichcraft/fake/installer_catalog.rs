@@ -11,7 +11,12 @@ pub struct FakeInstallerCatalog {
 
 impl InstallerCatalog for FakeInstallerCatalog {
     fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, EnvarlyError> {
-        Ok(self.entries.iter().filter(|e| e.install_root == root).cloned().collect())
+        Ok(self
+            .entries
+            .iter()
+            .filter(|e| e.install_root == root)
+            .cloned()
+            .collect())
     }
 }
 
@@ -30,12 +35,15 @@ pub struct CountingCatalogs {
     pub invalidations: std::sync::atomic::AtomicUsize,
 }
 
-impl crate::whichcraft::ports::installer_catalog::InstallerCatalogSource for std::sync::Arc<CountingCatalogs> {
+impl crate::whichcraft::ports::installer_catalog::InstallerCatalogSource
+    for std::sync::Arc<CountingCatalogs>
+{
     fn load(&self) -> Result<Box<dyn InstallerCatalog>, EnvarlyError> {
         Ok(Box::new(FakeInstallerCatalog::default()))
     }
 
     fn invalidate(&self) {
-        self.invalidations.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.invalidations
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     }
 }

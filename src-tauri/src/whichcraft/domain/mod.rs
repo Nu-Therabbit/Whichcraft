@@ -45,7 +45,11 @@ mod tests {
             let text = std::fs::read_to_string(entry.path()).unwrap();
             let code = text.split("#[cfg(test)]").next().unwrap();
             for word in forbidden {
-                assert!(!code.contains(word), "{} uses {word}", entry.path().display());
+                assert!(
+                    !code.contains(word),
+                    "{} uses {word}",
+                    entry.path().display()
+                );
             }
         }
     }

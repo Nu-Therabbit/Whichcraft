@@ -48,37 +48,15 @@ fn records_selection_default() -> bool {
 
 pub fn path_dirs_for_tool(installation: &ToolInstallation) -> Vec<String> {
     match installation.tool {
-        ToolKind::Java => vec![
-            installation.root.join("bin").to_string_lossy().into_owned(),
-        ],
+        ToolKind::Java => vec![installation.root.join("bin").to_string_lossy().into_owned()],
         ToolKind::Node | ToolKind::Python => {
             vec![installation.root.to_string_lossy().into_owned()]
         }
-        ToolKind::Go => vec![
-            installation
-                .root
-                .join("bin")
-                .to_string_lossy()
-                .into_owned(),
-        ],
-        ToolKind::Flutter => vec![
-            installation
-                .root
-                .join("bin")
-                .to_string_lossy()
-                .into_owned(),
-        ],
+        ToolKind::Go => vec![installation.root.join("bin").to_string_lossy().into_owned()],
+        ToolKind::Flutter => vec![installation.root.join("bin").to_string_lossy().into_owned()],
         ToolKind::Git => vec![
-            installation
-                .root
-                .join("cmd")
-                .to_string_lossy()
-                .into_owned(),
-            installation
-                .root
-                .join("bin")
-                .to_string_lossy()
-                .into_owned(),
+            installation.root.join("cmd").to_string_lossy().into_owned(),
+            installation.root.join("bin").to_string_lossy().into_owned(),
         ],
     }
 }

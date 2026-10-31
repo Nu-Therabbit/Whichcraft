@@ -63,7 +63,9 @@ mod tests {
             let address = listener.local_addr().unwrap();
             let server = std::thread::spawn(move || {
                 let (mut socket, _) = listener.accept().unwrap();
-                socket.set_read_timeout(Some(std::time::Duration::from_secs(5))).unwrap();
+                socket
+                    .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                    .unwrap();
                 let mut request = [0; 4096];
                 let count = socket.read(&mut request).unwrap();
                 assert!(request[..count].starts_with(b"HEAD "));
@@ -73,10 +75,19 @@ mod tests {
             server.join().unwrap();
             result
         }
-        assert_eq!(lookup("HTTP/1.1 200 OK\r\nContent-Length: 35604229\r\nConnection: close\r\n\r\n"), Some(35_604_229));
+        assert_eq!(
+            lookup("HTTP/1.1 200 OK\r\nContent-Length: 35604229\r\nConnection: close\r\n\r\n"),
+            Some(35_604_229)
+        );
         assert_eq!(lookup("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n"), None);
-        assert_eq!(lookup("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"), None);
-        assert_eq!(lookup("HTTP/1.1 404 Not Found\r\nContent-Length: 12\r\nConnection: close\r\n\r\n"), None);
+        assert_eq!(
+            lookup("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"),
+            None
+        );
+        assert_eq!(
+            lookup("HTTP/1.1 404 Not Found\r\nContent-Length: 12\r\nConnection: close\r\n\r\n"),
+            None
+        );
     }
 
     #[test]
@@ -86,9 +97,18 @@ mod tests {
             seen.lock().unwrap().push(url.to_string());
             Ok(Some(42))
         };
-        assert_eq!(download_size(ToolKind::Node, "22.23.4", head).unwrap(), Some(42));
-        assert_eq!(download_size(ToolKind::Go, "1.26.10", head).unwrap(), Some(42));
-        assert_eq!(download_size(ToolKind::Flutter, "3.47.7", head).unwrap(), Some(42));
+        assert_eq!(
+            download_size(ToolKind::Node, "22.23.4", head).unwrap(),
+            Some(42)
+        );
+        assert_eq!(
+            download_size(ToolKind::Go, "1.26.10", head).unwrap(),
+            Some(42)
+        );
+        assert_eq!(
+            download_size(ToolKind::Flutter, "3.47.7", head).unwrap(),
+            Some(42)
+        );
         assert_eq!(
             *seen.lock().unwrap(),
             vec![
@@ -102,7 +122,13 @@ mod tests {
     #[test]
     fn tools_without_a_predictable_url_report_an_unknown_size() {
         let head = |_: &str| -> Result<Option<u64>, EnvarlyError> { panic!("no request expected") };
-        assert_eq!(download_size(ToolKind::Java, "21.0.12+101.0.LTS", head).unwrap(), None);
-        assert_eq!(download_size(ToolKind::Python, "3.13.17", head).unwrap(), None);
+        assert_eq!(
+            download_size(ToolKind::Java, "21.0.12+101.0.LTS", head).unwrap(),
+            None
+        );
+        assert_eq!(
+            download_size(ToolKind::Python, "3.13.17", head).unwrap(),
+            None
+        );
     }
 }

@@ -7,7 +7,9 @@ use crate::error::EnvarlyError;
 use crate::whichcraft::application::app::DownloadSize;
 use crate::whichcraft::application::path_cleanup::PathCleanupPlan;
 use crate::whichcraft::application::recovery::RecoveryView;
-use crate::whichcraft::application::supplemental_inventory::{AndroidInventory, MsvcInventory, PythonSupplementalView};
+use crate::whichcraft::application::supplemental_inventory::{
+    AndroidInventory, MsvcInventory, PythonSupplementalView,
+};
 use crate::whichcraft::application::terminal::ShellCheck;
 use crate::whichcraft::application::tool_apply::ApplyToolResult;
 use crate::whichcraft::application::undo::UndoResult;
@@ -31,8 +33,12 @@ async fn off_main<T: Send + 'static>(
 }
 
 #[tauri::command]
-pub async fn whichcraft_list_tools(tool: ToolKind, refresh_catalog: Option<bool>) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
-    off_main(move || windows_app().list_tools_with_refresh(tool, refresh_catalog.unwrap_or(false))).await
+pub async fn whichcraft_list_tools(
+    tool: ToolKind,
+    refresh_catalog: Option<bool>,
+) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
+    off_main(move || windows_app().list_tools_with_refresh(tool, refresh_catalog.unwrap_or(false)))
+        .await
 }
 
 #[tauri::command]
@@ -46,17 +52,24 @@ pub fn whichcraft_save_settings(settings: WhichcraftSettings) -> Result<(), Enva
 }
 
 #[tauri::command]
-pub async fn whichcraft_plan_tool(root: String, tool: ToolKind) -> Result<ToolApplyPlan, EnvarlyError> {
+pub async fn whichcraft_plan_tool(
+    root: String,
+    tool: ToolKind,
+) -> Result<ToolApplyPlan, EnvarlyError> {
     off_main(move || windows_app().plan_switch(tool, Path::new(&root))).await
 }
 
 #[tauri::command]
-pub async fn whichcraft_apply_tool_plan(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
+pub async fn whichcraft_apply_tool_plan(
+    plan: ToolApplyPlan,
+) -> Result<ApplyToolResult, EnvarlyError> {
     off_main(move || windows_app().apply(&plan, false)).await
 }
 
 #[tauri::command]
-pub async fn whichcraft_apply_tool_plan_with_uac(plan: ToolApplyPlan) -> Result<ApplyToolResult, EnvarlyError> {
+pub async fn whichcraft_apply_tool_plan_with_uac(
+    plan: ToolApplyPlan,
+) -> Result<ApplyToolResult, EnvarlyError> {
     off_main(move || windows_app().apply(&plan, true)).await
 }
 
@@ -96,24 +109,39 @@ pub async fn whichcraft_roll_back_apply(journal_id: String) -> Result<UndoResult
 }
 
 #[tauri::command]
-pub async fn whichcraft_list_remote_versions(tool: ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError> {
+pub async fn whichcraft_list_remote_versions(
+    tool: ToolKind,
+) -> Result<Vec<RemoteVersion>, EnvarlyError> {
     off_main(move || windows_app().remote_versions(tool)).await
 }
 
 /// Whether the pinned mise still has to be downloaded before the first install, and its size.
 #[tauri::command]
-pub fn whichcraft_mise_status() -> Result<crate::whichcraft::ports::installer_lifecycle::MiseStatus, EnvarlyError> {
+pub fn whichcraft_mise_status(
+) -> Result<crate::whichcraft::ports::installer_lifecycle::MiseStatus, EnvarlyError> {
     windows_app().mise_status()
 }
 
 #[tauri::command]
-pub async fn whichcraft_download_size(tool: ToolKind, version: String) -> Result<DownloadSize, EnvarlyError> {
+pub async fn whichcraft_download_size(
+    tool: ToolKind,
+    version: String,
+) -> Result<DownloadSize, EnvarlyError> {
     off_main(move || windows_app().download_size(tool, &version)).await
 }
 
 #[tauri::command]
-pub async fn whichcraft_install_managed(tool: ToolKind, version: String) -> Result<String, EnvarlyError> {
-    off_main(move || Ok(windows_app().install(tool, &version)?.to_string_lossy().into_owned())).await
+pub async fn whichcraft_install_managed(
+    tool: ToolKind,
+    version: String,
+) -> Result<String, EnvarlyError> {
+    off_main(move || {
+        Ok(windows_app()
+            .install(tool, &version)?
+            .to_string_lossy()
+            .into_owned())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -127,7 +155,9 @@ pub fn whichcraft_save_profiles(profiles: Vec<ToolProfile>) -> Result<(), Envarl
 }
 
 #[tauri::command]
-pub async fn whichcraft_profile_status(profile: ToolProfile) -> Result<ProfileMatchStatus, EnvarlyError> {
+pub async fn whichcraft_profile_status(
+    profile: ToolProfile,
+) -> Result<ProfileMatchStatus, EnvarlyError> {
     off_main(move || windows_app().profile_status(&profile)).await
 }
 
@@ -152,7 +182,10 @@ pub fn whichcraft_msvc_inventory() -> MsvcInventory {
 }
 
 #[tauri::command]
-pub async fn whichcraft_plan_uninstall(tool: ToolKind, root: String) -> Result<UninstallPlan, EnvarlyError> {
+pub async fn whichcraft_plan_uninstall(
+    tool: ToolKind,
+    root: String,
+) -> Result<UninstallPlan, EnvarlyError> {
     off_main(move || windows_app().plan_uninstall(tool, Path::new(&root))).await
 }
 
@@ -166,12 +199,17 @@ pub async fn whichcraft_uninstall(
 }
 
 #[tauri::command]
-pub async fn whichcraft_update_candidates(tool: ToolKind) -> Result<Vec<UpdateCandidate>, EnvarlyError> {
+pub async fn whichcraft_update_candidates(
+    tool: ToolKind,
+) -> Result<Vec<UpdateCandidate>, EnvarlyError> {
     off_main(move || windows_app().update_candidates(tool)).await
 }
 
 #[tauri::command]
-pub async fn whichcraft_update_installation(tool: ToolKind, version: String) -> Result<UpdateResult, EnvarlyError> {
+pub async fn whichcraft_update_installation(
+    tool: ToolKind,
+    version: String,
+) -> Result<UpdateResult, EnvarlyError> {
     off_main(move || windows_app().update(tool, &version)).await
 }
 
@@ -183,7 +221,9 @@ pub async fn whichcraft_prepare_mise() -> Result<bool, EnvarlyError> {
 }
 
 #[tauri::command]
-pub async fn whichcraft_profile_missing(profile: ToolProfile) -> Result<Vec<MissingPin>, EnvarlyError> {
+pub async fn whichcraft_profile_missing(
+    profile: ToolProfile,
+) -> Result<Vec<MissingPin>, EnvarlyError> {
     off_main(move || windows_app().profile_missing(&profile)).await
 }
 
@@ -193,12 +233,17 @@ pub async fn whichcraft_install_missing(profile: ToolProfile) -> Result<(), Enva
 }
 
 #[tauri::command]
-pub fn whichcraft_profiles_using(installation: ToolInstallation) -> Result<Vec<String>, EnvarlyError> {
+pub fn whichcraft_profiles_using(
+    installation: ToolInstallation,
+) -> Result<Vec<String>, EnvarlyError> {
     windows_app().profiles_using(&installation)
 }
 
 #[tauri::command]
-pub fn whichcraft_repoint_profiles(from: ToolInstallation, to: ToolInstallation) -> Result<Vec<String>, EnvarlyError> {
+pub fn whichcraft_repoint_profiles(
+    from: ToolInstallation,
+    to: ToolInstallation,
+) -> Result<Vec<String>, EnvarlyError> {
     windows_app().repoint_profiles(&from, &to)
 }
 

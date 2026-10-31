@@ -8,7 +8,6 @@ mod crypto;
 mod env_backend;
 mod env_store;
 mod error;
-mod whichcraft;
 pub mod export;
 mod import;
 mod model;
@@ -19,6 +18,7 @@ mod path_manage;
 mod snapshot;
 #[cfg(windows)]
 mod user_hive;
+mod whichcraft;
 
 #[cfg(windows)]
 fn launch_args() -> Vec<String> {

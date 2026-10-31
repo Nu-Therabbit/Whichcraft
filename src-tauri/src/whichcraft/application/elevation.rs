@@ -11,8 +11,8 @@ use sha2::{Digest, Sha256};
 use crate::env_store::{self, EnvBackend};
 use crate::error::EnvarlyError;
 use crate::model::{EnvChange, VarScope};
-use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest};
 use crate::whichcraft::domain::env::get_var;
+use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest};
 
 pub const EXIT_APPLIED: i32 = 0;
 pub const EXIT_FAILED: i32 = 1;
@@ -42,7 +42,11 @@ pub fn run_elevated_request<B: EnvBackend>(
         Ok(r) => r,
         Err(e) => return ElevatedOutcome::Failed(format!("parse elevation request: {e}")),
     };
-    if let Some(bad) = request.changes.iter().find(|c| change_scope(&c.change) != &VarScope::System) {
+    if let Some(bad) = request
+        .changes
+        .iter()
+        .find(|c| change_scope(&c.change) != &VarScope::System)
+    {
         return ElevatedOutcome::Failed(format!(
             "elevated helper only writes System scope, got {:?}",
             change_scope(&bad.change)
@@ -107,7 +111,10 @@ mod tests {
     fn applies_a_request_that_matches_its_hash() {
         let b = MemBackend::new().with_system([("Path", "C:\\a;C:\\node")]);
         let (bytes, hash) = encode_request(&set_system_path("C:\\a;C:\\node", "C:\\a")).unwrap();
-        assert_eq!(run_elevated_request(&b, &bytes, &hash), ElevatedOutcome::Applied);
+        assert_eq!(
+            run_elevated_request(&b, &bytes, &hash),
+            ElevatedOutcome::Applied
+        );
         assert_eq!(system_path(&b), "C:\\a");
     }
 
@@ -116,7 +123,10 @@ mod tests {
         let b = MemBackend::new().with_system([("Path", "C:\\a;C:\\node")]);
         let (_, hash) = encode_request(&set_system_path("C:\\a;C:\\node", "C:\\a")).unwrap();
         let (tampered, _) = encode_request(&set_system_path("C:\\a;C:\\node", "C:\\evil")).unwrap();
-        assert!(matches!(run_elevated_request(&b, &tampered, &hash), ElevatedOutcome::Failed(_)));
+        assert!(matches!(
+            run_elevated_request(&b, &tampered, &hash),
+            ElevatedOutcome::Failed(_)
+        ));
         assert_eq!(system_path(&b), "C:\\a;C:\\node");
     }
 
@@ -135,7 +145,10 @@ mod tests {
             }],
         };
         let (bytes, hash) = encode_request(&request).unwrap();
-        assert!(matches!(run_elevated_request(&b, &bytes, &hash), ElevatedOutcome::Failed(_)));
+        assert!(matches!(
+            run_elevated_request(&b, &bytes, &hash),
+            ElevatedOutcome::Failed(_)
+        ));
         assert_eq!(b.read_user().unwrap()["JAVA_HOME"].value, "C:\\old");
     }
 
@@ -143,7 +156,10 @@ mod tests {
     fn reports_stale_when_system_changed_after_planning() {
         let b = MemBackend::new().with_system([("Path", "C:\\a;C:\\node;C:\\added-meanwhile")]);
         let (bytes, hash) = encode_request(&set_system_path("C:\\a;C:\\node", "C:\\a")).unwrap();
-        assert_eq!(run_elevated_request(&b, &bytes, &hash), ElevatedOutcome::Stale);
+        assert_eq!(
+            run_elevated_request(&b, &bytes, &hash),
+            ElevatedOutcome::Stale
+        );
         assert_eq!(system_path(&b), "C:\\a;C:\\node;C:\\added-meanwhile");
     }
 }

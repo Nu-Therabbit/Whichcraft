@@ -4,8 +4,10 @@ mod journal_store;
 mod selection_store;
 
 pub use config_store::{load_settings, save_settings};
-pub use journal_store::{load_incomplete_journal, load_journal, load_last_completed_apply, save_journal};
 pub use file_store::FileStore;
+pub use journal_store::{
+    load_incomplete_journal, load_journal, load_last_completed_apply, save_journal,
+};
 pub use selection_store::{load_tool_selection, save_tool_selection};
 
 use std::path::PathBuf;

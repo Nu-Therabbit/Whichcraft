@@ -21,7 +21,8 @@ pub fn load_settings() -> Result<WhichcraftSettings, EnvarlyError> {
     let mut settings = if path.is_file() {
         let text = std::fs::read_to_string(&path)
             .map_err(|e| EnvarlyError::Snapshot(format!("read settings: {e}")))?;
-        serde_json::from_str(&text).map_err(|e| EnvarlyError::Snapshot(format!("parse settings: {e}")))?
+        serde_json::from_str(&text)
+            .map_err(|e| EnvarlyError::Snapshot(format!("parse settings: {e}")))?
     } else {
         WhichcraftSettings::default()
     };
@@ -35,6 +36,5 @@ pub fn save_settings(settings: &WhichcraftSettings) -> Result<(), EnvarlyError> 
     let path = settings_path()?;
     let text = serde_json::to_string_pretty(settings)
         .map_err(|e| EnvarlyError::Snapshot(format!("serialize settings: {e}")))?;
-    std::fs::write(&path, text)
-        .map_err(|e| EnvarlyError::Snapshot(format!("write settings: {e}")))
+    std::fs::write(&path, text).map_err(|e| EnvarlyError::Snapshot(format!("write settings: {e}")))
 }

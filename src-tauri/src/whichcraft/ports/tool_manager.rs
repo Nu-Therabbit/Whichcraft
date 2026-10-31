@@ -1,6 +1,6 @@
 use crate::error::EnvarlyError;
-use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::domain::versions::RemoteVersion;
+use crate::whichcraft::domain::ToolKind;
 
 pub trait ToolManager: Send + Sync {
     /// Installs `version` into the install store and returns the installation's root.

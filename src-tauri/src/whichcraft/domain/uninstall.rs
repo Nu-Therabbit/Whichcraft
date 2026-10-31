@@ -7,10 +7,17 @@ use serde::{Deserialize, Serialize};
 use super::installation::ToolInstallation;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "kind"
+)]
 pub enum UninstallMethod {
     /// `mise uninstall` in the store that holds the installation.
-    Managed { store: PathBuf, mise_version: String },
+    Managed {
+        store: PathBuf,
+        mise_version: String,
+    },
     /// The registered uninstaller, run with its normal UI.
     Uninstaller { program: String, args: Vec<String> },
     /// Move the folder to the Recycle Bin.
@@ -26,9 +33,15 @@ pub enum UninstallOutcome {
     /// The user cancelled the uninstaller; any switch already applied stays (R-13).
     Cancelled,
     /// The uninstaller finished but the folder is still there (R-5).
-    Incomplete { remaining: PathBuf },
-    Blocked { reason: String },
-    Failed { code: i32 },
+    Incomplete {
+        remaining: PathBuf,
+    },
+    Blocked {
+        reason: String,
+    },
+    Failed {
+        code: i32,
+    },
 }
 
 /// Splits a registered command line into program and arguments, honouring double quotes.
@@ -89,8 +102,18 @@ mod tests {
             Some(("C:\\Program Files\\Git\\unins001.exe".into(), vec![]))
         );
         assert_eq!(
-            split_command_line("\"C:\\x\\pymanager.exe\" uninstall --yes --by-id \"pythoncore-3.14-64\""),
-            Some(("C:\\x\\pymanager.exe".into(), vec!["uninstall".into(), "--yes".into(), "--by-id".into(), "pythoncore-3.14-64".into()]))
+            split_command_line(
+                "\"C:\\x\\pymanager.exe\" uninstall --yes --by-id \"pythoncore-3.14-64\""
+            ),
+            Some((
+                "C:\\x\\pymanager.exe".into(),
+                vec![
+                    "uninstall".into(),
+                    "--yes".into(),
+                    "--by-id".into(),
+                    "pythoncore-3.14-64".into()
+                ]
+            ))
         );
     }
 }

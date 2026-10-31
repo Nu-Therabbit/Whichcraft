@@ -45,13 +45,16 @@ impl Store for FileStore {
         if !path.is_file() {
             return Ok(Vec::new());
         }
-        let raw = std::fs::read_to_string(&path).map_err(|e| EnvarlyError::Snapshot(format!("read profiles: {e}")))?;
-        serde_json::from_str(&raw).map_err(|e| EnvarlyError::Snapshot(format!("parse profiles: {e}")))
+        let raw = std::fs::read_to_string(&path)
+            .map_err(|e| EnvarlyError::Snapshot(format!("read profiles: {e}")))?;
+        serde_json::from_str(&raw)
+            .map_err(|e| EnvarlyError::Snapshot(format!("parse profiles: {e}")))
     }
     fn save_profiles(&self, profiles: &[ToolProfile]) -> Result<(), EnvarlyError> {
         let text = serde_json::to_string_pretty(profiles)
             .map_err(|e| EnvarlyError::Snapshot(format!("serialize profiles: {e}")))?;
-        std::fs::write(profiles_path()?, text).map_err(|e| EnvarlyError::Snapshot(format!("write profiles: {e}")))
+        std::fs::write(profiles_path()?, text)
+            .map_err(|e| EnvarlyError::Snapshot(format!("write profiles: {e}")))
     }
 
     fn save_uninstall_record(&self, record: &UninstallRecord) -> Result<(), EnvarlyError> {
@@ -79,6 +82,7 @@ fn profiles_path() -> Result<PathBuf, EnvarlyError> {
 /// there as an apply, never take an uninstall for one.
 fn uninstall_dir() -> Result<PathBuf, EnvarlyError> {
     let dir = whichcraft_data_dir()?.join("journal").join("uninstalls");
-    std::fs::create_dir_all(&dir).map_err(|e| EnvarlyError::Snapshot(format!("create uninstall journal dir: {e}")))?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| EnvarlyError::Snapshot(format!("create uninstall journal dir: {e}")))?;
     Ok(dir)
 }

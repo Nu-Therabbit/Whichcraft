@@ -3,11 +3,11 @@ use std::path::{Path, PathBuf};
 use sha2::{Digest, Sha256};
 
 use crate::error::EnvarlyError;
+use crate::whichcraft::domain::versions::RemoteVersion;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::mise::pins::{self, MISE_VERSION};
+use crate::whichcraft::ports::tool_manager::ToolManager;
 use crate::whichcraft::tools::background::background_command;
-use crate::whichcraft::ports::tool_manager::{ToolManager};
-use crate::whichcraft::domain::versions::{RemoteVersion};
 
 const FLUTTER_PLUGIN_NAME: &str = "vfox-jdx-vfox-flutter";
 const FLUTTER_PLUGIN_URL: &str = "https://github.com/jdx/vfox-flutter";
@@ -53,7 +53,11 @@ impl ProcessMiseRunner {
 
 impl MiseRunner for ProcessMiseRunner {
     fn run(&self, args: &[&str]) -> Result<MiseOutput, EnvarlyError> {
-        let exe = if self.maintenance { maintenance_mise()? } else { ensure_mise()? };
+        let exe = if self.maintenance {
+            maintenance_mise()?
+        } else {
+            ensure_mise()?
+        };
         let mut cmd = background_command(&exe);
         for (k, v) in mise_env(&self.store) {
             cmd.env(k, v);
@@ -72,13 +76,29 @@ impl MiseRunner for ProcessMiseRunner {
 
 pub fn mise_env(store: &Path) -> Vec<(String, String)> {
     vec![
-        ("MISE_DATA_DIR".into(), store.join("data").to_string_lossy().into_owned()),
-        ("MISE_CACHE_DIR".into(), store.join("cache").to_string_lossy().into_owned()),
-        ("MISE_STATE_DIR".into(), store.join("state").to_string_lossy().into_owned()),
-        ("MISE_CONFIG_DIR".into(), store.join("config").to_string_lossy().into_owned()),
+        (
+            "MISE_DATA_DIR".into(),
+            store.join("data").to_string_lossy().into_owned(),
+        ),
+        (
+            "MISE_CACHE_DIR".into(),
+            store.join("cache").to_string_lossy().into_owned(),
+        ),
+        (
+            "MISE_STATE_DIR".into(),
+            store.join("state").to_string_lossy().into_owned(),
+        ),
+        (
+            "MISE_CONFIG_DIR".into(),
+            store.join("config").to_string_lossy().into_owned(),
+        ),
         (
             "MISE_GLOBAL_CONFIG_FILE".into(),
-            store.join("config").join("config.toml").to_string_lossy().into_owned(),
+            store
+                .join("config")
+                .join("config.toml")
+                .to_string_lossy()
+                .into_owned(),
         ),
     ]
 }
@@ -92,7 +112,9 @@ pub struct MiseToolManagers;
 
 impl crate::whichcraft::ports::tool_manager::ToolManagers for MiseToolManagers {
     fn for_store(&self, install_store: &Path) -> Box<dyn ToolManager> {
-        Box::new(MiseToolManager::with_runner(ProcessMiseRunner::for_store(install_store)))
+        Box::new(MiseToolManager::with_runner(ProcessMiseRunner::for_store(
+            install_store,
+        )))
     }
 }
 
@@ -174,7 +196,11 @@ impl<R: MiseRunner + Send + Sync> ToolManager for MiseToolManager<R> {
     }
 
     fn download_size(&self, tool: ToolKind, version: &str) -> Result<Option<u64>, EnvarlyError> {
-        crate::whichcraft::mise::sizes::download_size(tool, version, crate::whichcraft::mise::sizes::http_content_length)
+        crate::whichcraft::mise::sizes::download_size(
+            tool,
+            version,
+            crate::whichcraft::mise::sizes::http_content_length,
+        )
     }
 
     fn list_remote(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError> {
@@ -224,7 +250,9 @@ fn mise_version(tool: ToolKind, version: &str) -> String {
 
 fn display_version(tool: ToolKind, mise_version: &str) -> String {
     if tool == ToolKind::Java {
-        mise_version.trim_start_matches(JAVA_VENDOR_PREFIX).to_string()
+        mise_version
+            .trim_start_matches(JAVA_VENDOR_PREFIX)
+            .to_string()
     } else {
         mise_version.to_string()
     }
@@ -268,7 +296,10 @@ pub fn mise_status() -> Result<MiseStatus, EnvarlyError> {
         version: pinned_version().to_string(),
         present: mise_store_dir()?.join("mise.exe").is_file(),
         download_bytes: pins::MISE_WINDOWS_X64_ZIP_BYTES,
-        old_versions: older_mise(&mise_root()?, pinned_version()).into_iter().map(|(v, _)| v).collect(),
+        old_versions: older_mise(&mise_root()?, pinned_version())
+            .into_iter()
+            .map(|(v, _)| v)
+            .collect(),
         fetching: FETCHING.load(std::sync::atomic::Ordering::SeqCst),
     })
 }
@@ -286,7 +317,9 @@ fn version_key(version: &str) -> Vec<u64> {
 /// Version folders under `root` (`<data>\mise`) other than `pinned` that still hold a mise.exe,
 /// newest first.
 fn older_mise(root: &Path, pinned: &str) -> Vec<(String, PathBuf)> {
-    let Ok(entries) = std::fs::read_dir(root) else { return Vec::new() };
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return Vec::new();
+    };
     let mut found: Vec<(String, PathBuf)> = entries
         .flatten()
         .filter_map(|e| {
@@ -305,7 +338,10 @@ fn maintenance_choice(root: &Path, pinned: &str) -> Option<PathBuf> {
     if root.join(pinned).join("mise.exe").is_file() {
         return None;
     }
-    older_mise(root, pinned).into_iter().next().map(|(_, exe)| exe)
+    older_mise(root, pinned)
+        .into_iter()
+        .next()
+        .map(|(_, exe)| exe)
 }
 
 fn maintenance_mise() -> Result<PathBuf, EnvarlyError> {
@@ -318,7 +354,11 @@ fn maintenance_mise() -> Result<PathBuf, EnvarlyError> {
 /// After an app update that pins a newer mise: fetch it if an older one shows that managed
 /// installations exist, and remove the older ones once the new one has passed its hash check.
 /// Returns whether anything was fetched.
-fn prepare_in(root: &Path, pinned: &str, fetch: impl FnOnce() -> Result<PathBuf, EnvarlyError>) -> Result<bool, EnvarlyError> {
+fn prepare_in(
+    root: &Path,
+    pinned: &str,
+    fetch: impl FnOnce() -> Result<PathBuf, EnvarlyError>,
+) -> Result<bool, EnvarlyError> {
     let old = older_mise(root, pinned);
     if old.is_empty() {
         return Ok(false);
@@ -428,7 +468,9 @@ fn verified_mise(
 
     let zip_bytes = fetch_zip()?;
     if sha256_hex(&zip_bytes) != pins.zip_sha256 {
-        return Err(EnvarlyError::InvalidInput("mise download SHA256 mismatch".into()));
+        return Err(EnvarlyError::InvalidInput(
+            "mise download SHA256 mismatch".into(),
+        ));
     }
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(zip_bytes))
         .map_err(|e| EnvarlyError::InvalidInput(format!("zip: {e}")))?;
@@ -438,7 +480,10 @@ fn verified_mise(
         let mut file = archive
             .by_index(i)
             .map_err(|e| EnvarlyError::InvalidInput(format!("zip entry: {e}")))?;
-        if file.name().ends_with("/mise.exe") || file.name() == "mise.exe" {
+        let name = file
+            .name()
+            .map_err(|e| EnvarlyError::InvalidInput(format!("zip entry name: {e}")))?;
+        if name.ends_with("/mise.exe") || name == "mise.exe" {
             std::io::Read::read_to_end(&mut file, &mut exe_bytes)
                 .map_err(|e| EnvarlyError::InvalidInput(format!("extract mise: {e}")))?;
             found = true;
@@ -446,10 +491,14 @@ fn verified_mise(
         }
     }
     if !found {
-        return Err(EnvarlyError::InvalidInput("mise.exe not found in zip".into()));
+        return Err(EnvarlyError::InvalidInput(
+            "mise.exe not found in zip".into(),
+        ));
     }
     if sha256_hex(&exe_bytes) != pins.exe_sha256 {
-        return Err(EnvarlyError::InvalidInput("extracted mise.exe SHA256 mismatch".into()));
+        return Err(EnvarlyError::InvalidInput(
+            "extracted mise.exe SHA256 mismatch".into(),
+        ));
     }
 
     std::fs::create_dir_all(dir)
@@ -494,7 +543,12 @@ mod tests {
             self.calls.lock().unwrap().push(key.clone());
             Ok(MiseOutput {
                 success: !self.failing.contains(&key),
-                stdout: self.replies.get(&key).cloned().unwrap_or_default().into_bytes(),
+                stdout: self
+                    .replies
+                    .get(&key)
+                    .cloned()
+                    .unwrap_or_default()
+                    .into_bytes(),
                 stderr: b"network unreachable".to_vec(),
             })
         }
@@ -507,7 +561,10 @@ mod tests {
         assert!(err.to_string().contains("network unreachable"));
         assert_eq!(
             *mgr.runner.calls.lock().unwrap(),
-            vec!["install node@22.23.4".to_string(), "uninstall node@22.23.4".to_string()]
+            vec![
+                "install node@22.23.4".to_string(),
+                "uninstall node@22.23.4".to_string()
+            ]
         );
     }
 
@@ -527,9 +584,17 @@ mod tests {
         let cache = std::sync::Mutex::new(Some(exe.clone()));
 
         assert_eq!(reusable_mise(&cache, &dir), Some(exe.clone()));
-        assert_eq!(reusable_mise(&cache, &second.path().join("2026.1.0")), None, "another data dir");
+        assert_eq!(
+            reusable_mise(&cache, &second.path().join("2026.1.0")),
+            None,
+            "another data dir"
+        );
         std::fs::remove_file(&exe).unwrap();
-        assert_eq!(reusable_mise(&cache, &dir), None, "deleted since it was verified");
+        assert_eq!(
+            reusable_mise(&cache, &dir),
+            None,
+            "deleted since it was verified"
+        );
         assert_eq!(reusable_mise(&std::sync::Mutex::new(None), &dir), None);
     }
 
@@ -539,20 +604,35 @@ mod tests {
         put_mise(dir.path(), "2026.2.1");
         let newest_old = put_mise(dir.path(), "2026.10.3");
         put_mise(dir.path(), "2026.9.30");
-        assert_eq!(maintenance_choice(dir.path(), "2026.11.0"), Some(newest_old));
+        assert_eq!(
+            maintenance_choice(dir.path(), "2026.11.0"),
+            Some(newest_old)
+        );
         put_mise(dir.path(), "2026.11.0");
-        assert_eq!(maintenance_choice(dir.path(), "2026.11.0"), None, "the pinned one is used once present");
+        assert_eq!(
+            maintenance_choice(dir.path(), "2026.11.0"),
+            None,
+            "the pinned one is used once present"
+        );
     }
 
     #[test]
     fn old_mise_is_removed_only_after_the_new_one_verifies() {
         let dir = tempfile::tempdir().unwrap();
         let old = put_mise(dir.path(), "2026.10.3");
-        let err = prepare_in(dir.path(), "2026.11.0", || Err(EnvarlyError::InvalidInput("offline".into())));
+        let err = prepare_in(dir.path(), "2026.11.0", || {
+            Err(EnvarlyError::InvalidInput("offline".into()))
+        });
         assert!(err.is_err());
-        assert!(old.exists(), "offline: the old mise stays usable for uninstall and listing");
+        assert!(
+            old.exists(),
+            "offline: the old mise stays usable for uninstall and listing"
+        );
 
-        let fetched = prepare_in(dir.path(), "2026.11.0", || Ok(put_mise(dir.path(), "2026.11.0"))).unwrap();
+        let fetched = prepare_in(dir.path(), "2026.11.0", || {
+            Ok(put_mise(dir.path(), "2026.11.0"))
+        })
+        .unwrap();
         assert!(fetched);
         assert!(!old.exists());
         assert_eq!(maintenance_choice(dir.path(), "2026.11.0"), None);
@@ -568,7 +648,8 @@ mod tests {
     #[test]
     fn uninstall_names_the_version_the_way_mise_stored_it() {
         let mgr = MiseToolManager::with_runner(FakeRunner::default());
-        mgr.uninstall(ToolKind::Java, "temurin-21.0.12+101.0.LTS").unwrap();
+        mgr.uninstall(ToolKind::Java, "temurin-21.0.12+101.0.LTS")
+            .unwrap();
         mgr.uninstall(ToolKind::Flutter, "3.32.4-stable").unwrap();
         assert_eq!(
             *mgr.runner.calls.lock().unwrap(),
@@ -584,8 +665,11 @@ mod tests {
 
     #[test]
     fn java_installs_as_temurin_vendor_of_java_tool() {
-        let mgr = MiseToolManager::with_runner(FakeRunner::default().reply("ls --json java", JAVA_LS));
-        let path = mgr.install(ToolKind::Java, "21.0.12+101.0.LTS").expect("install");
+        let mgr =
+            MiseToolManager::with_runner(FakeRunner::default().reply("ls --json java", JAVA_LS));
+        let path = mgr
+            .install(ToolKind::Java, "21.0.12+101.0.LTS")
+            .expect("install");
         assert_eq!(
             mgr.runner.calls.lock().unwrap().first().map(String::as_str),
             Some("install java@temurin-21.0.12+101.0.LTS")
@@ -596,7 +680,9 @@ mod tests {
     #[test]
     fn java_remote_versions_are_temurin_only() {
         let remote = r#"[{"version":"graalvm-community-25.0.3"},{"version":"temurin-21.0.12+101.0.LTS"},{"version":"zulu-21.0.1"}]"#;
-        let mgr = MiseToolManager::with_runner(FakeRunner::default().reply("ls-remote --json java", remote));
+        let mgr = MiseToolManager::with_runner(
+            FakeRunner::default().reply("ls-remote --json java", remote),
+        );
         let versions = mgr.list_remote(ToolKind::Java).unwrap();
         assert_eq!(versions.len(), 1);
         assert_eq!(versions[0].version, "21.0.12+101.0.LTS");
@@ -607,7 +693,10 @@ mod tests {
     fn install_path_matches_the_exact_version_only() {
         let ls = r#"[{"version":"22.13.0","install_path":"C:\\n\\22.13.0"},{"version":"22.1.0","install_path":"C:\\n\\22.1.0"}]"#;
         let mgr = MiseToolManager::with_runner(FakeRunner::default().reply("ls --json node", ls));
-        assert_eq!(mgr.install_path(ToolKind::Node, "22.1.0").unwrap(), PathBuf::from("C:\\n\\22.1.0"));
+        assert_eq!(
+            mgr.install_path(ToolKind::Node, "22.1.0").unwrap(),
+            PathBuf::from("C:\\n\\22.1.0")
+        );
         assert!(mgr.install_path(ToolKind::Node, "22.1").is_err());
     }
 
@@ -624,8 +713,14 @@ mod tests {
             "plugins install vfox-jdx-vfox-flutter https://github.com/jdx/vfox-flutter#{}",
             pins::VFOX_FLUTTER_PLUGIN_SHA
         );
-        let pin_at = calls.iter().position(|c| *c == pinned).expect("plugin installed at full SHA");
-        let install_at = calls.iter().position(|c| c.starts_with("install ")).unwrap();
+        let pin_at = calls
+            .iter()
+            .position(|c| *c == pinned)
+            .expect("plugin installed at full SHA");
+        let install_at = calls
+            .iter()
+            .position(|c| c.starts_with("install "))
+            .unwrap();
         assert!(pin_at < install_at);
     }
 
@@ -648,15 +743,24 @@ mod tests {
             "vfox-jdx-vfox-flutter  https://github.com/jdx/vfox-flutter  HEAD {}\n",
             &pins::VFOX_FLUTTER_PLUGIN_SHA[..7]
         );
-        let mgr = MiseToolManager::with_runner(FakeRunner::default().reply("plugins ls --urls --refs", &listing));
+        let mgr = MiseToolManager::with_runner(
+            FakeRunner::default().reply("plugins ls --urls --refs", &listing),
+        );
         mgr.ensure_flutter_plugin().unwrap();
-        assert_eq!(*mgr.runner.calls.lock().unwrap(), vec!["plugins ls --urls --refs".to_string()]);
+        assert_eq!(
+            *mgr.runner.calls.lock().unwrap(),
+            vec!["plugins ls --urls --refs".to_string()]
+        );
     }
 
     fn zip_with_exe(exe: &[u8]) -> Vec<u8> {
         let mut buf = std::io::Cursor::new(Vec::new());
         let mut zip = zip::ZipWriter::new(&mut buf);
-        zip.start_file("mise/bin/mise.exe", zip::write::SimpleFileOptions::default()).unwrap();
+        zip.start_file(
+            "mise/bin/mise.exe",
+            zip::write::SimpleFileOptions::default(),
+        )
+        .unwrap();
         std::io::Write::write_all(&mut zip, exe).unwrap();
         zip.finish().unwrap();
         buf.into_inner()
@@ -671,7 +775,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("mise.exe"), b"real-mise").unwrap();
         let (z, e) = pins_for(b"unused", b"real-mise");
-        let pins = MisePins { zip_sha256: &z, exe_sha256: &e };
+        let pins = MisePins {
+            zip_sha256: &z,
+            exe_sha256: &e,
+        };
         let exe = verified_mise(dir.path(), &pins, || panic!("should not download")).unwrap();
         assert_eq!(std::fs::read(exe).unwrap(), b"real-mise");
     }
@@ -682,7 +789,10 @@ mod tests {
         std::fs::write(dir.path().join("mise.exe"), b"half-writ").unwrap();
         let zip = zip_with_exe(b"real-mise");
         let (z, e) = pins_for(&zip, b"real-mise");
-        let pins = MisePins { zip_sha256: &z, exe_sha256: &e };
+        let pins = MisePins {
+            zip_sha256: &z,
+            exe_sha256: &e,
+        };
         let exe = verified_mise(dir.path(), &pins, || Ok(zip.clone())).unwrap();
         assert_eq!(std::fs::read(exe).unwrap(), b"real-mise");
         assert!(!dir.path().join("mise.exe.partial").exists());
@@ -693,7 +803,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let zip = zip_with_exe(b"tampered");
         let (_, e) = pins_for(&zip, b"real-mise");
-        let pins = MisePins { zip_sha256: "0000", exe_sha256: &e };
+        let pins = MisePins {
+            zip_sha256: "0000",
+            exe_sha256: &e,
+        };
         assert!(verified_mise(dir.path(), &pins, || Ok(zip.clone())).is_err());
         assert!(!dir.path().join("mise.exe").exists());
     }
@@ -703,7 +816,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let zip = zip_with_exe(b"other-build");
         let (z, e) = pins_for(&zip, b"real-mise");
-        let pins = MisePins { zip_sha256: &z, exe_sha256: &e };
+        let pins = MisePins {
+            zip_sha256: &z,
+            exe_sha256: &e,
+        };
         assert!(verified_mise(dir.path(), &pins, || Ok(zip.clone())).is_err());
         assert!(!dir.path().join("mise.exe").exists());
     }

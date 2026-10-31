@@ -15,5 +15,11 @@ pub fn mise_installs_dir(install_store: &Path, tool: ToolKind) -> Option<PathBuf
         ToolKind::Flutter => "vfox-jdx-vfox-flutter",
         ToolKind::Git => return None,
     };
-    Some(install_store.join("_mise").join("data").join("installs").join(name))
+    Some(
+        install_store
+            .join("_mise")
+            .join("data")
+            .join("installs")
+            .join(name),
+    )
 }

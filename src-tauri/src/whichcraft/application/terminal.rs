@@ -10,14 +10,14 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use crate::whichcraft::ports::machine::Machine;
-pub use crate::whichcraft::ports::process::{ProcessRunner, ProcessSpec};
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::path_manage;
-use crate::whichcraft::domain::ToolKind;
-use crate::whichcraft::domain::settings::TerminalKind;
 use crate::whichcraft::domain::env::get_var;
+use crate::whichcraft::domain::settings::TerminalKind;
+use crate::whichcraft::domain::ToolKind;
+use crate::whichcraft::ports::machine::Machine;
+pub use crate::whichcraft::ports::process::{ProcessRunner, ProcessSpec};
 use crate::whichcraft::tools::command_name;
 
 /// `wt.exe` treats `;` as a command separator, so it must be escaped in anything passed to it (T-3).
@@ -72,11 +72,19 @@ pub struct ShellCheck {
 }
 
 /// The executable a new process would run for `tool`: System PATH first, then User.
-pub fn effective_executable<B: EnvBackend>(backend: &B, machine: &dyn Machine, tool: ToolKind) -> Result<Option<String>, EnvarlyError> {
+pub fn effective_executable<B: EnvBackend>(
+    backend: &B,
+    machine: &dyn Machine,
+    tool: ToolKind,
+) -> Result<Option<String>, EnvarlyError> {
     let user = backend.read_user()?;
     let system = backend.read_system()?;
-    let path = |m: &HashMap<String, crate::model::EnvValue>, n: &str| get_var(m, n).map(|v| v.value.clone()).unwrap_or_default();
-    let pathext = get_var(&user, "PATHEXT").or_else(|| get_var(&system, "PATHEXT")).map(|v| v.value.clone());
+    let path = |m: &HashMap<String, crate::model::EnvValue>, n: &str| {
+        get_var(m, n).map(|v| v.value.clone()).unwrap_or_default()
+    };
+    let pathext = get_var(&user, "PATHEXT")
+        .or_else(|| get_var(&system, "PATHEXT"))
+        .map(|v| v.value.clone());
     let expand = crate::whichcraft::application::registry_expander(&user, &system, machine);
     let result = path_manage::check_command_with(
         command_name(tool),
@@ -101,7 +109,12 @@ pub fn effective_executable<B: EnvBackend>(backend: &B, machine: &dyn Machine, t
 
 /// The hidden command that asks a shell, with its profile loaded, what `command` runs.
 /// Windows Terminal is checked with its default shell, Windows PowerShell.
-pub fn shell_probe_spec(kind: TerminalKind, command: &str, env: HashMap<String, String>, dir: &Path) -> ProcessSpec {
+pub fn shell_probe_spec(
+    kind: TerminalKind,
+    command: &str,
+    env: HashMap<String, String>,
+    dir: &Path,
+) -> ProcessSpec {
     let (program, args): (&str, Vec<String>) = match kind {
         TerminalKind::Cmd => ("cmd.exe", vec!["/c".into(), "where".into(), command.into()]),
         // No -NoProfile: the point is to see what the profile does to PATH.
@@ -162,9 +175,9 @@ pub fn shell_check<B: EnvBackend>(
 
 #[cfg(test)]
 mod tests {
-    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
     use crate::env_store::MemBackend;
+    use crate::whichcraft::adapters::local::LocalMachine;
     use std::sync::Mutex;
 
     #[derive(Default)]
@@ -198,7 +211,13 @@ mod tests {
     #[test]
     fn the_terminal_gets_exactly_the_fresh_environment() {
         let runner = FakeRunner::default();
-        open_terminal(&runner, TerminalKind::PowerShell, Path::new("C:\\Users\\me"), fresh_env()).unwrap();
+        open_terminal(
+            &runner,
+            TerminalKind::PowerShell,
+            Path::new("C:\\Users\\me"),
+            fresh_env(),
+        )
+        .unwrap();
         let spawned = runner.spawned.lock().unwrap();
         assert_eq!(spawned[0].program, "powershell.exe");
         assert_eq!(spawned[0].env, fresh_env());
@@ -206,10 +225,20 @@ mod tests {
 
     #[test]
     fn windows_terminal_opens_a_new_window_and_escapes_semicolons() {
-        let spec = terminal_spec(TerminalKind::WindowsTerminal, Path::new("C:\\a;b"), fresh_env());
+        let spec = terminal_spec(
+            TerminalKind::WindowsTerminal,
+            Path::new("C:\\a;b"),
+            fresh_env(),
+        );
         assert_eq!(spec.program, "wt.exe");
-        assert_eq!(spec.args, vec!["-w", "new", "new-tab", "--startingDirectory", "C:\\a\\;b"]);
-        assert_eq!(terminal_spec(TerminalKind::Cmd, Path::new("C:\\"), fresh_env()).args, vec!["/K"]);
+        assert_eq!(
+            spec.args,
+            vec!["-w", "new", "new-tab", "--startingDirectory", "C:\\a\\;b"]
+        );
+        assert_eq!(
+            terminal_spec(TerminalKind::Cmd, Path::new("C:\\"), fresh_env()).args,
+            vec!["/K"]
+        );
     }
 
     fn node_on_disk() -> (tempfile::TempDir, String, &'static str) {
@@ -226,14 +255,32 @@ mod tests {
     fn shell_check_reports_a_profile_that_puts_another_node_first() {
         let (_dir, exe, path) = node_on_disk();
         let backend = MemBackend::new().with_system([("Path", path), ("PATHEXT", ".EXE")]);
-        let runner = FakeRunner { stdout: "C:\\profile\\node22\\node.exe\r\n".into(), ..Default::default() };
-        let check = shell_check(&backend, &LocalMachine, &runner, TerminalKind::PowerShell, ToolKind::Node, fresh_env(), Path::new("C:\\")).unwrap();
+        let runner = FakeRunner {
+            stdout: "C:\\profile\\node22\\node.exe\r\n".into(),
+            ..Default::default()
+        };
+        let check = shell_check(
+            &backend,
+            &LocalMachine,
+            &runner,
+            TerminalKind::PowerShell,
+            ToolKind::Node,
+            fresh_env(),
+            Path::new("C:\\"),
+        )
+        .unwrap();
         assert_eq!(check.effective_path.as_deref(), Some(exe.as_str()));
-        assert_eq!(check.shell_path.as_deref(), Some("C:\\profile\\node22\\node.exe"));
+        assert_eq!(
+            check.shell_path.as_deref(),
+            Some("C:\\profile\\node22\\node.exe")
+        );
         assert!(!check.matches);
         // The probe loads the profile and runs with the fresh environment.
         let ran = runner.ran.lock().unwrap();
-        assert!(!ran[0].args.iter().any(|a| a.eq_ignore_ascii_case("-NoProfile")));
+        assert!(!ran[0]
+            .args
+            .iter()
+            .any(|a| a.eq_ignore_ascii_case("-NoProfile")));
         assert_eq!(ran[0].env, fresh_env());
     }
 
@@ -241,9 +288,24 @@ mod tests {
     fn shell_check_matches_when_the_shell_agrees() {
         let (_dir, exe, path) = node_on_disk();
         let backend = MemBackend::new().with_system([("Path", path), ("PATHEXT", ".EXE")]);
-        let runner = FakeRunner { stdout: format!("{}\n", exe.to_uppercase()), ..Default::default() };
-        let check = shell_check(&backend, &LocalMachine, &runner, TerminalKind::Cmd, ToolKind::Node, fresh_env(), Path::new("C:\\")).unwrap();
+        let runner = FakeRunner {
+            stdout: format!("{}\n", exe.to_uppercase()),
+            ..Default::default()
+        };
+        let check = shell_check(
+            &backend,
+            &LocalMachine,
+            &runner,
+            TerminalKind::Cmd,
+            ToolKind::Node,
+            fresh_env(),
+            Path::new("C:\\"),
+        )
+        .unwrap();
         assert!(check.matches);
-        assert_eq!(runner.ran.lock().unwrap()[0].args, vec!["/c", "where", "node"]);
+        assert_eq!(
+            runner.ran.lock().unwrap()[0].args,
+            vec!["/c", "where", "node"]
+        );
     }
 }

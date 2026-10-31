@@ -2,8 +2,10 @@
 //! its hash, and its exit code says what happened.
 
 use crate::error::EnvarlyError;
+use crate::whichcraft::application::elevation::{
+    encode_request, run_elevated_request, EXIT_APPLIED, EXIT_FAILED, EXIT_STALE,
+};
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator};
-use crate::whichcraft::application::elevation::{encode_request, run_elevated_request, EXIT_APPLIED, EXIT_FAILED, EXIT_STALE};
 
 /// Entry point of `whichcraft-elevated-apply <payload> <sha256>`; returns the process exit code.
 pub fn elevated_helper_main(payload: &std::path::Path, sha256: &str) -> i32 {
@@ -41,7 +43,10 @@ impl Elevator for HelperExeElevator {
     }
 }
 
-fn elevate_with(exe: &std::path::Path, request: &ElevatedRequest) -> Result<ElevatedOutcome, EnvarlyError> {
+fn elevate_with(
+    exe: &std::path::Path,
+    request: &ElevatedRequest,
+) -> Result<ElevatedOutcome, EnvarlyError> {
     let (bytes, hash) = encode_request(request)?;
     let path = crate::whichcraft::persistence::whichcraft_data_dir()?
         .join(format!("elevation-{}.json", &hash[..16]));
@@ -61,7 +66,9 @@ fn run_elevated_and_wait(
     use std::ffi::OsStr;
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, ERROR_CANCELLED};
-    use windows_sys::Win32::System::Threading::{GetExitCodeProcess, WaitForSingleObject, INFINITE};
+    use windows_sys::Win32::System::Threading::{
+        GetExitCodeProcess, WaitForSingleObject, INFINITE,
+    };
     use windows_sys::Win32::UI::Shell::{
         ShellExecuteExW, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
     };
@@ -90,7 +97,9 @@ fn run_elevated_and_wait(
         if unsafe { GetLastError() } == ERROR_CANCELLED {
             return Ok(ElevatedOutcome::Cancelled);
         }
-        return Err(EnvarlyError::InvalidInput("could not start the elevated helper".into()));
+        return Err(EnvarlyError::InvalidInput(
+            "could not start the elevated helper".into(),
+        ));
     }
     let mut code: u32 = EXIT_FAILED as u32;
     unsafe {

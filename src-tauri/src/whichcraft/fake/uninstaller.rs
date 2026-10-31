@@ -40,7 +40,12 @@ impl FakeUninstaller {
 
 impl Uninstaller for FakeUninstaller {
     fn run_uninstaller(&self, program: &str, args: &[String]) -> Result<RunOutcome, EnvarlyError> {
-        self.ran.lock().unwrap().push(std::iter::once(program.to_string()).chain(args.iter().cloned()).collect::<Vec<_>>().join(" "));
+        self.ran.lock().unwrap().push(
+            std::iter::once(program.to_string())
+                .chain(args.iter().cloned())
+                .collect::<Vec<_>>()
+                .join(" "),
+        );
         if self.outcome == RunOutcome::Finished {
             if let Some(folder) = self.removes.lock().unwrap().as_ref() {
                 self.remove(folder);
@@ -55,8 +60,16 @@ impl Uninstaller for FakeUninstaller {
         Ok(())
     }
 
-    fn uninstall_managed(&self, store: &Path, tool: ToolKind, mise_version: &str) -> Result<(), EnvarlyError> {
-        self.managed.lock().unwrap().push((store.to_path_buf(), tool, mise_version.to_string()));
+    fn uninstall_managed(
+        &self,
+        store: &Path,
+        tool: ToolKind,
+        mise_version: &str,
+    ) -> Result<(), EnvarlyError> {
+        self.managed
+            .lock()
+            .unwrap()
+            .push((store.to_path_buf(), tool, mise_version.to_string()));
         if let Some(folder) = self.removes.lock().unwrap().as_ref() {
             self.remove(folder);
         }

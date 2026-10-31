@@ -15,7 +15,9 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 pub fn fresh_environment() -> Result<HashMap<String, String>, EnvarlyError> {
     use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
     use windows_sys::Win32::Security::TOKEN_QUERY;
-    use windows_sys::Win32::System::Environment::{CreateEnvironmentBlock, DestroyEnvironmentBlock};
+    use windows_sys::Win32::System::Environment::{
+        CreateEnvironmentBlock, DestroyEnvironmentBlock,
+    };
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
     let mut token: HANDLE = std::ptr::null_mut();
@@ -26,7 +28,9 @@ pub fn fresh_environment() -> Result<HashMap<String, String>, EnvarlyError> {
     let ok = unsafe { CreateEnvironmentBlock(&mut block, token, 0) };
     unsafe { CloseHandle(token) };
     if ok == 0 {
-        return Err(EnvarlyError::InvalidInput("CreateEnvironmentBlock failed".into()));
+        return Err(EnvarlyError::InvalidInput(
+            "CreateEnvironmentBlock failed".into(),
+        ));
     }
     let mut env = HashMap::new();
     let mut p = block as *const u16;
@@ -78,7 +82,10 @@ impl ProcessRunner for WinProcessRunner {
     fn open_folder(&self, folder: &std::path::Path) -> Result<(), EnvarlyError> {
         // Explorer opens (runs) a file it is given, so only folders are accepted.
         if !folder.is_dir() {
-            return Err(EnvarlyError::InvalidInput(format!("not a folder: {}", folder.display())));
+            return Err(EnvarlyError::InvalidInput(format!(
+                "not a folder: {}",
+                folder.display()
+            )));
         }
         Command::new("explorer.exe")
             .arg(folder)
@@ -98,11 +105,11 @@ impl ProcessRunner for WinProcessRunner {
 
 #[cfg(test)]
 mod tests {
-    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
-    use crate::whichcraft::domain::ToolKind;
-    use crate::whichcraft::domain::settings::TerminalKind;
+    use crate::whichcraft::adapters::local::LocalMachine;
     use crate::whichcraft::application::terminal::shell_check;
+    use crate::whichcraft::domain::settings::TerminalKind;
+    use crate::whichcraft::domain::ToolKind;
 
     /// Reads the registry and runs hidden shells (no writes). `cargo test contract_shell -- --ignored --nocapture`
     #[test]
@@ -114,7 +121,8 @@ mod tests {
         for shell in [TerminalKind::PowerShell, TerminalKind::Cmd] {
             let check = shell_check(
                 &crate::env_backend::WinregBackend,
-                &LocalMachine, &WinProcessRunner,
+                &LocalMachine,
+                &WinProcessRunner,
                 shell,
                 ToolKind::Node,
                 env.clone(),

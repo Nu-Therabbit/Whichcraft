@@ -1,17 +1,21 @@
 use crate::env_store::{self, EnvBackend};
 use crate::error::EnvarlyError;
 use crate::model::{EnvChange, VarScope};
+use crate::whichcraft::application::tool_plan::{
+    build_tool_apply_plan, diff_to_env_value, plan_to_mutations, tool_plan_is_stale,
+};
+use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::domain::journal::{JournalStatus, MutationRecord, WhichcraftJournal};
+use crate::whichcraft::domain::plan::ToolApplyPlan;
 use crate::whichcraft::domain::selection::ToolSelection;
+use crate::whichcraft::domain::PlanVariableDiff;
+use crate::whichcraft::domain::ToolInstallation;
+use crate::whichcraft::ports::elevator::{
+    ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange,
+};
+use crate::whichcraft::ports::machine::Machine;
 use crate::whichcraft::ports::operation_ids::OperationIds;
 use crate::whichcraft::ports::store::Store;
-use crate::whichcraft::ports::machine::Machine;
-use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator, ExpectedChange};
-use crate::whichcraft::domain::ToolInstallation;
-use crate::whichcraft::domain::env::get_var;
-use crate::whichcraft::domain::PlanVariableDiff;
-use crate::whichcraft::application::tool_plan::{build_tool_apply_plan, diff_to_env_value, plan_to_mutations, tool_plan_is_stale};
-use crate::whichcraft::domain::plan::{ToolApplyPlan};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -77,9 +81,9 @@ fn apply_tool_plan_with<B: EnvBackend>(
         let map = match diff.scope {
             VarScope::User => backend.read_user()?,
             VarScope::System => backend.read_system()?,
-            VarScope::OtherUser => backend
-                .read_other_user()?
-                .ok_or_else(|| EnvarlyError::InvalidInput("no other-user account selected".into()))?,
+            VarScope::OtherUser => backend.read_other_user()?.ok_or_else(|| {
+                EnvarlyError::InvalidInput("no other-user account selected".into())
+            })?,
         };
         mutations.push(MutationRecord {
             name: diff.name.clone(),
@@ -150,7 +154,9 @@ fn apply_tool_plan_with<B: EnvBackend>(
             }
             Ok(ElevatedOutcome::Failed(msg)) => {
                 fail(&mut journal);
-                return Err(EnvarlyError::InvalidInput(format!("System write failed: {msg}")));
+                return Err(EnvarlyError::InvalidInput(format!(
+                    "System write failed: {msg}"
+                )));
             }
             Err(e) => {
                 fail(&mut journal);
@@ -232,8 +238,8 @@ pub(crate) mod test_support {
     use crate::env_store::{EnvBackend, MemBackend};
     use crate::error::EnvarlyError;
     use crate::model::EnvValue;
-    use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator};
     use crate::whichcraft::application::elevation::{encode_request, run_elevated_request};
+    use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator};
 
     /// The System hive as the elevated helper sees it: same maps, but allowed to write.
     struct ElevatedView<'a>(&'a MemBackend);
@@ -249,7 +255,11 @@ pub(crate) mod test_support {
             self.0.write_user(name, value)
         }
         fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
-            self.0.system.lock().unwrap().insert(name.into(), value.clone());
+            self.0
+                .system
+                .lock()
+                .unwrap()
+                .insert(name.into(), value.clone());
             Ok(())
         }
         fn delete_user(&self, name: &str) -> Result<(), EnvarlyError> {
@@ -280,7 +290,11 @@ pub(crate) mod test_support {
 
     impl<'a> FakeElevator<'a> {
         pub fn new(backend: &'a MemBackend, script: Vec<Script>) -> Self {
-            Self { backend, script: Mutex::new(script), requests: Mutex::new(Vec::new()) }
+            Self {
+                backend,
+                script: Mutex::new(script),
+                requests: Mutex::new(Vec::new()),
+            }
         }
     }
 
@@ -289,33 +303,43 @@ pub(crate) mod test_support {
             self.requests.lock().unwrap().push(request.clone());
             let step = {
                 let mut script = self.script.lock().unwrap();
-                if script.is_empty() { Script::Helper } else { script.remove(0) }
+                if script.is_empty() {
+                    Script::Helper
+                } else {
+                    script.remove(0)
+                }
             };
             if let Script::Cancel = step {
                 return Ok(ElevatedOutcome::Cancelled);
             }
             if let Script::ChangeSystemPathFirst(value) = step {
-                ElevatedView(self.backend)
-                    .write_system("Path", &EnvValue::typed(value.into(), crate::model::EnvValueKind::ExpandString))?;
+                ElevatedView(self.backend).write_system(
+                    "Path",
+                    &EnvValue::typed(value.into(), crate::model::EnvValueKind::ExpandString),
+                )?;
             }
             let (bytes, hash) = encode_request(request)?;
-            Ok(run_elevated_request(&ElevatedView(self.backend), &bytes, &hash))
+            Ok(run_elevated_request(
+                &ElevatedView(self.backend),
+                &bytes,
+                &hash,
+            ))
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::whichcraft::adapters::local::LocalMachine;
-    use crate::whichcraft::adapters::operation_ids::SystemOperationIds;
-    use crate::whichcraft::ports::operation_ids::OperationIds;
     use super::test_support::{FakeElevator, Script};
-    use crate::whichcraft::persistence::{save_tool_selection, FileStore};
     use super::*;
     use crate::env_store::MemBackend;
     use crate::model::EnvValueKind;
+    use crate::whichcraft::adapters::local::LocalMachine;
+    use crate::whichcraft::adapters::operation_ids::SystemOperationIds;
     use crate::whichcraft::domain::ToolKind;
     use crate::whichcraft::persistence::{load_last_completed_apply, use_test_data_dir};
+    use crate::whichcraft::persistence::{save_tool_selection, FileStore};
+    use crate::whichcraft::ports::operation_ids::OperationIds;
 
     /// A plan that adds C:\node22 to User PATH and removes C:\Program Files\nodejs\ from System PATH.
     fn shadowed_node_plan(backend: &MemBackend) -> ToolApplyPlan {
@@ -360,7 +384,11 @@ mod tests {
         use_test_data_dir(dir.path());
         let jdk = dir.path().join("jdk");
         std::fs::create_dir_all(jdk.join("bin")).unwrap();
-        std::fs::write(jdk.join("release"), "IMPLEMENTOR=\"V\"\nJAVA_VERSION=\"21.0.1\"\n").unwrap();
+        std::fs::write(
+            jdk.join("release"),
+            "IMPLEMENTOR=\"V\"\nJAVA_VERSION=\"21.0.1\"\n",
+        )
+        .unwrap();
         std::fs::write(jdk.join("bin").join("java.exe"), b"").unwrap();
         let installation = ToolInstallation {
             tool: ToolKind::Java,
@@ -372,12 +400,20 @@ mod tests {
         let b = MemBackend::new().with_user([("Path", "C:\\old")]);
 
         let plan = create_tool_plan(&b, &LocalMachine, &installation, &SystemOperationIds).unwrap();
-        assert!(!apply_tool_plan(&b, &FileStore, &SystemOperationIds, &plan).unwrap().stale);
+        assert!(
+            !apply_tool_plan(&b, &FileStore, &SystemOperationIds, &plan)
+                .unwrap()
+                .stale
+        );
 
         let user = b.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, jdk.to_string_lossy());
-        assert!(user["Path"].value.starts_with(&*jdk.join("bin").to_string_lossy()));
-        let selected = crate::whichcraft::persistence::load_tool_selection(ToolKind::Java).unwrap().unwrap();
+        assert!(user["Path"]
+            .value
+            .starts_with(&*jdk.join("bin").to_string_lossy()));
+        let selected = crate::whichcraft::persistence::load_tool_selection(ToolKind::Java)
+            .unwrap()
+            .unwrap();
         assert_eq!(selected.root, jdk);
     }
 
@@ -392,7 +428,11 @@ mod tests {
             version: "22.23.4".into(),
         })
         .unwrap();
-        assert!(crate::whichcraft::persistence::load_tool_selection(ToolKind::Java).unwrap().is_none());
+        assert!(
+            crate::whichcraft::persistence::load_tool_selection(ToolKind::Java)
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]
@@ -404,14 +444,24 @@ mod tests {
         let path = leak_str(format!("{0};C:\\gone-for-good;{0}", keep.display()));
         let b = MemBackend::new().with_user([("Path", path)]);
 
-        let cleanup =
-            crate::whichcraft::application::path_cleanup::build_path_cleanup_plan(&b, &LocalMachine, &SystemOperationIds)
-                .unwrap();
+        let cleanup = crate::whichcraft::application::path_cleanup::build_path_cleanup_plan(
+            &b,
+            &LocalMachine,
+            &SystemOperationIds,
+        )
+        .unwrap();
         apply_tool_plan(&b, &FileStore, &SystemOperationIds, &cleanup.inner).unwrap();
 
         assert_eq!(b.read_user().unwrap()["Path"].value, keep.to_string_lossy());
-        assert!(crate::whichcraft::persistence::load_tool_selection(ToolKind::Node).unwrap().is_none());
-        assert_eq!(load_last_completed_apply().unwrap().unwrap().kind, "path_cleanup");
+        assert!(
+            crate::whichcraft::persistence::load_tool_selection(ToolKind::Node)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(
+            load_last_completed_apply().unwrap().unwrap().kind,
+            "path_cleanup"
+        );
     }
 
     fn leak_str(s: String) -> &'static str {
@@ -435,12 +485,24 @@ mod tests {
         use_test_data_dir(dir.path());
         let b = backend();
         let elevator = FakeElevator::new(&b, vec![]);
-        let result = apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &shadowed_node_plan(&b)).unwrap();
+        let result = apply_tool_plan_elevated(
+            &b,
+            &FileStore,
+            &SystemOperationIds,
+            &elevator,
+            &shadowed_node_plan(&b),
+        )
+        .unwrap();
         assert!(!result.stale && !result.needs_elevation);
         assert_eq!(path(&b.read_system().unwrap()), "C:\\Windows");
         assert_eq!(path(&b.read_user().unwrap()), "C:\\node22;C:\\u");
-        let journal = load_last_completed_apply().unwrap().expect("completed journal");
-        assert!(journal.mutations.iter().any(|m| m.scope == VarScope::System));
+        let journal = load_last_completed_apply()
+            .unwrap()
+            .expect("completed journal");
+        assert!(journal
+            .mutations
+            .iter()
+            .any(|m| m.scope == VarScope::System));
         assert!(journal.mutations.iter().any(|m| m.scope == VarScope::User));
     }
 
@@ -450,9 +512,19 @@ mod tests {
         use_test_data_dir(dir.path());
         let b = backend();
         let elevator = FakeElevator::new(&b, vec![Script::Cancel]);
-        assert!(apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &shadowed_node_plan(&b)).is_err());
+        assert!(apply_tool_plan_elevated(
+            &b,
+            &FileStore,
+            &SystemOperationIds,
+            &elevator,
+            &shadowed_node_plan(&b)
+        )
+        .is_err());
         assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
-        assert_eq!(path(&b.read_system().unwrap()), "C:\\Windows;C:\\Program Files\\nodejs\\");
+        assert_eq!(
+            path(&b.read_system().unwrap()),
+            "C:\\Windows;C:\\Program Files\\nodejs\\"
+        );
         assert!(load_last_completed_apply().unwrap().is_none());
     }
 
@@ -464,7 +536,9 @@ mod tests {
         let plan = shadowed_node_plan(&b);
         let moved = "C:\\Windows;C:\\Program Files\\nodejs\\;C:\\new";
         let elevator = FakeElevator::new(&b, vec![Script::ChangeSystemPathFirst(moved)]);
-        let result = apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &plan).unwrap();
+        let result =
+            apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &plan)
+                .unwrap();
         assert!(result.stale);
         assert_eq!(path(&b.read_system().unwrap()), moved);
         assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
@@ -476,12 +550,22 @@ mod tests {
         use_test_data_dir(dir.path());
         let b = backend();
         let elevator = FakeElevator::new(&b, vec![]);
-        apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &shadowed_node_plan(&b)).unwrap();
+        apply_tool_plan_elevated(
+            &b,
+            &FileStore,
+            &SystemOperationIds,
+            &elevator,
+            &shadowed_node_plan(&b),
+        )
+        .unwrap();
         let requests = elevator.requests.lock().unwrap();
         assert_eq!(requests.len(), 1);
         assert!(requests[0].changes.iter().all(|c| matches!(
             &c.change,
-            EnvChange::Set { scope: VarScope::System, .. }
+            EnvChange::Set {
+                scope: VarScope::System,
+                ..
+            }
         )));
     }
 
@@ -489,16 +573,26 @@ mod tests {
     struct UserWritesFail<'a>(&'a MemBackend);
 
     impl crate::env_store::EnvBackend for UserWritesFail<'_> {
-        fn read_user(&self) -> Result<std::collections::HashMap<String, crate::model::EnvValue>, EnvarlyError> {
+        fn read_user(
+            &self,
+        ) -> Result<std::collections::HashMap<String, crate::model::EnvValue>, EnvarlyError>
+        {
             self.0.read_user()
         }
-        fn read_system(&self) -> Result<std::collections::HashMap<String, crate::model::EnvValue>, EnvarlyError> {
+        fn read_system(
+            &self,
+        ) -> Result<std::collections::HashMap<String, crate::model::EnvValue>, EnvarlyError>
+        {
             self.0.read_system()
         }
         fn write_user(&self, _: &str, _: &crate::model::EnvValue) -> Result<(), EnvarlyError> {
             Err(EnvarlyError::InvalidInput("user hive locked".into()))
         }
-        fn write_system(&self, name: &str, value: &crate::model::EnvValue) -> Result<(), EnvarlyError> {
+        fn write_system(
+            &self,
+            name: &str,
+            value: &crate::model::EnvValue,
+        ) -> Result<(), EnvarlyError> {
             self.0.write_system(name, value)
         }
         fn delete_user(&self, _: &str) -> Result<(), EnvarlyError> {
@@ -519,8 +613,18 @@ mod tests {
         let inner = backend();
         let b = UserWritesFail(&inner);
         let elevator = FakeElevator::new(&inner, vec![]);
-        assert!(apply_tool_plan_elevated(&b, &FileStore, &SystemOperationIds, &elevator, &shadowed_node_plan(&inner)).is_err());
-        assert_eq!(path(&inner.read_system().unwrap()), "C:\\Windows;C:\\Program Files\\nodejs\\");
+        assert!(apply_tool_plan_elevated(
+            &b,
+            &FileStore,
+            &SystemOperationIds,
+            &elevator,
+            &shadowed_node_plan(&inner)
+        )
+        .is_err());
+        assert_eq!(
+            path(&inner.read_system().unwrap()),
+            "C:\\Windows;C:\\Program Files\\nodejs\\"
+        );
         assert_eq!(path(&inner.read_user().unwrap()), "C:\\u");
         // One request to apply, one to revert.
         assert_eq!(elevator.requests.lock().unwrap().len(), 2);
@@ -532,7 +636,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
         let b = backend();
-        let result = apply_tool_plan(&b, &FileStore, &SystemOperationIds, &shadowed_node_plan(&b)).unwrap();
+        let result =
+            apply_tool_plan(&b, &FileStore, &SystemOperationIds, &shadowed_node_plan(&b)).unwrap();
         assert!(result.needs_elevation);
         assert_eq!(path(&b.read_user().unwrap()), "C:\\u");
     }

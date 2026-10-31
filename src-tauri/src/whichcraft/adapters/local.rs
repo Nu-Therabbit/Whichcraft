@@ -21,7 +21,9 @@ impl Machine for LocalMachine {
         path.is_file()
     }
     fn entries(&self, dir: &Path) -> Vec<PathBuf> {
-        std::fs::read_dir(dir).map(|read| read.flatten().map(|e| e.path()).collect()).unwrap_or_default()
+        std::fs::read_dir(dir)
+            .map(|read| read.flatten().map(|e| e.path()).collect())
+            .unwrap_or_default()
     }
     fn read_text(&self, path: &Path) -> Option<String> {
         std::fs::read_to_string(path).ok()

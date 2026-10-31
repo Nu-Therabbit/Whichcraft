@@ -1,8 +1,8 @@
 pub mod elevator;
-pub mod installer_lifecycle;
-pub mod operation_ids;
 pub mod installer_catalog;
+pub mod installer_lifecycle;
 pub mod machine;
+pub mod operation_ids;
 pub mod process;
 pub mod sdk;
 pub mod store;

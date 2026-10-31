@@ -65,14 +65,23 @@ impl ProcessRunner for Arc<FakeProcessRunner> {
 pub struct MachineUninstaller(pub Arc<super::FakeMachine>);
 
 impl crate::whichcraft::ports::uninstaller::Uninstaller for MachineUninstaller {
-    fn run_uninstaller(&self, _program: &str, _args: &[String]) -> Result<crate::whichcraft::ports::uninstaller::RunOutcome, EnvarlyError> {
+    fn run_uninstaller(
+        &self,
+        _program: &str,
+        _args: &[String],
+    ) -> Result<crate::whichcraft::ports::uninstaller::RunOutcome, EnvarlyError> {
         Ok(crate::whichcraft::ports::uninstaller::RunOutcome::Finished)
     }
     fn recycle_folder(&self, folder: &Path) -> Result<(), EnvarlyError> {
         self.0.remove_tree(folder);
         Ok(())
     }
-    fn uninstall_managed(&self, store: &Path, tool: crate::whichcraft::domain::ToolKind, version: &str) -> Result<(), EnvarlyError> {
+    fn uninstall_managed(
+        &self,
+        store: &Path,
+        tool: crate::whichcraft::domain::ToolKind,
+        version: &str,
+    ) -> Result<(), EnvarlyError> {
         if let Some(dir) = crate::whichcraft::domain::store_layout::mise_installs_dir(store, tool) {
             self.0.remove_tree(&dir.join(version));
         }

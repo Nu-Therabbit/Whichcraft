@@ -42,7 +42,9 @@ pub fn parse_py_list(output: &str) -> Vec<PythonLauncherLine> {
         .lines()
         .filter_map(|line| {
             let line = line.trim();
-            let rest = line.strip_prefix("-V:").or_else(|| line.strip_prefix('-'))?;
+            let rest = line
+                .strip_prefix("-V:")
+                .or_else(|| line.strip_prefix('-'))?;
             let mut parts = rest.split_whitespace();
             let tag = parts.next()?.to_string();
             let mut is_default = false;
@@ -55,7 +57,11 @@ pub fn parse_py_list(output: &str) -> Vec<PythonLauncherLine> {
                 }
             }
             let path = path_parts.join(" ");
-            (!path.is_empty()).then_some(PythonLauncherLine { tag, path, is_default })
+            (!path.is_empty()).then_some(PythonLauncherLine {
+                tag,
+                path,
+                is_default,
+            })
         })
         .collect()
 }
@@ -65,7 +71,9 @@ pub fn python_supplemental(sdk: &dyn SdkProbe) -> Result<PythonSupplementalView,
         Some(out) => (true, parse_py_list(&out)),
         None => (false, Vec::new()),
     };
-    let store_stub = sdk.python_store_alias().map(|p| p.to_string_lossy().into_owned());
+    let store_stub = sdk
+        .python_store_alias()
+        .map(|p| p.to_string_lossy().into_owned());
     Ok(PythonSupplementalView {
         launcher_lines,
         launcher_installed,
@@ -146,7 +154,10 @@ pub fn android_inventory<B: EnvBackend>(
             }
         }
     }
-    if let Some(root) = local_app_data.map(|l| l.join("Android").join("Sdk")).filter(|r| machine.is_dir(r)) {
+    if let Some(root) = local_app_data
+        .map(|l| l.join("Android").join("Sdk"))
+        .filter(|r| machine.is_dir(r))
+    {
         return Ok(AndroidInventory {
             root_source: Some("default".into()),
             ..read_android_sdk(machine, &root)
@@ -195,7 +206,10 @@ pub fn parse_vswhere(json: &str) -> Vec<(String, String, String)> {
 }
 
 pub fn msvc_toolsets(machine: &dyn Machine, installation_path: &Path) -> Vec<String> {
-    subdirs(machine, &installation_path.join("VC").join("Tools").join("MSVC"))
+    subdirs(
+        machine,
+        &installation_path.join("VC").join("Tools").join("MSVC"),
+    )
 }
 
 pub fn windows_sdk_versions(machine: &dyn Machine, kits_root: &Path) -> Vec<String> {
@@ -229,9 +243,9 @@ pub fn msvc_inventory(machine: &dyn Machine, sdk: &dyn SdkProbe) -> MsvcInventor
 
 #[cfg(test)]
 mod tests {
-    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
     use crate::env_store::MemBackend;
+    use crate::whichcraft::adapters::local::LocalMachine;
 
     #[test]
     fn py_list_lines_become_tags_and_paths() {
@@ -246,12 +260,22 @@ mod tests {
     }
 
     fn fake_sdk(root: &Path) {
-        for d in ["platforms/android-34", "platforms/android-36.1", "build-tools/35.0.0", "ndk/27.0.12077973", "cmake/3.22.1"] {
+        for d in [
+            "platforms/android-34",
+            "platforms/android-36.1",
+            "build-tools/35.0.0",
+            "ndk/27.0.12077973",
+            "cmake/3.22.1",
+        ] {
             std::fs::create_dir_all(root.join(d)).unwrap();
         }
         for (d, rev) in [("platform-tools", "37.0.1"), ("emulator", "37.2.12")] {
             std::fs::create_dir_all(root.join(d)).unwrap();
-            std::fs::write(root.join(d).join("source.properties"), format!("Pkg.Desc=x\nPkg.Revision={rev}\n")).unwrap();
+            std::fs::write(
+                root.join(d).join("source.properties"),
+                format!("Pkg.Desc=x\nPkg.Revision={rev}\n"),
+            )
+            .unwrap();
         }
     }
 
@@ -281,7 +305,8 @@ mod tests {
     fn android_home_in_the_registry_wins_over_the_default() {
         let sdk = tempfile::tempdir().unwrap();
         fake_sdk(sdk.path());
-        let value: &'static str = Box::leak(sdk.path().to_string_lossy().into_owned().into_boxed_str());
+        let value: &'static str =
+            Box::leak(sdk.path().to_string_lossy().into_owned().into_boxed_str());
         let backend = MemBackend::new().with_user([("ANDROID_HOME", value)]);
         let inv = android_inventory(&backend, &LocalMachine, None).unwrap();
         assert_eq!(inv.root_source.as_deref(), Some("ANDROID_HOME"));
@@ -293,14 +318,24 @@ mod tests {
         let json = r#"[{"displayName":"Visual Studio Build Tools 2022","installationVersion":"17.14.42","installationPath":"C:\\BT"}]"#;
         assert_eq!(
             parse_vswhere(json),
-            vec![("Visual Studio Build Tools 2022".into(), "17.14.42".into(), "C:\\BT".into())]
+            vec![(
+                "Visual Studio Build Tools 2022".into(),
+                "17.14.42".into(),
+                "C:\\BT".into()
+            )]
         );
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("VC/Tools/MSVC/14.44.35207")).unwrap();
-        assert_eq!(msvc_toolsets(&LocalMachine, dir.path()), vec!["14.44.35207"]);
+        assert_eq!(
+            msvc_toolsets(&LocalMachine, dir.path()),
+            vec!["14.44.35207"]
+        );
         std::fs::create_dir_all(dir.path().join("Include/10.0.26100.0")).unwrap();
         std::fs::create_dir_all(dir.path().join("Include/wdf")).unwrap();
-        assert_eq!(windows_sdk_versions(&LocalMachine, dir.path()), vec!["10.0.26100.0"]);
+        assert_eq!(
+            windows_sdk_versions(&LocalMachine, dir.path()),
+            vec!["10.0.26100.0"]
+        );
     }
 
     /// Reads this machine (no writes). `cargo test contract_reads_the_survey -- --ignored --nocapture`
@@ -308,11 +343,22 @@ mod tests {
     #[ignore = "contract: reads this machine's SDK folders, vswhere and py"]
     fn contract_reads_the_survey_machine_sdks() {
         let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
-        let android = android_inventory(&crate::env_backend::WinregBackend, &LocalMachine, local.as_deref()).unwrap();
+        let android = android_inventory(
+            &crate::env_backend::WinregBackend,
+            &LocalMachine,
+            local.as_deref(),
+        )
+        .unwrap();
         println!("{android:#?}");
-        let msvc = msvc_inventory(&LocalMachine, &crate::whichcraft::adapters::win::sdk::WinSdkProbe);
+        let msvc = msvc_inventory(
+            &LocalMachine,
+            &crate::whichcraft::adapters::win::sdk::WinSdkProbe,
+        );
         println!("{msvc:#?}");
-        println!("{:#?}", python_supplemental(&crate::whichcraft::adapters::win::sdk::WinSdkProbe).unwrap());
+        println!(
+            "{:#?}",
+            python_supplemental(&crate::whichcraft::adapters::win::sdk::WinSdkProbe).unwrap()
+        );
         assert!(android.ndk.contains(&"27.0.12077973".to_string()));
         assert!(msvc.windows_sdks.contains(&"10.0.26100.0".to_string()));
     }

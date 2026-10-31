@@ -8,10 +8,10 @@ use serde::Serialize;
 
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
-use crate::whichcraft::domain::ToolKind;
-use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::application::tool_apply::create_tool_plan;
 use crate::whichcraft::domain::ToolApplyPlan;
+use crate::whichcraft::domain::ToolInstallation;
+use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::ports::machine::Machine;
 use crate::whichcraft::ports::operation_ids::OperationIds;
 
@@ -34,7 +34,10 @@ pub fn install_and_plan<B: EnvBackend>(
 ) -> Result<UpdateResult, EnvarlyError> {
     let root = install(tool, version)?;
     let installation = machine.probe(tool, &root, true).ok_or_else(|| {
-        EnvarlyError::InvalidInput(format!("the new installation at {} was not recognised", root.display()))
+        EnvarlyError::InvalidInput(format!(
+            "the new installation at {} was not recognised",
+            root.display()
+        ))
     })?;
     let plan = create_tool_plan(backend, machine, &installation, ids)?;
     Ok(UpdateResult { installation, plan })
@@ -43,9 +46,9 @@ pub fn install_and_plan<B: EnvBackend>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::env_store::MemBackend;
     use crate::whichcraft::adapters::local::LocalMachine;
     use crate::whichcraft::adapters::operation_ids::SystemOperationIds;
-    use crate::env_store::MemBackend;
 
     #[test]
     fn update_installs_beside_the_old_one_and_plans_the_switch() {
@@ -57,28 +60,48 @@ mod tests {
         let backend = MemBackend::new().with_user([("Path", "C:\\old-node")]);
 
         let new_root = dir.path().join("store").join("node").join("22.24.0");
-        let result = install_and_plan(&backend, &LocalMachine, &SystemOperationIds, ToolKind::Node, "22.24.0", |tool, version| {
-            assert_eq!((tool, version), (ToolKind::Node, "22.24.0"));
-            std::fs::create_dir_all(&new_root).unwrap();
-            std::fs::write(new_root.join("node.exe"), b"").unwrap();
-            Ok(new_root.clone())
-        })
+        let result = install_and_plan(
+            &backend,
+            &LocalMachine,
+            &SystemOperationIds,
+            ToolKind::Node,
+            "22.24.0",
+            |tool, version| {
+                assert_eq!((tool, version), (ToolKind::Node, "22.24.0"));
+                std::fs::create_dir_all(&new_root).unwrap();
+                std::fs::write(new_root.join("node.exe"), b"").unwrap();
+                Ok(new_root.clone())
+            },
+        )
         .unwrap();
 
         assert_eq!(result.installation.root, new_root);
         assert!(result.installation.managed);
-        assert!(old.join("node.exe").exists(), "the old installation is not touched");
-        let path = &result.plan.user_diffs.iter().find(|d| d.name.eq_ignore_ascii_case("Path")).unwrap().after;
+        assert!(
+            old.join("node.exe").exists(),
+            "the old installation is not touched"
+        );
+        let path = &result
+            .plan
+            .user_diffs
+            .iter()
+            .find(|d| d.name.eq_ignore_ascii_case("Path"))
+            .unwrap()
+            .after;
         assert!(path.starts_with(&*new_root.to_string_lossy()), "{path}");
     }
 
     #[test]
     fn a_failed_install_plans_nothing() {
         let backend = MemBackend::new();
-        let err =
-            install_and_plan(&backend, &LocalMachine, &SystemOperationIds, ToolKind::Go, "1.27.1", |_, _| {
-                Err(EnvarlyError::InvalidInput("offline".into()))
-            });
+        let err = install_and_plan(
+            &backend,
+            &LocalMachine,
+            &SystemOperationIds,
+            ToolKind::Go,
+            "1.27.1",
+            |_, _| Err(EnvarlyError::InvalidInput("offline".into())),
+        );
         assert!(err.is_err());
     }
 }

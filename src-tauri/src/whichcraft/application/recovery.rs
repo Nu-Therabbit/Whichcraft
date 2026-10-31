@@ -9,11 +9,11 @@ use serde::Serialize;
 use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::model::{EnvChange, EnvValueKind, VarScope};
-use crate::whichcraft::domain::journal::{JournalStatus, MutationRecord, WhichcraftJournal};
-use crate::whichcraft::ports::store::Store;
-use crate::whichcraft::ports::elevator::Elevator;
-use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::application::undo::{revert_journal, write_changes, UndoResult};
+use crate::whichcraft::domain::env::get_var;
+use crate::whichcraft::domain::journal::{JournalStatus, MutationRecord, WhichcraftJournal};
+use crate::whichcraft::ports::elevator::Elevator;
+use crate::whichcraft::ports::store::Store;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -71,7 +71,10 @@ fn state_of(mutation: &MutationRecord, current: Option<&str>) -> ChangeState {
     }
 }
 
-fn view_of<B: EnvBackend>(backend: &B, journal: &WhichcraftJournal) -> Result<RecoveryView, EnvarlyError> {
+fn view_of<B: EnvBackend>(
+    backend: &B,
+    journal: &WhichcraftJournal,
+) -> Result<RecoveryView, EnvarlyError> {
     let mut items = Vec::new();
     for m in &journal.mutations {
         let current = current_value(backend, m)?;
@@ -84,7 +87,9 @@ fn view_of<B: EnvBackend>(backend: &B, journal: &WhichcraftJournal) -> Result<Re
             current,
         });
     }
-    let can_resume = items.iter().all(|i| i.state != ChangeState::ChangedElsewhere);
+    let can_resume = items
+        .iter()
+        .all(|i| i.state != ChangeState::ChangedElsewhere);
     Ok(RecoveryView {
         journal_id: journal.id.clone(),
         kind: journal.kind.clone(),
@@ -95,7 +100,10 @@ fn view_of<B: EnvBackend>(backend: &B, journal: &WhichcraftJournal) -> Result<Re
 }
 
 /// The newest apply that never finished, with the real state of each of its changes.
-pub fn inspect_pending<B: EnvBackend>(backend: &B, store: &dyn Store) -> Result<Option<RecoveryView>, EnvarlyError> {
+pub fn inspect_pending<B: EnvBackend>(
+    backend: &B,
+    store: &dyn Store,
+) -> Result<Option<RecoveryView>, EnvarlyError> {
     match store.incomplete_journal()? {
         Some(journal) => Ok(Some(view_of(backend, &journal)?)),
         None => Ok(None),
@@ -168,15 +176,17 @@ pub fn roll_back_pending<B: EnvBackend>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::whichcraft::persistence::save_journal;
-    use crate::whichcraft::persistence::FileStore;
     use crate::env_store::MemBackend;
     use crate::model::EnvValue;
-    use crate::whichcraft::domain::ToolKind;
-    use crate::whichcraft::persistence::{load_incomplete_journal, load_last_completed_apply, load_tool_selection, use_test_data_dir};
-    use crate::whichcraft::domain::selection::{ToolSelection};
-    use crate::whichcraft::domain::path::path_entry_diff;
     use crate::whichcraft::application::tool_apply::test_support::FakeElevator;
+    use crate::whichcraft::domain::path::path_entry_diff;
+    use crate::whichcraft::domain::selection::ToolSelection;
+    use crate::whichcraft::domain::ToolKind;
+    use crate::whichcraft::persistence::save_journal;
+    use crate::whichcraft::persistence::FileStore;
+    use crate::whichcraft::persistence::{
+        load_incomplete_journal, load_last_completed_apply, load_tool_selection, use_test_data_dir,
+    };
 
     fn ev(v: &str, kind: EnvValueKind) -> Option<EnvValue> {
         Some(EnvValue::typed(v.into(), kind))
@@ -232,7 +242,9 @@ mod tests {
         let b = half_written();
         pending_java_apply(&b);
 
-        let view = inspect_pending(&b, &FileStore).unwrap().expect("pending apply found");
+        let view = inspect_pending(&b, &FileStore)
+            .unwrap()
+            .expect("pending apply found");
         assert_eq!(view.journal_id, "apply-interrupted");
         assert_eq!(view.items[0].state, ChangeState::Written);
         assert_eq!(view.items[1].state, ChangeState::NotWritten);
@@ -250,9 +262,15 @@ mod tests {
         let user = b.read_user().unwrap();
         assert_eq!(user["JAVA_HOME"].value, "C:\\jdk17");
         assert_eq!(user["Path"].value, "C:\\jdk17\\bin;C:\\u");
-        assert_eq!(load_tool_selection(ToolKind::Java).unwrap().unwrap().root, std::path::PathBuf::from("C:\\jdk17"));
+        assert_eq!(
+            load_tool_selection(ToolKind::Java).unwrap().unwrap().root,
+            std::path::PathBuf::from("C:\\jdk17")
+        );
         assert!(load_incomplete_journal().unwrap().is_none());
-        assert_eq!(load_last_completed_apply().unwrap().unwrap().id, "apply-interrupted");
+        assert_eq!(
+            load_last_completed_apply().unwrap().unwrap().id,
+            "apply-interrupted"
+        );
     }
 
     #[test]
@@ -276,7 +294,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         use_test_data_dir(dir.path());
         // An installer rewrote PATH while the app was down.
-        let b = MemBackend::new().with_user([("JAVA_HOME", "C:\\jdk17"), ("Path", "C:\\u;C:\\installer")]);
+        let b = MemBackend::new()
+            .with_user([("JAVA_HOME", "C:\\jdk17"), ("Path", "C:\\u;C:\\installer")]);
         pending_java_apply(&b);
 
         let view = inspect_pending(&b, &FileStore).unwrap().unwrap();
@@ -297,7 +316,8 @@ mod tests {
         let b = MemBackend::new()
             .with_system([("Path", "C:\\Windows;C:\\Program Files\\nodejs\\")])
             .with_elevated(false);
-        let (added, removed) = path_entry_diff("C:\\Windows;C:\\Program Files\\nodejs\\", "C:\\Windows");
+        let (added, removed) =
+            path_entry_diff("C:\\Windows;C:\\Program Files\\nodejs\\", "C:\\Windows");
         save_journal(&WhichcraftJournal {
             id: "apply-system".into(),
             status: JournalStatus::Pending,
@@ -307,7 +327,10 @@ mod tests {
             mutations: vec![MutationRecord {
                 name: "Path".into(),
                 scope: VarScope::System,
-                before: ev("C:\\Windows;C:\\Program Files\\nodejs\\", EnvValueKind::ExpandString),
+                before: ev(
+                    "C:\\Windows;C:\\Program Files\\nodejs\\",
+                    EnvValueKind::ExpandString,
+                ),
                 after: ev("C:\\Windows", EnvValueKind::ExpandString),
                 path_added: added,
                 path_removed: removed,

@@ -5,7 +5,9 @@ use crate::error::EnvarlyError;
 use crate::whichcraft::domain::journal::{JournalStatus, WhichcraftJournal};
 
 fn journal_path(id: &str) -> Result<PathBuf, EnvarlyError> {
-    Ok(whichcraft_data_dir()?.join("journal").join(format!("{id}.json")))
+    Ok(whichcraft_data_dir()?
+        .join("journal")
+        .join(format!("{id}.json")))
 }
 
 fn journal_dir() -> Result<PathBuf, EnvarlyError> {
@@ -46,10 +48,7 @@ pub fn load_incomplete_journal() -> Result<Option<WhichcraftJournal>, EnvarlyErr
             continue;
         }
         let path = entry.path();
-        let id = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
+        let id = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
         let record: WhichcraftJournal = load_journal(id)?;
         if record.status == JournalStatus::Pending {
             pending.push(record);
@@ -73,10 +72,7 @@ pub fn load_last_completed_apply() -> Result<Option<WhichcraftJournal>, EnvarlyE
             continue;
         }
         let path = entry.path();
-        let id = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
+        let id = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
         let record = load_journal(id)?;
         if record.status == JournalStatus::Completed {
             completed.push(record);

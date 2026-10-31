@@ -32,7 +32,10 @@ impl Store for MemStore {
         Ok(self.selections.lock().unwrap().get(&tool).cloned())
     }
     fn save_selection(&self, selection: &ToolSelection) -> Result<(), EnvarlyError> {
-        self.selections.lock().unwrap().insert(selection.tool, selection.clone());
+        self.selections
+            .lock()
+            .unwrap()
+            .insert(selection.tool, selection.clone());
         Ok(())
     }
     fn save_journal(&self, journal: &WhichcraftJournal) -> Result<(), EnvarlyError> {
@@ -51,10 +54,16 @@ impl Store for MemStore {
             .ok_or_else(|| EnvarlyError::Snapshot(format!("no journal {id}")))
     }
     fn incomplete_journal(&self) -> Result<Option<WhichcraftJournal>, EnvarlyError> {
-        Ok(newest(&self.journals.lock().unwrap(), JournalStatus::Pending))
+        Ok(newest(
+            &self.journals.lock().unwrap(),
+            JournalStatus::Pending,
+        ))
     }
     fn last_completed_apply(&self) -> Result<Option<WhichcraftJournal>, EnvarlyError> {
-        Ok(newest(&self.journals.lock().unwrap(), JournalStatus::Completed))
+        Ok(newest(
+            &self.journals.lock().unwrap(),
+            JournalStatus::Completed,
+        ))
     }
     fn profiles(&self) -> Result<Vec<ToolProfile>, EnvarlyError> {
         Ok(self.profiles.lock().unwrap().clone())
@@ -77,5 +86,9 @@ impl Store for MemStore {
 }
 
 fn newest(journals: &[WhichcraftJournal], status: JournalStatus) -> Option<WhichcraftJournal> {
-    journals.iter().filter(|j| j.status == status).max_by(|a, b| a.created_at.cmp(&b.created_at)).cloned()
+    journals
+        .iter()
+        .filter(|j| j.status == status)
+        .max_by(|a, b| a.created_at.cmp(&b.created_at))
+        .cloned()
 }

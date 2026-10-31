@@ -6,9 +6,9 @@ pub mod domain;
 pub mod fake;
 pub mod java;
 pub mod mise;
-pub mod tools;
 pub mod persistence;
 pub mod ports;
+pub mod tools;
 
 #[cfg(windows)]
 pub mod adapters;

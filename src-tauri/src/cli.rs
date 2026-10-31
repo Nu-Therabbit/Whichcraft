@@ -234,9 +234,11 @@ fn execute(command: Command) -> Result<(), crate::error::EnvarlyError> {
         }
 
         Command::WhichcraftElevatedApply { payload, sha256 } => {
-            std::process::exit(crate::whichcraft::adapters::win::elevation::elevated_helper_main(
-                &payload, &sha256,
-            ));
+            std::process::exit(
+                crate::whichcraft::adapters::win::elevation::elevated_helper_main(
+                    &payload, &sha256,
+                ),
+            );
         }
 
         Command::Export {

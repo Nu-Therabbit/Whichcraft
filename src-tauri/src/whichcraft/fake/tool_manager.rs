@@ -21,11 +21,17 @@ pub struct FakeTools {
 
 impl FakeTools {
     pub fn with_machine(machine: Arc<FakeMachine>) -> Arc<Self> {
-        Arc::new(Self { machine, ..Default::default() })
+        Arc::new(Self {
+            machine,
+            ..Default::default()
+        })
     }
 
     pub fn offer(&self, tool: ToolKind, versions: &[&str]) {
-        self.remote.lock().unwrap().insert(tool, versions.iter().map(|v| v.to_string()).collect());
+        self.remote
+            .lock()
+            .unwrap()
+            .insert(tool, versions.iter().map(|v| v.to_string()).collect());
     }
 }
 
@@ -33,7 +39,10 @@ pub struct FakeToolManagers(pub Arc<FakeTools>);
 
 impl ToolManagers for FakeToolManagers {
     fn for_store(&self, install_store: &Path) -> Box<dyn ToolManager> {
-        Box::new(FakeToolManager { tools: self.0.clone(), store: install_store.to_path_buf() })
+        Box::new(FakeToolManager {
+            tools: self.0.clone(),
+            store: install_store.to_path_buf(),
+        })
     }
 }
 
@@ -64,7 +73,11 @@ impl ToolManager for FakeToolManager {
             .cloned()
             .unwrap_or_default()
             .into_iter()
-            .map(|version| RemoteVersion { version, download_bytes: None, install_bytes: None })
+            .map(|version| RemoteVersion {
+                version,
+                download_bytes: None,
+                install_bytes: None,
+            })
             .collect())
     }
 
@@ -72,7 +85,12 @@ impl ToolManager for FakeToolManager {
         let dir = mise_installs_dir(&self.store, tool)
             .ok_or_else(|| EnvarlyError::InvalidInput(format!("{tool:?} cannot be installed")))?;
         let root = dir.join(version);
-        let display = version.split('+').next().unwrap_or(version).trim_end_matches("-stable").to_string();
+        let display = version
+            .split('+')
+            .next()
+            .unwrap_or(version)
+            .trim_end_matches("-stable")
+            .to_string();
         self.tools.machine.add_install(ToolInstallation {
             tool,
             vendor: vendor(tool).into(),
@@ -80,7 +98,11 @@ impl ToolManager for FakeToolManager {
             root: root.clone(),
             managed: true,
         });
-        self.tools.installed.lock().unwrap().push((self.store.clone(), tool, version.into()));
+        self.tools
+            .installed
+            .lock()
+            .unwrap()
+            .push((self.store.clone(), tool, version.into()));
         Ok(root)
     }
 
@@ -92,6 +114,12 @@ impl ToolManager for FakeToolManager {
     }
 
     fn download_size(&self, _tool: ToolKind, version: &str) -> Result<Option<u64>, EnvarlyError> {
-        Ok(self.tools.download_bytes.lock().unwrap().get(version).copied())
+        Ok(self
+            .tools
+            .download_bytes
+            .lock()
+            .unwrap()
+            .get(version)
+            .copied())
     }
 }

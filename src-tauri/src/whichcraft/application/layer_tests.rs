@@ -4,7 +4,11 @@
 mod tests {
     fn strip_cfg_test_mod(rest: &str) -> Option<&str> {
         let mut s = rest;
-        while s.as_bytes().first().is_some_and(|b| b.is_ascii_whitespace()) {
+        while s
+            .as_bytes()
+            .first()
+            .is_some_and(|b| b.is_ascii_whitespace())
+        {
             s = &s[1..];
         }
         loop {
@@ -21,17 +25,29 @@ mod tests {
             }
             break;
         }
-        while s.as_bytes().first().is_some_and(|b| b.is_ascii_whitespace()) {
+        while s
+            .as_bytes()
+            .first()
+            .is_some_and(|b| b.is_ascii_whitespace())
+        {
             s = &s[1..];
         }
         if !s.starts_with("mod ") {
             return None;
         }
         s = &s["mod ".len()..];
-        while s.as_bytes().first().is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_') {
+        while s
+            .as_bytes()
+            .first()
+            .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_')
+        {
             s = &s[1..];
         }
-        while s.as_bytes().first().is_some_and(|b| b.is_ascii_whitespace()) {
+        while s
+            .as_bytes()
+            .first()
+            .is_some_and(|b| b.is_ascii_whitespace())
+        {
             s = &s[1..];
         }
         if s.starts_with(';') {
@@ -79,7 +95,8 @@ mod tests {
     /// Production application code must reach the outside world only through ports (ADR-0005).
     #[test]
     fn production_application_avoids_concrete_adapters_and_io() {
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/whichcraft/application");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/whichcraft/application");
         // `env_store`, `model`, `path_manage`, and registry/PATH helpers in `whichcraft::tools`
         // are the inherited adapter/type exception (ADR-0005).
         let forbidden = [
@@ -102,7 +119,11 @@ mod tests {
             let text = std::fs::read_to_string(entry.path()).unwrap();
             let code = production_rust_source(&text);
             for word in forbidden {
-                assert!(!code.contains(word), "{} uses {word}", entry.path().display());
+                assert!(
+                    !code.contains(word),
+                    "{} uses {word}",
+                    entry.path().display()
+                );
             }
         }
     }
@@ -130,7 +151,11 @@ mod tests {
     #[test]
     fn background_programs_start_without_a_window() {
         let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-        let allowed = ["tools/background.rs", "adapters/win/process.rs", "commands/launch.rs"];
+        let allowed = [
+            "tools/background.rs",
+            "adapters/win/process.rs",
+            "commands/launch.rs",
+        ];
         let mut files = Vec::new();
         production_rust_files(&src, &mut files);
         assert!(files.len() > 50, "scanned {} files", files.len());

@@ -1,18 +1,18 @@
 //! In-memory stand-ins for ports, for core tests.
 
 mod host;
-mod installer_lifecycle;
-mod operation_ids;
 mod installer_catalog;
+mod installer_lifecycle;
 mod machine;
+mod operation_ids;
 mod store;
 mod tool_manager;
 mod uninstaller;
 mod usage_probe;
 
 pub use host::{DeclinesUac, FakeProcessRunner, MachineUninstaller, NoSdks};
-pub use installer_lifecycle::FakeInstallerLifecycle;
 pub use installer_catalog::{CountingCatalogs, FakeInstallerCatalog, NoInstallerEntries};
+pub use installer_lifecycle::FakeInstallerLifecycle;
 pub use machine::FakeMachine;
 pub use operation_ids::FakeOperationIds;
 pub use store::MemStore;

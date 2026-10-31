@@ -10,7 +10,10 @@ pub fn compute_prepend(current: &str, dir: &str) -> Option<String> {
         .split(';')
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .any(|p| p.trim_end_matches(['\\', '/']).eq_ignore_ascii_case(&dir_norm))
+        .any(|p| {
+            p.trim_end_matches(['\\', '/'])
+                .eq_ignore_ascii_case(&dir_norm)
+        })
     {
         return None;
     }
@@ -35,10 +38,7 @@ pub fn path_entry_diff(before: &str, after: &str) -> (Vec<String>, Vec<String>) 
     let after_set: Vec<String> = path_entries(after);
     let mut added = Vec::new();
     for e in &after_set {
-        if !before_set
-            .iter()
-            .any(|b| b.eq_ignore_ascii_case(e))
-        {
+        if !before_set.iter().any(|b| b.eq_ignore_ascii_case(e)) {
             added.push(e.clone());
         }
     }
@@ -65,6 +65,9 @@ mod tests {
 
     #[test]
     fn prepend_noop_when_present() {
-        assert_eq!(compute_prepend("C:\\jdk\\bin;C:\\old", "C:\\jdk\\bin"), None);
+        assert_eq!(
+            compute_prepend("C:\\jdk\\bin;C:\\old", "C:\\jdk\\bin"),
+            None
+        );
     }
 }

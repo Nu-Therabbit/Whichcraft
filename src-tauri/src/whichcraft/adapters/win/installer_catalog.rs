@@ -7,8 +7,8 @@ use winreg::enums::*;
 use winreg::RegKey;
 
 use crate::error::EnvarlyError;
+use crate::whichcraft::domain::InstallerKind;
 use crate::whichcraft::ports::installer_catalog::{CatalogEntry, InstallerCatalog};
-use crate::whichcraft::domain::{InstallerKind};
 
 pub struct WinInstallerCatalog {
     index: Vec<UninstallRow>,
@@ -60,7 +60,10 @@ impl WinInstallerCatalog {
                 })
             })
             .map(|row| CatalogEntry {
-                install_root: row.install_root.clone().unwrap_or_else(|| root.to_path_buf()),
+                install_root: row
+                    .install_root
+                    .clone()
+                    .unwrap_or_else(|| root.to_path_buf()),
                 kind: row.kind.clone(),
                 display_name: row.display_name.clone(),
                 uninstall_command: row.uninstall_command.clone(),
@@ -197,7 +200,12 @@ fn product_code_from_uninstall(uninstall: Option<&str>) -> Option<String> {
 }
 
 /// Executables whose folder tells where an MSI put a tool, and how far up its root is.
-const PRIMARY_FILES: &[(&str, usize)] = &[("node.exe", 0), ("go.exe", 1), ("java.exe", 1), ("git.exe", 1)];
+const PRIMARY_FILES: &[(&str, usize)] = &[
+    ("node.exe", 0),
+    ("go.exe", 1),
+    ("java.exe", 1),
+    ("git.exe", 1),
+];
 
 /// Where an MSI installed its product when the uninstall entry has no InstallLocation (Node, Go).
 /// Finds a primary executable in the cached package's File table, then asks Windows Installer
@@ -246,7 +254,10 @@ fn component_id_for_file(pkg: &mut msi::Package<std::fs::File>, file_name: &str)
 
 fn wide(s: &str) -> Vec<u16> {
     use std::os::windows::ffi::OsStrExt;
-    std::ffi::OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
+    std::ffi::OsStr::new(s)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect()
 }
 
 fn msi_product_info(product_code: &str, property: &str) -> Option<String> {
@@ -254,7 +265,14 @@ fn msi_product_info(product_code: &str, property: &str) -> Option<String> {
     let (product, property) = (wide(product_code), wide(property));
     let mut buf = vec![0u16; 1024];
     let mut len = buf.len() as u32;
-    let rc = unsafe { MsiGetProductInfoW(product.as_ptr(), property.as_ptr(), buf.as_mut_ptr(), &mut len) };
+    let rc = unsafe {
+        MsiGetProductInfoW(
+            product.as_ptr(),
+            property.as_ptr(),
+            buf.as_mut_ptr(),
+            &mut len,
+        )
+    };
     (rc == 0).then(|| String::from_utf16_lossy(&buf[..len as usize]))
 }
 
@@ -265,7 +283,14 @@ fn msi_component_path(product_code: &str, component_id: &str) -> Option<String> 
     let (product, component) = (wide(product_code), wide(component_id));
     let mut buf = vec![0u16; 1024];
     let mut len = buf.len() as u32;
-    let state = unsafe { MsiGetComponentPathW(product.as_ptr(), component.as_ptr(), buf.as_mut_ptr(), &mut len) };
+    let state = unsafe {
+        MsiGetComponentPathW(
+            product.as_ptr(),
+            component.as_ptr(),
+            buf.as_mut_ptr(),
+            &mut len,
+        )
+    };
     (state == INSTALLSTATE_LOCAL).then(|| String::from_utf16_lossy(&buf[..len as usize]))
 }
 
@@ -289,7 +314,9 @@ mod tests {
         }
     }
 
-    fn counting_load(loads: &std::cell::Cell<u32>) -> Result<Arc<dyn InstallerCatalog>, EnvarlyError> {
+    fn counting_load(
+        loads: &std::cell::Cell<u32>,
+    ) -> Result<Arc<dyn InstallerCatalog>, EnvarlyError> {
         loads.set(loads.get() + 1);
         Ok(Arc::new(Empty))
     }
@@ -301,16 +328,38 @@ mod tests {
         let start = Instant::now();
         let reuse = Duration::from_secs(15);
 
-        cache.get_or_load(start, reuse, || counting_load(&loads)).unwrap();
-        cache.get_or_load(start + Duration::from_secs(14), reuse, || counting_load(&loads)).unwrap();
-        assert_eq!(loads.get(), 1, "a refresh's dozen lookups share one registry read");
+        cache
+            .get_or_load(start, reuse, || counting_load(&loads))
+            .unwrap();
+        cache
+            .get_or_load(start + Duration::from_secs(14), reuse, || {
+                counting_load(&loads)
+            })
+            .unwrap();
+        assert_eq!(
+            loads.get(),
+            1,
+            "a refresh's dozen lookups share one registry read"
+        );
 
-        cache.get_or_load(start + Duration::from_secs(15), reuse, || counting_load(&loads)).unwrap();
+        cache
+            .get_or_load(start + Duration::from_secs(15), reuse, || {
+                counting_load(&loads)
+            })
+            .unwrap();
         assert_eq!(loads.get(), 2, "an old snapshot is read again");
 
         cache.clear();
-        cache.get_or_load(start + Duration::from_secs(16), reuse, || counting_load(&loads)).unwrap();
-        assert_eq!(loads.get(), 3, "an install or uninstall forces a fresh read");
+        cache
+            .get_or_load(start + Duration::from_secs(16), reuse, || {
+                counting_load(&loads)
+            })
+            .unwrap();
+        assert_eq!(
+            loads.get(),
+            3,
+            "an install or uninstall forces a fresh read"
+        );
     }
 
     #[test]
@@ -318,19 +367,31 @@ mod tests {
         let cache = CatalogCache::new();
         let now = Instant::now();
         let reuse = Duration::from_secs(15);
-        assert!(cache.get_or_load(now, reuse, || Err(EnvarlyError::InvalidInput("registry".into()))).is_err());
+        assert!(cache
+            .get_or_load(now, reuse, || Err(EnvarlyError::InvalidInput(
+                "registry".into()
+            )))
+            .is_err());
         let loads = std::cell::Cell::new(0);
-        cache.get_or_load(now, reuse, || counting_load(&loads)).unwrap();
+        cache
+            .get_or_load(now, reuse, || counting_load(&loads))
+            .unwrap();
         assert_eq!(loads.get(), 1);
     }
 
     #[test]
     fn product_code_is_the_first_braced_guid() {
         assert_eq!(
-            product_code_from_uninstall(Some("MsiExec.exe /I{285FFC48-F0BE-425E-9496-8F5E267BC34D}")).as_deref(),
+            product_code_from_uninstall(Some(
+                "MsiExec.exe /I{285FFC48-F0BE-425E-9496-8F5E267BC34D}"
+            ))
+            .as_deref(),
             Some("{285FFC48-F0BE-425E-9496-8F5E267BC34D}")
         );
-        assert_eq!(product_code_from_uninstall(Some("\"C:\\Program Files\\Git\\unins001.exe\"")), None);
+        assert_eq!(
+            product_code_from_uninstall(Some("\"C:\\Program Files\\Git\\unins001.exe\"")),
+            None
+        );
     }
 
     #[test]
@@ -341,13 +402,26 @@ mod tests {
 
     #[test]
     fn installers_are_classified_like_spike_6() {
-        assert_eq!(classify_installer("Node.js", true, "MsiExec.exe /I{X}"), InstallerKind::Msi);
-        assert_eq!(classify_installer("Git", false, "\"C:\\Program Files\\Git\\unins001.exe\""), InstallerKind::InnoSetup);
         assert_eq!(
-            classify_installer("Python 3.14.6", false, "pymanager.exe uninstall --yes --by-id \"pythoncore-3.14-64\""),
+            classify_installer("Node.js", true, "MsiExec.exe /I{X}"),
+            InstallerKind::Msi
+        );
+        assert_eq!(
+            classify_installer("Git", false, "\"C:\\Program Files\\Git\\unins001.exe\""),
+            InstallerKind::InnoSetup
+        );
+        assert_eq!(
+            classify_installer(
+                "Python 3.14.6",
+                false,
+                "pymanager.exe uninstall --yes --by-id \"pythoncore-3.14-64\""
+            ),
             InstallerKind::PythonInstallManager
         );
-        assert_eq!(classify_installer("Android Studio", false, ""), InstallerKind::ManagedByOtherTool);
+        assert_eq!(
+            classify_installer("Android Studio", false, ""),
+            InstallerKind::ManagedByOtherTool
+        );
     }
 
     /// Reads this machine's real uninstall entries (no writes). Run with `cargo test -- --ignored`.
@@ -359,7 +433,12 @@ mod tests {
         for folder in ["nodejs", "Go"] {
             let root = Path::new(&program_files).join(folder);
             if root.is_dir() {
-                assert_eq!(catalog.kind_for_root(&root), InstallerKind::Msi, "{}", root.display());
+                assert_eq!(
+                    catalog.kind_for_root(&root),
+                    InstallerKind::Msi,
+                    "{}",
+                    root.display()
+                );
             }
         }
     }

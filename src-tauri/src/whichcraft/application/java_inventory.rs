@@ -56,7 +56,11 @@ fn standard_java_dirs(machine: &dyn Machine) -> Vec<PathBuf> {
     }
     // Per-user Temurin MSI installs land here (21.0.11 on the survey machine).
     if let Some(local) = machine.env_var("LOCALAPPDATA") {
-        dirs.push(PathBuf::from(local).join("Programs").join("Eclipse Adoptium"));
+        dirs.push(
+            PathBuf::from(local)
+                .join("Programs")
+                .join("Eclipse Adoptium"),
+        );
     }
     dirs
 }

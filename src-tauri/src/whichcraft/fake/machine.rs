@@ -23,7 +23,9 @@ struct State {
 }
 
 fn key(p: &Path) -> String {
-    p.to_string_lossy().trim_end_matches(['\\', '/']).to_ascii_lowercase()
+    p.to_string_lossy()
+        .trim_end_matches(['\\', '/'])
+        .to_ascii_lowercase()
 }
 
 fn same(a: &Path, b: &Path) -> bool {
@@ -37,9 +39,14 @@ impl FakeMachine {
         let mut s = self.state.lock().unwrap();
         s.dirs.push(installation.root.clone());
         for dir in path_dirs_for_tool(&installation) {
-            let ext = if tool == ToolKind::Flutter { "bat" } else { "exe" };
+            let ext = if tool == ToolKind::Flutter {
+                "bat"
+            } else {
+                "exe"
+            };
             s.dirs.push(PathBuf::from(&dir));
-            s.files.push(PathBuf::from(dir).join(format!("{}.{ext}", command_name(tool))));
+            s.files
+                .push(PathBuf::from(dir).join(format!("{}.{ext}", command_name(tool))));
         }
         s.installs.push(installation);
     }
@@ -47,14 +54,19 @@ impl FakeMachine {
     /// Takes an installation and everything under its root away, as an uninstaller would.
     pub fn remove_tree(&self, root: &Path) {
         let mut s = self.state.lock().unwrap();
-        let under = |p: &Path| key(p) == key(root) || key(p).starts_with(&format!("{}\\", key(root)));
+        let under =
+            |p: &Path| key(p) == key(root) || key(p).starts_with(&format!("{}\\", key(root)));
         s.installs.retain(|i| !under(&i.root));
         s.dirs.retain(|d| !under(d));
         s.files.retain(|f| !under(f));
     }
 
     pub fn set_var(&self, name: &str, value: &str) {
-        self.state.lock().unwrap().vars.insert(name.into(), value.into());
+        self.state
+            .lock()
+            .unwrap()
+            .vars
+            .insert(name.into(), value.into());
     }
 }
 
@@ -64,7 +76,10 @@ impl Machine for FakeMachine {
         s.installs
             .iter()
             .find(|i| i.tool == tool && same(&i.root, root))
-            .map(|i| ToolInstallation { managed, ..i.clone() })
+            .map(|i| ToolInstallation {
+                managed,
+                ..i.clone()
+            })
     }
     fn dir_exists(&self, path: &str) -> bool {
         let p = Path::new(path);
@@ -73,10 +88,19 @@ impl Machine for FakeMachine {
     fn is_dir(&self, path: &Path) -> bool {
         let s = self.state.lock().unwrap();
         let k = key(path);
-        s.dirs.iter().any(|d| key(d) == k) || s.files.iter().chain(&s.dirs).any(|f| key(f).starts_with(&format!("{k}\\")))
+        s.dirs.iter().any(|d| key(d) == k)
+            || s.files
+                .iter()
+                .chain(&s.dirs)
+                .any(|f| key(f).starts_with(&format!("{k}\\")))
     }
     fn is_file(&self, path: &Path) -> bool {
-        self.state.lock().unwrap().files.iter().any(|f| same(f, path))
+        self.state
+            .lock()
+            .unwrap()
+            .files
+            .iter()
+            .any(|f| same(f, path))
     }
     fn entries(&self, dir: &Path) -> Vec<PathBuf> {
         let s = self.state.lock().unwrap();

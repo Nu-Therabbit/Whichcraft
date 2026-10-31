@@ -4,11 +4,11 @@ use crate::env_store::EnvBackend;
 use crate::error::EnvarlyError;
 use crate::model::{EnvValue, EnvValueKind, VarScope};
 use crate::path_manage;
-use crate::whichcraft::domain::ToolKind;
-use crate::whichcraft::domain::ToolInstallation;
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::domain::path::{compute_prepend, path_entries, path_entry_diff};
 use crate::whichcraft::domain::plan::path_dirs_for_tool;
+use crate::whichcraft::domain::ToolInstallation;
+use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::domain::{PlanVariableDiff, ToolApplyPlan};
 use crate::whichcraft::ports::machine::Machine;
 
@@ -28,7 +28,10 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     let user = backend.read_user()?;
     let system = backend.read_system()?;
 
-    let path_before = user.get("Path").map(|v| v.value.clone()).unwrap_or_default();
+    let path_before = user
+        .get("Path")
+        .map(|v| v.value.clone())
+        .unwrap_or_default();
     let path_kind = user
         .get("Path")
         .and_then(|v| v.kind)
@@ -46,10 +49,14 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     if installation.tool == ToolKind::Java {
         planned_user.insert(
             "JAVA_HOME".into(),
-            crate::model::EnvValue::typed(installation.root.to_string_lossy().into_owned(), EnvValueKind::String),
+            crate::model::EnvValue::typed(
+                installation.root.to_string_lossy().into_owned(),
+                EnvValueKind::String,
+            ),
         );
     }
-    let expand_planned = crate::whichcraft::application::registry_expander(&planned_user, &system, machine);
+    let expand_planned =
+        crate::whichcraft::application::registry_expander(&planned_user, &system, machine);
     for entry in other_installation_entries(machine, &path_after, installation, &expand_planned) {
         path_after = remove_path_entry(&path_after, &entry);
     }
@@ -81,7 +88,10 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
         });
     }
 
-    let system_path_before = system.get("Path").map(|v| v.value.clone()).unwrap_or_default();
+    let system_path_before = system
+        .get("Path")
+        .map(|v| v.value.clone())
+        .unwrap_or_default();
     let system_path_kind = system
         .get("Path")
         .and_then(|v| v.kind)
@@ -100,7 +110,10 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     // JAVA_HOME, so it is not a shadow to remove.
     let mut user_after = user.clone();
     for diff in &user_diffs {
-        user_after.insert(diff.name.clone(), crate::model::EnvValue::typed(diff.after.clone(), diff.value_kind));
+        user_after.insert(
+            diff.name.clone(),
+            crate::model::EnvValue::typed(diff.after.clone(), diff.value_kind),
+        );
     }
     let expand = crate::whichcraft::application::registry_expander(&user_after, &system, machine);
     let check_user = path_manage::check_command_with(
@@ -118,7 +131,9 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     });
 
     if !effective_after_user {
-        if let Some(shadow) = find_system_shadow(machine, &system_path_before, installation, &expand) {
+        if let Some(shadow) =
+            find_system_shadow(machine, &system_path_before, installation, &expand)
+        {
             let mut system_after = system_path_before.clone();
             system_after = remove_path_entry(&system_after, &shadow);
             system_diffs.push(PlanVariableDiff {
@@ -139,7 +154,9 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     }
 
     for dir in path_dirs_for_tool(installation) {
-        if is_local_appdata_path(machine, &dir) && system_diffs.iter().any(|d| d.scope == VarScope::System) {
+        if is_local_appdata_path(machine, &dir)
+            && system_diffs.iter().any(|d| d.scope == VarScope::System)
+        {
             return Err(EnvarlyError::InvalidInput(
                 "refusing to mirror LocalAppData paths into System PATH".into(),
             ));
@@ -165,7 +182,10 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
 }
 
 /// True when any variable the plan touches no longer has the value the plan was built from.
-pub fn tool_plan_is_stale(plan: &ToolApplyPlan, backend: &dyn EnvBackend) -> Result<bool, EnvarlyError> {
+pub fn tool_plan_is_stale(
+    plan: &ToolApplyPlan,
+    backend: &dyn EnvBackend,
+) -> Result<bool, EnvarlyError> {
     let current = crate::env_store::read_snapshot_with(backend)?;
     for diff in plan.user_diffs.iter().chain(plan.system_diffs.iter()) {
         let map = match diff.scope {
@@ -193,7 +213,10 @@ fn find_system_shadow(
             continue;
         }
         for sel in &selected_dirs {
-            if crate::whichcraft::tools::paths_equal(std::path::Path::new(&expanded), std::path::Path::new(sel)) {
+            if crate::whichcraft::tools::paths_equal(
+                std::path::Path::new(&expanded),
+                std::path::Path::new(sel),
+            ) {
                 continue;
             }
             if would_shadow(machine, &expanded, sel, installation.tool) {
@@ -223,12 +246,19 @@ fn other_installation_entries(
             }
             crate::whichcraft::tools::probes::infer_root_from_command_dir(tool, &dir)
                 .and_then(|root| machine.probe(tool, &root, false))
-                .is_some_and(|other| !crate::whichcraft::tools::paths_equal(&other.root, &installation.root))
+                .is_some_and(|other| {
+                    !crate::whichcraft::tools::paths_equal(&other.root, &installation.root)
+                })
         })
         .collect()
 }
 
-fn would_shadow(machine: &dyn Machine, system_dir: &str, selected_dir: &str, tool: ToolKind) -> bool {
+fn would_shadow(
+    machine: &dyn Machine,
+    system_dir: &str,
+    selected_dir: &str,
+    tool: ToolKind,
+) -> bool {
     let cmd = crate::whichcraft::tools::command_name(tool);
     let hit = path_manage::check_command_with(
         cmd,
@@ -285,10 +315,10 @@ pub fn plan_to_mutations(plan: &ToolApplyPlan) -> Vec<PathMutation> {
 
 #[cfg(test)]
 mod tests {
-    use crate::whichcraft::adapters::local::LocalMachine;
     use super::*;
-    use crate::whichcraft::persistence::FileStore;
     use crate::env_store::MemBackend;
+    use crate::whichcraft::adapters::local::LocalMachine;
+    use crate::whichcraft::persistence::FileStore;
 
     fn leak(s: String) -> &'static str {
         Box::leak(s.into_boxed_str())
@@ -298,8 +328,18 @@ mod tests {
         let root = dir.join(name);
         std::fs::create_dir_all(root.join("bin")).unwrap();
         std::fs::write(root.join("bin").join("java.exe"), b"").unwrap();
-        std::fs::write(root.join("release"), format!("IMPLEMENTOR=\"Eclipse Adoptium\"\nJAVA_VERSION=\"{version}\"\n")).unwrap();
-        ToolInstallation { tool: ToolKind::Java, vendor: "Eclipse Adoptium".into(), version: version.into(), root, managed: false }
+        std::fs::write(
+            root.join("release"),
+            format!("IMPLEMENTOR=\"Eclipse Adoptium\"\nJAVA_VERSION=\"{version}\"\n"),
+        )
+        .unwrap();
+        ToolInstallation {
+            tool: ToolKind::Java,
+            vendor: "Eclipse Adoptium".into(),
+            version: version.into(),
+            root,
+            managed: false,
+        }
     }
 
     #[test]
@@ -316,15 +356,36 @@ mod tests {
             std::fs::write(root.join("bin").join("go.exe"), b"").unwrap();
             std::fs::write(root.join("VERSION"), "go1.26.10").unwrap();
         }
-        let system_path = leak(format!("{};{};{}", shared.display(), old.join("bin").display(), unrelated.display()));
+        let system_path = leak(format!(
+            "{};{};{}",
+            shared.display(),
+            old.join("bin").display(),
+            unrelated.display()
+        ));
         let backend = MemBackend::new()
             .with_user([("Path", r"C:\user-tools")])
             .with_system([("Path", system_path), ("PATHEXT", ".EXE;.CMD;.BAT")]);
-        let selected = ToolInstallation { tool: ToolKind::Go, vendor: "Go".into(), version: "1.26.10".into(), root: new, managed: true };
-        let plan = build_tool_apply_plan(&backend, &LocalMachine, &selected, "go-shadow".into()).unwrap();
+        let selected = ToolInstallation {
+            tool: ToolKind::Go,
+            vendor: "Go".into(),
+            version: "1.26.10".into(),
+            root: new,
+            managed: true,
+        };
+        let plan =
+            build_tool_apply_plan(&backend, &LocalMachine, &selected, "go-shadow".into()).unwrap();
         assert_eq!(plan.system_diffs.len(), 1);
-        assert_eq!(plan.system_diffs[0].after, format!("{};{}", shared.display(), unrelated.display()), "only the actual old Go directory may be removed");
-        assert!(!plan.system_diffs[0].after.contains(&*selected.root.to_string_lossy()), "the selected root stays in User PATH");
+        assert_eq!(
+            plan.system_diffs[0].after,
+            format!("{};{}", shared.display(), unrelated.display()),
+            "only the actual old Go directory may be removed"
+        );
+        assert!(
+            !plan.system_diffs[0]
+                .after
+                .contains(&*selected.root.to_string_lossy()),
+            "the selected root stays in User PATH"
+        );
     }
 
     #[test]
@@ -345,8 +406,17 @@ mod tests {
             .with_system([("PATHEXT", ".EXE;.CMD;.BAT")]);
 
         let plan = build_tool_apply_plan(&backend, &LocalMachine, &new, "p".into()).unwrap();
-        let path = &plan.user_diffs.iter().find(|d| d.name == "Path").unwrap().after;
-        let expected = format!("{};{};%JAVA_HOME%\\bin", new.root.join("bin").display(), other.display());
+        let path = &plan
+            .user_diffs
+            .iter()
+            .find(|d| d.name == "Path")
+            .unwrap()
+            .after;
+        let expected = format!(
+            "{};{};%JAVA_HOME%\\bin",
+            new.root.join("bin").display(),
+            other.display()
+        );
         // The old JDK goes; an unrelated folder stays; %JAVA_HOME%\bin follows the new JAVA_HOME and stays.
         assert_eq!(path, &expected);
     }
@@ -358,17 +428,30 @@ mod tests {
         let old = jdk(dir.path(), "jdk17", "17.0.20");
         let new = jdk(dir.path(), "jdk21", "21.0.12");
         let before = leak(format!("{};C:\\u", old.root.join("bin").display()));
-        let backend = MemBackend::new().with_user([("Path", before)]).with_system([("PATHEXT", ".EXE")]);
+        let backend = MemBackend::new()
+            .with_user([("Path", before)])
+            .with_system([("PATHEXT", ".EXE")]);
 
         use crate::whichcraft::adapters::operation_ids::SystemOperationIds;
-        let plan =
-            crate::whichcraft::application::tool_apply::create_tool_plan(&backend, &LocalMachine, &new, &SystemOperationIds)
-                .unwrap();
-        crate::whichcraft::application::tool_apply::apply_tool_plan(&backend, &FileStore, &SystemOperationIds, &plan)
-            .unwrap();
+        let plan = crate::whichcraft::application::tool_apply::create_tool_plan(
+            &backend,
+            &LocalMachine,
+            &new,
+            &SystemOperationIds,
+        )
+        .unwrap();
+        crate::whichcraft::application::tool_apply::apply_tool_plan(
+            &backend,
+            &FileStore,
+            &SystemOperationIds,
+            &plan,
+        )
+        .unwrap();
         assert!(!backend.read_user().unwrap()["Path"].value.contains("jdk17"));
 
-        let undo = crate::whichcraft::application::undo::undo_last_apply(&backend, &FileStore, None).unwrap();
+        let undo =
+            crate::whichcraft::application::undo::undo_last_apply(&backend, &FileStore, None)
+                .unwrap();
         assert!(undo.conflicts.is_empty());
         assert_eq!(backend.read_user().unwrap()["Path"].value, before);
     }
@@ -378,10 +461,21 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let old = jdk(dir.path(), "jdk17", "17.0.20");
         let new = jdk(dir.path(), "jdk21", "21.0.12");
-        let user_path = leak(format!("{};{}", old.root.join("bin").display(), new.root.join("bin").display()));
-        let backend = MemBackend::new().with_user([("Path", user_path)]).with_system([("PATHEXT", ".EXE")]);
+        let user_path = leak(format!(
+            "{};{}",
+            old.root.join("bin").display(),
+            new.root.join("bin").display()
+        ));
+        let backend = MemBackend::new()
+            .with_user([("Path", user_path)])
+            .with_system([("PATHEXT", ".EXE")]);
         let plan = build_tool_apply_plan(&backend, &LocalMachine, &new, "p".into()).unwrap();
-        let path = &plan.user_diffs.iter().find(|d| d.name == "Path").unwrap().after;
+        let path = &plan
+            .user_diffs
+            .iter()
+            .find(|d| d.name == "Path")
+            .unwrap()
+            .after;
         assert_eq!(path, &new.root.join("bin").to_string_lossy());
         assert!(plan.effective_after_user_only);
     }
@@ -396,7 +490,11 @@ mod tests {
         let jdk17 = leak(dir.path().join("jdk17").to_string_lossy().into_owned());
         let backend = MemBackend::new()
             .with_user([("Path", r"C:\u")])
-            .with_system([("Path", r"%JAVA_HOME%\bin"), ("JAVA_HOME", jdk17), ("PATHEXT", ".EXE;.CMD;.BAT")]);
+            .with_system([
+                ("Path", r"%JAVA_HOME%\bin"),
+                ("JAVA_HOME", jdk17),
+                ("PATHEXT", ".EXE;.CMD;.BAT"),
+            ]);
         let jdk21 = ToolInstallation {
             tool: ToolKind::Java,
             vendor: "Eclipse Adoptium".into(),

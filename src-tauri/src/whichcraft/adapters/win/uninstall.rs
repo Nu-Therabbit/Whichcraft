@@ -26,17 +26,23 @@ fn wide(s: &OsStr) -> Vec<u16> {
 
 fn binaries(root: &Path) -> Vec<PathBuf> {
     fn walk(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
         for entry in entries.flatten() {
             if out.len() >= MAX_FILES {
                 return;
             }
             let path = entry.path();
-            let Ok(kind) = entry.file_type() else { continue };
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
             if kind.is_dir() && !kind.is_symlink() && depth < MAX_DEPTH {
                 walk(&path, depth + 1, out);
             } else if kind.is_file()
-                && path.extension().is_some_and(|e| e.eq_ignore_ascii_case("exe") || e.eq_ignore_ascii_case("dll"))
+                && path
+                    .extension()
+                    .is_some_and(|e| e.eq_ignore_ascii_case("exe") || e.eq_ignore_ascii_case("dll"))
             {
                 out.push(path);
             }
@@ -50,7 +56,8 @@ fn binaries(root: &Path) -> Vec<PathBuf> {
 /// Names of the processes that have any of the files open, from Restart Manager.
 fn processes_using(files: &[PathBuf]) -> Result<Vec<String>, EnvarlyError> {
     use windows_sys::Win32::System::RestartManager::{
-        RmEndSession, RmGetList, RmRegisterResources, RmStartSession, CCH_RM_SESSION_KEY, RM_PROCESS_INFO,
+        RmEndSession, RmGetList, RmRegisterResources, RmStartSession, CCH_RM_SESSION_KEY,
+        RM_PROCESS_INFO,
     };
     if files.is_empty() {
         return Ok(Vec::new());
@@ -58,34 +65,69 @@ fn processes_using(files: &[PathBuf]) -> Result<Vec<String>, EnvarlyError> {
     let mut session = 0u32;
     let mut key = [0u16; CCH_RM_SESSION_KEY as usize + 1];
     if unsafe { RmStartSession(&mut session, 0, key.as_mut_ptr()) } != 0 {
-        return Err(EnvarlyError::InvalidInput("Restart Manager session failed".into()));
+        return Err(EnvarlyError::InvalidInput(
+            "Restart Manager session failed".into(),
+        ));
     }
     let names: Vec<Vec<u16>> = files.iter().map(|f| wide(f.as_os_str())).collect();
     let ptrs: Vec<*const u16> = names.iter().map(|n| n.as_ptr()).collect();
     let result = (|| {
-        if unsafe { RmRegisterResources(session, ptrs.len() as u32, ptrs.as_ptr(), 0, std::ptr::null(), 0, std::ptr::null()) } != 0 {
-            return Err(EnvarlyError::InvalidInput("Restart Manager could not register the files".into()));
+        if unsafe {
+            RmRegisterResources(
+                session,
+                ptrs.len() as u32,
+                ptrs.as_ptr(),
+                0,
+                std::ptr::null(),
+                0,
+                std::ptr::null(),
+            )
+        } != 0
+        {
+            return Err(EnvarlyError::InvalidInput(
+                "Restart Manager could not register the files".into(),
+            ));
         }
         let mut needed = 0u32;
         let mut count = 0u32;
         let mut reasons = 0u32;
         let mut infos: Vec<RM_PROCESS_INFO> = Vec::new();
         loop {
-            let rc = unsafe { RmGetList(session, &mut needed, &mut count, infos.as_mut_ptr(), &mut reasons) };
+            let rc = unsafe {
+                RmGetList(
+                    session,
+                    &mut needed,
+                    &mut count,
+                    infos.as_mut_ptr(),
+                    &mut reasons,
+                )
+            };
             match rc {
                 0 => break,
                 ERROR_MORE_DATA => {
                     infos = vec![unsafe { std::mem::zeroed() }; needed as usize];
                     count = needed;
                 }
-                _ => return Err(EnvarlyError::InvalidInput(format!("Restart Manager list failed ({rc})"))),
+                _ => {
+                    return Err(EnvarlyError::InvalidInput(format!(
+                        "Restart Manager list failed ({rc})"
+                    )))
+                }
             }
         }
         let mut names: Vec<String> = infos[..count as usize]
             .iter()
             .map(|i| {
-                let len = i.strAppName.iter().position(|c| *c == 0).unwrap_or(i.strAppName.len());
-                format!("{} (PID {})", String::from_utf16_lossy(&i.strAppName[..len]), i.Process.dwProcessId)
+                let len = i
+                    .strAppName
+                    .iter()
+                    .position(|c| *c == 0)
+                    .unwrap_or(i.strAppName.len());
+                format!(
+                    "{} (PID {})",
+                    String::from_utf16_lossy(&i.strAppName[..len]),
+                    i.Process.dwProcessId
+                )
             })
             .collect();
         names.sort();
@@ -97,10 +139,15 @@ fn processes_using(files: &[PathBuf]) -> Result<Vec<String>, EnvarlyError> {
 }
 
 fn under_protected_root(root: &Path) -> bool {
-    ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432", "SystemRoot"]
-        .iter()
-        .filter_map(std::env::var_os)
-        .any(|p| root.starts_with(PathBuf::from(p)))
+    [
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "ProgramW6432",
+        "SystemRoot",
+    ]
+    .iter()
+    .filter_map(std::env::var_os)
+    .any(|p| root.starts_with(PathBuf::from(p)))
 }
 
 /// A terminal or Explorer window inside the folder holds no file open, but it does stop the
@@ -109,7 +156,9 @@ fn folder_locked(root: &Path) -> Result<bool, EnvarlyError> {
     if under_protected_root(root) {
         return Ok(false);
     }
-    let Some(name) = root.file_name() else { return Ok(false) };
+    let Some(name) = root.file_name() else {
+        return Ok(false);
+    };
     let mut probe_name = name.to_os_string();
     probe_name.push(".whichcraft-probe");
     let probe = root.with_file_name(probe_name);
@@ -139,13 +188,22 @@ impl UsageProbe for WinUsageProbe {
         let processes = processes_using(&binaries(install_root))?;
         // Renaming while a process runs from the folder would fail anyway; skip the second probe.
         let folder_locked = processes.is_empty() && folder_locked(install_root)?;
-        Ok(UsageReport { processes, folder_locked })
+        Ok(UsageReport {
+            processes,
+            folder_locked,
+        })
     }
 }
 
 fn quote_args(args: &[String]) -> String {
     args.iter()
-        .map(|a| if a.contains(' ') && !a.starts_with('"') { format!("\"{a}\"") } else { a.clone() })
+        .map(|a| {
+            if a.contains(' ') && !a.starts_with('"') {
+                format!("\"{a}\"")
+            } else {
+                a.clone()
+            }
+        })
         .collect::<Vec<_>>()
         .join(" ")
 }
@@ -165,8 +223,12 @@ impl Uninstaller for WinUninstaller {
     /// gets its UAC prompt, then waited on. Declining that prompt counts as cancelled.
     fn run_uninstaller(&self, program: &str, args: &[String]) -> Result<RunOutcome, EnvarlyError> {
         use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, ERROR_CANCELLED};
-        use windows_sys::Win32::System::Threading::{GetExitCodeProcess, WaitForSingleObject, INFINITE};
-        use windows_sys::Win32::UI::Shell::{ShellExecuteExW, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW};
+        use windows_sys::Win32::System::Threading::{
+            GetExitCodeProcess, WaitForSingleObject, INFINITE,
+        };
+        use windows_sys::Win32::UI::Shell::{
+            ShellExecuteExW, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
+        };
         use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 
         let file = wide(OsStr::new(program));
@@ -181,7 +243,9 @@ impl Uninstaller for WinUninstaller {
             if unsafe { GetLastError() } == ERROR_CANCELLED {
                 return Ok(RunOutcome::Cancelled);
             }
-            return Err(EnvarlyError::InvalidInput(format!("could not start {program}")));
+            return Err(EnvarlyError::InvalidInput(format!(
+                "could not start {program}"
+            )));
         }
         let mut code = 1u32;
         unsafe {
@@ -194,7 +258,8 @@ impl Uninstaller for WinUninstaller {
 
     fn recycle_folder(&self, folder: &Path) -> Result<(), EnvarlyError> {
         use windows_sys::Win32::UI::Shell::{
-            SHFileOperationW, FOF_ALLOWUNDO, FOF_NOCONFIRMATION, FOF_NOERRORUI, FOF_SILENT, FO_DELETE, SHFILEOPSTRUCTW,
+            SHFileOperationW, FOF_ALLOWUNDO, FOF_NOCONFIRMATION, FOF_NOERRORUI, FOF_SILENT,
+            FO_DELETE, SHFILEOPSTRUCTW,
         };
         // SHFileOperation takes a list ended by an extra NUL.
         let mut from = wide(folder.as_os_str());
@@ -213,7 +278,12 @@ impl Uninstaller for WinUninstaller {
         Ok(())
     }
 
-    fn uninstall_managed(&self, store: &Path, tool: ToolKind, mise_version: &str) -> Result<(), EnvarlyError> {
+    fn uninstall_managed(
+        &self,
+        store: &Path,
+        tool: ToolKind,
+        mise_version: &str,
+    ) -> Result<(), EnvarlyError> {
         let manager = MiseToolManager::with_runner(ProcessMiseRunner::for_maintenance(store));
         ToolManager::uninstall(&manager, tool, mise_version)
     }
@@ -234,7 +304,10 @@ mod tests {
     #[test]
     fn arguments_with_spaces_are_quoted_again() {
         assert_eq!(quote_args(&["/x".into(), "{ABC}".into()]), "/x {ABC}");
-        assert_eq!(quote_args(&["--dir".into(), "C:\\a b".into()]), "--dir \"C:\\a b\"");
+        assert_eq!(
+            quote_args(&["--dir".into(), "C:\\a b".into()]),
+            "--dir \"C:\\a b\""
+        );
     }
 
     #[test]
@@ -243,8 +316,15 @@ mod tests {
         let bin = dir.path().join("bin");
         std::fs::create_dir_all(&bin).unwrap();
         let exe = bin.join("probe-target.exe");
-        std::fs::copy(std::env::var_os("ComSpec").map(PathBuf::from).unwrap(), &exe).unwrap();
-        assert_eq!(WinUsageProbe.probe(ToolKind::Node, dir.path()).unwrap(), UsageReport::default());
+        std::fs::copy(
+            std::env::var_os("ComSpec").map(PathBuf::from).unwrap(),
+            &exe,
+        )
+        .unwrap();
+        assert_eq!(
+            WinUsageProbe.probe(ToolKind::Node, dir.path()).unwrap(),
+            UsageReport::default()
+        );
 
         let mut child = std::process::Command::new(&exe)
             .args(["/c", "ping", "-n", "30", "127.0.0.1"])
@@ -256,7 +336,13 @@ mod tests {
         child.kill().unwrap();
         let _ = child.wait();
         assert!(report.in_use(), "{report:?}");
-        assert!(report.processes.iter().any(|p| p.contains(&child.id().to_string())), "{report:?}");
+        assert!(
+            report
+                .processes
+                .iter()
+                .any(|p| p.contains(&child.id().to_string())),
+            "{report:?}"
+        );
     }
 
     /// Moves a throwaway folder into the real Recycle Bin. `cargo test contract_recycle -- --ignored`
