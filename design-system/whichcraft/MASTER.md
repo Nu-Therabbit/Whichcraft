@@ -4,7 +4,7 @@ The implementation source is `src/index.css`. Keep the existing semantic token n
 
 ## Windows workbench
 
-Use one quiet frame around the working sheet. Product identity comes from Segoe UI, a branching-path Whichcraft mark, Windows blue, compact commands and the installation resolution readout. No decorative charts, gradients, entrance animations or shadows at rest. Paths and full versions use Cascadia Code/Consolas; other text uses Segoe UI Variable Text/Segoe UI.
+Use one quiet frame around the working sheet. Product identity comes from Segoe UI, the Quiet Craft witch-hat icon, Windows blue, compact commands and the installation resolution readout. The icon uses a plum tile (#30213F), cream hat (#F7EEDC) and lilac band (#C5A0F0); these brand colors do not replace the interface's semantic colors. The canonical artwork is `src-tauri/icons/source/logo.svg`, with a transparent monochrome counterpart in `logo-mono.svg`. No decorative charts, gradients, entrance animations or shadows at rest. Paths and full versions use Cascadia Code/Consolas; other text uses Segoe UI Variable Text/Segoe UI.
 
 Preserve CONTEXT.md's distinctions: Selection, Effective Installation, Shell Resolution, Managed Installation, External Installation, Unavailable Installation, Install Store, Scan Root and Tool Profile. Never introduce an active profile or describe Undo as reverting Selection. Domain operations, routes, state/effects and API contracts retain their behavior.
 

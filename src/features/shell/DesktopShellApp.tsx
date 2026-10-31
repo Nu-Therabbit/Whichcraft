@@ -1,5 +1,7 @@
 import { PythonLauncherInfo, SdkInventory } from "../../components/ToolsPanel/SupplementalInfo";
 import { useEffect, useMemo, useRef } from "react";
+// no-inline: the app's CSP blocks data: images, and Vite inlines small SVGs by default.
+import brandIcon from "../../../src-tauri/icons/source/logo.svg?no-inline";
 import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import { scopesNeedShellRescan } from "../../coordination/scopeGroups";
 import { ThemeContext } from "../../context/ThemeContext";
@@ -168,15 +170,7 @@ function DesktopShellAppInner() {
         </a>
         <nav className="shell-nav shrink-0 flex" aria-label={t("desktop_shell.nav_label")}>
           <div className="shell-brand" translate="no">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-              <path
-                d="M5 5v11a7 7 0 0 0 7 7h2V12a7 7 0 0 1 7-7h2M14 23h9M19 1l4 4-4 4"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <img src={brandIcon} width="28" height="28" alt="" aria-hidden="true" />
             <span>Whichcraft</span>
           </div>
           {(

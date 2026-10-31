@@ -1,14 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
-  <!-- Monochrome E mark — transparent background, white strokes -->
-  <!-- Use on dark surfaces. For light surfaces, swap stroke color to #0f1117 or currentColor -->
-  <g stroke="white" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Spine: gentle S-curve -->
-    <path d="M 162 130 C 138 200, 186 300, 162 370" stroke-width="52"/>
-    <!-- Top bar: bows upward -->
-    <path d="M 162 150 Q 262 116 362 150" stroke-width="48"/>
-    <!-- Middle bar: straight -->
-    <path d="M 162 250 L 314 250" stroke-width="48"/>
-    <!-- Bottom bar: bows downward -->
-    <path d="M 162 350 Q 262 384 362 350" stroke-width="48"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 100 100">
+  <title>Whichcraft — Quiet Craft monochrome</title>
+  <defs>
+    <mask id="hat-band" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+      <rect width="100" height="100" fill="white"/>
+      <path d="m33 55 29-2 3 9-36 3Z" fill="black"/>
+    </mask>
+  </defs>
+  <!-- Transparent band; inherit currentColor when embedded inline. -->
+  <g fill="currentColor" mask="url(#hat-band)">
+    <path d="M29 65 47 26Q50 20 56 23L76 35 58 33 67 65Z"/>
+    <path d="M19 69Q49 60 81 70Q89 74 80 78Q49 85 19 78Q11 74 19 69Z"/>
   </g>
 </svg>

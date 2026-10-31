@@ -164,8 +164,7 @@
     font-weight: 600;
     letter-spacing: -0.025em;
   }
-  .shell-brand svg {
-    color: var(--color-accent);
+  .shell-brand img {
     flex: none;
   }
   .shell-nav-link {
@@ -484,7 +483,7 @@
       padding: 0 4px 8px;
       font-size: 16px;
     }
-    .shell-brand svg {
+    .shell-brand img {
       width: 24px;
       height: 24px;
     }
