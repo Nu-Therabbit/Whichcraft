@@ -3,7 +3,7 @@
  * architecture.md "Migration order and completion evidence"). Counterpart of the Rust
  * `application/layer_tests.rs`. Test-only code (tests, stories, `src/test/`) is exempt.
  *
- * Inherited Envarly presentation in `components/`, `hooks/` and `lib/` may still import the
+ * Inherited presentation in `components/`, `hooks/` and `lib/` may still import the
  * compatibility barrel until ticket 21 removes the legacy UI; it reaches native dialogs, the
  * browser and elevation only through the injected PlatformApi, like feature code.
  */

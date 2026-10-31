@@ -12,7 +12,7 @@ export function useTheme() {
 
   useEffect(() => {
     applyThemeToDocument(theme);
-    localStorage.setItem("envarly-theme", theme);
+    localStorage.setItem("whichcraft-theme", theme);
   }, [theme]);
 
   const toggle = () => setTheme((t) => (t === "dark" ? "light" : "dark"));

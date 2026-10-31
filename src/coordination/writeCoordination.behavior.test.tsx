@@ -2,7 +2,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { useEffect, useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { UndoProvider } from "../contexts/UndoContext";
-import { splitEnvarlyApi } from "../composition/appServices";
+import { splitWhichcraftApi } from "../composition/appServices";
 import { AppServicesProvider } from "../composition/AppServicesContext";
 import { configureProductionServices } from "../composition/createProductionServices";
 import { EnvironmentProvider, useEnvironment } from "../features/environment/EnvironmentContext";
@@ -55,7 +55,7 @@ describe("write coordination behaviour", () => {
         },
       ]);
     const { api: fake } = fakeToolsRuntime({ getEnvVars });
-    configureProductionServices(splitEnvarlyApi(fake));
+    configureProductionServices(splitWhichcraftApi(fake));
 
     const view = render(
       <UndoProvider>
@@ -87,7 +87,7 @@ describe("write coordination behaviour", () => {
       getUnsupportedEnvValues: async () => [],
       validatePaths: async () => [],
     });
-    configureProductionServices(splitEnvarlyApi(fake));
+    configureProductionServices(splitWhichcraftApi(fake));
 
     let applyStaged: ((takeSnapshot: boolean) => Promise<boolean>) | null = null;
     let canToolsWrite: (() => boolean) | null = null;

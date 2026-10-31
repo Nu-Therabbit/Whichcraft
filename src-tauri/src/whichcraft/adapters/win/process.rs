@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::os::windows::process::CommandExt;
 use std::process::Command;
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::ports::process::{ProcessRunner, ProcessSpec};
 
 const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
@@ -12,7 +12,7 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// What Windows builds from the registry for this user (CreateEnvironmentBlock without
 /// inheritance), i.e. what a process started from Explorer would get after an apply.
-pub fn fresh_environment() -> Result<HashMap<String, String>, EnvarlyError> {
+pub fn fresh_environment() -> Result<HashMap<String, String>, WhichcraftError> {
     use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
     use windows_sys::Win32::Security::TOKEN_QUERY;
     use windows_sys::Win32::System::Environment::{
@@ -22,13 +22,15 @@ pub fn fresh_environment() -> Result<HashMap<String, String>, EnvarlyError> {
 
     let mut token: HANDLE = std::ptr::null_mut();
     if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } == 0 {
-        return Err(EnvarlyError::InvalidInput("OpenProcessToken failed".into()));
+        return Err(WhichcraftError::InvalidInput(
+            "OpenProcessToken failed".into(),
+        ));
     }
     let mut block: *mut std::ffi::c_void = std::ptr::null_mut();
     let ok = unsafe { CreateEnvironmentBlock(&mut block, token, 0) };
     unsafe { CloseHandle(token) };
     if ok == 0 {
-        return Err(EnvarlyError::InvalidInput(
+        return Err(WhichcraftError::InvalidInput(
             "CreateEnvironmentBlock failed".into(),
         ));
     }
@@ -67,22 +69,22 @@ fn command(spec: &ProcessSpec) -> Command {
 pub struct WinProcessRunner;
 
 impl ProcessRunner for WinProcessRunner {
-    fn spawn(&self, spec: &ProcessSpec) -> Result<(), EnvarlyError> {
+    fn spawn(&self, spec: &ProcessSpec) -> Result<(), WhichcraftError> {
         command(spec)
             .creation_flags(CREATE_NEW_CONSOLE)
             .spawn()
             .map(|_| ())
-            .map_err(|e| EnvarlyError::InvalidInput(format!("start {}: {e}", spec.program)))
+            .map_err(|e| WhichcraftError::InvalidInput(format!("start {}: {e}", spec.program)))
     }
 
-    fn fresh_environment(&self) -> Result<HashMap<String, String>, EnvarlyError> {
+    fn fresh_environment(&self) -> Result<HashMap<String, String>, WhichcraftError> {
         fresh_environment()
     }
 
-    fn open_folder(&self, folder: &std::path::Path) -> Result<(), EnvarlyError> {
+    fn open_folder(&self, folder: &std::path::Path) -> Result<(), WhichcraftError> {
         // Explorer opens (runs) a file it is given, so only folders are accepted.
         if !folder.is_dir() {
-            return Err(EnvarlyError::InvalidInput(format!(
+            return Err(WhichcraftError::InvalidInput(format!(
                 "not a folder: {}",
                 folder.display()
             )));
@@ -91,14 +93,14 @@ impl ProcessRunner for WinProcessRunner {
             .arg(folder)
             .spawn()
             .map(|_| ())
-            .map_err(|e| EnvarlyError::InvalidInput(format!("open {}: {e}", folder.display())))
+            .map_err(|e| WhichcraftError::InvalidInput(format!("open {}: {e}", folder.display())))
     }
 
-    fn output(&self, spec: &ProcessSpec) -> Result<String, EnvarlyError> {
+    fn output(&self, spec: &ProcessSpec) -> Result<String, WhichcraftError> {
         let out = command(spec)
             .creation_flags(CREATE_NO_WINDOW)
             .output()
-            .map_err(|e| EnvarlyError::InvalidInput(format!("run {}: {e}", spec.program)))?;
+            .map_err(|e| WhichcraftError::InvalidInput(format!("run {}: {e}", spec.program)))?;
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     }
 }

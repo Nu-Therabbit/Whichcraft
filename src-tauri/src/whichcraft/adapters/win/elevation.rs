@@ -1,7 +1,7 @@
 //! The `Elevator` port through UAC: a copy of this exe runs elevated with the request file and
 //! its hash, and its exit code says what happened.
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::application::elevation::{
     encode_request, run_elevated_request, EXIT_APPLIED, EXIT_FAILED, EXIT_STALE,
 };
@@ -24,9 +24,9 @@ pub fn elevated_helper_main(payload: &std::path::Path, sha256: &str) -> i32 {
 pub struct WinElevator;
 
 impl Elevator for WinElevator {
-    fn apply_system(&self, request: &ElevatedRequest) -> Result<ElevatedOutcome, EnvarlyError> {
+    fn apply_system(&self, request: &ElevatedRequest) -> Result<ElevatedOutcome, WhichcraftError> {
         let exe = std::env::current_exe()
-            .map_err(|e| EnvarlyError::InvalidInput(format!("current_exe: {e}")))?;
+            .map_err(|e| WhichcraftError::InvalidInput(format!("current_exe: {e}")))?;
         elevate_with(&exe, request)
     }
 }
@@ -38,7 +38,7 @@ pub struct HelperExeElevator(pub std::path::PathBuf);
 
 #[cfg(test)]
 impl Elevator for HelperExeElevator {
-    fn apply_system(&self, request: &ElevatedRequest) -> Result<ElevatedOutcome, EnvarlyError> {
+    fn apply_system(&self, request: &ElevatedRequest) -> Result<ElevatedOutcome, WhichcraftError> {
         elevate_with(&self.0, request)
     }
 }
@@ -46,12 +46,12 @@ impl Elevator for HelperExeElevator {
 fn elevate_with(
     exe: &std::path::Path,
     request: &ElevatedRequest,
-) -> Result<ElevatedOutcome, EnvarlyError> {
+) -> Result<ElevatedOutcome, WhichcraftError> {
     let (bytes, hash) = encode_request(request)?;
     let path = crate::whichcraft::persistence::whichcraft_data_dir()?
         .join(format!("elevation-{}.json", &hash[..16]));
     std::fs::write(&path, &bytes)
-        .map_err(|e| EnvarlyError::Snapshot(format!("write elevation request: {e}")))?;
+        .map_err(|e| WhichcraftError::Snapshot(format!("write elevation request: {e}")))?;
     let outcome = run_elevated_and_wait(exe, &path, &hash);
     let _ = std::fs::remove_file(&path);
     outcome
@@ -62,7 +62,7 @@ fn run_elevated_and_wait(
     exe: &std::path::Path,
     payload: &std::path::Path,
     hash: &str,
-) -> Result<ElevatedOutcome, EnvarlyError> {
+) -> Result<ElevatedOutcome, WhichcraftError> {
     use std::ffi::OsStr;
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, ERROR_CANCELLED};
@@ -97,7 +97,7 @@ fn run_elevated_and_wait(
         if unsafe { GetLastError() } == ERROR_CANCELLED {
             return Ok(ElevatedOutcome::Cancelled);
         }
-        return Err(EnvarlyError::InvalidInput(
+        return Err(WhichcraftError::InvalidInput(
             "could not start the elevated helper".into(),
         ));
     }
@@ -119,8 +119,8 @@ fn run_elevated_and_wait(
     _exe: &std::path::Path,
     _payload: &std::path::Path,
     _hash: &str,
-) -> Result<ElevatedOutcome, EnvarlyError> {
-    Err(EnvarlyError::InvalidInput(
+) -> Result<ElevatedOutcome, WhichcraftError> {
+    Err(WhichcraftError::InvalidInput(
         "elevation is only supported on Windows".into(),
     ))
 }

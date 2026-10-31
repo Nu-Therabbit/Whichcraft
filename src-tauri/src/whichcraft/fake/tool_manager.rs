@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use super::FakeMachine;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::domain::store_layout::mise_installs_dir;
 use crate::whichcraft::domain::versions::RemoteVersion;
 use crate::whichcraft::domain::{ToolInstallation, ToolKind};
@@ -63,7 +63,7 @@ fn vendor(tool: ToolKind) -> &'static str {
 }
 
 impl ToolManager for FakeToolManager {
-    fn list_remote(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError> {
+    fn list_remote(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, WhichcraftError> {
         Ok(self
             .tools
             .remote
@@ -81,9 +81,10 @@ impl ToolManager for FakeToolManager {
             .collect())
     }
 
-    fn install(&self, tool: ToolKind, version: &str) -> Result<PathBuf, EnvarlyError> {
-        let dir = mise_installs_dir(&self.store, tool)
-            .ok_or_else(|| EnvarlyError::InvalidInput(format!("{tool:?} cannot be installed")))?;
+    fn install(&self, tool: ToolKind, version: &str) -> Result<PathBuf, WhichcraftError> {
+        let dir = mise_installs_dir(&self.store, tool).ok_or_else(|| {
+            WhichcraftError::InvalidInput(format!("{tool:?} cannot be installed"))
+        })?;
         let root = dir.join(version);
         let display = version
             .split('+')
@@ -106,14 +107,18 @@ impl ToolManager for FakeToolManager {
         Ok(root)
     }
 
-    fn uninstall(&self, tool: ToolKind, version: &str) -> Result<(), EnvarlyError> {
+    fn uninstall(&self, tool: ToolKind, version: &str) -> Result<(), WhichcraftError> {
         if let Some(dir) = mise_installs_dir(&self.store, tool) {
             self.tools.machine.remove_tree(&dir.join(version));
         }
         Ok(())
     }
 
-    fn download_size(&self, _tool: ToolKind, version: &str) -> Result<Option<u64>, EnvarlyError> {
+    fn download_size(
+        &self,
+        _tool: ToolKind,
+        version: &str,
+    ) -> Result<Option<u64>, WhichcraftError> {
         Ok(self
             .tools
             .download_bytes

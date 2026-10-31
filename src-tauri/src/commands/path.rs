@@ -1,4 +1,4 @@
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::path_manage;
 
 #[tauri::command]
@@ -89,12 +89,12 @@ pub fn get_path_status() -> path_manage::PathStatus {
 /// or None if the install directory is already present.
 /// scope: "User" | "System" | "OtherUser"
 #[tauri::command]
-pub fn get_path_proposal(scope: String) -> Result<Option<String>, EnvarlyError> {
+pub fn get_path_proposal(scope: String) -> Result<Option<String>, WhichcraftError> {
     match scope.as_str() {
         "User" => path_manage::propose_add(true),
         "System" => path_manage::propose_add(false),
         "OtherUser" => path_manage::propose_add_for_other_user(),
-        other => Err(EnvarlyError::InvalidInput(format!(
+        other => Err(WhichcraftError::InvalidInput(format!(
             "invalid scope: {other:?}"
         ))),
     }
@@ -103,7 +103,7 @@ pub fn get_path_proposal(scope: String) -> Result<Option<String>, EnvarlyError> 
 /// Checks whether `input` (a command name or full exe path) resolves via the
 /// effective PATH, and whether it's shadowed by another same-named file.
 #[tauri::command]
-pub fn check_command(input: String) -> Result<path_manage::CheckCommandResult, EnvarlyError> {
+pub fn check_command(input: String) -> Result<path_manage::CheckCommandResult, WhichcraftError> {
     path_manage::check_command(&input)
 }
 

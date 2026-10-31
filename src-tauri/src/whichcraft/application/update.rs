@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use serde::Serialize;
 
 use crate::env_store::EnvBackend;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::application::tool_apply::create_tool_plan;
 use crate::whichcraft::domain::ToolApplyPlan;
 use crate::whichcraft::domain::ToolInstallation;
@@ -30,11 +30,11 @@ pub fn install_and_plan<B: EnvBackend>(
     ids: &dyn OperationIds,
     tool: ToolKind,
     version: &str,
-    install: impl FnOnce(ToolKind, &str) -> Result<PathBuf, EnvarlyError>,
-) -> Result<UpdateResult, EnvarlyError> {
+    install: impl FnOnce(ToolKind, &str) -> Result<PathBuf, WhichcraftError>,
+) -> Result<UpdateResult, WhichcraftError> {
     let root = install(tool, version)?;
     let installation = machine.probe(tool, &root, true).ok_or_else(|| {
-        EnvarlyError::InvalidInput(format!(
+        WhichcraftError::InvalidInput(format!(
             "the new installation at {} was not recognised",
             root.display()
         ))
@@ -100,7 +100,7 @@ mod tests {
             &SystemOperationIds,
             ToolKind::Go,
             "1.27.1",
-            |_, _| Err(EnvarlyError::InvalidInput("offline".into())),
+            |_, _| Err(WhichcraftError::InvalidInput("offline".into())),
         );
         assert!(err.is_err());
     }

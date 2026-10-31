@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator};
 use crate::whichcraft::ports::process::{ProcessRunner, ProcessSpec};
 use crate::whichcraft::ports::sdk::SdkProbe;
@@ -13,7 +13,7 @@ use crate::whichcraft::ports::sdk::SdkProbe;
 pub struct DeclinesUac;
 
 impl Elevator for DeclinesUac {
-    fn apply_system(&self, _request: &ElevatedRequest) -> Result<ElevatedOutcome, EnvarlyError> {
+    fn apply_system(&self, _request: &ElevatedRequest) -> Result<ElevatedOutcome, WhichcraftError> {
         Ok(ElevatedOutcome::Cancelled)
     }
 }
@@ -45,17 +45,17 @@ pub struct FakeProcessRunner {
 }
 
 impl ProcessRunner for Arc<FakeProcessRunner> {
-    fn spawn(&self, spec: &ProcessSpec) -> Result<(), EnvarlyError> {
+    fn spawn(&self, spec: &ProcessSpec) -> Result<(), WhichcraftError> {
         self.spawned.lock().unwrap().push(spec.clone());
         Ok(())
     }
-    fn output(&self, _spec: &ProcessSpec) -> Result<String, EnvarlyError> {
+    fn output(&self, _spec: &ProcessSpec) -> Result<String, WhichcraftError> {
         Ok(String::new())
     }
-    fn fresh_environment(&self) -> Result<HashMap<String, String>, EnvarlyError> {
+    fn fresh_environment(&self) -> Result<HashMap<String, String>, WhichcraftError> {
         Ok(self.environment.clone())
     }
-    fn open_folder(&self, folder: &Path) -> Result<(), EnvarlyError> {
+    fn open_folder(&self, folder: &Path) -> Result<(), WhichcraftError> {
         self.opened.lock().unwrap().push(folder.to_path_buf());
         Ok(())
     }
@@ -69,10 +69,10 @@ impl crate::whichcraft::ports::uninstaller::Uninstaller for MachineUninstaller {
         &self,
         _program: &str,
         _args: &[String],
-    ) -> Result<crate::whichcraft::ports::uninstaller::RunOutcome, EnvarlyError> {
+    ) -> Result<crate::whichcraft::ports::uninstaller::RunOutcome, WhichcraftError> {
         Ok(crate::whichcraft::ports::uninstaller::RunOutcome::Finished)
     }
-    fn recycle_folder(&self, folder: &Path) -> Result<(), EnvarlyError> {
+    fn recycle_folder(&self, folder: &Path) -> Result<(), WhichcraftError> {
         self.0.remove_tree(folder);
         Ok(())
     }
@@ -81,7 +81,7 @@ impl crate::whichcraft::ports::uninstaller::Uninstaller for MachineUninstaller {
         store: &Path,
         tool: crate::whichcraft::domain::ToolKind,
         version: &str,
-    ) -> Result<(), EnvarlyError> {
+    ) -> Result<(), WhichcraftError> {
         if let Some(dir) = crate::whichcraft::domain::store_layout::mise_installs_dir(store, tool) {
             self.0.remove_tree(&dir.join(version));
         }

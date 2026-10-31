@@ -17,7 +17,7 @@ interface Props {
 }
 
 const DOCK_WIDTH = {
-  storageKey: "envarly-snapshot-panel-width",
+  storageKey: "whichcraft-snapshot-panel-width",
   defaultWidth: 420,
   min: 260,
   max: 640,

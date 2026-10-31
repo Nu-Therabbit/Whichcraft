@@ -1,8 +1,8 @@
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::user_hive::{self, LocalAccount};
 
 #[tauri::command]
-pub fn list_local_accounts() -> Result<Vec<LocalAccount>, EnvarlyError> {
+pub fn list_local_accounts() -> Result<Vec<LocalAccount>, WhichcraftError> {
     user_hive::list_local_accounts()
 }
 
@@ -10,7 +10,7 @@ pub fn list_local_accounts() -> Result<Vec<LocalAccount>, EnvarlyError> {
 /// hive Whichcraft itself loaded). The frontend should re-fetch vars/snapshot
 /// after this resolves — it doesn't change any other command's signature.
 #[tauri::command]
-pub fn select_account(sid: Option<String>) -> Result<Option<LocalAccount>, EnvarlyError> {
+pub fn select_account(sid: Option<String>) -> Result<Option<LocalAccount>, WhichcraftError> {
     user_hive::select_account(sid.as_deref())
 }
 

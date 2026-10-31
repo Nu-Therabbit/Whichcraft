@@ -19,13 +19,13 @@ describe("useTheme", () => {
   });
 
   it("reads initial theme from localStorage", () => {
-    localStorage.setItem("envarly-theme", "light");
+    localStorage.setItem("whichcraft-theme", "light");
     const { result } = renderHook(() => useTheme());
     expect(result.current.theme).toBe("light");
   });
 
   it("toggle switches from dark to light", () => {
-    localStorage.setItem("envarly-theme", "dark");
+    localStorage.setItem("whichcraft-theme", "dark");
     const { result } = renderHook(() => useTheme());
     act(() => {
       result.current.toggle();
@@ -34,7 +34,7 @@ describe("useTheme", () => {
   });
 
   it("toggle switches from light to dark", () => {
-    localStorage.setItem("envarly-theme", "light");
+    localStorage.setItem("whichcraft-theme", "light");
     const { result } = renderHook(() => useTheme());
     act(() => {
       result.current.toggle();
@@ -43,16 +43,16 @@ describe("useTheme", () => {
   });
 
   it("persists theme to localStorage on toggle", () => {
-    localStorage.setItem("envarly-theme", "dark");
+    localStorage.setItem("whichcraft-theme", "dark");
     const { result } = renderHook(() => useTheme());
     act(() => {
       result.current.toggle();
     });
-    expect(localStorage.getItem("envarly-theme")).toBe("light");
+    expect(localStorage.getItem("whichcraft-theme")).toBe("light");
   });
 
   it("sets correct class on documentElement", () => {
-    localStorage.setItem("envarly-theme", "dark");
+    localStorage.setItem("whichcraft-theme", "dark");
     const { result } = renderHook(() => useTheme());
     expect(document.documentElement.classList.contains("dark")).toBe(true);
     act(() => {

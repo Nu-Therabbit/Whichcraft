@@ -3,7 +3,7 @@ import type { PlatformApi } from "../platform/api";
 import type { UpdateInfo } from "../platform/types";
 
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
-const STORAGE_KEY = "envarly.lastUpdateCheck";
+const STORAGE_KEY = "whichcraft.lastUpdateCheck";
 
 export function useUpdateCheck(platform: Pick<PlatformApi, "checkForUpdate">) {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);

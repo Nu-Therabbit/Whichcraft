@@ -1,4 +1,4 @@
-import type { EnvarlyApi } from "../contracts";
+import type { WhichcraftApi } from "../contracts";
 import type { EnvironmentApi } from "../features/environment/api";
 import type { ToolsApi } from "../features/tools/api";
 import type { PlatformApi, ToolsPlatformSlice } from "../platform/api";
@@ -107,12 +107,12 @@ const _assertToolsPlatformSliceKeys: _MissingToolsPlatformSliceKeys extends neve
   : never = true;
 void _assertToolsPlatformSliceKeys;
 
-export const ENVARLY_API_KEYS = [
+export const WHICHCRAFT_API_KEYS = [
   ...ENVIRONMENT_API_KEYS,
   ...TOOLS_API_KEYS,
   ...PLATFORM_API_KEYS,
 ] as const;
 
-type _MissingEnvarlyApiKeys = Exclude<keyof EnvarlyApi, (typeof ENVARLY_API_KEYS)[number]>;
-const _assertEnvarlyApiKeys: _MissingEnvarlyApiKeys extends never ? true : never = true;
-void _assertEnvarlyApiKeys;
+type _MissingWhichcraftApiKeys = Exclude<keyof WhichcraftApi, (typeof WHICHCRAFT_API_KEYS)[number]>;
+const _assertWhichcraftApiKeys: _MissingWhichcraftApiKeys extends never ? true : never = true;
+void _assertWhichcraftApiKeys;

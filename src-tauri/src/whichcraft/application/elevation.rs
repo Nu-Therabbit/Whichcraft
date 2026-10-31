@@ -9,7 +9,7 @@
 use sha2::{Digest, Sha256};
 
 use crate::env_store::{self, EnvBackend};
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvChange, VarScope};
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest};
@@ -18,9 +18,9 @@ pub const EXIT_APPLIED: i32 = 0;
 pub const EXIT_FAILED: i32 = 1;
 pub const EXIT_STALE: i32 = 3;
 
-pub fn encode_request(request: &ElevatedRequest) -> Result<(Vec<u8>, String), EnvarlyError> {
+pub fn encode_request(request: &ElevatedRequest) -> Result<(Vec<u8>, String), WhichcraftError> {
     let bytes = serde_json::to_vec(request)
-        .map_err(|e| EnvarlyError::Snapshot(format!("serialize elevation request: {e}")))?;
+        .map_err(|e| WhichcraftError::Snapshot(format!("serialize elevation request: {e}")))?;
     let hash = sha256_hex(&bytes);
     Ok((bytes, hash))
 }

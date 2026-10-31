@@ -1,7 +1,7 @@
 use crate::whichcraft::domain::plan::RESTART_LIMITATION_NOTICE;
 
 use crate::env_store::EnvBackend;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvValue, EnvValueKind, VarScope};
 use crate::path_manage;
 use crate::whichcraft::domain::env::get_var;
@@ -17,9 +17,9 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
     machine: &dyn Machine,
     installation: &ToolInstallation,
     plan_id: String,
-) -> Result<ToolApplyPlan, EnvarlyError> {
+) -> Result<ToolApplyPlan, WhichcraftError> {
     if !machine.is_dir(&installation.root) {
-        return Err(EnvarlyError::InvalidInput(
+        return Err(WhichcraftError::InvalidInput(
             "installation folder is missing (unavailable)".into(),
         ));
     }
@@ -157,7 +157,7 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
         if is_local_appdata_path(machine, &dir)
             && system_diffs.iter().any(|d| d.scope == VarScope::System)
         {
-            return Err(EnvarlyError::InvalidInput(
+            return Err(WhichcraftError::InvalidInput(
                 "refusing to mirror LocalAppData paths into System PATH".into(),
             ));
         }
@@ -185,7 +185,7 @@ pub fn build_tool_apply_plan<B: EnvBackend>(
 pub fn tool_plan_is_stale(
     plan: &ToolApplyPlan,
     backend: &dyn EnvBackend,
-) -> Result<bool, EnvarlyError> {
+) -> Result<bool, WhichcraftError> {
     let current = crate::env_store::read_snapshot_with(backend)?;
     for diff in plan.user_diffs.iter().chain(plan.system_diffs.iter()) {
         let map = match diff.scope {

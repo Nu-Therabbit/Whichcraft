@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 
 use super::installation::{ToolInstallation, ToolInstallationView};
 use super::tool::ToolKind;
@@ -77,9 +77,9 @@ pub fn remote_for_pin(pin: &ProfileToolPin, remote: &[RemoteVersion]) -> Option<
 /// Missing pins of a profile with what to install for each.
 pub fn missing_pins(
     unavailable: &[ProfileToolPin],
-    remote: impl Fn(ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError>,
+    remote: impl Fn(ToolKind) -> Result<Vec<RemoteVersion>, WhichcraftError>,
     size: impl Fn(ToolKind, &str) -> Option<u64>,
-) -> Result<Vec<MissingPin>, EnvarlyError> {
+) -> Result<Vec<MissingPin>, WhichcraftError> {
     unavailable
         .iter()
         .map(|pin| {

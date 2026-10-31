@@ -26,7 +26,7 @@ export function usePathStatus(
   const [actualSystemPathInEnv, setActualSystemPathInEnv] = useState(true);
   const [actualOtherUserPathInEnv, setActualOtherUserPathInEnv] = useState<boolean | null>(null);
   const [pathBannerDismissed, setPathBannerDismissed] = useState(
-    () => localStorage.getItem("envarly.pathBannerDismissed") === "1",
+    () => localStorage.getItem("whichcraft.pathBannerDismissed") === "1",
   );
 
   const userPathInEnv = actualUserPathInEnv || staged.has(stagedKey("Path", "User"));
@@ -59,7 +59,7 @@ export function usePathStatus(
   );
 
   const handleDismissPathBanner = useCallback(() => {
-    localStorage.setItem("envarly.pathBannerDismissed", "1");
+    localStorage.setItem("whichcraft.pathBannerDismissed", "1");
     setPathBannerDismissed(true);
   }, []);
 

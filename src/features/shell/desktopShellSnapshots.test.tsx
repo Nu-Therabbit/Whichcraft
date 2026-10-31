@@ -8,7 +8,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { UndoProvider } from "../../contexts/UndoContext";
-import { splitEnvarlyApi } from "../../composition/appServices";
+import { splitWhichcraftApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import {
   createWriteCoordinator,
@@ -108,12 +108,12 @@ function renderShell(
   coordination: WriteCoordinatorFacade = createWriteCoordinator(),
 ) {
   const { api } = fakeToolsRuntime({ ...sdkMocks, ...apiOverrides }, coordination);
-  configureProductionServices(splitEnvarlyApi(api));
+  configureProductionServices(splitWhichcraftApi(api));
   return {
     coordination,
     ...render(
       <UndoProvider>
-        <AppServicesProvider services={splitEnvarlyApi(api)}>
+        <AppServicesProvider services={splitWhichcraftApi(api)}>
           <WriteCoordinatorProvider coordinator={coordination}>
             <DesktopShellApp />
           </WriteCoordinatorProvider>

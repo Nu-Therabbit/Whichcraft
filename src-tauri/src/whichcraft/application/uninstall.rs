@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::env_store::EnvBackend;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::application::tool_apply::apply_tool_plan_elevated;
 use crate::whichcraft::domain::profiles::ToolProfile;
 use crate::whichcraft::domain::uninstall::UninstallRecord;
@@ -174,7 +174,7 @@ pub struct PlanInputs<'a> {
 pub fn plan_uninstall(
     inputs: PlanInputs,
     usage: &dyn UsageProbe,
-) -> Result<UninstallPlan, EnvarlyError> {
+) -> Result<UninstallPlan, WhichcraftError> {
     let view = inputs.view;
     let inst = &view.installation;
     let report = usage.probe(inst.tool, &inst.root)?;
@@ -283,7 +283,7 @@ pub fn uninstall<B: EnvBackend>(
     plan: &UninstallPlan,
     replacement: Option<&ToolApplyPlan>,
     ports: &UninstallPorts<'_, B>,
-) -> Result<UninstallOutcome, EnvarlyError> {
+) -> Result<UninstallOutcome, WhichcraftError> {
     let UninstallPorts {
         backend,
         store,
@@ -353,7 +353,7 @@ fn run_method(
     plan: &UninstallPlan,
     machine: &dyn Machine,
     uninstaller: &dyn Uninstaller,
-) -> Result<UninstallOutcome, EnvarlyError> {
+) -> Result<UninstallOutcome, WhichcraftError> {
     let inst = &plan.installation.installation;
     match &plan.method {
         UninstallMethod::Managed {
@@ -386,7 +386,7 @@ fn run_method(
 
 /// Uninstalls that started but were never seen to end (the app closed or crashed meanwhile);
 /// the UI asks the user to rescan, since only the disk says what happened.
-pub fn unfinished_uninstalls(store: &dyn Store) -> Result<Vec<UninstallRecord>, EnvarlyError> {
+pub fn unfinished_uninstalls(store: &dyn Store) -> Result<Vec<UninstallRecord>, WhichcraftError> {
     Ok(store
         .uninstall_records()?
         .into_iter()
@@ -400,7 +400,7 @@ pub fn dismiss_unfinished_uninstall(
     machine: &dyn Machine,
     ids: &dyn OperationIds,
     id: &str,
-) -> Result<(), EnvarlyError> {
+) -> Result<(), WhichcraftError> {
     let Some(mut record) = store.uninstall_records()?.into_iter().find(|r| r.id == id) else {
         return Ok(());
     };
@@ -892,12 +892,16 @@ mod tests {
         let store = MemStore::default();
         struct Broken;
         impl Uninstaller for Broken {
-            fn run_uninstaller(&self, _: &str, _: &[String]) -> Result<RunOutcome, EnvarlyError> {
-                Err(EnvarlyError::InvalidInput(
+            fn run_uninstaller(
+                &self,
+                _: &str,
+                _: &[String],
+            ) -> Result<RunOutcome, WhichcraftError> {
+                Err(WhichcraftError::InvalidInput(
                     "could not start msiexec.exe".into(),
                 ))
             }
-            fn recycle_folder(&self, _: &Path) -> Result<(), EnvarlyError> {
+            fn recycle_folder(&self, _: &Path) -> Result<(), WhichcraftError> {
                 unreachable!()
             }
             fn uninstall_managed(
@@ -905,7 +909,7 @@ mod tests {
                 _: &Path,
                 _: ToolKind,
                 _: &str,
-            ) -> Result<(), EnvarlyError> {
+            ) -> Result<(), WhichcraftError> {
                 unreachable!()
             }
         }

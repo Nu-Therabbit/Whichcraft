@@ -51,9 +51,9 @@ const MOCK_VARS = [
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(api.exportVars).mockResolvedValue("C:\\Users\\zigza\\envarly-20260624.json");
+  vi.mocked(api.exportVars).mockResolvedValue("C:\\Users\\zigza\\whichcraft-20260624.json");
   vi.mocked(api.exportCustomVars).mockResolvedValue(
-    "C:\\Users\\zigza\\envarly-custom-20260624.json",
+    "C:\\Users\\zigza\\whichcraft-custom-20260624.json",
   );
   vi.mocked(api.getEnvVars).mockResolvedValue(MOCK_VARS as never);
   vi.mocked(api.parseImport).mockResolvedValue(MOCK_SNAPSHOT);

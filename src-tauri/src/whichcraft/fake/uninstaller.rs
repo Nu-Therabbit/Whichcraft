@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::ports::uninstaller::{RunOutcome, Uninstaller};
 
@@ -39,7 +39,11 @@ impl FakeUninstaller {
 }
 
 impl Uninstaller for FakeUninstaller {
-    fn run_uninstaller(&self, program: &str, args: &[String]) -> Result<RunOutcome, EnvarlyError> {
+    fn run_uninstaller(
+        &self,
+        program: &str,
+        args: &[String],
+    ) -> Result<RunOutcome, WhichcraftError> {
         self.ran.lock().unwrap().push(
             std::iter::once(program.to_string())
                 .chain(args.iter().cloned())
@@ -54,7 +58,7 @@ impl Uninstaller for FakeUninstaller {
         Ok(self.outcome.clone())
     }
 
-    fn recycle_folder(&self, folder: &Path) -> Result<(), EnvarlyError> {
+    fn recycle_folder(&self, folder: &Path) -> Result<(), WhichcraftError> {
         self.recycled.lock().unwrap().push(folder.to_path_buf());
         self.remove(folder);
         Ok(())
@@ -65,7 +69,7 @@ impl Uninstaller for FakeUninstaller {
         store: &Path,
         tool: ToolKind,
         mise_version: &str,
-    ) -> Result<(), EnvarlyError> {
+    ) -> Result<(), WhichcraftError> {
         self.managed
             .lock()
             .unwrap()

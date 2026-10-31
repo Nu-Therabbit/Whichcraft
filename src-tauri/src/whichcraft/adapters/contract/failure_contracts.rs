@@ -1,7 +1,7 @@
 //! Opt-in real Registry checks with deterministic failure injection at the backend boundary.
 //! These do not simulate UAC or claim installed-GUI failure presentation.
 use super::*;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::EnvChange;
 use crate::whichcraft::domain::journal::JournalStatus;
 use std::sync::{mpsc, Mutex};
@@ -58,7 +58,7 @@ struct FailWrite {
     writer: Option<(mpsc::Sender<()>, Mutex<mpsc::Receiver<()>>)>,
 }
 impl FailWrite {
-    fn check(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+    fn check(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
         owned(name);
         if name == self.name && value.value == self.value {
             if let Some((start, done)) = &self.writer {
@@ -68,7 +68,7 @@ impl FailWrite {
                     .recv_timeout(Duration::from_secs(10))
                     .unwrap();
             }
-            return Err(EnvarlyError::Registry(std::io::Error::new(
+            return Err(WhichcraftError::Registry(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,
                 "owned-fixture injected write failure",
             )));
@@ -77,27 +77,27 @@ impl FailWrite {
     }
 }
 impl EnvBackend for FailWrite {
-    fn read_user(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+    fn read_user(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError> {
         WinregBackend.read_user()
     }
-    fn read_system(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+    fn read_system(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError> {
         WinregBackend.read_system()
     }
-    fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+    fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
         self.check(name, value)?;
         WinregBackend.write_user(name, value)
     }
-    fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+    fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
         self.check(name, value)?;
-        Err(EnvarlyError::InvalidInput(
+        Err(WhichcraftError::InvalidInput(
             "System writes are forbidden by this fixture backend".into(),
         ))
     }
-    fn delete_user(&self, name: &str) -> Result<(), EnvarlyError> {
+    fn delete_user(&self, name: &str) -> Result<(), WhichcraftError> {
         owned(name);
         WinregBackend.delete_user(name)
     }
-    fn delete_system(&self, name: &str) -> Result<(), EnvarlyError> {
+    fn delete_system(&self, name: &str) -> Result<(), WhichcraftError> {
         owned(name);
         WinregBackend.delete_system(name)
     }

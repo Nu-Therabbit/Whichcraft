@@ -14,7 +14,7 @@ import { TextInput } from "../ui/TextInput";
 import { SidebarRow } from "./SidebarRow";
 
 const SIDEBAR_WIDTH = {
-  storageKey: "envarly-sidebar-width",
+  storageKey: "whichcraft-sidebar-width",
   defaultWidth: 300,
   min: 260,
   max: 480,

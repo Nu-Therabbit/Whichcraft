@@ -1,4 +1,4 @@
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 
 /// Whether the pinned mise is already on disk, and what the first install would download.
 #[derive(Debug, Clone, serde::Serialize)]
@@ -15,7 +15,7 @@ pub struct MiseStatus {
 
 /// Status and background preparation of the pinned mise bundled with Whichcraft.
 pub trait InstallerLifecycle: Send + Sync {
-    fn mise_status(&self) -> Result<MiseStatus, EnvarlyError>;
+    fn mise_status(&self) -> Result<MiseStatus, WhichcraftError>;
     /// Fetches a newly pinned mise when an older one remains; returns whether anything was fetched.
-    fn prepare_mise(&self) -> Result<bool, EnvarlyError>;
+    fn prepare_mise(&self) -> Result<bool, WhichcraftError>;
 }

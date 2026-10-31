@@ -1,7 +1,7 @@
 //! Download sizes for the install screen. `mise ls-remote --json` reports none, so the size is
 //! read from the archive's own download URL with a HEAD request.
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::domain::ToolKind;
 
 /// The archive mise downloads for a version, when its URL can be predicted. Temurin and
@@ -24,8 +24,8 @@ pub fn download_url(tool: ToolKind, version: &str) -> Option<String> {
 pub fn download_size(
     tool: ToolKind,
     version: &str,
-    content_length: impl Fn(&str) -> Result<Option<u64>, EnvarlyError>,
-) -> Result<Option<u64>, EnvarlyError> {
+    content_length: impl Fn(&str) -> Result<Option<u64>, WhichcraftError>,
+) -> Result<Option<u64>, WhichcraftError> {
     match download_url(tool, version) {
         Some(url) => content_length(&url),
         None => Ok(None),
@@ -33,11 +33,11 @@ pub fn download_size(
 }
 
 /// `Content-Length` of a HEAD request, following redirects.
-pub fn http_content_length(url: &str) -> Result<Option<u64>, EnvarlyError> {
+pub fn http_content_length(url: &str) -> Result<Option<u64>, WhichcraftError> {
     let response = reqwest::blocking::Client::new()
         .head(url)
         .send()
-        .map_err(|e| EnvarlyError::InvalidInput(format!("size lookup failed: {e}")))?;
+        .map_err(|e| WhichcraftError::InvalidInput(format!("size lookup failed: {e}")))?;
     if !response.status().is_success() {
         return Ok(None);
     }
@@ -121,7 +121,8 @@ mod tests {
 
     #[test]
     fn tools_without_a_predictable_url_report_an_unknown_size() {
-        let head = |_: &str| -> Result<Option<u64>, EnvarlyError> { panic!("no request expected") };
+        let head =
+            |_: &str| -> Result<Option<u64>, WhichcraftError> { panic!("no request expected") };
         assert_eq!(
             download_size(ToolKind::Java, "21.0.12+101.0.LTS", head).unwrap(),
             None

@@ -2,7 +2,7 @@ use crate::whichcraft::domain::plan::RESTART_LIMITATION_NOTICE;
 use std::collections::HashMap;
 
 use crate::env_store::{EnvBackend, MemBackend};
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvValue, VarScope};
 use crate::whichcraft::application::tool_apply::create_tool_plan;
 use crate::whichcraft::application::tool_inventory::list_tool_installations;
@@ -23,7 +23,7 @@ pub fn profile_status<B: EnvBackend>(
     machine: &dyn Machine,
     catalog: &dyn InstallerCatalog,
     profile: &ToolProfile,
-) -> Result<ProfileMatchStatus, EnvarlyError> {
+) -> Result<ProfileMatchStatus, WhichcraftError> {
     profile_status_with(profile, |tool| {
         list_tool_installations(backend, store, machine, catalog, tool, None)
     })
@@ -31,8 +31,8 @@ pub fn profile_status<B: EnvBackend>(
 
 fn profile_status_with(
     profile: &ToolProfile,
-    find: impl Fn(ToolKind) -> Result<Vec<ToolInstallationView>, EnvarlyError>,
-) -> Result<ProfileMatchStatus, EnvarlyError> {
+    find: impl Fn(ToolKind) -> Result<Vec<ToolInstallationView>, WhichcraftError>,
+) -> Result<ProfileMatchStatus, WhichcraftError> {
     let mut unavailable = Vec::new();
     let mut all_effective = true;
     for pin in &profile.tools {
@@ -56,7 +56,7 @@ pub fn plan_profile_apply<B: EnvBackend>(
     catalog: &dyn InstallerCatalog,
     profile: &ToolProfile,
     ids: &dyn OperationIds,
-) -> Result<ToolApplyPlan, EnvarlyError> {
+) -> Result<ToolApplyPlan, WhichcraftError> {
     plan_profile_apply_with(backend, machine, profile, ids, |tool| {
         list_tool_installations(backend, store, machine, catalog, tool, None)
     })
@@ -67,8 +67,8 @@ fn plan_profile_apply_with<B: EnvBackend>(
     machine: &dyn Machine,
     profile: &ToolProfile,
     ids: &dyn OperationIds,
-    find: impl Fn(ToolKind) -> Result<Vec<ToolInstallationView>, EnvarlyError>,
-) -> Result<ToolApplyPlan, EnvarlyError> {
+    find: impl Fn(ToolKind) -> Result<Vec<ToolInstallationView>, WhichcraftError>,
+) -> Result<ToolApplyPlan, WhichcraftError> {
     // Check every tool first: if any is unavailable, nothing is planned or written.
     let mut chosen = Vec::new();
     let mut unavailable = Vec::new();
@@ -79,13 +79,13 @@ fn plan_profile_apply_with<B: EnvBackend>(
         }
     }
     if !unavailable.is_empty() {
-        return Err(EnvarlyError::InvalidInput(format!(
+        return Err(WhichcraftError::InvalidInput(format!(
             "profile has unavailable installations: {}",
             unavailable.join(", ")
         )));
     }
     let Some((first, rest)) = chosen.split_first() else {
-        return Err(EnvarlyError::InvalidInput(
+        return Err(WhichcraftError::InvalidInput(
             "profile selects no tools".into(),
         ));
     };

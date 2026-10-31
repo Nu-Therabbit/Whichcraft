@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => true),
 }));
-import { splitEnvarlyApi } from "../../composition/appServices";
+import { splitWhichcraftApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { UndoProvider } from "../../contexts/UndoContext";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
@@ -53,13 +53,13 @@ const sdkMocks = {
 function renderShell(apiOverrides: Record<string, unknown> = {}) {
   const coordination = createWriteCoordinator();
   const { api } = fakeToolsRuntime({ ...sdkMocks, ...apiOverrides }, coordination);
-  configureProductionServices(splitEnvarlyApi(api));
+  configureProductionServices(splitWhichcraftApi(api));
   return {
     coordination,
     api,
     ...render(
       <UndoProvider>
-        <AppServicesProvider services={splitEnvarlyApi(api)}>
+        <AppServicesProvider services={splitWhichcraftApi(api)}>
           <WriteCoordinatorProvider coordinator={coordination}>
             <DesktopShellApp />
           </WriteCoordinatorProvider>

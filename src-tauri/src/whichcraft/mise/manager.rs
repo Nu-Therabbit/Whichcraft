@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::domain::versions::RemoteVersion;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::mise::pins::{self, MISE_VERSION};
@@ -22,7 +22,7 @@ pub struct MiseOutput {
 
 /// Runs the pinned mise against the app's own install store.
 pub trait MiseRunner {
-    fn run(&self, args: &[&str]) -> Result<MiseOutput, EnvarlyError>;
+    fn run(&self, args: &[&str]) -> Result<MiseOutput, WhichcraftError>;
 }
 
 /// Spawns the pinned mise.exe with every mise dir pointed into the active install store.
@@ -52,7 +52,7 @@ impl ProcessMiseRunner {
 }
 
 impl MiseRunner for ProcessMiseRunner {
-    fn run(&self, args: &[&str]) -> Result<MiseOutput, EnvarlyError> {
+    fn run(&self, args: &[&str]) -> Result<MiseOutput, WhichcraftError> {
         let exe = if self.maintenance {
             maintenance_mise()?
         } else {
@@ -65,7 +65,7 @@ impl MiseRunner for ProcessMiseRunner {
         let output = cmd
             .args(args)
             .output()
-            .map_err(|e| EnvarlyError::InvalidInput(format!("mise spawn failed: {e}")))?;
+            .map_err(|e| WhichcraftError::InvalidInput(format!("mise spawn failed: {e}")))?;
         Ok(MiseOutput {
             success: output.status.success(),
             stdout: output.stdout,
@@ -123,10 +123,10 @@ impl<R: MiseRunner> MiseToolManager<R> {
         Self { runner }
     }
 
-    fn run_ok(&self, args: &[&str]) -> Result<Vec<u8>, EnvarlyError> {
+    fn run_ok(&self, args: &[&str]) -> Result<Vec<u8>, WhichcraftError> {
         let output = self.runner.run(args)?;
         if !output.success {
-            return Err(EnvarlyError::InvalidInput(format!(
+            return Err(WhichcraftError::InvalidInput(format!(
                 "mise {} failed: {}",
                 args.first().copied().unwrap_or(""),
                 String::from_utf8_lossy(&output.stderr)
@@ -135,7 +135,7 @@ impl<R: MiseRunner> MiseToolManager<R> {
         Ok(output.stdout)
     }
 
-    pub fn install(&self, tool: ToolKind, version: &str) -> Result<PathBuf, EnvarlyError> {
+    pub fn install(&self, tool: ToolKind, version: &str) -> Result<PathBuf, WhichcraftError> {
         let name = mise_tool(tool)?;
         if tool == ToolKind::Flutter {
             self.ensure_flutter_plugin()?;
@@ -150,19 +150,19 @@ impl<R: MiseRunner> MiseToolManager<R> {
     }
 
     /// Removes one installed version; `version` may be in mise's own form (the folder name).
-    pub fn uninstall(&self, tool: ToolKind, version: &str) -> Result<(), EnvarlyError> {
+    pub fn uninstall(&self, tool: ToolKind, version: &str) -> Result<(), WhichcraftError> {
         let spec = format!("{}@{}", mise_tool(tool)?, mise_version(tool, version));
         self.run_ok(&["uninstall", &spec]).map(|_| ())
     }
 
-    pub fn install_path(&self, tool: ToolKind, version: &str) -> Result<PathBuf, EnvarlyError> {
+    pub fn install_path(&self, tool: ToolKind, version: &str) -> Result<PathBuf, WhichcraftError> {
         let wanted = mise_version(tool, version);
         parse_ls(&self.run_ok(&["ls", "--json", mise_tool(tool)?])?)?
             .into_iter()
             .find(|entry| entry.version == wanted)
             .and_then(|entry| entry.install_path)
             .ok_or_else(|| {
-                EnvarlyError::InvalidInput(format!("mise install path not found for {wanted}"))
+                WhichcraftError::InvalidInput(format!("mise install path not found for {wanted}"))
             })
     }
 
@@ -170,7 +170,7 @@ impl<R: MiseRunner> MiseToolManager<R> {
     /// auto-update to turn off: the pinned mise never updates plugins by itself (its
     /// `plugin_autoupdate_last_check_duration` setting is deprecated as never implemented), and
     /// this check runs before every Flutter install anyway (I-17).
-    pub fn ensure_flutter_plugin(&self) -> Result<(), EnvarlyError> {
+    pub fn ensure_flutter_plugin(&self) -> Result<(), WhichcraftError> {
         let listing = self.run_ok(&["plugins", "ls", "--urls", "--refs"])?;
         match plugin_ref(&String::from_utf8_lossy(&listing), FLUTTER_PLUGIN_NAME) {
             Some(r) if pins::VFOX_FLUTTER_PLUGIN_SHA.starts_with(&r) => return Ok(()),
@@ -187,15 +187,15 @@ impl<R: MiseRunner> MiseToolManager<R> {
 }
 
 impl<R: MiseRunner + Send + Sync> ToolManager for MiseToolManager<R> {
-    fn install(&self, tool: ToolKind, version: &str) -> Result<PathBuf, EnvarlyError> {
+    fn install(&self, tool: ToolKind, version: &str) -> Result<PathBuf, WhichcraftError> {
         MiseToolManager::install(self, tool, version)
     }
 
-    fn uninstall(&self, tool: ToolKind, version: &str) -> Result<(), EnvarlyError> {
+    fn uninstall(&self, tool: ToolKind, version: &str) -> Result<(), WhichcraftError> {
         MiseToolManager::uninstall(self, tool, version)
     }
 
-    fn download_size(&self, tool: ToolKind, version: &str) -> Result<Option<u64>, EnvarlyError> {
+    fn download_size(&self, tool: ToolKind, version: &str) -> Result<Option<u64>, WhichcraftError> {
         crate::whichcraft::mise::sizes::download_size(
             tool,
             version,
@@ -203,14 +203,14 @@ impl<R: MiseRunner + Send + Sync> ToolManager for MiseToolManager<R> {
         )
     }
 
-    fn list_remote(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError> {
+    fn list_remote(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, WhichcraftError> {
         let name = mise_tool(tool)?;
         if tool == ToolKind::Flutter {
             self.ensure_flutter_plugin()?;
         }
         let entries: Vec<serde_json::Value> =
             serde_json::from_slice(&self.run_ok(&["ls-remote", "--json", name])?)
-                .map_err(|e| EnvarlyError::InvalidInput(format!("parse ls-remote: {e}")))?;
+                .map_err(|e| WhichcraftError::InvalidInput(format!("parse ls-remote: {e}")))?;
         Ok(entries
             .iter()
             .filter_map(|e| e.get("version")?.as_str())
@@ -226,14 +226,14 @@ impl<R: MiseRunner + Send + Sync> ToolManager for MiseToolManager<R> {
 }
 
 /// The mise registry name for a tool. Temurin is a vendor of `java`, not a tool of its own.
-fn mise_tool(tool: ToolKind) -> Result<&'static str, EnvarlyError> {
+fn mise_tool(tool: ToolKind) -> Result<&'static str, WhichcraftError> {
     match tool {
         ToolKind::Java => Ok("java"),
         ToolKind::Node => Ok("node"),
         ToolKind::Python => Ok("python"),
         ToolKind::Go => Ok("go"),
         ToolKind::Flutter => Ok("vfox:jdx/vfox-flutter"),
-        ToolKind::Git => Err(EnvarlyError::InvalidInput(
+        ToolKind::Git => Err(WhichcraftError::InvalidInput(
             "Git install via Whichcraft is out of scope".into(),
         )),
     }
@@ -264,9 +264,9 @@ struct LsEntry {
 }
 
 /// Parses `mise ls --json <tool>`, which returns an array for a single tool.
-fn parse_ls(stdout: &[u8]) -> Result<Vec<LsEntry>, EnvarlyError> {
+fn parse_ls(stdout: &[u8]) -> Result<Vec<LsEntry>, WhichcraftError> {
     let entries: Vec<serde_json::Value> = serde_json::from_slice(stdout)
-        .map_err(|e| EnvarlyError::InvalidInput(format!("parse mise ls: {e}")))?;
+        .map_err(|e| WhichcraftError::InvalidInput(format!("parse mise ls: {e}")))?;
     Ok(entries
         .iter()
         .filter_map(|e| {
@@ -291,7 +291,7 @@ fn plugin_ref(listing: &str, name: &str) -> Option<String> {
 
 pub use crate::whichcraft::ports::installer_lifecycle::MiseStatus;
 
-pub fn mise_status() -> Result<MiseStatus, EnvarlyError> {
+pub fn mise_status() -> Result<MiseStatus, WhichcraftError> {
     Ok(MiseStatus {
         version: pinned_version().to_string(),
         present: mise_store_dir()?.join("mise.exe").is_file(),
@@ -344,7 +344,7 @@ fn maintenance_choice(root: &Path, pinned: &str) -> Option<PathBuf> {
         .map(|(_, exe)| exe)
 }
 
-fn maintenance_mise() -> Result<PathBuf, EnvarlyError> {
+fn maintenance_mise() -> Result<PathBuf, WhichcraftError> {
     match maintenance_choice(&mise_root()?, pinned_version()) {
         Some(old) => Ok(old),
         None => ensure_mise(),
@@ -357,8 +357,8 @@ fn maintenance_mise() -> Result<PathBuf, EnvarlyError> {
 fn prepare_in(
     root: &Path,
     pinned: &str,
-    fetch: impl FnOnce() -> Result<PathBuf, EnvarlyError>,
-) -> Result<bool, EnvarlyError> {
+    fetch: impl FnOnce() -> Result<PathBuf, WhichcraftError>,
+) -> Result<bool, WhichcraftError> {
     let old = older_mise(root, pinned);
     if old.is_empty() {
         return Ok(false);
@@ -372,7 +372,7 @@ fn prepare_in(
     Ok(fetched)
 }
 
-pub fn prepare_mise() -> Result<bool, EnvarlyError> {
+pub fn prepare_mise() -> Result<bool, WhichcraftError> {
     use std::sync::atomic::Ordering;
     FETCHING.store(true, Ordering::SeqCst);
     let result = prepare_in(&mise_root()?, pinned_version(), ensure_mise);
@@ -384,11 +384,11 @@ pub fn prepare_mise() -> Result<bool, EnvarlyError> {
 pub struct MiseInstallerLifecycle;
 
 impl crate::whichcraft::ports::installer_lifecycle::InstallerLifecycle for MiseInstallerLifecycle {
-    fn mise_status(&self) -> Result<MiseStatus, EnvarlyError> {
+    fn mise_status(&self) -> Result<MiseStatus, WhichcraftError> {
         mise_status()
     }
 
-    fn prepare_mise(&self) -> Result<bool, EnvarlyError> {
+    fn prepare_mise(&self) -> Result<bool, WhichcraftError> {
         prepare_mise()
     }
 }
@@ -404,7 +404,7 @@ const PINNED: MisePins<'static> = MisePins {
     exe_sha256: pins::MISE_WINDOWS_X64_EXE_SHA256,
 };
 
-fn ensure_mise() -> Result<PathBuf, EnvarlyError> {
+fn ensure_mise() -> Result<PathBuf, WhichcraftError> {
     // Hashing 230 MB costs about a second, so a verified copy is reused.
     static VERIFIED: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
     // The background fetch and an install started meanwhile must not download twice.
@@ -429,19 +429,19 @@ fn reusable_mise(cache: &std::sync::Mutex<Option<PathBuf>>, dir: &Path) -> Optio
     (cached.parent() == Some(dir) && cached.is_file()).then_some(cached)
 }
 
-fn mise_root() -> Result<PathBuf, EnvarlyError> {
+fn mise_root() -> Result<PathBuf, WhichcraftError> {
     Ok(crate::whichcraft::persistence::whichcraft_data_dir()?.join("mise"))
 }
 
-fn mise_store_dir() -> Result<PathBuf, EnvarlyError> {
+fn mise_store_dir() -> Result<PathBuf, WhichcraftError> {
     Ok(mise_root()?.join(pinned_version()))
 }
 
-fn download_mise_zip() -> Result<Vec<u8>, EnvarlyError> {
+fn download_mise_zip() -> Result<Vec<u8>, WhichcraftError> {
     Ok(reqwest::blocking::get(pins::mise_download_url())
-        .map_err(|e| EnvarlyError::InvalidInput(format!("download mise: {e}")))?
+        .map_err(|e| WhichcraftError::InvalidInput(format!("download mise: {e}")))?
         .bytes()
-        .map_err(|e| EnvarlyError::InvalidInput(format!("read mise body: {e}")))?
+        .map_err(|e| WhichcraftError::InvalidInput(format!("read mise body: {e}")))?
         .to_vec())
 }
 
@@ -455,59 +455,59 @@ fn sha256_hex(bytes: &[u8]) -> String {
 fn verified_mise(
     dir: &Path,
     pins: &MisePins,
-    fetch_zip: impl FnOnce() -> Result<Vec<u8>, EnvarlyError>,
-) -> Result<PathBuf, EnvarlyError> {
+    fetch_zip: impl FnOnce() -> Result<Vec<u8>, WhichcraftError>,
+) -> Result<PathBuf, WhichcraftError> {
     let exe = dir.join("mise.exe");
     if let Ok(bytes) = std::fs::read(&exe) {
         if sha256_hex(&bytes) == pins.exe_sha256 {
             return Ok(exe);
         }
         std::fs::remove_file(&exe)
-            .map_err(|e| EnvarlyError::InvalidInput(format!("remove damaged mise.exe: {e}")))?;
+            .map_err(|e| WhichcraftError::InvalidInput(format!("remove damaged mise.exe: {e}")))?;
     }
 
     let zip_bytes = fetch_zip()?;
     if sha256_hex(&zip_bytes) != pins.zip_sha256 {
-        return Err(EnvarlyError::InvalidInput(
+        return Err(WhichcraftError::InvalidInput(
             "mise download SHA256 mismatch".into(),
         ));
     }
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(zip_bytes))
-        .map_err(|e| EnvarlyError::InvalidInput(format!("zip: {e}")))?;
+        .map_err(|e| WhichcraftError::InvalidInput(format!("zip: {e}")))?;
     let mut exe_bytes = Vec::new();
     let mut found = false;
     for i in 0..archive.len() {
         let mut file = archive
             .by_index(i)
-            .map_err(|e| EnvarlyError::InvalidInput(format!("zip entry: {e}")))?;
+            .map_err(|e| WhichcraftError::InvalidInput(format!("zip entry: {e}")))?;
         let name = file
             .name()
-            .map_err(|e| EnvarlyError::InvalidInput(format!("zip entry name: {e}")))?;
+            .map_err(|e| WhichcraftError::InvalidInput(format!("zip entry name: {e}")))?;
         if name.ends_with("/mise.exe") || name == "mise.exe" {
             std::io::Read::read_to_end(&mut file, &mut exe_bytes)
-                .map_err(|e| EnvarlyError::InvalidInput(format!("extract mise: {e}")))?;
+                .map_err(|e| WhichcraftError::InvalidInput(format!("extract mise: {e}")))?;
             found = true;
             break;
         }
     }
     if !found {
-        return Err(EnvarlyError::InvalidInput(
+        return Err(WhichcraftError::InvalidInput(
             "mise.exe not found in zip".into(),
         ));
     }
     if sha256_hex(&exe_bytes) != pins.exe_sha256 {
-        return Err(EnvarlyError::InvalidInput(
+        return Err(WhichcraftError::InvalidInput(
             "extracted mise.exe SHA256 mismatch".into(),
         ));
     }
 
     std::fs::create_dir_all(dir)
-        .map_err(|e| EnvarlyError::InvalidInput(format!("create mise dir: {e}")))?;
+        .map_err(|e| WhichcraftError::InvalidInput(format!("create mise dir: {e}")))?;
     let partial = dir.join("mise.exe.partial");
     std::fs::write(&partial, &exe_bytes)
-        .map_err(|e| EnvarlyError::InvalidInput(format!("write mise: {e}")))?;
+        .map_err(|e| WhichcraftError::InvalidInput(format!("write mise: {e}")))?;
     std::fs::rename(&partial, &exe)
-        .map_err(|e| EnvarlyError::InvalidInput(format!("move mise into place: {e}")))?;
+        .map_err(|e| WhichcraftError::InvalidInput(format!("move mise into place: {e}")))?;
     Ok(exe)
 }
 
@@ -538,7 +538,7 @@ mod tests {
     }
 
     impl MiseRunner for FakeRunner {
-        fn run(&self, args: &[&str]) -> Result<MiseOutput, EnvarlyError> {
+        fn run(&self, args: &[&str]) -> Result<MiseOutput, WhichcraftError> {
             let key = args.join(" ");
             self.calls.lock().unwrap().push(key.clone());
             Ok(MiseOutput {
@@ -621,7 +621,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let old = put_mise(dir.path(), "2026.10.3");
         let err = prepare_in(dir.path(), "2026.11.0", || {
-            Err(EnvarlyError::InvalidInput("offline".into()))
+            Err(WhichcraftError::InvalidInput("offline".into()))
         });
         assert!(err.is_err());
         assert!(

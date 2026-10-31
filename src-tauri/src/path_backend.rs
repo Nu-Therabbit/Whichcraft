@@ -3,13 +3,13 @@
 use winreg::enums::*;
 use winreg::RegKey;
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 
 const USER_ENV_KEY: &str = "Environment";
 const SYSTEM_ENV_KEY: &str = r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment";
 const PATH_NAME: &str = "Path";
 
-pub(crate) fn open_path_key(user: bool, write: bool) -> Result<RegKey, EnvarlyError> {
+pub(crate) fn open_path_key(user: bool, write: bool) -> Result<RegKey, WhichcraftError> {
     if user {
         let flags = if write {
             KEY_SET_VALUE | KEY_QUERY_VALUE
@@ -18,7 +18,7 @@ pub(crate) fn open_path_key(user: bool, write: bool) -> Result<RegKey, EnvarlyEr
         };
         RegKey::predef(HKEY_CURRENT_USER)
             .open_subkey_with_flags(USER_ENV_KEY, flags)
-            .map_err(EnvarlyError::Registry)
+            .map_err(WhichcraftError::Registry)
     } else {
         let flags = if write {
             KEY_SET_VALUE | KEY_QUERY_VALUE
@@ -27,7 +27,7 @@ pub(crate) fn open_path_key(user: bool, write: bool) -> Result<RegKey, EnvarlyEr
         };
         RegKey::predef(HKEY_LOCAL_MACHINE)
             .open_subkey_with_flags(SYSTEM_ENV_KEY, flags)
-            .map_err(EnvarlyError::Registry)
+            .map_err(WhichcraftError::Registry)
     }
 }
 
@@ -48,7 +48,7 @@ pub(crate) fn read_path_str(key: &RegKey) -> String {
         .unwrap_or_default()
 }
 
-pub(crate) fn write_path_str(key: &RegKey, value: &str) -> Result<(), EnvarlyError> {
+pub(crate) fn write_path_str(key: &RegKey, value: &str) -> Result<(), WhichcraftError> {
     // Preserve REG_EXPAND_SZ so existing %SystemRoot% entries keep working
     let vtype = key
         .get_raw_value(PATH_NAME)
@@ -63,7 +63,7 @@ pub(crate) fn write_path_str(key: &RegKey, value: &str) -> Result<(), EnvarlyErr
             vtype,
         },
     )
-    .map_err(EnvarlyError::Registry)
+    .map_err(WhichcraftError::Registry)
 }
 
 /// Read-only PATH access for the currently-selected other-user account, kept
@@ -72,6 +72,6 @@ pub(crate) fn write_path_str(key: &RegKey, value: &str) -> Result<(), EnvarlyErr
 /// is active. Writing "Path" for that account goes through the generic
 /// `VarScope::OtherUser` dispatch in `env_store.rs` like any other variable —
 /// there's no separate write path here.
-pub(crate) fn read_other_user_path() -> Result<Option<String>, EnvarlyError> {
+pub(crate) fn read_other_user_path() -> Result<Option<String>, WhichcraftError> {
     crate::user_hive::with_active_environment_key(false, |key| Ok(read_path_str(key)))
 }

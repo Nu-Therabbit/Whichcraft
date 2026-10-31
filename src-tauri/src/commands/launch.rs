@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 
 /// The GUI program installed beside the console launcher (`whichcraft.com`, or
 /// `whichcraft-cli.exe` in a cargo build).
@@ -39,7 +39,7 @@ pub fn open_gui_beside(args: &[String]) -> std::io::Result<()> {
         .map(|_| ())
 }
 
-/// Starts the legacy Envarly-style presentation instead of the desktop shell.
+/// Starts the legacy presentation inherited from the fork instead of the desktop shell.
 /// Read once at startup; switching needs a relaunch.
 pub const LEGACY_UI_FLAG: &str = "--legacy-ui";
 
@@ -135,8 +135,8 @@ fn quote_windows_arg(arg: &str) -> String {
 }
 
 #[tauri::command]
-pub fn read_demo_fixture(path: String) -> Result<String, EnvarlyError> {
-    std::fs::read_to_string(path).map_err(EnvarlyError::Registry)
+pub fn read_demo_fixture(path: String) -> Result<String, WhichcraftError> {
+    std::fs::read_to_string(path).map_err(WhichcraftError::Registry)
 }
 
 #[cfg(test)]

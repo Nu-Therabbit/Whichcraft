@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::env_store::EnvBackend;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::VarScope;
 use crate::whichcraft::application::registry_expander;
 use crate::whichcraft::domain::path::path_entries;
@@ -25,7 +25,7 @@ pub fn build_path_cleanup_plan<B: EnvBackend>(
     backend: &B,
     machine: &dyn Machine,
     ids: &dyn OperationIds,
-) -> Result<PathCleanupPlan, EnvarlyError> {
+) -> Result<PathCleanupPlan, WhichcraftError> {
     let user = backend.read_user()?;
     let system = backend.read_system()?;
     let before = user

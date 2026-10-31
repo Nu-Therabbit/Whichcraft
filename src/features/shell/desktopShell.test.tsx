@@ -5,7 +5,7 @@ import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { UndoProvider } from "../../contexts/UndoContext";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
-import { splitEnvarlyApi } from "../../composition/appServices";
+import { splitWhichcraftApi } from "../../composition/appServices";
 import { inst, fakeToolsRuntime } from "../../test/toolsTestHarness";
 import { DesktopShellApp } from "./DesktopShellApp";
 
@@ -43,7 +43,7 @@ describe("desktop shell read journey", () => {
       }),
       getMsvcInventory: async () => ({ instances: [], windowsSdks: [] }),
     });
-    configureProductionServices(splitEnvarlyApi(fake));
+    configureProductionServices(splitWhichcraftApi(fake));
 
     render(
       <UndoProvider>

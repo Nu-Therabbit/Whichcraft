@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::env_store::EnvBackend;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::domain::env::get_var;
 
 // ---------------------------------------------------------------------------
@@ -66,7 +66,7 @@ pub fn parse_py_list(output: &str) -> Vec<PythonLauncherLine> {
         .collect()
 }
 
-pub fn python_supplemental(sdk: &dyn SdkProbe) -> Result<PythonSupplementalView, EnvarlyError> {
+pub fn python_supplemental(sdk: &dyn SdkProbe) -> Result<PythonSupplementalView, WhichcraftError> {
     let (launcher_installed, launcher_lines) = match sdk.py_launcher_list() {
         Some(out) => (true, parse_py_list(&out)),
         None => (false, Vec::new()),
@@ -139,7 +139,7 @@ pub fn android_inventory<B: EnvBackend>(
     backend: &B,
     machine: &dyn Machine,
     local_app_data: Option<&Path>,
-) -> Result<AndroidInventory, EnvarlyError> {
+) -> Result<AndroidInventory, WhichcraftError> {
     let user = backend.read_user()?;
     let system = backend.read_system()?;
     let expand = crate::whichcraft::application::registry_expander(&user, &system, machine);

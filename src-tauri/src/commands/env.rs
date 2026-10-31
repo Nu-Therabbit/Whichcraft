@@ -2,7 +2,7 @@ use serde::Serialize;
 use tauri::Emitter;
 
 use crate::env_store;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvChange, EnvSnapshot, EnvValueKind, EnvVar, UnsupportedEnvValue, VarScope};
 use crate::snapshot;
 
@@ -21,17 +21,17 @@ pub struct ApplyProgressEvent {
 }
 
 #[tauri::command]
-pub fn get_env_vars() -> Result<Vec<EnvVar>, EnvarlyError> {
+pub fn get_env_vars() -> Result<Vec<EnvVar>, WhichcraftError> {
     env_store::read_all()
 }
 
 #[tauri::command]
-pub fn get_unsupported_env_values() -> Result<Vec<UnsupportedEnvValue>, EnvarlyError> {
+pub fn get_unsupported_env_values() -> Result<Vec<UnsupportedEnvValue>, WhichcraftError> {
     env_store::read_unsupported_values()
 }
 
 #[tauri::command]
-pub fn get_registry_snapshot() -> Result<EnvSnapshot, EnvarlyError> {
+pub fn get_registry_snapshot() -> Result<EnvSnapshot, WhichcraftError> {
     env_store::read_snapshot()
 }
 
@@ -41,12 +41,12 @@ pub fn set_env_var(
     value: String,
     value_kind: EnvValueKind,
     scope: VarScope,
-) -> Result<(), EnvarlyError> {
+) -> Result<(), WhichcraftError> {
     env_store::write_var(&name, &value, value_kind, &scope)
 }
 
 #[tauri::command]
-pub fn delete_env_var(name: String, scope: VarScope) -> Result<(), EnvarlyError> {
+pub fn delete_env_var(name: String, scope: VarScope) -> Result<(), WhichcraftError> {
     env_store::delete_var(&name, &scope)
 }
 
@@ -54,7 +54,7 @@ pub fn delete_env_var(name: String, scope: VarScope) -> Result<(), EnvarlyError>
 pub fn apply_env_changes(
     app: tauri::AppHandle,
     changes: Vec<EnvChange>,
-) -> Result<(), EnvarlyError> {
+) -> Result<(), WhichcraftError> {
     env_store::validate_changes(&changes)?;
     let snapshot = env_store::read_snapshot()?;
     snapshot::save_snapshot(snapshot, "auto: before apply")?;
@@ -86,10 +86,10 @@ pub fn is_elevated() -> bool {
 
 /// Spawn a new elevated instance via UAC and exit the current process.
 #[tauri::command]
-pub fn restart_as_admin(app: tauri::AppHandle) -> Result<(), EnvarlyError> {
+pub fn restart_as_admin(app: tauri::AppHandle) -> Result<(), WhichcraftError> {
     #[cfg(target_os = "windows")]
     {
-        let exe = std::env::current_exe().map_err(EnvarlyError::Registry)?;
+        let exe = std::env::current_exe().map_err(WhichcraftError::Registry)?;
         let exe_wide: Vec<u16> = exe
             .to_string_lossy()
             .encode_utf16()

@@ -20,7 +20,7 @@ pub use tool::ToolKind;
 
 #[cfg(test)]
 mod tests {
-    /// The domain stays free of I/O and of the layers around it; only Envarly's value types
+    /// The domain stays free of I/O and of the layers around it; only the inherited value types
     /// (`model`, `error`) are allowed in from outside (ADR-0005).
     #[test]
     fn the_domain_depends_on_nothing_outside_it() {

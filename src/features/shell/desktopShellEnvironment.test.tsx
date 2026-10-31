@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { splitEnvarlyApi } from "../../composition/appServices";
+import { splitWhichcraftApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { UndoProvider } from "../../contexts/UndoContext";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
@@ -50,7 +50,7 @@ const sdkMocks = {
   }),
 };
 
-function renderDesktopShell(services = splitEnvarlyApi(fakeToolsRuntime({ ...sdkMocks }).api)) {
+function renderDesktopShell(services = splitWhichcraftApi(fakeToolsRuntime({ ...sdkMocks }).api)) {
   configureProductionServices(services);
   return render(
     <UndoProvider>
@@ -79,7 +79,7 @@ describe("desktop shell environment workspace", () => {
         listSeparator: null,
       },
     ]);
-    const services = splitEnvarlyApi(fakeToolsRuntime({ ...sdkMocks, getEnvVars }).api);
+    const services = splitWhichcraftApi(fakeToolsRuntime({ ...sdkMocks, getEnvVars }).api);
     window.history.replaceState(
       null,
       "",
@@ -142,7 +142,7 @@ describe("desktop shell environment workspace", () => {
         listSeparator: null,
       },
     ]);
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({ ...sdkMocks, getEnvVars, restartAsAdmin, isElevated: async () => false }).api,
     );
     window.history.replaceState(
@@ -170,7 +170,7 @@ describe("desktop shell environment workspace", () => {
     const applyToolPlan = vi.fn(async () => ({ planId: "p", stale: false, needsElevation: false }));
     const jdk17 = inst("java", "17.0.2", "C:\\jdk17", { effective: true, selected: true });
     const jdk21 = inst("java", "21.0.1", "C:\\jdk21");
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         getEnvVars: async () => [
@@ -220,7 +220,7 @@ describe("desktop shell environment workspace", () => {
       throw new Error("subscribe failed");
     });
     const applyEnvChanges = vi.fn(async () => {});
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         getEnvVars: async () => [
@@ -271,7 +271,7 @@ describe("desktop shell environment workspace", () => {
     const onApplyProgress = vi.fn(async () => {
       throw new Error("subscribe failed");
     });
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         getEnvVars: async () => [

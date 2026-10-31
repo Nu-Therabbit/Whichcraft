@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvChange, EnvSnapshot, EnvValue, EnvValueKind, EnvVar, VarScope};
 
 #[cfg(windows)]
@@ -15,12 +15,12 @@ pub use crate::env_backend::{read_unsupported_values, WinregBackend};
 // ---------------------------------------------------------------------------
 
 pub trait EnvBackend: Send + Sync {
-    fn read_user(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError>;
-    fn read_system(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError>;
-    fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError>;
-    fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError>;
-    fn delete_user(&self, name: &str) -> Result<(), EnvarlyError>;
-    fn delete_system(&self, name: &str) -> Result<(), EnvarlyError>;
+    fn read_user(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError>;
+    fn read_system(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError>;
+    fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError>;
+    fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError>;
+    fn delete_user(&self, name: &str) -> Result<(), WhichcraftError>;
+    fn delete_system(&self, name: &str) -> Result<(), WhichcraftError>;
     fn is_elevated(&self) -> bool;
     fn broadcast_changes(&self) {}
 
@@ -28,19 +28,19 @@ pub trait EnvBackend: Send + Sync {
     /// `Ok(None)` (not an error) when no other-user account is selected, so
     /// existing callers (snapshot/apply/rollback) can call this unconditionally
     /// without changing behavior for the common case.
-    fn read_other_user(&self) -> Result<Option<HashMap<String, EnvValue>>, EnvarlyError> {
+    fn read_other_user(&self) -> Result<Option<HashMap<String, EnvValue>>, WhichcraftError> {
         Ok(None)
     }
     /// Only ever called for `VarScope::OtherUser`, which the frontend can only
     /// send when it has an account selected — hitting the default (no active
     /// hive) here is a genuine error, unlike `read_other_user`.
-    fn write_other_user(&self, _name: &str, _value: &EnvValue) -> Result<(), EnvarlyError> {
-        Err(EnvarlyError::InvalidInput(
+    fn write_other_user(&self, _name: &str, _value: &EnvValue) -> Result<(), WhichcraftError> {
+        Err(WhichcraftError::InvalidInput(
             "no other-user account selected".into(),
         ))
     }
-    fn delete_other_user(&self, _name: &str) -> Result<(), EnvarlyError> {
-        Err(EnvarlyError::InvalidInput(
+    fn delete_other_user(&self, _name: &str) -> Result<(), WhichcraftError> {
+        Err(WhichcraftError::InvalidInput(
             "no other-user account selected".into(),
         ))
     }
@@ -122,15 +122,15 @@ impl MemBackend {
 }
 
 impl EnvBackend for MemBackend {
-    fn read_user(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+    fn read_user(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError> {
         Ok(self.user.lock().unwrap().clone())
     }
 
-    fn read_system(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+    fn read_system(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError> {
         Ok(self.system.lock().unwrap().clone())
     }
 
-    fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+    fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
         self.user
             .lock()
             .unwrap()
@@ -138,9 +138,9 @@ impl EnvBackend for MemBackend {
         Ok(())
     }
 
-    fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+    fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
         if !self.elevated {
-            return Err(EnvarlyError::Registry(std::io::Error::from(
+            return Err(WhichcraftError::Registry(std::io::Error::from(
                 std::io::ErrorKind::PermissionDenied,
             )));
         }
@@ -151,21 +151,21 @@ impl EnvBackend for MemBackend {
         Ok(())
     }
 
-    fn delete_user(&self, name: &str) -> Result<(), EnvarlyError> {
+    fn delete_user(&self, name: &str) -> Result<(), WhichcraftError> {
         self.user.lock().unwrap().remove(name).ok_or_else(|| {
-            EnvarlyError::Registry(std::io::Error::from(std::io::ErrorKind::NotFound))
+            WhichcraftError::Registry(std::io::Error::from(std::io::ErrorKind::NotFound))
         })?;
         Ok(())
     }
 
-    fn delete_system(&self, name: &str) -> Result<(), EnvarlyError> {
+    fn delete_system(&self, name: &str) -> Result<(), WhichcraftError> {
         if !self.elevated {
-            return Err(EnvarlyError::Registry(std::io::Error::from(
+            return Err(WhichcraftError::Registry(std::io::Error::from(
                 std::io::ErrorKind::PermissionDenied,
             )));
         }
         self.system.lock().unwrap().remove(name).ok_or_else(|| {
-            EnvarlyError::Registry(std::io::Error::from(std::io::ErrorKind::NotFound))
+            WhichcraftError::Registry(std::io::Error::from(std::io::ErrorKind::NotFound))
         })?;
         Ok(())
     }
@@ -175,14 +175,14 @@ impl EnvBackend for MemBackend {
     }
     // broadcast_changes: uses default no-op
 
-    fn read_other_user(&self) -> Result<Option<HashMap<String, EnvValue>>, EnvarlyError> {
+    fn read_other_user(&self) -> Result<Option<HashMap<String, EnvValue>>, WhichcraftError> {
         Ok(self.other_user.lock().unwrap().clone())
     }
 
-    fn write_other_user(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+    fn write_other_user(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
         let mut guard = self.other_user.lock().unwrap();
         let Some(map) = guard.as_mut() else {
-            return Err(EnvarlyError::InvalidInput(
+            return Err(WhichcraftError::InvalidInput(
                 "no other-user account selected".into(),
             ));
         };
@@ -190,15 +190,15 @@ impl EnvBackend for MemBackend {
         Ok(())
     }
 
-    fn delete_other_user(&self, name: &str) -> Result<(), EnvarlyError> {
+    fn delete_other_user(&self, name: &str) -> Result<(), WhichcraftError> {
         let mut guard = self.other_user.lock().unwrap();
         let Some(map) = guard.as_mut() else {
-            return Err(EnvarlyError::InvalidInput(
+            return Err(WhichcraftError::InvalidInput(
                 "no other-user account selected".into(),
             ));
         };
         map.remove(name).ok_or_else(|| {
-            EnvarlyError::Registry(std::io::Error::from(std::io::ErrorKind::NotFound))
+            WhichcraftError::Registry(std::io::Error::from(std::io::ErrorKind::NotFound))
         })?;
         Ok(())
     }
@@ -208,7 +208,7 @@ impl EnvBackend for MemBackend {
 // Business logic (backend-agnostic)
 // ---------------------------------------------------------------------------
 
-pub fn read_all_with(backend: &dyn EnvBackend) -> Result<Vec<EnvVar>, EnvarlyError> {
+pub fn read_all_with(backend: &dyn EnvBackend) -> Result<Vec<EnvVar>, WhichcraftError> {
     let mut vars: Vec<EnvVar> = Vec::new();
 
     // "Switch mode": when another account is active, its variables take the
@@ -221,7 +221,7 @@ pub fn read_all_with(backend: &dyn EnvBackend) -> Result<Vec<EnvVar>, EnvarlyErr
 
     for (name, env_value) in personal_vars {
         let value_kind = env_value.kind.ok_or_else(|| {
-            EnvarlyError::InvalidInput(format!("registry value {name:?} has no type"))
+            WhichcraftError::InvalidInput(format!("registry value {name:?} has no type"))
         })?;
         let list_separator = detect_list_separator(&name, &env_value.value);
         vars.push(EnvVar {
@@ -234,7 +234,7 @@ pub fn read_all_with(backend: &dyn EnvBackend) -> Result<Vec<EnvVar>, EnvarlyErr
     }
     for (name, env_value) in backend.read_system()? {
         let value_kind = env_value.kind.ok_or_else(|| {
-            EnvarlyError::InvalidInput(format!("registry value {name:?} has no type"))
+            WhichcraftError::InvalidInput(format!("registry value {name:?} has no type"))
         })?;
         let list_separator = detect_list_separator(&name, &env_value.value);
         vars.push(EnvVar {
@@ -250,7 +250,7 @@ pub fn read_all_with(backend: &dyn EnvBackend) -> Result<Vec<EnvVar>, EnvarlyErr
     Ok(vars)
 }
 
-pub fn read_snapshot_with(backend: &dyn EnvBackend) -> Result<EnvSnapshot, EnvarlyError> {
+pub fn read_snapshot_with(backend: &dyn EnvBackend) -> Result<EnvSnapshot, WhichcraftError> {
     Ok(EnvSnapshot {
         user: backend.read_user()?,
         system: backend.read_system()?,
@@ -264,7 +264,7 @@ pub fn write_var_with(
     value: &str,
     kind: EnvValueKind,
     scope: &VarScope,
-) -> Result<(), EnvarlyError> {
+) -> Result<(), WhichcraftError> {
     validate_input(name, Some(value))?;
     let env_value = EnvValue::typed(value.to_string(), kind);
     match scope {
@@ -278,7 +278,7 @@ pub fn write_var_with(
         VarScope::OtherUser => backend.read_other_user()?.unwrap_or_default(),
     };
     if written.get(name) != Some(&env_value) {
-        return Err(EnvarlyError::InvalidInput(format!(
+        return Err(WhichcraftError::InvalidInput(format!(
             "registry verification failed for {name:?}"
         )));
     }
@@ -290,7 +290,7 @@ pub fn delete_var_with(
     backend: &dyn EnvBackend,
     name: &str,
     scope: &VarScope,
-) -> Result<(), EnvarlyError> {
+) -> Result<(), WhichcraftError> {
     validate_input(name, None)?;
     match scope {
         VarScope::User => backend.delete_user(name)?,
@@ -304,8 +304,8 @@ pub fn delete_var_with(
 pub fn apply_changes_with(
     backend: &dyn EnvBackend,
     changes: &[EnvChange],
-    mut on_progress: impl FnMut(usize, usize, &EnvChange, &Result<(), EnvarlyError>),
-) -> Result<(), EnvarlyError> {
+    mut on_progress: impl FnMut(usize, usize, &EnvChange, &Result<(), WhichcraftError>),
+) -> Result<(), WhichcraftError> {
     validate_changes(changes)?;
     let mut journal = Vec::new();
     let total = changes.len();
@@ -380,7 +380,7 @@ pub fn apply_changes_with(
             return if failures.is_empty() {
                 Err(error)
             } else {
-                Err(EnvarlyError::InvalidInput(format!(
+                Err(WhichcraftError::InvalidInput(format!(
                     "apply failed: {error}; rollback details: {}",
                     failures.join("; ")
                 )))
@@ -392,21 +392,21 @@ pub fn apply_changes_with(
     Ok(())
 }
 
-pub fn validate_input(name: &str, value: Option<&str>) -> Result<(), EnvarlyError> {
+pub fn validate_input(name: &str, value: Option<&str>) -> Result<(), WhichcraftError> {
     if name.is_empty() || name.contains(['=', '\0']) {
-        return Err(EnvarlyError::InvalidInput(format!(
+        return Err(WhichcraftError::InvalidInput(format!(
             "invalid variable name {name:?}: names must be nonempty and contain neither '=' nor NUL"
         )));
     }
     if value.is_some_and(|value| value.contains('\0')) {
-        return Err(EnvarlyError::InvalidInput(format!(
+        return Err(WhichcraftError::InvalidInput(format!(
             "invalid value for {name:?}: values must not contain NUL"
         )));
     }
     Ok(())
 }
 
-pub fn validate_changes(changes: &[EnvChange]) -> Result<(), EnvarlyError> {
+pub fn validate_changes(changes: &[EnvChange]) -> Result<(), WhichcraftError> {
     for change in changes {
         match change {
             EnvChange::Set { name, value, .. } => validate_input(name, Some(value))?,
@@ -421,11 +421,11 @@ fn verify_value(
     name: &str,
     scope: &VarScope,
     expected: Option<&EnvValue>,
-) -> Result<(), EnvarlyError> {
+) -> Result<(), WhichcraftError> {
     if read_scope_value(backend, name, scope)?.as_ref() == expected {
         Ok(())
     } else {
-        Err(EnvarlyError::InvalidInput(format!(
+        Err(WhichcraftError::InvalidInput(format!(
             "registry verification failed for {name:?}"
         )))
     }
@@ -435,7 +435,7 @@ fn read_scope_value(
     backend: &dyn EnvBackend,
     name: &str,
     scope: &VarScope,
-) -> Result<Option<EnvValue>, EnvarlyError> {
+) -> Result<Option<EnvValue>, WhichcraftError> {
     let values = match scope {
         VarScope::User => backend.read_user()?,
         VarScope::System => backend.read_system()?,
@@ -487,7 +487,7 @@ fn rollback_changes(backend: &dyn EnvBackend, journal: &[RollbackEntry]) -> Vec<
         }
         let result = (|| {
             if read_scope_value(backend, &entry.name, &entry.scope)? != entry.expected {
-                return Err(EnvarlyError::InvalidInput(format!(
+                return Err(WhichcraftError::InvalidInput(format!(
                     "rollback conflict for {:?} in {:?}; current state preserved",
                     entry.name, entry.scope
                 )));
@@ -515,12 +515,12 @@ fn rollback_changes(backend: &dyn EnvBackend, journal: &[RollbackEntry]) -> Vec<
 // ---------------------------------------------------------------------------
 
 #[cfg(windows)]
-pub fn read_all() -> Result<Vec<EnvVar>, EnvarlyError> {
+pub fn read_all() -> Result<Vec<EnvVar>, WhichcraftError> {
     read_all_with(&WinregBackend)
 }
 
 #[cfg(windows)]
-pub fn read_snapshot() -> Result<EnvSnapshot, EnvarlyError> {
+pub fn read_snapshot() -> Result<EnvSnapshot, WhichcraftError> {
     read_snapshot_with(&WinregBackend)
 }
 
@@ -530,20 +530,20 @@ pub fn write_var(
     value: &str,
     kind: EnvValueKind,
     scope: &VarScope,
-) -> Result<(), EnvarlyError> {
+) -> Result<(), WhichcraftError> {
     write_var_with(&WinregBackend, name, value, kind, scope)
 }
 
 #[cfg(windows)]
-pub fn delete_var(name: &str, scope: &VarScope) -> Result<(), EnvarlyError> {
+pub fn delete_var(name: &str, scope: &VarScope) -> Result<(), WhichcraftError> {
     delete_var_with(&WinregBackend, name, scope)
 }
 
 #[cfg(windows)]
 pub fn apply_changes(
     changes: &[EnvChange],
-    on_progress: impl FnMut(usize, usize, &EnvChange, &Result<(), EnvarlyError>),
-) -> Result<(), EnvarlyError> {
+    on_progress: impl FnMut(usize, usize, &EnvChange, &Result<(), WhichcraftError>),
+) -> Result<(), WhichcraftError> {
     apply_changes_with(&WinregBackend, changes, on_progress)
 }
 
@@ -662,23 +662,23 @@ mod tests {
     }
 
     impl EnvBackend for FaultBackend {
-        fn read_user(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+        fn read_user(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError> {
             if self
                 .fail_read
                 .swap(false, std::sync::atomic::Ordering::SeqCst)
             {
-                return Err(EnvarlyError::InvalidInput(
+                return Err(WhichcraftError::InvalidInput(
                     "injected verification read failure".into(),
                 ));
             }
             self.inner.read_user()
         }
-        fn read_system(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+        fn read_system(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError> {
             self.inner.read_system()
         }
-        fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+        fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
             if self.fail_restore && name == "B" && value.value == "original" {
-                return Err(EnvarlyError::InvalidInput(
+                return Err(WhichcraftError::InvalidInput(
                     "injected restore failure".into(),
                 ));
             }
@@ -689,13 +689,13 @@ mod tests {
             }
             Ok(())
         }
-        fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+        fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
             self.inner.write_system(name, value)
         }
-        fn delete_user(&self, name: &str) -> Result<(), EnvarlyError> {
+        fn delete_user(&self, name: &str) -> Result<(), WhichcraftError> {
             self.inner.delete_user(name)
         }
-        fn delete_system(&self, name: &str) -> Result<(), EnvarlyError> {
+        fn delete_system(&self, name: &str) -> Result<(), WhichcraftError> {
             self.inner.delete_system(name)
         }
         fn is_elevated(&self) -> bool {
@@ -903,7 +903,7 @@ mod tests {
         let b = MemBackend::new().with_elevated(false);
         let err = write_var_with(&b, "SYS_VAR", "x", EnvValueKind::String, &VarScope::System)
             .unwrap_err();
-        assert!(matches!(err, EnvarlyError::Registry(_)));
+        assert!(matches!(err, WhichcraftError::Registry(_)));
     }
 
     #[test]
@@ -1223,7 +1223,7 @@ mod tests {
             &VarScope::OtherUser,
         )
         .unwrap_err();
-        assert!(matches!(err, EnvarlyError::InvalidInput(_)));
+        assert!(matches!(err, WhichcraftError::InvalidInput(_)));
     }
 
     #[test]

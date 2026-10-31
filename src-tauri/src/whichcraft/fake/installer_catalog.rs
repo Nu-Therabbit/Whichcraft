@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::ports::installer_catalog::{CatalogEntry, InstallerCatalog};
 
 /// Knows only the entries a test gives it; anything else is a plain folder.
@@ -10,7 +10,7 @@ pub struct FakeInstallerCatalog {
 }
 
 impl InstallerCatalog for FakeInstallerCatalog {
-    fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, EnvarlyError> {
+    fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, WhichcraftError> {
         Ok(self
             .entries
             .iter()
@@ -24,7 +24,7 @@ impl InstallerCatalog for FakeInstallerCatalog {
 pub struct NoInstallerEntries;
 
 impl crate::whichcraft::ports::installer_catalog::InstallerCatalogSource for NoInstallerEntries {
-    fn load(&self) -> Result<Box<dyn InstallerCatalog>, EnvarlyError> {
+    fn load(&self) -> Result<Box<dyn InstallerCatalog>, WhichcraftError> {
         Ok(Box::new(FakeInstallerCatalog::default()))
     }
 }
@@ -38,7 +38,7 @@ pub struct CountingCatalogs {
 impl crate::whichcraft::ports::installer_catalog::InstallerCatalogSource
     for std::sync::Arc<CountingCatalogs>
 {
-    fn load(&self) -> Result<Box<dyn InstallerCatalog>, EnvarlyError> {
+    fn load(&self) -> Result<Box<dyn InstallerCatalog>, WhichcraftError> {
         Ok(Box::new(FakeInstallerCatalog::default()))
     }
 

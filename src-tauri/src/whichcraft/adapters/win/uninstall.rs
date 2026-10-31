@@ -4,7 +4,7 @@ use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::mise::manager::{MiseToolManager, ProcessMiseRunner};
 use crate::whichcraft::ports::tool_manager::ToolManager;
@@ -54,7 +54,7 @@ fn binaries(root: &Path) -> Vec<PathBuf> {
 }
 
 /// Names of the processes that have any of the files open, from Restart Manager.
-fn processes_using(files: &[PathBuf]) -> Result<Vec<String>, EnvarlyError> {
+fn processes_using(files: &[PathBuf]) -> Result<Vec<String>, WhichcraftError> {
     use windows_sys::Win32::System::RestartManager::{
         RmEndSession, RmGetList, RmRegisterResources, RmStartSession, CCH_RM_SESSION_KEY,
         RM_PROCESS_INFO,
@@ -65,7 +65,7 @@ fn processes_using(files: &[PathBuf]) -> Result<Vec<String>, EnvarlyError> {
     let mut session = 0u32;
     let mut key = [0u16; CCH_RM_SESSION_KEY as usize + 1];
     if unsafe { RmStartSession(&mut session, 0, key.as_mut_ptr()) } != 0 {
-        return Err(EnvarlyError::InvalidInput(
+        return Err(WhichcraftError::InvalidInput(
             "Restart Manager session failed".into(),
         ));
     }
@@ -84,7 +84,7 @@ fn processes_using(files: &[PathBuf]) -> Result<Vec<String>, EnvarlyError> {
             )
         } != 0
         {
-            return Err(EnvarlyError::InvalidInput(
+            return Err(WhichcraftError::InvalidInput(
                 "Restart Manager could not register the files".into(),
             ));
         }
@@ -109,7 +109,7 @@ fn processes_using(files: &[PathBuf]) -> Result<Vec<String>, EnvarlyError> {
                     count = needed;
                 }
                 _ => {
-                    return Err(EnvarlyError::InvalidInput(format!(
+                    return Err(WhichcraftError::InvalidInput(format!(
                         "Restart Manager list failed ({rc})"
                     )))
                 }
@@ -152,7 +152,7 @@ fn under_protected_root(root: &Path) -> bool {
 
 /// A terminal or Explorer window inside the folder holds no file open, but it does stop the
 /// folder from being renamed. Only tried where the user may rename without UAC.
-fn folder_locked(root: &Path) -> Result<bool, EnvarlyError> {
+fn folder_locked(root: &Path) -> Result<bool, WhichcraftError> {
     if under_protected_root(root) {
         return Ok(false);
     }
@@ -174,7 +174,7 @@ fn folder_locked(root: &Path) -> Result<bool, EnvarlyError> {
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    Err(EnvarlyError::InvalidInput(format!(
+    Err(WhichcraftError::InvalidInput(format!(
         "could not rename {} back to {}; rename it back by hand",
         probe.display(),
         root.display()
@@ -184,7 +184,7 @@ fn folder_locked(root: &Path) -> Result<bool, EnvarlyError> {
 pub struct WinUsageProbe;
 
 impl UsageProbe for WinUsageProbe {
-    fn probe(&self, _tool: ToolKind, install_root: &Path) -> Result<UsageReport, EnvarlyError> {
+    fn probe(&self, _tool: ToolKind, install_root: &Path) -> Result<UsageReport, WhichcraftError> {
         let processes = processes_using(&binaries(install_root))?;
         // Renaming while a process runs from the folder would fail anyway; skip the second probe.
         let folder_locked = processes.is_empty() && folder_locked(install_root)?;
@@ -221,7 +221,11 @@ pub struct WinUninstaller;
 impl Uninstaller for WinUninstaller {
     /// Started through the shell so an uninstaller whose manifest asks for administrator rights
     /// gets its UAC prompt, then waited on. Declining that prompt counts as cancelled.
-    fn run_uninstaller(&self, program: &str, args: &[String]) -> Result<RunOutcome, EnvarlyError> {
+    fn run_uninstaller(
+        &self,
+        program: &str,
+        args: &[String],
+    ) -> Result<RunOutcome, WhichcraftError> {
         use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, ERROR_CANCELLED};
         use windows_sys::Win32::System::Threading::{
             GetExitCodeProcess, WaitForSingleObject, INFINITE,
@@ -243,7 +247,7 @@ impl Uninstaller for WinUninstaller {
             if unsafe { GetLastError() } == ERROR_CANCELLED {
                 return Ok(RunOutcome::Cancelled);
             }
-            return Err(EnvarlyError::InvalidInput(format!(
+            return Err(WhichcraftError::InvalidInput(format!(
                 "could not start {program}"
             )));
         }
@@ -256,7 +260,7 @@ impl Uninstaller for WinUninstaller {
         Ok(outcome_for_exit(code as i32))
     }
 
-    fn recycle_folder(&self, folder: &Path) -> Result<(), EnvarlyError> {
+    fn recycle_folder(&self, folder: &Path) -> Result<(), WhichcraftError> {
         use windows_sys::Win32::UI::Shell::{
             SHFileOperationW, FOF_ALLOWUNDO, FOF_NOCONFIRMATION, FOF_NOERRORUI, FOF_SILENT,
             FO_DELETE, SHFILEOPSTRUCTW,
@@ -270,7 +274,7 @@ impl Uninstaller for WinUninstaller {
         op.fFlags = (FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT) as u16;
         let rc = unsafe { SHFileOperationW(&mut op) };
         if rc != 0 || op.fAnyOperationsAborted != 0 {
-            return Err(EnvarlyError::InvalidInput(format!(
+            return Err(WhichcraftError::InvalidInput(format!(
                 "could not move {} to the Recycle Bin ({rc:#x})",
                 folder.display()
             )));
@@ -283,7 +287,7 @@ impl Uninstaller for WinUninstaller {
         store: &Path,
         tool: ToolKind,
         mise_version: &str,
-    ) -> Result<(), EnvarlyError> {
+    ) -> Result<(), WhichcraftError> {
         let manager = MiseToolManager::with_runner(ProcessMiseRunner::for_maintenance(store));
         ToolManager::uninstall(&manager, tool, mise_version)
     }

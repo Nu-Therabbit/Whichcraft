@@ -87,22 +87,30 @@ fn unique(prefix: &str) -> (String, String) {
 /// HKLM ACL cannot silently turn a UAC contract into an in-process write test.
 struct NativeUacBackend;
 impl EnvBackend for NativeUacBackend {
-    fn read_user(&self) -> Result<HashMap<String, EnvValue>, crate::error::EnvarlyError> {
+    fn read_user(&self) -> Result<HashMap<String, EnvValue>, crate::error::WhichcraftError> {
         WinregBackend.read_user()
     }
-    fn read_system(&self) -> Result<HashMap<String, EnvValue>, crate::error::EnvarlyError> {
+    fn read_system(&self) -> Result<HashMap<String, EnvValue>, crate::error::WhichcraftError> {
         WinregBackend.read_system()
     }
-    fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), crate::error::EnvarlyError> {
+    fn write_user(
+        &self,
+        name: &str,
+        value: &EnvValue,
+    ) -> Result<(), crate::error::WhichcraftError> {
         WinregBackend.write_user(name, value)
     }
-    fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), crate::error::EnvarlyError> {
+    fn write_system(
+        &self,
+        name: &str,
+        value: &EnvValue,
+    ) -> Result<(), crate::error::WhichcraftError> {
         WinregBackend.write_system(name, value)
     }
-    fn delete_user(&self, name: &str) -> Result<(), crate::error::EnvarlyError> {
+    fn delete_user(&self, name: &str) -> Result<(), crate::error::WhichcraftError> {
         WinregBackend.delete_user(name)
     }
-    fn delete_system(&self, name: &str) -> Result<(), crate::error::EnvarlyError> {
+    fn delete_system(&self, name: &str) -> Result<(), crate::error::WhichcraftError> {
         WinregBackend.delete_system(name)
     }
     fn is_elevated(&self) -> bool {
@@ -1105,17 +1113,21 @@ fn contract_process_interruption_keeps_a_recoverable_journal() {
         use_test_data_dir(&dir);
         struct PauseAfterWrite(PathBuf);
         impl EnvBackend for PauseAfterWrite {
-            fn read_user(&self) -> Result<HashMap<String, EnvValue>, crate::error::EnvarlyError> {
+            fn read_user(
+                &self,
+            ) -> Result<HashMap<String, EnvValue>, crate::error::WhichcraftError> {
                 WinregBackend.read_user()
             }
-            fn read_system(&self) -> Result<HashMap<String, EnvValue>, crate::error::EnvarlyError> {
+            fn read_system(
+                &self,
+            ) -> Result<HashMap<String, EnvValue>, crate::error::WhichcraftError> {
                 WinregBackend.read_system()
             }
             fn write_user(
                 &self,
                 name: &str,
                 value: &EnvValue,
-            ) -> Result<(), crate::error::EnvarlyError> {
+            ) -> Result<(), crate::error::WhichcraftError> {
                 assert_eq!(
                     name, FIRST,
                     "the helper can only reach its first owned fixture"
@@ -1130,13 +1142,13 @@ fn contract_process_interruption_keeps_a_recoverable_journal() {
                 &self,
                 _: &str,
                 _: &EnvValue,
-            ) -> Result<(), crate::error::EnvarlyError> {
+            ) -> Result<(), crate::error::WhichcraftError> {
                 panic!("no System write")
             }
-            fn delete_user(&self, _: &str) -> Result<(), crate::error::EnvarlyError> {
+            fn delete_user(&self, _: &str) -> Result<(), crate::error::WhichcraftError> {
                 panic!("parent owns cleanup")
             }
-            fn delete_system(&self, _: &str) -> Result<(), crate::error::EnvarlyError> {
+            fn delete_system(&self, _: &str) -> Result<(), crate::error::WhichcraftError> {
                 panic!("no System write")
             }
             fn is_elevated(&self) -> bool {

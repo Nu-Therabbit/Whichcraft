@@ -1,6 +1,6 @@
 import type { WriteCoordinatorFacade } from "../coordination/createWriteCoordinator";
 import type { ToolsRuntime } from "../features/tools/runtime";
-import type { AppServices, EnvarlyApi } from "../contracts";
+import type { AppServices, WhichcraftApi } from "../contracts";
 import {
   ENVIRONMENT_API_KEYS,
   PLATFORM_API_KEYS,
@@ -17,7 +17,7 @@ function pickMethods<T extends object, K extends keyof T>(source: T, keys: reado
   return out;
 }
 
-export function mergeEnvarlyApi(services: AppServices): EnvarlyApi {
+export function mergeWhichcraftApi(services: AppServices): WhichcraftApi {
   return {
     ...services.environment,
     ...services.tools,
@@ -25,7 +25,7 @@ export function mergeEnvarlyApi(services: AppServices): EnvarlyApi {
   };
 }
 
-export function splitEnvarlyApi(full: EnvarlyApi): AppServices {
+export function splitWhichcraftApi(full: WhichcraftApi): AppServices {
   return {
     environment: pickMethods(full, ENVIRONMENT_API_KEYS),
     tools: pickMethods(full, TOOLS_API_KEYS),
@@ -41,9 +41,9 @@ export function createToolsRuntime(services: AppServices, coordination: WriteCoo
   };
 }
 
-export function createUnavailableEnvarlyApi(message: string): EnvarlyApi {
+export function createUnavailableWhichcraftApi(message: string): WhichcraftApi {
   const reject = () => Promise.reject(new Error(message));
-  return new Proxy({} as EnvarlyApi, {
+  return new Proxy({} as WhichcraftApi, {
     get(_target, prop) {
       if (prop === "then" || typeof prop === "symbol") return undefined;
       if (typeof prop !== "string") return undefined;

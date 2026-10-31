@@ -1,5 +1,5 @@
 // Drives the real, packaged Whichcraft app (launched with --demo, which loads
-// src/demo/envarly-demo.json through a fully client-side mocked API — no
+// src/demo/whichcraft-demo.json through a fully client-side mocked API — no
 // registry writes) via Playwright connected over CDP to WebView2. This is the
 // only way to reach the actual rendered UI outside Storybook (isTauri() must
 // be true for demo mode to activate at all — see src/api.ts's getApi()).

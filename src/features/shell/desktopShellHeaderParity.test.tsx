@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { UndoProvider } from "../../contexts/UndoContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
-import { splitEnvarlyApi } from "../../composition/appServices";
+import { splitWhichcraftApi } from "../../composition/appServices";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { fakeToolsRuntime } from "../../test/toolsTestHarness";
 import en from "../../locales/en.json";
@@ -30,7 +30,7 @@ describe("desktop shell header parity", () => {
   beforeEach(() => {
     configureProductionServices(null);
     vi.mocked(isTauri).mockReturnValue(true);
-    localStorage.removeItem("envarly.lastUpdateCheck");
+    localStorage.removeItem("whichcraft.lastUpdateCheck");
     void i18n.changeLanguage("en");
     openUrl.mockClear();
     const checkForUpdate = vi.fn(async () => ({
@@ -43,7 +43,7 @@ describe("desktop shell header parity", () => {
       checkForUpdate,
       openUrl,
     });
-    configureProductionServices(splitEnvarlyApi(fake));
+    configureProductionServices(splitWhichcraftApi(fake));
   });
 
   it("opens the update page and the upstream source through the platform API", async () => {

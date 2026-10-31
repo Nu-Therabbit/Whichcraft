@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::ExportScope;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvSnapshot, EnvValue, EnvValueKind};
 
 /// Export snapshot in Windows Registry .reg format.
@@ -76,7 +76,7 @@ fn reg_unescape(s: &str) -> String {
 }
 
 /// Parse a .reg file back into a snapshot. Does NOT write to the registry.
-pub fn parse_reg(content: &str) -> Result<EnvSnapshot, EnvarlyError> {
+pub fn parse_reg(content: &str) -> Result<EnvSnapshot, WhichcraftError> {
     let mut user: HashMap<String, EnvValue> = HashMap::new();
     let mut system: HashMap<String, EnvValue> = HashMap::new();
     let mut current: Option<bool> = None; // Some(true) = user env, Some(false) = system env
