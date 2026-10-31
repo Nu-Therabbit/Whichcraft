@@ -49,7 +49,7 @@ src-tauri/src/          Rust backend
   import.rs             Backend-agnostic diff for `whichcraft import`/`set` (merge/replace, kind inference)
   user_hive.rs          Loading and editing other local accounts' registry hives
   cli.rs                CLI subcommands (clap): get/list/export are read-only; import/set/delete write behind --apply
-  error.rs              EnvarlyError (thiserror)
+  error.rs              WhichcraftError (thiserror)
 ```
 
 ### Frontend ↔ Backend boundary

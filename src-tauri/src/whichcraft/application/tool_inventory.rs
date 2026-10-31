@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use crate::env_store::EnvBackend;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::path_manage;
 use crate::whichcraft::domain::InstallerKind;
 use crate::whichcraft::domain::ToolInstallation;
@@ -35,7 +35,7 @@ pub fn list_tool_installations<B: EnvBackend>(
     catalog: &dyn InstallerCatalog,
     tool: ToolKind,
     selected_root: Option<&Path>,
-) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
+) -> Result<Vec<ToolInstallationView>, WhichcraftError> {
     list_tool_installations_with_options(
         backend,
         store,
@@ -55,7 +55,7 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
     tool: ToolKind,
     selected_root: Option<&Path>,
     options: ToolDiscoveryOptions,
-) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
+) -> Result<Vec<ToolInstallationView>, WhichcraftError> {
     let settings = store.settings()?;
     let user = backend.read_user()?;
     let system = backend.read_system()?;

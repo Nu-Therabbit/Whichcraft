@@ -7,7 +7,7 @@ import ru from "./locales/ru.json";
 import vi from "./locales/vi.json";
 import zhCN from "./locales/zh-CN.json";
 
-const STORAGE_KEY = "envarly-language";
+const STORAGE_KEY = "whichcraft-language";
 const SUPPORTED_LANGUAGES = ["en", "ja", "zh-CN", "ru", "ko", "vi"] as const;
 
 function getStoredLanguage() {

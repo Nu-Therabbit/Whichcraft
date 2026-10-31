@@ -5,7 +5,7 @@ use winreg::enums::*;
 use winreg::{RegKey, RegValue};
 
 use crate::env_store::EnvBackend;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvValue, EnvValueKind, UnsupportedEnvValue, VarScope};
 
 const USER_ENV_KEY: &str = "Environment";
@@ -14,38 +14,38 @@ const SYSTEM_ENV_KEY: &str = r"SYSTEM\CurrentControlSet\Control\Session Manager\
 pub struct WinregBackend;
 
 impl EnvBackend for WinregBackend {
-    fn read_user(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+    fn read_user(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError> {
         let key = RegKey::predef(HKEY_CURRENT_USER).open_subkey(USER_ENV_KEY)?;
         Ok(iter_string_values(&key).collect())
     }
 
-    fn read_system(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+    fn read_system(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError> {
         let key = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(SYSTEM_ENV_KEY)?;
         Ok(iter_string_values(&key).collect())
     }
 
-    fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+    fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
         let key = RegKey::predef(HKEY_CURRENT_USER)
             .open_subkey_with_flags(USER_ENV_KEY, KEY_SET_VALUE)?;
         key.set_raw_value(name, &to_reg_value(value)?)?;
         Ok(())
     }
 
-    fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+    fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
         let key = RegKey::predef(HKEY_LOCAL_MACHINE)
             .open_subkey_with_flags(SYSTEM_ENV_KEY, KEY_SET_VALUE)?;
         key.set_raw_value(name, &to_reg_value(value)?)?;
         Ok(())
     }
 
-    fn delete_user(&self, name: &str) -> Result<(), EnvarlyError> {
+    fn delete_user(&self, name: &str) -> Result<(), WhichcraftError> {
         let key = RegKey::predef(HKEY_CURRENT_USER)
             .open_subkey_with_flags(USER_ENV_KEY, KEY_SET_VALUE)?;
         key.delete_value(name)?;
         Ok(())
     }
 
-    fn delete_system(&self, name: &str) -> Result<(), EnvarlyError> {
+    fn delete_system(&self, name: &str) -> Result<(), WhichcraftError> {
         let key = RegKey::predef(HKEY_LOCAL_MACHINE)
             .open_subkey_with_flags(SYSTEM_ENV_KEY, KEY_SET_VALUE)?;
         key.delete_value(name)?;
@@ -62,20 +62,20 @@ impl EnvBackend for WinregBackend {
         broadcast_settings_change();
     }
 
-    fn read_other_user(&self) -> Result<Option<HashMap<String, EnvValue>>, EnvarlyError> {
+    fn read_other_user(&self) -> Result<Option<HashMap<String, EnvValue>>, WhichcraftError> {
         crate::user_hive::read_other_user_vars()
     }
 
-    fn write_other_user(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+    fn write_other_user(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
         crate::user_hive::write_other_user_var(name, value)
     }
 
-    fn delete_other_user(&self, name: &str) -> Result<(), EnvarlyError> {
+    fn delete_other_user(&self, name: &str) -> Result<(), WhichcraftError> {
         crate::user_hive::delete_other_user_var(name)
     }
 }
 
-pub fn read_unsupported_values() -> Result<Vec<UnsupportedEnvValue>, EnvarlyError> {
+pub fn read_unsupported_values() -> Result<Vec<UnsupportedEnvValue>, WhichcraftError> {
     let user = RegKey::predef(HKEY_CURRENT_USER).open_subkey(USER_ENV_KEY)?;
     let system = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(SYSTEM_ENV_KEY)?;
     let mut values = unsupported_values(&user, VarScope::User)
@@ -123,9 +123,9 @@ fn unsupported_values(
     })
 }
 
-pub(crate) fn to_reg_value(value: &EnvValue) -> Result<RegValue<'_>, EnvarlyError> {
+pub(crate) fn to_reg_value(value: &EnvValue) -> Result<RegValue<'_>, WhichcraftError> {
     let kind = value.kind.ok_or_else(|| {
-        EnvarlyError::InvalidInput("registry type must be resolved before writing".into())
+        WhichcraftError::InvalidInput("registry type must be resolved before writing".into())
     })?;
     let mut bytes = Vec::with_capacity((value.value.encode_utf16().count() + 1) * 2);
     for unit in value.value.encode_utf16().chain(std::iter::once(0)) {

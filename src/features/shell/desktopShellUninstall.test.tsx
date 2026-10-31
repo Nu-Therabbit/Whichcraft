@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { splitEnvarlyApi } from "../../composition/appServices";
+import { splitWhichcraftApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { UndoProvider } from "../../contexts/UndoContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
@@ -69,7 +69,7 @@ function renderShell(
   coordination: WriteCoordinatorFacade = createWriteCoordinator(),
 ) {
   const { api: fake } = fakeToolsRuntime({ ...sdkMocks, ...api }, coordination);
-  configureProductionServices(splitEnvarlyApi(fake));
+  configureProductionServices(splitWhichcraftApi(fake));
   return {
     coordination,
     ...render(

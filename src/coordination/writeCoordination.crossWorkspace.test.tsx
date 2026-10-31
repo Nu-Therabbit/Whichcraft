@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UndoProvider } from "../contexts/UndoContext";
-import { createToolsRuntime, splitEnvarlyApi } from "../composition/appServices";
+import { createToolsRuntime, splitWhichcraftApi } from "../composition/appServices";
 import { AppServicesProvider, useAppServices } from "../composition/AppServicesContext";
 import { configureProductionServices } from "../composition/createProductionServices";
 import { WriteCoordinatorProvider, useWriteCoordinator } from "./WriteCoordinatorContext";
@@ -28,7 +28,7 @@ function LegacyHarness() {
 
 function renderLegacyApp(apiOverrides: Parameters<typeof fakeToolsRuntime>[0]) {
   const { api: fake } = fakeToolsRuntime(apiOverrides);
-  configureProductionServices(splitEnvarlyApi(fake));
+  configureProductionServices(splitWhichcraftApi(fake));
   return render(
     <UndoProvider>
       <UndoProvider>
@@ -160,7 +160,7 @@ describe("write coordination across workspaces", () => {
       }),
       getMsvcInventory: async () => ({ instances: [], windowsSdks: [] }),
     });
-    configureProductionServices(splitEnvarlyApi(fake));
+    configureProductionServices(splitWhichcraftApi(fake));
 
     render(
       <UndoProvider>

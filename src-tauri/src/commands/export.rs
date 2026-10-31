@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 use crate::env_store;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvSnapshot, EnvValue, EnvValueKind};
 
 #[derive(Deserialize)]
@@ -21,7 +21,7 @@ pub async fn export_vars(
     app: tauri::AppHandle,
     scope: String,
     format: String,
-) -> Result<Option<String>, EnvarlyError> {
+) -> Result<Option<String>, WhichcraftError> {
     use crate::export::ExportScope;
     use tauri_plugin_dialog::{DialogExt, FilePath};
 
@@ -45,7 +45,7 @@ pub async fn export_vars(
 
     match path {
         Some(FilePath::Path(p)) => {
-            std::fs::write(&p, spec.content.as_bytes()).map_err(EnvarlyError::Registry)?;
+            std::fs::write(&p, spec.content.as_bytes()).map_err(WhichcraftError::Registry)?;
             Ok(Some(p.to_string_lossy().into_owned()))
         }
         _ => Ok(None),
@@ -54,7 +54,7 @@ pub async fn export_vars(
 
 /// Parse an exported file and return its contents as a snapshot. Does NOT touch the registry.
 #[tauri::command]
-pub fn parse_import(content: String, format: String) -> Result<EnvSnapshot, EnvarlyError> {
+pub fn parse_import(content: String, format: String) -> Result<EnvSnapshot, WhichcraftError> {
     match format.as_str() {
         "reg" => crate::export::parse_reg(&content),
         _ => crate::export::parse_json(&content),
@@ -68,7 +68,7 @@ pub async fn export_custom(
     app: tauri::AppHandle,
     vars: Vec<CustomExportVar>,
     format: String,
-) -> Result<Option<String>, EnvarlyError> {
+) -> Result<Option<String>, WhichcraftError> {
     use crate::export::ExportScope;
     use tauri_plugin_dialog::{DialogExt, FilePath};
 
@@ -92,7 +92,7 @@ pub async fn export_custom(
                 );
             }
             other => {
-                return Err(EnvarlyError::InvalidInput(format!(
+                return Err(WhichcraftError::InvalidInput(format!(
                     "invalid scope: {other:?}"
                 )))
             }
@@ -118,7 +118,7 @@ pub async fn export_custom(
 
     match path {
         Some(FilePath::Path(p)) => {
-            std::fs::write(&p, spec.content.as_bytes()).map_err(EnvarlyError::Registry)?;
+            std::fs::write(&p, spec.content.as_bytes()).map_err(WhichcraftError::Registry)?;
             Ok(Some(p.to_string_lossy().into_owned()))
         }
         _ => Ok(None),

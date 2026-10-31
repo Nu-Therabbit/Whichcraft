@@ -1,7 +1,7 @@
 import type { AppServices } from "../contracts";
 import { wireLegacyApiFacade } from "../api";
-import { mergeEnvarlyApi } from "./appServices";
+import { mergeWhichcraftApi } from "./appServices";
 
 export function syncLegacyApiFacade(services: AppServices): void {
-  wireLegacyApiFacade(mergeEnvarlyApi(services));
+  wireLegacyApiFacade(mergeWhichcraftApi(services));
 }

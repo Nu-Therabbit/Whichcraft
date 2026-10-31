@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { UndoProvider } from "../../contexts/UndoContext";
-import { splitEnvarlyApi } from "../../composition/appServices";
+import { splitWhichcraftApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
 import { shellNavigationHref } from "../../lib/shellNavigation";
@@ -40,7 +40,7 @@ const sdkMocks = {
   }),
 };
 
-function renderDesktopShell(services: ReturnType<typeof splitEnvarlyApi>) {
+function renderDesktopShell(services: ReturnType<typeof splitWhichcraftApi>) {
   configureProductionServices(services);
   return render(
     <UndoProvider>
@@ -55,7 +55,7 @@ function renderDesktopShell(services: ReturnType<typeof splitEnvarlyApi>) {
 
 function renderInstallShell(overrides: Parameters<typeof fakeToolsRuntime>[0]) {
   window.history.replaceState(null, "", shellNavigationHref({ page: "tools", installOpen: true }));
-  return renderDesktopShell(splitEnvarlyApi(fakeToolsRuntime({
+  return renderDesktopShell(splitWhichcraftApi(fakeToolsRuntime({
     ...sdkMocks,
     getMiseStatus: async () => ({ version: "2026.10.1", present: true, downloadBytes: 1, oldVersions: [], fetching: false }),
     ...overrides,
@@ -143,7 +143,7 @@ describe("desktop shell settings and install", () => {
       installStoreConfirmed: true,
       previousInstallStores: ["D:\\legacy-store"],
     }));
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         getWhichcraftSettings,
@@ -205,7 +205,7 @@ describe("desktop shell settings and install", () => {
       installFinished = true;
       return "C:\\store\\node\\22.0.1";
     });
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         getWhichcraftSettings: async () => ({
@@ -261,7 +261,7 @@ describe("desktop shell settings and install", () => {
           installDone = resolve;
         }),
     );
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         getWhichcraftSettings: async () => ({
@@ -315,7 +315,7 @@ describe("desktop shell settings and install", () => {
     const installManaged = vi.fn(async () => {
       throw new Error("download cancelled by user");
     });
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         getWhichcraftSettings: async () => ({
@@ -368,7 +368,7 @@ describe("desktop shell settings and install", () => {
       { version: "22.0.1", downloadBytes: 1000, installBytes: 2000 },
     ]);
     const installManaged = vi.fn(async () => "C:\\store\\node\\22.0.1");
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         setEnvVar,
@@ -418,7 +418,7 @@ describe("desktop shell settings and install", () => {
     const updateCandidates = vi.fn(async () => [
       { root: "C:\\Git", current: "2.45.0", latest: "2.50.0" },
     ]);
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         listRemoteVersions,
@@ -449,7 +449,7 @@ describe("desktop shell settings and install", () => {
     const listRemoteVersions = vi.fn(async () => [
       { version: "22.0.1", downloadBytes: 1000, installBytes: 2000 },
     ]);
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         getWhichcraftSettings: async () => ({
@@ -482,7 +482,7 @@ describe("desktop shell settings and install", () => {
   });
 
   it("summarizes the scanned inventory in the status bar", async () => {
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         listToolInstallations: async (tool: string) =>
@@ -504,7 +504,7 @@ describe("desktop shell settings and install", () => {
   });
 
   it("does not present a partly failed scan as an up-to-date PC", async () => {
-    const services = splitEnvarlyApi(
+    const services = splitWhichcraftApi(
       fakeToolsRuntime({
         ...sdkMocks,
         listToolInstallations: async (tool: string) => {

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::ports::usage_probe::{UsageProbe, UsageReport};
 
@@ -11,7 +11,7 @@ pub struct FakeUsageProbe {
 }
 
 impl UsageProbe for FakeUsageProbe {
-    fn probe(&self, _tool: ToolKind, _install_root: &Path) -> Result<UsageReport, EnvarlyError> {
+    fn probe(&self, _tool: ToolKind, _install_root: &Path) -> Result<UsageReport, WhichcraftError> {
         Ok(self.report.clone())
     }
 }

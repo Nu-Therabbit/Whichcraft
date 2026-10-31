@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { splitEnvarlyApi } from "../../composition/appServices";
+import { splitWhichcraftApi } from "../../composition/appServices";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { UndoProvider } from "../../contexts/UndoContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
@@ -53,7 +53,7 @@ const sdkMocks = {
 function renderShell(apiOverrides: Record<string, unknown> = {}) {
   const coordination = createWriteCoordinator();
   const { api: fake } = fakeToolsRuntime({ ...sdkMocks, ...apiOverrides }, coordination);
-  configureProductionServices(splitEnvarlyApi(fake));
+  configureProductionServices(splitWhichcraftApi(fake));
   return {
     coordination,
     fake,

@@ -6,7 +6,7 @@ use msi::{Expr, Select, Value};
 use winreg::enums::*;
 use winreg::RegKey;
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::domain::InstallerKind;
 use crate::whichcraft::ports::installer_catalog::{CatalogEntry, InstallerCatalog};
 
@@ -24,7 +24,7 @@ struct UninstallRow {
 }
 
 impl WinInstallerCatalog {
-    pub fn load() -> Result<Self, EnvarlyError> {
+    pub fn load() -> Result<Self, WhichcraftError> {
         let mut rows = Vec::new();
         for hive in [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER] {
             let root = RegKey::predef(hive);
@@ -84,7 +84,7 @@ static CATALOG_CACHE: CatalogCache = CatalogCache::new();
 pub struct WinInstallerCatalogs;
 
 impl crate::whichcraft::ports::installer_catalog::InstallerCatalogSource for WinInstallerCatalogs {
-    fn load(&self) -> Result<Box<dyn InstallerCatalog>, EnvarlyError> {
+    fn load(&self) -> Result<Box<dyn InstallerCatalog>, WhichcraftError> {
         let catalog = CATALOG_CACHE.get_or_load(Instant::now(), CATALOG_REUSE, || {
             Ok(Arc::new(WinInstallerCatalog::load()?) as Arc<dyn InstallerCatalog>)
         })?;
@@ -109,8 +109,8 @@ impl CatalogCache {
         &self,
         now: Instant,
         reuse: Duration,
-        load: impl FnOnce() -> Result<Arc<dyn InstallerCatalog>, EnvarlyError>,
-    ) -> Result<Arc<dyn InstallerCatalog>, EnvarlyError> {
+        load: impl FnOnce() -> Result<Arc<dyn InstallerCatalog>, WhichcraftError>,
+    ) -> Result<Arc<dyn InstallerCatalog>, WhichcraftError> {
         let mut slot = self.0.lock().unwrap_or_else(|e| e.into_inner());
         if let Some((read_at, catalog)) = slot.as_ref() {
             if now.saturating_duration_since(*read_at) < reuse {
@@ -130,13 +130,13 @@ impl CatalogCache {
 struct SharedCatalog(Arc<dyn InstallerCatalog>);
 
 impl InstallerCatalog for SharedCatalog {
-    fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, EnvarlyError> {
+    fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, WhichcraftError> {
         self.0.entries_for_root(root)
     }
 }
 
 impl InstallerCatalog for WinInstallerCatalog {
-    fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, EnvarlyError> {
+    fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, WhichcraftError> {
         Ok(self.match_root(root))
     }
 }
@@ -309,14 +309,14 @@ mod tests {
     struct Empty;
 
     impl InstallerCatalog for Empty {
-        fn entries_for_root(&self, _root: &Path) -> Result<Vec<CatalogEntry>, EnvarlyError> {
+        fn entries_for_root(&self, _root: &Path) -> Result<Vec<CatalogEntry>, WhichcraftError> {
             Ok(Vec::new())
         }
     }
 
     fn counting_load(
         loads: &std::cell::Cell<u32>,
-    ) -> Result<Arc<dyn InstallerCatalog>, EnvarlyError> {
+    ) -> Result<Arc<dyn InstallerCatalog>, WhichcraftError> {
         loads.set(loads.get() + 1);
         Ok(Arc::new(Empty))
     }
@@ -368,7 +368,7 @@ mod tests {
         let now = Instant::now();
         let reuse = Duration::from_secs(15);
         assert!(cache
-            .get_or_load(now, reuse, || Err(EnvarlyError::InvalidInput(
+            .get_or_load(now, reuse, || Err(WhichcraftError::InvalidInput(
                 "registry".into()
             )))
             .is_err());

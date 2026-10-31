@@ -12,7 +12,7 @@ use std::sync::Mutex;
 use winreg::enums::*;
 use winreg::RegKey;
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::EnvValue;
 
 const PROFILE_LIST_KEY: &str = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList";
@@ -38,7 +38,7 @@ static ACTIVE_HIVE: Mutex<Option<ActiveHive>> = Mutex::new(None);
 /// well-known non-interactive service SIDs. Only `has_profile` accounts can
 /// actually have their variables loaded (an account that has never logged
 /// in has no `NTUSER.DAT` to load).
-pub fn list_local_accounts() -> Result<Vec<LocalAccount>, EnvarlyError> {
+pub fn list_local_accounts() -> Result<Vec<LocalAccount>, WhichcraftError> {
     let current_sid = current_user_sid()?;
     let mut accounts = Vec::new();
     for username in net_user_enum()? {
@@ -62,7 +62,7 @@ pub fn list_local_accounts() -> Result<Vec<LocalAccount>, EnvarlyError> {
 /// Switch the active other-user hive. `None` deselects (unloading whatever
 /// hive Whichcraft itself loaded). Replacing an already-active selection
 /// unloads the previous one first.
-pub fn select_account(sid: Option<&str>) -> Result<Option<LocalAccount>, EnvarlyError> {
+pub fn select_account(sid: Option<&str>) -> Result<Option<LocalAccount>, WhichcraftError> {
     let mut active = ACTIVE_HIVE.lock().unwrap();
     *active = None; // drop first: unloads whatever hive we owned, if any
 
@@ -73,9 +73,9 @@ pub fn select_account(sid: Option<&str>) -> Result<Option<LocalAccount>, Envarly
     let account = list_local_accounts()?
         .into_iter()
         .find(|a| a.sid == sid)
-        .ok_or_else(|| EnvarlyError::OtherUserAccount(format!("unknown account {sid:?}")))?;
+        .ok_or_else(|| WhichcraftError::OtherUserAccount(format!("unknown account {sid:?}")))?;
     if !account.has_profile {
-        return Err(EnvarlyError::OtherUserAccount(format!(
+        return Err(WhichcraftError::OtherUserAccount(format!(
             "{} has no profile on this machine yet",
             account.username
         )));
@@ -100,8 +100,8 @@ pub fn selected_account() -> Option<LocalAccount> {
 /// other-user reads a no-op rather than an error when there's no context.
 pub fn with_active_environment_key<T>(
     write: bool,
-    f: impl FnOnce(&RegKey) -> Result<T, EnvarlyError>,
-) -> Result<Option<T>, EnvarlyError> {
+    f: impl FnOnce(&RegKey) -> Result<T, WhichcraftError>,
+) -> Result<Option<T>, WhichcraftError> {
     let active = ACTIVE_HIVE.lock().unwrap();
     let Some(active) = active.as_ref() else {
         return Ok(None);
@@ -114,26 +114,26 @@ pub fn with_active_environment_key<T>(
     f(&key).map(Some)
 }
 
-pub fn read_other_user_vars() -> Result<Option<HashMap<String, EnvValue>>, EnvarlyError> {
+pub fn read_other_user_vars() -> Result<Option<HashMap<String, EnvValue>>, WhichcraftError> {
     with_active_environment_key(false, |key| {
         Ok(crate::env_backend::iter_string_values(key).collect())
     })
 }
 
-pub fn write_other_user_var(name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+pub fn write_other_user_var(name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
     with_active_environment_key(true, |key| {
         key.set_raw_value(name, &crate::env_backend::to_reg_value(value)?)?;
         Ok(())
     })?
-    .ok_or_else(|| EnvarlyError::OtherUserAccount("no other-user account selected".into()))
+    .ok_or_else(|| WhichcraftError::OtherUserAccount("no other-user account selected".into()))
 }
 
-pub fn delete_other_user_var(name: &str) -> Result<(), EnvarlyError> {
+pub fn delete_other_user_var(name: &str) -> Result<(), WhichcraftError> {
     with_active_environment_key(true, |key| {
         key.delete_value(name)?;
         Ok(())
     })?
-    .ok_or_else(|| EnvarlyError::OtherUserAccount("no other-user account selected".into()))
+    .ok_or_else(|| WhichcraftError::OtherUserAccount("no other-user account selected".into()))
 }
 
 /// RAII guard around a loaded (or already-loaded) `HKEY_USERS\<sid>` hive.
@@ -147,7 +147,7 @@ struct HiveGuard {
 }
 
 impl HiveGuard {
-    fn load(sid: &str) -> Result<Self, EnvarlyError> {
+    fn load(sid: &str) -> Result<Self, WhichcraftError> {
         if hkey_users_subkey_exists(sid) {
             let root = RegKey::predef(HKEY_USERS).open_subkey(sid)?;
             return Ok(Self {
@@ -157,8 +157,9 @@ impl HiveGuard {
             });
         }
 
-        let profile_path = profile_image_path(sid)
-            .ok_or_else(|| EnvarlyError::OtherUserAccount(format!("no profile found for {sid}")))?;
+        let profile_path = profile_image_path(sid).ok_or_else(|| {
+            WhichcraftError::OtherUserAccount(format!("no profile found for {sid}"))
+        })?;
         let ntuser_dat = format!("{profile_path}\\NTUSER.DAT");
         ensure_backup_restore_privileges()?;
         reg_load_key(sid, &ntuser_dat)?;
@@ -207,7 +208,7 @@ fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
-fn current_user_sid() -> Result<String, EnvarlyError> {
+fn current_user_sid() -> Result<String, WhichcraftError> {
     use windows_sys::Win32::Foundation::CloseHandle;
     use windows_sys::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
@@ -236,7 +237,7 @@ fn current_user_sid() -> Result<String, EnvarlyError> {
     }
 }
 
-fn sid_to_string(sid: *mut core::ffi::c_void) -> Result<String, EnvarlyError> {
+fn sid_to_string(sid: *mut core::ffi::c_void) -> Result<String, WhichcraftError> {
     use windows_sys::Win32::Foundation::LocalFree;
     use windows_sys::Win32::Security::Authorization::ConvertSidToStringSidW;
 
@@ -259,7 +260,7 @@ unsafe fn pwstr_to_string(ptr: *const u16) -> String {
     String::from_utf16_lossy(std::slice::from_raw_parts(ptr, len))
 }
 
-fn net_user_enum() -> Result<Vec<String>, EnvarlyError> {
+fn net_user_enum() -> Result<Vec<String>, WhichcraftError> {
     use windows_sys::Win32::NetworkManagement::NetManagement::{
         NetApiBufferFree, NetUserEnum, FILTER_NORMAL_ACCOUNT, MAX_PREFERRED_LENGTH, USER_INFO_0,
     };
@@ -292,7 +293,7 @@ fn net_user_enum() -> Result<Vec<String>, EnvarlyError> {
     }
 }
 
-fn lookup_account_sid(username: &str) -> Result<String, EnvarlyError> {
+fn lookup_account_sid(username: &str) -> Result<String, WhichcraftError> {
     use windows_sys::Win32::Security::LookupAccountNameW;
 
     let wide_name = wide(username);
@@ -327,7 +328,7 @@ fn lookup_account_sid(username: &str) -> Result<String, EnvarlyError> {
     }
 }
 
-fn ensure_backup_restore_privileges() -> Result<(), EnvarlyError> {
+fn ensure_backup_restore_privileges() -> Result<(), WhichcraftError> {
     use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, SetLastError, LUID};
     use windows_sys::Win32::Security::{
         AdjustTokenPrivileges, LookupPrivilegeValueW, LUID_AND_ATTRIBUTES, SE_PRIVILEGE_ENABLED,
@@ -373,9 +374,13 @@ fn ensure_backup_restore_privileges() -> Result<(), EnvarlyError> {
     }
 }
 
-fn check_privilege_adjustment(name: &str, adjusted: bool, error: u32) -> Result<(), EnvarlyError> {
+fn check_privilege_adjustment(
+    name: &str,
+    adjusted: bool,
+    error: u32,
+) -> Result<(), WhichcraftError> {
     if !adjusted || error != windows_sys::Win32::Foundation::ERROR_SUCCESS {
-        return Err(EnvarlyError::OtherUserAccount(format!(
+        return Err(WhichcraftError::OtherUserAccount(format!(
             "could not enable {name}: {}",
             std::io::Error::from_raw_os_error(error as i32)
         )));
@@ -383,13 +388,13 @@ fn check_privilege_adjustment(name: &str, adjusted: bool, error: u32) -> Result<
     Ok(())
 }
 
-fn reg_load_key(sid: &str, file_path: &str) -> Result<(), EnvarlyError> {
+fn reg_load_key(sid: &str, file_path: &str) -> Result<(), WhichcraftError> {
     use windows_sys::Win32::System::Registry::RegLoadKeyW;
 
     let hku = RegKey::predef(HKEY_USERS).raw_handle();
     let status = unsafe { RegLoadKeyW(hku, wide(sid).as_ptr(), wide(file_path).as_ptr()) };
     if status != 0 {
-        return Err(EnvarlyError::OtherUserAccount(format!(
+        return Err(WhichcraftError::OtherUserAccount(format!(
             "could not load profile hive ({}): {}",
             file_path,
             std::io::Error::from_raw_os_error(status as i32)
@@ -398,7 +403,7 @@ fn reg_load_key(sid: &str, file_path: &str) -> Result<(), EnvarlyError> {
     Ok(())
 }
 
-fn reg_unload_key(sid: &str) -> Result<(), EnvarlyError> {
+fn reg_unload_key(sid: &str) -> Result<(), WhichcraftError> {
     use windows_sys::Win32::System::Registry::RegUnLoadKeyW;
 
     let hku = RegKey::predef(HKEY_USERS).raw_handle();

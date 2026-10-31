@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { confirm as nativeConfirm, open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import type { EnvarlyApi } from "../contracts";
+import type { WhichcraftApi } from "../contracts";
 import type {
   ApplyProgressEvent,
   CheckCommandResult,
@@ -15,7 +15,7 @@ import type {
 } from "../features/environment/types";
 import type { UpdateInfo } from "../platform/types";
 
-export const tauriEnvarlyApi: EnvarlyApi = {
+export const tauriWhichcraftApi: WhichcraftApi = {
   getLaunchOptions: () => invoke("get_launch_options"),
   getEnvVars: () => invoke<EnvVar[]>("get_env_vars"),
   getUnsupportedEnvValues: () => invoke<UnsupportedEnvValue[]>("get_unsupported_env_values"),

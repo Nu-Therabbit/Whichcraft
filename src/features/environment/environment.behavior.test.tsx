@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UndoProvider } from "../../contexts/UndoContext";
-import { createToolsRuntime, splitEnvarlyApi } from "../../composition/appServices";
+import { createToolsRuntime, splitWhichcraftApi } from "../../composition/appServices";
 import { WriteCoordinatorProvider, useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import { AppServicesProvider, useAppServices } from "../../composition/AppServicesContext";
 import { configureProductionServices } from "../../composition/createProductionServices";
@@ -26,7 +26,7 @@ function LegacyHarness() {
 
 function renderEnvironmentApp(overrides: Parameters<typeof fakeToolsRuntime>[0] = {}) {
   const { api: fake } = fakeToolsRuntime(overrides);
-  configureProductionServices(splitEnvarlyApi(fake));
+  configureProductionServices(splitWhichcraftApi(fake));
   return { fake, ...render(
     <UndoProvider>
       <AppServicesProvider>

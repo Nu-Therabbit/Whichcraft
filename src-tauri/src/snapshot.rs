@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::crypto;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::EnvSnapshot;
 
 /// Snapshot file format version. Increment when the serialized shape changes.
@@ -27,13 +27,13 @@ pub struct SnapshotMeta {
     pub snapshot: EnvSnapshot,
 }
 
-fn snapshots_dir() -> Result<PathBuf, EnvarlyError> {
+fn snapshots_dir() -> Result<PathBuf, WhichcraftError> {
     let base = dirs_next::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
     let dir = base.join("Whichcraft").join("snapshots");
     adopt_legacy_snapshots(&base.join("Envarly").join("snapshots"), &dir)
-        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot copy earlier snapshots: {e}")))?;
+        .map_err(|e| WhichcraftError::Snapshot(format!("Cannot copy earlier snapshots: {e}")))?;
     fs::create_dir_all(&dir)
-        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot create snapshots dir: {e}")))?;
+        .map_err(|e| WhichcraftError::Snapshot(format!("Cannot create snapshots dir: {e}")))?;
     Ok(dir)
 }
 
@@ -59,23 +59,23 @@ fn adopt_legacy_snapshots(legacy: &Path, dir: &Path) -> std::io::Result<()> {
     fs::rename(&staging, dir)
 }
 
-fn write_snap(path: &Path, meta: &SnapshotMeta) -> Result<(), EnvarlyError> {
+fn write_snap(path: &Path, meta: &SnapshotMeta) -> Result<(), WhichcraftError> {
     let json = serde_json::to_vec(meta)?;
     let encrypted = crypto::protect(&json)?;
     fs::write(path, encrypted)
-        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot write snapshot: {e}")))?;
+        .map_err(|e| WhichcraftError::Snapshot(format!("Cannot write snapshot: {e}")))?;
     Ok(())
 }
 
-fn read_snap(path: &Path) -> Result<SnapshotMeta, EnvarlyError> {
+fn read_snap(path: &Path) -> Result<SnapshotMeta, WhichcraftError> {
     let encrypted = fs::read(path)
-        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot read snapshot file: {e}")))?;
+        .map_err(|e| WhichcraftError::Snapshot(format!("Cannot read snapshot file: {e}")))?;
     let json = crypto::unprotect(&encrypted)?;
     match serde_json::from_slice(&json) {
         Ok(meta) => Ok(meta),
         Err(typed_error) => {
             let legacy: LegacySnapshotMeta = serde_json::from_slice(&json).map_err(|_| {
-                EnvarlyError::Snapshot(format!("Cannot parse snapshot: {typed_error}"))
+                WhichcraftError::Snapshot(format!("Cannot parse snapshot: {typed_error}"))
             })?;
             Ok(legacy.into())
         }
@@ -121,7 +121,7 @@ impl From<LegacySnapshotMeta> for SnapshotMeta {
     }
 }
 
-pub fn save_snapshot(snapshot: EnvSnapshot, label: &str) -> Result<SnapshotMeta, EnvarlyError> {
+pub fn save_snapshot(snapshot: EnvSnapshot, label: &str) -> Result<SnapshotMeta, WhichcraftError> {
     let now = Utc::now();
     let id = now.format("%Y%m%dT%H%M%SZ").to_string();
     let meta = SnapshotMeta {
@@ -141,7 +141,7 @@ pub fn save_snapshot_to(
     snapshot: EnvSnapshot,
     label: &str,
     dir: &Path,
-) -> Result<SnapshotMeta, EnvarlyError> {
+) -> Result<SnapshotMeta, WhichcraftError> {
     let now = Utc::now();
     let id = now.format("%Y%m%dT%H%M%SZ").to_string();
     let meta = SnapshotMeta {
@@ -152,22 +152,23 @@ pub fn save_snapshot_to(
         snapshot,
     };
     fs::create_dir_all(dir)
-        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot create dir: {e}")))?;
+        .map_err(|e| WhichcraftError::Snapshot(format!("Cannot create dir: {e}")))?;
     let path = dir.join(format!("{id}.snap"));
     write_snap(&path, &meta)?;
     Ok(meta)
 }
 
-pub fn list_snapshots() -> Result<Vec<SnapshotMeta>, EnvarlyError> {
+pub fn list_snapshots() -> Result<Vec<SnapshotMeta>, WhichcraftError> {
     list_snapshots_from(&snapshots_dir()?)
 }
 
-pub fn list_snapshots_from(dir: &Path) -> Result<Vec<SnapshotMeta>, EnvarlyError> {
+pub fn list_snapshots_from(dir: &Path) -> Result<Vec<SnapshotMeta>, WhichcraftError> {
     let mut metas: Vec<SnapshotMeta> = Vec::new();
     for entry in fs::read_dir(dir)
-        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot read snapshots dir: {e}")))?
+        .map_err(|e| WhichcraftError::Snapshot(format!("Cannot read snapshots dir: {e}")))?
     {
-        let entry = entry.map_err(|e| EnvarlyError::Snapshot(format!("Read entry error: {e}")))?;
+        let entry =
+            entry.map_err(|e| WhichcraftError::Snapshot(format!("Read entry error: {e}")))?;
         let path = entry.path();
         if path.extension().and_then(|e| e.to_str()) != Some("snap") {
             continue;
@@ -180,14 +181,14 @@ pub fn list_snapshots_from(dir: &Path) -> Result<Vec<SnapshotMeta>, EnvarlyError
     Ok(metas)
 }
 
-pub fn rename_snapshot(id: &str, label: &str) -> Result<SnapshotMeta, EnvarlyError> {
+pub fn rename_snapshot(id: &str, label: &str) -> Result<SnapshotMeta, WhichcraftError> {
     rename_snapshot_in(id, label, &snapshots_dir()?)
 }
 
-fn rename_snapshot_in(id: &str, label: &str, dir: &Path) -> Result<SnapshotMeta, EnvarlyError> {
+fn rename_snapshot_in(id: &str, label: &str, dir: &Path) -> Result<SnapshotMeta, WhichcraftError> {
     let label = label.trim();
     if label.is_empty() {
-        return Err(EnvarlyError::Snapshot(
+        return Err(WhichcraftError::Snapshot(
             "Snapshot name cannot be empty".to_string(),
         ));
     }
@@ -199,18 +200,18 @@ fn rename_snapshot_in(id: &str, label: &str, dir: &Path) -> Result<SnapshotMeta,
     Ok(meta)
 }
 
-pub fn delete_snapshot(id: &str) -> Result<(), EnvarlyError> {
+pub fn delete_snapshot(id: &str) -> Result<(), WhichcraftError> {
     let path = snapshots_dir()?.join(format!("{id}.snap"));
     fs::remove_file(&path)
-        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot delete snapshot: {e}")))?;
+        .map_err(|e| WhichcraftError::Snapshot(format!("Cannot delete snapshot: {e}")))?;
     Ok(())
 }
 
 #[cfg(test)]
-pub fn delete_snapshot_from(id: &str, dir: &Path) -> Result<(), EnvarlyError> {
+pub fn delete_snapshot_from(id: &str, dir: &Path) -> Result<(), WhichcraftError> {
     let path = dir.join(format!("{id}.snap"));
     fs::remove_file(&path)
-        .map_err(|e| EnvarlyError::Snapshot(format!("Cannot delete snapshot: {e}")))?;
+        .map_err(|e| WhichcraftError::Snapshot(format!("Cannot delete snapshot: {e}")))?;
     Ok(())
 }
 

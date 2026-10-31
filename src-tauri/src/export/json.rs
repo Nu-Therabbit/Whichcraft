@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::ExportScope;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvSnapshot, EnvValue};
 
 /// Export snapshot as pretty-printed JSON.
@@ -24,9 +24,9 @@ pub fn to_json(snapshot: &EnvSnapshot, scope: ExportScope) -> String {
 }
 
 /// Parse JSON export back into a snapshot. Does NOT write to the registry.
-pub fn parse_json(content: &str) -> Result<EnvSnapshot, EnvarlyError> {
+pub fn parse_json(content: &str) -> Result<EnvSnapshot, WhichcraftError> {
     let v: serde_json::Value = serde_json::from_str(content)
-        .map_err(|e| EnvarlyError::InvalidInput(format!("JSON parse error: {e}")))?;
+        .map_err(|e| WhichcraftError::InvalidInput(format!("JSON parse error: {e}")))?;
 
     let as_map = |key: &str| -> HashMap<String, EnvValue> {
         v.get(key)

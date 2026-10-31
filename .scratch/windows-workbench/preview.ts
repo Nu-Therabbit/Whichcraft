@@ -1,15 +1,15 @@
 // Validation entry only: production components, isolated in-memory data, no native writes.
 import { configureProductionServices } from "../../src/composition/createProductionServices";
-import { splitEnvarlyApi } from "../../src/composition/appServices";
+import { splitWhichcraftApi } from "../../src/composition/appServices";
 import { createDemoApi, loadDemoFixture } from "../../src/demo/createDemoApi";
-import type { EnvarlyApi } from "../../src/contracts";
+import type { WhichcraftApi } from "../../src/contracts";
 import type { ToolInstallationView, ToolKind } from "../../src/features/tools/types";
 
 const params = new URLSearchParams(location.search);
-localStorage.setItem("envarly-theme", params.get("theme") === "dark" ? "dark" : "light");
-localStorage.setItem("envarly-language", "en");
+localStorage.setItem("whichcraft-theme", params.get("theme") === "dark" ? "dark" : "light");
+localStorage.setItem("whichcraft-language", "en");
 const options = { demo: true, demoFixture: null };
-const fallback = new Proxy({} as EnvarlyApi, { get: () => async () => null });
+const fallback = new Proxy({} as WhichcraftApi, { get: () => async () => null });
 const api = createDemoApi(options, await loadDemoFixture(options), fallback);
 const installation = (tool: ToolKind, vendor: string, version: string, root: string, extra = {}): ToolInstallationView => ({
   tool, vendor, version, root, managed: false, effective: true, selected: true,
@@ -34,5 +34,5 @@ api.getMsvcInventory = async () => ({ instances: [{ displayName: "Visual Studio 
 api.getPythonLauncherInfo = async () => ({ launcherLines: [{ tag: "3.13", path: inventory.python[0].root + "\\python.exe", isDefault: true }], launcherInstalled: true, storeStub: null, note: "Python Launcher resolves independently of PATH." });
 api.planToolApply = async (tool, root) => ({ planId: "visual-plan", tool, selected: inventory[tool].find((i) => i.root === root)!, requiresUac: false, effectiveAfterUserOnly: true, userDiffs: [{ name: tool === "java" ? "JAVA_HOME" : "PATH", scope: "User", before: inventory[tool][0].root, after: root, valueKind: "String" }], systemDiffs: [], warnings: [], limitationNotice: "Already open programs keep their environment. Open a new terminal to use this installation." });
 api.shellCheck = async (tool) => ({ tool, shell: "windows_terminal", effectivePath: inventory[tool][0]?.root ?? null, shellPath: inventory[tool][0]?.root ?? null, matches: true });
-configureProductionServices(splitEnvarlyApi(api));
+configureProductionServices(splitWhichcraftApi(api));
 await import("../../src/main");

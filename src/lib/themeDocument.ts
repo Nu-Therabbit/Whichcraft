@@ -1,7 +1,7 @@
 export type Theme = "dark" | "light";
 
 export function getInitialTheme(): Theme {
-  const stored = localStorage.getItem("envarly-theme") as Theme | null;
+  const stored = localStorage.getItem("whichcraft-theme") as Theme | null;
   if (stored === "dark" || stored === "light") return stored;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }

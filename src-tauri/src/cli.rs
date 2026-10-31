@@ -173,7 +173,7 @@ pub fn run() -> ! {
     std::process::exit(0);
 }
 
-fn execute(command: Command) -> Result<(), crate::error::EnvarlyError> {
+fn execute(command: Command) -> Result<(), crate::error::WhichcraftError> {
     use crate::env_store;
     use crate::export;
 
@@ -262,7 +262,7 @@ fn execute(command: Command) -> Result<(), crate::error::EnvarlyError> {
             };
             match output {
                 Some(path) => std::fs::write(&path, content.as_bytes())
-                    .map_err(crate::error::EnvarlyError::Registry)?,
+                    .map_err(crate::error::WhichcraftError::Registry)?,
                 None => print!("{}", content),
             }
         }
@@ -277,7 +277,7 @@ fn execute(command: Command) -> Result<(), crate::error::EnvarlyError> {
             use crate::import::{diff_for_import, ImportStrategy};
 
             let content =
-                std::fs::read_to_string(&file).map_err(crate::error::EnvarlyError::Registry)?;
+                std::fs::read_to_string(&file).map_err(crate::error::WhichcraftError::Registry)?;
             let imported = match format {
                 ImportFormat::Json => export::parse_json(&content)?,
                 ImportFormat::Reg => export::parse_reg(&content)?,
@@ -418,7 +418,7 @@ fn execute(command: Command) -> Result<(), crate::error::EnvarlyError> {
     Ok(())
 }
 
-fn write_changes(changes: &[EnvChange], apply: bool) -> Result<(), crate::error::EnvarlyError> {
+fn write_changes(changes: &[EnvChange], apply: bool) -> Result<(), crate::error::WhichcraftError> {
     crate::env_store::validate_changes(changes)?;
     if !apply {
         println!("\nRun with --apply to write these changes to the registry.");

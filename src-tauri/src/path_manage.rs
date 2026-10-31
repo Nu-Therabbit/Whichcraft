@@ -1,7 +1,7 @@
 #![cfg_attr(not(windows), allow(dead_code))]
 
 #[cfg(windows)]
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 #[cfg(windows)]
 use crate::path_backend::{open_path_key, read_path_str, write_path_str};
 
@@ -251,7 +251,7 @@ pub fn path_status() -> PathStatus {
 /// Returns the proposed new PATH value after adding the install dir, or `None`
 /// if it is already present. `user = true` → User PATH, `false` → System PATH.
 #[cfg(windows)]
-pub fn propose_add(user: bool) -> Result<Option<String>, EnvarlyError> {
+pub fn propose_add(user: bool) -> Result<Option<String>, WhichcraftError> {
     let dir = install_dir()
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_default();
@@ -262,12 +262,13 @@ pub fn propose_add(user: bool) -> Result<Option<String>, EnvarlyError> {
 
 /// Same as `propose_add`, but for the currently-selected other-user account.
 #[cfg(windows)]
-pub fn propose_add_for_other_user() -> Result<Option<String>, EnvarlyError> {
+pub fn propose_add_for_other_user() -> Result<Option<String>, WhichcraftError> {
     let dir = install_dir()
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let current = crate::path_backend::read_other_user_path()?
-        .ok_or_else(|| EnvarlyError::OtherUserAccount("no other-user account selected".into()))?;
+    let current = crate::path_backend::read_other_user_path()?.ok_or_else(|| {
+        WhichcraftError::OtherUserAccount("no other-user account selected".into())
+    })?;
     Ok(compute_add(&current, &dir))
 }
 
@@ -275,7 +276,7 @@ pub fn propose_add_for_other_user() -> Result<Option<String>, EnvarlyError> {
 /// via the effective PATH (User + System merged, System first), and whether
 /// it's shadowed by another same-named file earlier in the search order.
 #[cfg(windows)]
-pub fn check_command(raw_input: &str) -> Result<CheckCommandResult, EnvarlyError> {
+pub fn check_command(raw_input: &str) -> Result<CheckCommandResult, WhichcraftError> {
     let user_raw = read_path_str(&open_path_key(true, false)?);
     let system_raw = read_path_str(&open_path_key(false, false)?);
     let pathext_raw = std::env::var("PATHEXT").unwrap_or_default();

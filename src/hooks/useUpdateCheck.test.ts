@@ -5,7 +5,7 @@ import { useUpdateCheck } from "./useUpdateCheck";
 
 const api = { checkForUpdate: vi.fn<() => Promise<UpdateInfo | null>>() };
 
-const STORAGE_KEY = "envarly.lastUpdateCheck";
+const STORAGE_KEY = "whichcraft.lastUpdateCheck";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe("useUpdateCheck", () => {

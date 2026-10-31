@@ -1,9 +1,9 @@
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 
 /// Encrypt `data` with Windows DPAPI (current-user scope).
 /// Only the same Windows user account on the same machine can decrypt.
 /// On non-Windows builds this is a no-op passthrough (for CI).
-pub fn protect(data: &[u8]) -> Result<Vec<u8>, EnvarlyError> {
+pub fn protect(data: &[u8]) -> Result<Vec<u8>, WhichcraftError> {
     #[cfg(target_os = "windows")]
     return dpapi::protect(data);
     #[cfg(not(target_os = "windows"))]
@@ -11,7 +11,7 @@ pub fn protect(data: &[u8]) -> Result<Vec<u8>, EnvarlyError> {
 }
 
 /// Decrypt data previously encrypted by `protect`.
-pub fn unprotect(data: &[u8]) -> Result<Vec<u8>, EnvarlyError> {
+pub fn unprotect(data: &[u8]) -> Result<Vec<u8>, WhichcraftError> {
     #[cfg(target_os = "windows")]
     return dpapi::unprotect(data);
     #[cfg(not(target_os = "windows"))]
@@ -20,14 +20,14 @@ pub fn unprotect(data: &[u8]) -> Result<Vec<u8>, EnvarlyError> {
 
 #[cfg(target_os = "windows")]
 mod dpapi {
-    use crate::error::EnvarlyError;
+    use crate::error::WhichcraftError;
     use std::ptr;
     use windows_sys::Win32::Foundation::LocalFree;
     use windows_sys::Win32::Security::Cryptography::{
         CryptProtectData, CryptUnprotectData, CRYPTPROTECT_UI_FORBIDDEN, CRYPT_INTEGER_BLOB,
     };
 
-    pub fn protect(data: &[u8]) -> Result<Vec<u8>, EnvarlyError> {
+    pub fn protect(data: &[u8]) -> Result<Vec<u8>, WhichcraftError> {
         unsafe {
             let input = CRYPT_INTEGER_BLOB {
                 cbData: data.len() as u32,
@@ -48,7 +48,7 @@ mod dpapi {
                 &mut output,
             );
             if ok == 0 {
-                return Err(EnvarlyError::Snapshot(format!(
+                return Err(WhichcraftError::Snapshot(format!(
                     "CryptProtectData failed: {}",
                     std::io::Error::last_os_error()
                 )));
@@ -61,7 +61,7 @@ mod dpapi {
         }
     }
 
-    pub fn unprotect(data: &[u8]) -> Result<Vec<u8>, EnvarlyError> {
+    pub fn unprotect(data: &[u8]) -> Result<Vec<u8>, WhichcraftError> {
         unsafe {
             let input = CRYPT_INTEGER_BLOB {
                 cbData: data.len() as u32,
@@ -82,7 +82,7 @@ mod dpapi {
                 &mut output,
             );
             if ok == 0 {
-                return Err(EnvarlyError::Snapshot(format!(
+                return Err(WhichcraftError::Snapshot(format!(
                     "CryptUnprotectData failed: {}",
                     std::io::Error::last_os_error()
                 )));

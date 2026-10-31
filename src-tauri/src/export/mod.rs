@@ -1,4 +1,4 @@
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvSnapshot, EnvValueKind};
 
 mod ansible;
@@ -30,13 +30,13 @@ impl ExportScope {
 }
 
 impl TryFrom<&str> for ExportScope {
-    type Error = EnvarlyError;
+    type Error = WhichcraftError;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
             "User" => Ok(ExportScope::User),
             "System" => Ok(ExportScope::System),
             "All" => Ok(ExportScope::All),
-            other => Err(EnvarlyError::InvalidInput(format!(
+            other => Err(WhichcraftError::InvalidInput(format!(
                 "invalid scope: {other:?}"
             ))),
         }

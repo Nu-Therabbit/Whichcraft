@@ -8,7 +8,7 @@ export type { PlatformApi, ToolsPlatformSlice } from "../platform/api";
 export type { ToolsRuntime } from "../features/tools/runtime";
 
 /** Combined legacy surface; new code should depend on narrower contracts. */
-export type EnvarlyApi = EnvironmentApi & ToolsApi & PlatformApi;
+export type WhichcraftApi = EnvironmentApi & ToolsApi & PlatformApi;
 
 export interface AppServices {
   environment: EnvironmentApi;

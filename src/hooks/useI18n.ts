@@ -13,7 +13,7 @@ export const LANGUAGE_OPTIONS: readonly { value: Language; label: string }[] = [
   { value: "vi", label: "Tiếng Việt" },
 ];
 
-const STORAGE_KEY = "envarly-language";
+const STORAGE_KEY = "whichcraft-language";
 
 export function useI18n() {
   const { t, i18n: i18next } = useTranslation();

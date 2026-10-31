@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UndoProvider } from "../contexts/UndoContext";
-import { createToolsRuntime, splitEnvarlyApi } from "../composition/appServices";
+import { createToolsRuntime, splitWhichcraftApi } from "../composition/appServices";
 import { AppServicesProvider, useAppServices } from "../composition/AppServicesContext";
 import { configureProductionServices } from "../composition/createProductionServices";
 import { EXTERNAL_DIFF_CROSS_INVALIDATION_SCOPES } from "../features/environment/externalDiffInvalidation";
@@ -42,7 +42,7 @@ function renderLegacyApp(
   coordination: WriteCoordinatorFacade = createWriteCoordinator(),
 ) {
   const { api: fake } = fakeToolsRuntime(apiOverrides);
-  configureProductionServices(splitEnvarlyApi(fake));
+  configureProductionServices(splitWhichcraftApi(fake));
   return {
     coordination,
     ...render(
@@ -335,7 +335,7 @@ describe("write coordination readback and admission", () => {
       }),
       getMsvcInventory: async () => ({ instances: [], windowsSdks: [] }),
     });
-    configureProductionServices(splitEnvarlyApi(fake));
+    configureProductionServices(splitWhichcraftApi(fake));
 
     render(
       <UndoProvider>

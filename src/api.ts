@@ -1,18 +1,18 @@
-import type { EnvarlyApi } from "./contracts";
+import type { WhichcraftApi } from "./contracts";
 import type { LaunchOptions } from "./platform/types";
-import { ENVARLY_API_KEYS } from "./composition/apiKeys";
-import { mergeEnvarlyApi } from "./composition/appServices";
+import { WHICHCRAFT_API_KEYS } from "./composition/apiKeys";
+import { mergeWhichcraftApi } from "./composition/appServices";
 import { createProductionServices } from "./composition/createProductionServices";
 import { withTimeout } from "./composition/withTimeout";
 
-export type { EnvarlyApi, LaunchOptions };
+export type { WhichcraftApi, LaunchOptions };
 export { withTimeout };
 
-let wiredApi: EnvarlyApi | null = null;
-let pendingApi: Promise<EnvarlyApi> | null = null;
+let wiredApi: WhichcraftApi | null = null;
+let pendingApi: Promise<WhichcraftApi> | null = null;
 
 /** Registers the active backend for unmigrated callers importing the legacy `api` facade. */
-export function wireLegacyApiFacade(full: EnvarlyApi): void {
+export function wireLegacyApiFacade(full: WhichcraftApi): void {
   wiredApi = full;
   pendingApi = Promise.resolve(full);
 }
@@ -23,12 +23,12 @@ export function resetLegacyApiFacadeForTests(): void {
   pendingApi = null;
 }
 
-async function resolveLegacyApi(): Promise<EnvarlyApi> {
+async function resolveLegacyApi(): Promise<WhichcraftApi> {
   if (wiredApi) return wiredApi;
   if (!pendingApi) {
     pendingApi = createProductionServices().then((services) => {
       if (wiredApi) return wiredApi;
-      return mergeEnvarlyApi(services);
+      return mergeWhichcraftApi(services);
     });
   }
   try {
@@ -41,7 +41,7 @@ async function resolveLegacyApi(): Promise<EnvarlyApi> {
   }
 }
 
-function legacyApiMethod(method: (typeof ENVARLY_API_KEYS)[number]) {
+function legacyApiMethod(method: (typeof WHICHCRAFT_API_KEYS)[number]) {
   return async (...args: unknown[]) => {
     const impl = (await resolveLegacyApi())[method] as (...a: unknown[]) => unknown;
     return impl(...args);
@@ -50,5 +50,5 @@ function legacyApiMethod(method: (typeof ENVARLY_API_KEYS)[number]) {
 
 /** Compatibility facade for callers not yet on injected feature contracts. */
 export const api = Object.fromEntries(
-  ENVARLY_API_KEYS.map((key) => [key, legacyApiMethod(key)]),
-) as unknown as EnvarlyApi;
+  WHICHCRAFT_API_KEYS.map((key) => [key, legacyApiMethod(key)]),
+) as unknown as WhichcraftApi;

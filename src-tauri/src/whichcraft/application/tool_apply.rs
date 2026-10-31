@@ -1,5 +1,5 @@
 use crate::env_store::{self, EnvBackend};
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvChange, VarScope};
 use crate::whichcraft::application::tool_plan::{
     build_tool_apply_plan, diff_to_env_value, plan_to_mutations, tool_plan_is_stale,
@@ -30,7 +30,7 @@ pub fn create_tool_plan<B: EnvBackend>(
     machine: &dyn Machine,
     installation: &ToolInstallation,
     ids: &dyn OperationIds,
-) -> Result<ToolApplyPlan, EnvarlyError> {
+) -> Result<ToolApplyPlan, WhichcraftError> {
     build_tool_apply_plan(backend, machine, installation, ids.new_apply_id())
 }
 
@@ -40,7 +40,7 @@ pub fn apply_tool_plan<B: EnvBackend>(
     store: &dyn Store,
     ids: &dyn OperationIds,
     plan: &ToolApplyPlan,
-) -> Result<ApplyToolResult, EnvarlyError> {
+) -> Result<ApplyToolResult, WhichcraftError> {
     apply_tool_plan_with(backend, store, ids, None, plan)
 }
 
@@ -51,7 +51,7 @@ pub fn apply_tool_plan_elevated<B: EnvBackend>(
     ids: &dyn OperationIds,
     elevator: &dyn Elevator,
     plan: &ToolApplyPlan,
-) -> Result<ApplyToolResult, EnvarlyError> {
+) -> Result<ApplyToolResult, WhichcraftError> {
     apply_tool_plan_with(backend, store, ids, Some(elevator), plan)
 }
 
@@ -61,7 +61,7 @@ fn apply_tool_plan_with<B: EnvBackend>(
     ids: &dyn OperationIds,
     elevator: Option<&dyn Elevator>,
     plan: &ToolApplyPlan,
-) -> Result<ApplyToolResult, EnvarlyError> {
+) -> Result<ApplyToolResult, WhichcraftError> {
     let result = |stale, needs_elevation| ApplyToolResult {
         plan_id: plan.plan_id.clone(),
         stale,
@@ -82,7 +82,7 @@ fn apply_tool_plan_with<B: EnvBackend>(
             VarScope::User => backend.read_user()?,
             VarScope::System => backend.read_system()?,
             VarScope::OtherUser => backend.read_other_user()?.ok_or_else(|| {
-                EnvarlyError::InvalidInput("no other-user account selected".into())
+                WhichcraftError::InvalidInput("no other-user account selected".into())
             })?,
         };
         mutations.push(MutationRecord {
@@ -148,13 +148,13 @@ fn apply_tool_plan_with<B: EnvBackend>(
             }
             Ok(ElevatedOutcome::Cancelled) => {
                 fail(&mut journal);
-                return Err(EnvarlyError::InvalidInput(
+                return Err(WhichcraftError::InvalidInput(
                     "UAC was cancelled; nothing was written".into(),
                 ));
             }
             Ok(ElevatedOutcome::Failed(msg)) => {
                 fail(&mut journal);
-                return Err(EnvarlyError::InvalidInput(format!(
+                return Err(WhichcraftError::InvalidInput(format!(
                     "System write failed: {msg}"
                 )));
             }
@@ -166,7 +166,8 @@ fn apply_tool_plan_with<B: EnvBackend>(
     }
 
     if let Err(err) = env_store::apply_changes_with(backend, &in_process, |_, _, _, _| {}) {
-        // Envarly rolled back the in-process writes; undo the System part the helper wrote.
+        // `apply_changes_with` rolled back the in-process writes; undo the System part the
+        // helper wrote.
         let mut message = err.to_string();
         if let Some(elevator) = helper {
             let revert = ElevatedRequest {
@@ -180,7 +181,7 @@ fn apply_tool_plan_with<B: EnvBackend>(
             }
         }
         fail(&mut journal);
-        return Err(EnvarlyError::InvalidInput(message));
+        return Err(WhichcraftError::InvalidInput(message));
     }
 
     for selection in &journal.selections {
@@ -236,7 +237,7 @@ pub(crate) mod test_support {
     use std::sync::Mutex;
 
     use crate::env_store::{EnvBackend, MemBackend};
-    use crate::error::EnvarlyError;
+    use crate::error::WhichcraftError;
     use crate::model::EnvValue;
     use crate::whichcraft::application::elevation::{encode_request, run_elevated_request};
     use crate::whichcraft::ports::elevator::{ElevatedOutcome, ElevatedRequest, Elevator};
@@ -245,16 +246,16 @@ pub(crate) mod test_support {
     struct ElevatedView<'a>(&'a MemBackend);
 
     impl EnvBackend for ElevatedView<'_> {
-        fn read_user(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+        fn read_user(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError> {
             self.0.read_user()
         }
-        fn read_system(&self) -> Result<HashMap<String, EnvValue>, EnvarlyError> {
+        fn read_system(&self) -> Result<HashMap<String, EnvValue>, WhichcraftError> {
             self.0.read_system()
         }
-        fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+        fn write_user(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
             self.0.write_user(name, value)
         }
-        fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), EnvarlyError> {
+        fn write_system(&self, name: &str, value: &EnvValue) -> Result<(), WhichcraftError> {
             self.0
                 .system
                 .lock()
@@ -262,10 +263,10 @@ pub(crate) mod test_support {
                 .insert(name.into(), value.clone());
             Ok(())
         }
-        fn delete_user(&self, name: &str) -> Result<(), EnvarlyError> {
+        fn delete_user(&self, name: &str) -> Result<(), WhichcraftError> {
             self.0.delete_user(name)
         }
-        fn delete_system(&self, name: &str) -> Result<(), EnvarlyError> {
+        fn delete_system(&self, name: &str) -> Result<(), WhichcraftError> {
             self.0.system.lock().unwrap().remove(name);
             Ok(())
         }
@@ -299,7 +300,10 @@ pub(crate) mod test_support {
     }
 
     impl Elevator for FakeElevator<'_> {
-        fn apply_system(&self, request: &ElevatedRequest) -> Result<ElevatedOutcome, EnvarlyError> {
+        fn apply_system(
+            &self,
+            request: &ElevatedRequest,
+        ) -> Result<ElevatedOutcome, WhichcraftError> {
             self.requests.lock().unwrap().push(request.clone());
             let step = {
                 let mut script = self.script.lock().unwrap();
@@ -575,30 +579,30 @@ mod tests {
     impl crate::env_store::EnvBackend for UserWritesFail<'_> {
         fn read_user(
             &self,
-        ) -> Result<std::collections::HashMap<String, crate::model::EnvValue>, EnvarlyError>
+        ) -> Result<std::collections::HashMap<String, crate::model::EnvValue>, WhichcraftError>
         {
             self.0.read_user()
         }
         fn read_system(
             &self,
-        ) -> Result<std::collections::HashMap<String, crate::model::EnvValue>, EnvarlyError>
+        ) -> Result<std::collections::HashMap<String, crate::model::EnvValue>, WhichcraftError>
         {
             self.0.read_system()
         }
-        fn write_user(&self, _: &str, _: &crate::model::EnvValue) -> Result<(), EnvarlyError> {
-            Err(EnvarlyError::InvalidInput("user hive locked".into()))
+        fn write_user(&self, _: &str, _: &crate::model::EnvValue) -> Result<(), WhichcraftError> {
+            Err(WhichcraftError::InvalidInput("user hive locked".into()))
         }
         fn write_system(
             &self,
             name: &str,
             value: &crate::model::EnvValue,
-        ) -> Result<(), EnvarlyError> {
+        ) -> Result<(), WhichcraftError> {
             self.0.write_system(name, value)
         }
-        fn delete_user(&self, _: &str) -> Result<(), EnvarlyError> {
-            Err(EnvarlyError::InvalidInput("user hive locked".into()))
+        fn delete_user(&self, _: &str) -> Result<(), WhichcraftError> {
+            Err(WhichcraftError::InvalidInput("user hive locked".into()))
         }
-        fn delete_system(&self, name: &str) -> Result<(), EnvarlyError> {
+        fn delete_system(&self, name: &str) -> Result<(), WhichcraftError> {
             self.0.delete_system(name)
         }
         fn is_elevated(&self) -> bool {

@@ -1,5 +1,5 @@
 use crate::env_store::{self, EnvBackend};
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvChange, EnvValueKind, VarScope};
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::domain::journal::{JournalStatus, WhichcraftJournal};
@@ -65,7 +65,7 @@ pub fn undo_last_apply<B: EnvBackend>(
     backend: &B,
     store: &dyn Store,
     elevator: Option<&dyn Elevator>,
-) -> Result<UndoResult, EnvarlyError> {
+) -> Result<UndoResult, WhichcraftError> {
     match store.last_completed_apply()? {
         Some(journal) => revert_journal(backend, store, elevator, journal),
         None => Ok(UndoResult {
@@ -82,7 +82,7 @@ pub fn revert_journal<B: EnvBackend>(
     store: &dyn Store,
     elevator: Option<&dyn Elevator>,
     mut journal: WhichcraftJournal,
-) -> Result<UndoResult, EnvarlyError> {
+) -> Result<UndoResult, WhichcraftError> {
     let mut conflicts = Vec::new();
     // (change, value the variable has right now) per mutation, newest first.
     let mut planned: Vec<(EnvChange, Option<String>)> = Vec::new();
@@ -92,7 +92,7 @@ pub fn revert_journal<B: EnvBackend>(
             VarScope::User => backend.read_user()?,
             VarScope::System => backend.read_system()?,
             VarScope::OtherUser => backend.read_other_user()?.ok_or_else(|| {
-                EnvarlyError::InvalidInput("no other-user account selected".into())
+                WhichcraftError::InvalidInput("no other-user account selected".into())
             })?,
         };
         let current = get_var(&map, &mutation.name);
@@ -196,14 +196,14 @@ pub(crate) fn write_changes<B: EnvBackend>(
     backend: &B,
     elevator: Option<&dyn Elevator>,
     planned: Vec<(EnvChange, Option<String>)>,
-) -> Result<(), EnvarlyError> {
+) -> Result<(), WhichcraftError> {
     let (system, in_process): (Vec<_>, Vec<_>) = planned
         .into_iter()
         .partition(|(c, _)| scope_of(c) == &VarScope::System && !backend.is_elevated());
 
     if !system.is_empty() {
         let Some(elevator) = elevator else {
-            return Err(EnvarlyError::InvalidInput(
+            return Err(WhichcraftError::InvalidInput(
                 "changing System variables needs elevation".into(),
             ));
         };
@@ -219,17 +219,17 @@ pub(crate) fn write_changes<B: EnvBackend>(
         match elevator.apply_system(&request)? {
             ElevatedOutcome::Applied => {}
             ElevatedOutcome::Cancelled => {
-                return Err(EnvarlyError::InvalidInput(
+                return Err(WhichcraftError::InvalidInput(
                     "UAC was cancelled; nothing was written".into(),
                 ))
             }
             ElevatedOutcome::Stale => {
-                return Err(EnvarlyError::InvalidInput(
+                return Err(WhichcraftError::InvalidInput(
                     "System environment changed meanwhile; try again".into(),
                 ))
             }
             ElevatedOutcome::Failed(msg) => {
-                return Err(EnvarlyError::InvalidInput(format!(
+                return Err(WhichcraftError::InvalidInput(format!(
                     "System write failed: {msg}"
                 )))
             }

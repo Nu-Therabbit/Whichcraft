@@ -131,7 +131,7 @@ export const Empty: Story = {
  * scope filter chips and sort control don't clip or overflow at the floor. */
 export const Narrow: Story = {
   render: () => {
-    localStorage.setItem("envarly-sidebar-width", "260");
+    localStorage.setItem("whichcraft-sidebar-width", "260");
     const [selected, setSelected] = useState<EnvVar | null>(null);
     return (
       <Sidebar

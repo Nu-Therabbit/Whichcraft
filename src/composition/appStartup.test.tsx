@@ -7,7 +7,7 @@ import en from "../locales/en.json";
 import { freezeAppPresentation, resetAppPresentationForTests } from "../lib/appPresentation";
 import { UndoProvider } from "../contexts/UndoContext";
 import { api, resetLegacyApiFacadeForTests } from "../api";
-import { splitEnvarlyApi } from "./appServices";
+import { splitWhichcraftApi } from "./appServices";
 import { WriteCoordinatorProvider } from "../coordination/WriteCoordinatorContext";
 import { AppServicesProvider } from "./AppServicesContext";
 import { configureProductionServices } from "./createProductionServices";
@@ -41,7 +41,7 @@ describe("production app startup", () => {
     const getEnvVars = vi.fn(async () => []);
     const prepareMise = vi.fn(async () => false);
     const { api: fake } = fakeToolsRuntime({ getEnvVars, prepareMise });
-    configureProductionServices(splitEnvarlyApi(fake));
+    configureProductionServices(splitWhichcraftApi(fake));
 
     renderProductionApp();
 
@@ -53,8 +53,8 @@ describe("production app startup", () => {
   });
 
   it("shows AppLoading while production services are still resolving", async () => {
-    let resolveServices!: (value: ReturnType<typeof splitEnvarlyApi>) => void;
-    const deferred = new Promise<ReturnType<typeof splitEnvarlyApi>>((resolve) => {
+    let resolveServices!: (value: ReturnType<typeof splitWhichcraftApi>) => void;
+    const deferred = new Promise<ReturnType<typeof splitWhichcraftApi>>((resolve) => {
       resolveServices = resolve;
     });
     configureProductionServices(deferred);
@@ -63,7 +63,7 @@ describe("production app startup", () => {
     expect(screen.getByText(en.app.loading)).toBeInTheDocument();
 
     const { api: fake } = fakeToolsRuntime({});
-    resolveServices(splitEnvarlyApi(fake));
+    resolveServices(splitWhichcraftApi(fake));
     await waitFor(() => expect(screen.queryByText(en.app.loading)).not.toBeInTheDocument());
   });
 
@@ -84,7 +84,7 @@ describe("production app startup", () => {
     vi.mocked(isTauri).mockReturnValue(false);
     const getEnvVars = vi.fn(async () => []);
     const { api: fake } = fakeToolsRuntime({ getEnvVars });
-    const services = splitEnvarlyApi(fake);
+    const services = splitWhichcraftApi(fake);
 
     function MountCaller() {
       useEffect(() => {

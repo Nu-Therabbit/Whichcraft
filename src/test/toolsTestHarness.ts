@@ -1,6 +1,6 @@
 import { vi } from "vitest";
-import type { EnvarlyApi } from "../contracts";
-import { createToolsRuntime, splitEnvarlyApi } from "../composition/appServices";
+import type { WhichcraftApi } from "../contracts";
+import { createToolsRuntime, splitWhichcraftApi } from "../composition/appServices";
 import { createIsolatedWriteCoordinator } from "../coordination/WriteCoordinatorContext";
 import type { WriteCoordinatorFacade } from "../coordination/createWriteCoordinator";
 import type { ToolsRuntime } from "../features/tools/runtime";
@@ -11,7 +11,7 @@ import { initialToolsState, type ToolsState } from "../features/tools/model";
 import { reduce } from "../features/tools/reduce";
 
 /** An API whose every call fails unless a test provides it, so unexpected calls show up. */
-export function fakeApi(overrides: Partial<EnvarlyApi>): EnvarlyApi {
+export function fakeApi(overrides: Partial<WhichcraftApi>): WhichcraftApi {
   const base = {
     getEnvVars: vi.fn(async () => []),
     getUnsupportedEnvValues: vi.fn(async () => []),
@@ -42,10 +42,10 @@ export function fakeApi(overrides: Partial<EnvarlyApi>): EnvarlyApi {
       throw new Error("not used");
     }),
   };
-  return new Proxy({ ...base, ...overrides } as EnvarlyApi, {
+  return new Proxy({ ...base, ...overrides } as WhichcraftApi, {
     get(target, key) {
       if (key === "then") return undefined;
-      if (key in target) return target[key as keyof EnvarlyApi];
+      if (key in target) return target[key as keyof WhichcraftApi];
       return async () => {
         throw new Error(`unexpected api call: ${String(key)}`);
       };
@@ -54,15 +54,15 @@ export function fakeApi(overrides: Partial<EnvarlyApi>): EnvarlyApi {
 }
 
 export function fakeToolsRuntime(
-  overrides: Partial<EnvarlyApi> = {},
+  overrides: Partial<WhichcraftApi> = {},
   coordination: WriteCoordinatorFacade = createIsolatedWriteCoordinator(),
 ): {
   runtime: ToolsRuntime;
-  api: EnvarlyApi;
+  api: WhichcraftApi;
   coordination: WriteCoordinatorFacade;
 } {
   const api = fakeApi(overrides);
-  return { runtime: createToolsRuntime(splitEnvarlyApi(api), coordination), api, coordination };
+  return { runtime: createToolsRuntime(splitWhichcraftApi(api), coordination), api, coordination };
 }
 
 /** Runs the reducer and effects the way useToolsStore does, and waits for all effects. */

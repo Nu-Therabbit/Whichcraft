@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppServicesProvider } from "../../composition/AppServicesContext";
 import { UndoProvider } from "../../contexts/UndoContext";
-import { splitEnvarlyApi } from "../../composition/appServices";
+import { splitWhichcraftApi } from "../../composition/appServices";
 import { configureProductionServices } from "../../composition/createProductionServices";
 import { createWriteCoordinator } from "../../coordination/createWriteCoordinator";
 import { WriteCoordinatorProvider } from "../../coordination/WriteCoordinatorContext";
@@ -48,12 +48,12 @@ const sdkMocks = {
 function renderShell(apiOverrides: Record<string, unknown> = {}) {
   const coordination = createWriteCoordinator();
   const { api } = fakeToolsRuntime({ ...sdkMocks, ...apiOverrides }, coordination);
-  configureProductionServices(splitEnvarlyApi(api));
+  configureProductionServices(splitWhichcraftApi(api));
   return {
     coordination,
     ...render(
       <UndoProvider>
-        <AppServicesProvider services={splitEnvarlyApi(api)}>
+        <AppServicesProvider services={splitWhichcraftApi(api)}>
           <WriteCoordinatorProvider coordinator={coordination}>
             <DesktopShellApp />
           </WriteCoordinatorProvider>

@@ -2,7 +2,7 @@ use serde::Serialize;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum EnvarlyError {
+pub enum WhichcraftError {
     #[error("Registry error: {0}")]
     Registry(#[from] std::io::Error),
 
@@ -20,7 +20,7 @@ pub enum EnvarlyError {
 }
 
 // Tauri commands must return serializable errors
-impl Serialize for EnvarlyError {
+impl Serialize for WhichcraftError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

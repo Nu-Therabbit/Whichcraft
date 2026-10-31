@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::env_store::EnvBackend;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::path_manage;
 use crate::whichcraft::domain::env::get_var;
 use crate::whichcraft::domain::settings::TerminalKind;
@@ -55,7 +55,7 @@ pub fn open_terminal(
     kind: TerminalKind,
     dir: &Path,
     env: HashMap<String, String>,
-) -> Result<(), EnvarlyError> {
+) -> Result<(), WhichcraftError> {
     runner.spawn(&terminal_spec(kind, dir, env))
 }
 
@@ -76,7 +76,7 @@ pub fn effective_executable<B: EnvBackend>(
     backend: &B,
     machine: &dyn Machine,
     tool: ToolKind,
-) -> Result<Option<String>, EnvarlyError> {
+) -> Result<Option<String>, WhichcraftError> {
     let user = backend.read_user()?;
     let system = backend.read_system()?;
     let path = |m: &HashMap<String, crate::model::EnvValue>, n: &str| {
@@ -151,7 +151,7 @@ pub fn shell_check<B: EnvBackend>(
     tool: ToolKind,
     env: HashMap<String, String>,
     dir: &Path,
-) -> Result<ShellCheck, EnvarlyError> {
+) -> Result<ShellCheck, WhichcraftError> {
     let effective_path = effective_executable(backend, machine, tool)?;
     let stdout = runner.output(&shell_probe_spec(kind, command_name(tool), env, dir))?;
     let shell_path = stdout
@@ -188,17 +188,17 @@ mod tests {
     }
 
     impl ProcessRunner for FakeRunner {
-        fn spawn(&self, spec: &ProcessSpec) -> Result<(), EnvarlyError> {
+        fn spawn(&self, spec: &ProcessSpec) -> Result<(), WhichcraftError> {
             self.spawned.lock().unwrap().push(spec.clone());
             Ok(())
         }
-        fn fresh_environment(&self) -> Result<HashMap<String, String>, EnvarlyError> {
+        fn fresh_environment(&self) -> Result<HashMap<String, String>, WhichcraftError> {
             Ok(HashMap::new())
         }
-        fn open_folder(&self, _folder: &Path) -> Result<(), EnvarlyError> {
+        fn open_folder(&self, _folder: &Path) -> Result<(), WhichcraftError> {
             Ok(())
         }
-        fn output(&self, spec: &ProcessSpec) -> Result<String, EnvarlyError> {
+        fn output(&self, spec: &ProcessSpec) -> Result<String, WhichcraftError> {
             self.ran.lock().unwrap().push(spec.clone());
             Ok(self.stdout.clone())
         }

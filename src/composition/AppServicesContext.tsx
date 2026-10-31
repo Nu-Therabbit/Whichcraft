@@ -3,7 +3,7 @@ import type { AppServices } from "../contracts";
 import { AppLoading } from "../components/AppLoading/AppLoading";
 import { PlatformApiProvider } from "../platform/platformApiContext";
 import { createProductionServices } from "./createProductionServices";
-import { createUnavailableEnvarlyApi, splitEnvarlyApi } from "./appServices";
+import { createUnavailableWhichcraftApi, splitWhichcraftApi } from "./appServices";
 import { syncLegacyApiFacade } from "./wireAppServices";
 
 export const AppServicesContext = createContext<AppServices | null>(null);
@@ -39,7 +39,7 @@ export function AppServicesProvider({
       .catch((err) => {
         if (cancelled) return;
         const message = err instanceof Error ? err.message : String(err);
-        const fallback = splitEnvarlyApi(createUnavailableEnvarlyApi(message));
+        const fallback = splitWhichcraftApi(createUnavailableWhichcraftApi(message));
         syncLegacyApiFacade(fallback);
         setServices(fallback);
       });

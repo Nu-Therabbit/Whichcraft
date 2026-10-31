@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { EnvarlyApi } from "../contracts";
+import type { WhichcraftApi } from "../contracts";
 import type { LaunchOptions } from "../platform/types";
 import { inferEnvValueKind } from "../lib/envValueKind";
 import type {
@@ -10,7 +10,7 @@ import type {
   SnapshotValue,
   VarScope,
 } from "../types";
-import bundledFixture from "./envarly-demo.json";
+import bundledFixture from "./whichcraft-demo.json";
 
 interface DemoFixture {
   elevated: boolean;
@@ -105,8 +105,8 @@ export async function loadDemoFixture(options: LaunchOptions): Promise<DemoFixtu
 export function createDemoApi(
   options: LaunchOptions,
   fixture: DemoFixture,
-  fallbackApi: EnvarlyApi,
-): EnvarlyApi {
+  fallbackApi: WhichcraftApi,
+): WhichcraftApi {
   const current = clone(fixture.current);
   let snapshots = clone(fixture.snapshots);
   let pendingBaseline = fixture.baseline ? clone(fixture.baseline) : null;

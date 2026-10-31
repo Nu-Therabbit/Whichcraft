@@ -37,7 +37,12 @@ describe("clampWidth", () => {
 });
 
 describe("useResizableWidth", () => {
-  const opts = { storageKey: "envarly-test-width", defaultWidth: 300, min: 260, max: 480 } as const;
+  const opts = {
+    storageKey: "whichcraft-test-width",
+    defaultWidth: 300,
+    min: 260,
+    max: 480,
+  } as const;
 
   beforeEach(() => {
     localStorage.clear();
@@ -49,13 +54,13 @@ describe("useResizableWidth", () => {
   });
 
   it("reads a stored width", () => {
-    localStorage.setItem("envarly-test-width", "350");
+    localStorage.setItem("whichcraft-test-width", "350");
     const { result } = renderHook(() => useResizableWidth({ ...opts, side: "left" }));
     expect(result.current.width).toBe(350);
   });
 
   it("clamps a stored width that is now out of range", () => {
-    localStorage.setItem("envarly-test-width", "50");
+    localStorage.setItem("whichcraft-test-width", "50");
     const { result } = renderHook(() => useResizableWidth({ ...opts, side: "left" }));
     expect(result.current.width).toBe(260);
   });
@@ -93,9 +98,9 @@ describe("useResizableWidth", () => {
     const { result } = renderHook(() => useResizableWidth({ ...opts, side: "left" }));
     act(() => result.current.handleProps.onPointerDown(fakePointerEvent(100)));
     act(() => result.current.handleProps.onPointerMove(fakePointerEvent(150)));
-    expect(localStorage.getItem("envarly-test-width")).toBe("300");
+    expect(localStorage.getItem("whichcraft-test-width")).toBe("300");
     act(() => result.current.handleProps.onPointerUp(fakePointerEvent(150)));
-    expect(localStorage.getItem("envarly-test-width")).toBe("350");
+    expect(localStorage.getItem("whichcraft-test-width")).toBe("350");
   });
 
   it("ArrowRight grows a left-docked panel", () => {

@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::env_store::EnvBackend;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::application::path_cleanup::{build_path_cleanup_plan, PathCleanupPlan};
 use crate::whichcraft::application::profiles::{plan_profile_apply, profile_status};
 use crate::whichcraft::application::recovery::{
@@ -100,18 +100,18 @@ pub fn merge_settings(
 impl<B: EnvBackend> App<B> {
     // --- pinned mise lifecycle (install page / prepare-on-start) ---
 
-    pub fn mise_status(&self) -> Result<MiseStatus, EnvarlyError> {
+    pub fn mise_status(&self) -> Result<MiseStatus, WhichcraftError> {
         self.installer_lifecycle.mise_status()
     }
 
-    pub fn prepare_mise(&self) -> Result<bool, EnvarlyError> {
+    pub fn prepare_mise(&self) -> Result<bool, WhichcraftError> {
         self.installer_lifecycle.prepare_mise()
     }
 
     // --- inventory and settings ---
 
     /// The installations of `tool`, with the remembered choice shown even if it vanished (D-5).
-    pub fn list_tools(&self, tool: ToolKind) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
+    pub fn list_tools(&self, tool: ToolKind) -> Result<Vec<ToolInstallationView>, WhichcraftError> {
         self.list_tools_with_refresh(tool, false)
     }
 
@@ -120,7 +120,7 @@ impl<B: EnvBackend> App<B> {
         &self,
         tool: ToolKind,
         refresh_catalog: bool,
-    ) -> Result<Vec<ToolInstallationView>, EnvarlyError> {
+    ) -> Result<Vec<ToolInstallationView>, WhichcraftError> {
         if refresh_catalog {
             self.catalogs.invalidate();
         }
@@ -137,25 +137,29 @@ impl<B: EnvBackend> App<B> {
         Ok(with_missing_selection(views, selection.as_ref()))
     }
 
-    pub fn settings(&self) -> Result<WhichcraftSettings, EnvarlyError> {
+    pub fn settings(&self) -> Result<WhichcraftSettings, WhichcraftError> {
         self.store.settings()
     }
 
-    pub fn save_settings(&self, incoming: WhichcraftSettings) -> Result<(), EnvarlyError> {
+    pub fn save_settings(&self, incoming: WhichcraftSettings) -> Result<(), WhichcraftError> {
         self.store
             .save_settings(&merge_settings(self.store.settings()?, incoming))
     }
 
     // --- switching, Undo, recovery ---
 
-    pub fn plan_switch(&self, tool: ToolKind, root: &Path) -> Result<ToolApplyPlan, EnvarlyError> {
+    pub fn plan_switch(
+        &self,
+        tool: ToolKind,
+        root: &Path,
+    ) -> Result<ToolApplyPlan, WhichcraftError> {
         let installation = self
             .list_tools(tool)?
             .into_iter()
             .find(|v| v.installation.root == root)
             .map(|v| v.installation)
             .ok_or_else(|| {
-                EnvarlyError::InvalidInput(format!("unknown {tool:?} root: {}", root.display()))
+                WhichcraftError::InvalidInput(format!("unknown {tool:?} root: {}", root.display()))
             })?;
         create_tool_plan(&self.env, &*self.machine, &installation, &*self.ids)
     }
@@ -165,7 +169,7 @@ impl<B: EnvBackend> App<B> {
         &self,
         plan: &ToolApplyPlan,
         elevate: bool,
-    ) -> Result<ApplyToolResult, EnvarlyError> {
+    ) -> Result<ApplyToolResult, WhichcraftError> {
         if elevate {
             apply_tool_plan_elevated(&self.env, &*self.store, &*self.ids, &*self.elevator, plan)
         } else {
@@ -173,23 +177,23 @@ impl<B: EnvBackend> App<B> {
         }
     }
 
-    pub fn undo(&self) -> Result<UndoResult, EnvarlyError> {
+    pub fn undo(&self) -> Result<UndoResult, WhichcraftError> {
         undo_last_apply(&self.env, &*self.store, Some(&*self.elevator))
     }
 
-    pub fn recovery_status(&self) -> Result<Option<RecoveryView>, EnvarlyError> {
+    pub fn recovery_status(&self) -> Result<Option<RecoveryView>, WhichcraftError> {
         inspect_pending(&self.env, &*self.store)
     }
 
-    pub fn resume(&self, journal_id: &str) -> Result<(), EnvarlyError> {
+    pub fn resume(&self, journal_id: &str) -> Result<(), WhichcraftError> {
         resume_pending(&self.env, &*self.store, Some(&*self.elevator), journal_id)
     }
 
-    pub fn roll_back(&self, journal_id: &str) -> Result<UndoResult, EnvarlyError> {
+    pub fn roll_back(&self, journal_id: &str) -> Result<UndoResult, WhichcraftError> {
         roll_back_pending(&self.env, &*self.store, Some(&*self.elevator), journal_id)
     }
 
-    pub fn plan_path_cleanup(&self) -> Result<PathCleanupPlan, EnvarlyError> {
+    pub fn plan_path_cleanup(&self) -> Result<PathCleanupPlan, WhichcraftError> {
         build_path_cleanup_plan(&self.env, &*self.machine, &*self.ids)
     }
 
@@ -203,7 +207,7 @@ impl<B: EnvBackend> App<B> {
     }
 
     /// Opens the configured terminal with the environment a new process gets from the registry.
-    pub fn open_terminal(&self) -> Result<(), EnvarlyError> {
+    pub fn open_terminal(&self) -> Result<(), WhichcraftError> {
         let kind = self.store.settings()?.terminal;
         open_terminal(
             &*self.processes,
@@ -214,7 +218,7 @@ impl<B: EnvBackend> App<B> {
     }
 
     /// What the configured shell runs for `tool` after loading its profile, next to the effective one.
-    pub fn shell_check(&self, tool: ToolKind) -> Result<ShellCheck, EnvarlyError> {
+    pub fn shell_check(&self, tool: ToolKind) -> Result<ShellCheck, WhichcraftError> {
         let kind = self.store.settings()?.terminal;
         let env = self.processes.fresh_environment()?;
         shell_check(
@@ -228,29 +232,29 @@ impl<B: EnvBackend> App<B> {
         )
     }
 
-    pub fn open_folder(&self, folder: &Path) -> Result<(), EnvarlyError> {
+    pub fn open_folder(&self, folder: &Path) -> Result<(), WhichcraftError> {
         self.processes.open_folder(folder)
     }
 
     // --- installing and updating ---
 
-    fn tool_manager(&self) -> Result<Box<dyn ToolManager>, EnvarlyError> {
+    fn tool_manager(&self) -> Result<Box<dyn ToolManager>, WhichcraftError> {
         Ok(self.tools.for_store(&self.store.settings()?.install_store))
     }
 
     /// The installer for anything that downloads into the install store. Every install path goes
     /// through here, so none can skip asking where installed tools go (I-5).
-    fn installing_manager(&self) -> Result<Box<dyn ToolManager>, EnvarlyError> {
+    fn installing_manager(&self) -> Result<Box<dyn ToolManager>, WhichcraftError> {
         let settings = self.store.settings()?;
         if !settings.install_store_confirmed {
-            return Err(EnvarlyError::InvalidInput(
+            return Err(WhichcraftError::InvalidInput(
                 "Choose where Whichcraft keeps the tools it installs before installing".into(),
             ));
         }
         Ok(self.tools.for_store(&settings.install_store))
     }
 
-    pub fn remote_versions(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, EnvarlyError> {
+    pub fn remote_versions(&self, tool: ToolKind) -> Result<Vec<RemoteVersion>, WhichcraftError> {
         self.tool_manager()?.list_remote(tool)
     }
 
@@ -258,7 +262,7 @@ impl<B: EnvBackend> App<B> {
         &self,
         tool: ToolKind,
         version: &str,
-    ) -> Result<DownloadSize, EnvarlyError> {
+    ) -> Result<DownloadSize, WhichcraftError> {
         let download_bytes = self.tool_manager()?.download_size(tool, version)?;
         Ok(DownloadSize {
             download_bytes,
@@ -266,21 +270,24 @@ impl<B: EnvBackend> App<B> {
         })
     }
 
-    pub fn install(&self, tool: ToolKind, version: &str) -> Result<PathBuf, EnvarlyError> {
+    pub fn install(&self, tool: ToolKind, version: &str) -> Result<PathBuf, WhichcraftError> {
         let result = self.installing_manager()?.install(tool, version);
         self.catalogs.invalidate();
         result
     }
 
     /// Newer releases in the same line as the installations of `tool` (ticket 16).
-    pub fn update_candidates(&self, tool: ToolKind) -> Result<Vec<UpdateCandidate>, EnvarlyError> {
+    pub fn update_candidates(
+        &self,
+        tool: ToolKind,
+    ) -> Result<Vec<UpdateCandidate>, WhichcraftError> {
         let views = self.list_tools(tool)?;
         let remote = self.tool_manager()?.list_remote(tool)?;
         Ok(update_candidates(tool, &views, &remote))
     }
 
     /// Installs the newer release beside the old one and returns the plan to switch to it.
-    pub fn update(&self, tool: ToolKind, version: &str) -> Result<UpdateResult, EnvarlyError> {
+    pub fn update(&self, tool: ToolKind, version: &str) -> Result<UpdateResult, WhichcraftError> {
         let manager = self.installing_manager()?;
         let result = install_and_plan(
             &self.env,
@@ -296,23 +303,23 @@ impl<B: EnvBackend> App<B> {
 
     // --- profiles ---
 
-    pub fn profiles(&self) -> Result<Vec<ToolProfile>, EnvarlyError> {
+    pub fn profiles(&self) -> Result<Vec<ToolProfile>, WhichcraftError> {
         self.store.profiles()
     }
 
-    pub fn save_profiles(&self, profiles: &[ToolProfile]) -> Result<(), EnvarlyError> {
+    pub fn save_profiles(&self, profiles: &[ToolProfile]) -> Result<(), WhichcraftError> {
         self.store.save_profiles(profiles)
     }
 
     pub fn profile_status(
         &self,
         profile: &ToolProfile,
-    ) -> Result<ProfileMatchStatus, EnvarlyError> {
+    ) -> Result<ProfileMatchStatus, WhichcraftError> {
         let catalog = self.catalogs.load()?;
         profile_status(&self.env, &*self.store, &*self.machine, &*catalog, profile)
     }
 
-    pub fn plan_profile(&self, profile: &ToolProfile) -> Result<ToolApplyPlan, EnvarlyError> {
+    pub fn plan_profile(&self, profile: &ToolProfile) -> Result<ToolApplyPlan, WhichcraftError> {
         let catalog = self.catalogs.load()?;
         plan_profile_apply(
             &self.env,
@@ -325,7 +332,10 @@ impl<B: EnvBackend> App<B> {
     }
 
     /// The unavailable pins of a profile and what Whichcraft would install for each (F-3).
-    pub fn profile_missing(&self, profile: &ToolProfile) -> Result<Vec<MissingPin>, EnvarlyError> {
+    pub fn profile_missing(
+        &self,
+        profile: &ToolProfile,
+    ) -> Result<Vec<MissingPin>, WhichcraftError> {
         let status = self.profile_status(profile)?;
         if status.unavailable.is_empty() {
             return Ok(Vec::new());
@@ -339,7 +349,7 @@ impl<B: EnvBackend> App<B> {
     }
 
     /// Installs every missing pin; the caller then plans and applies the profile as usual.
-    pub fn install_missing(&self, profile: &ToolProfile) -> Result<(), EnvarlyError> {
+    pub fn install_missing(&self, profile: &ToolProfile) -> Result<(), WhichcraftError> {
         let missing = self.profile_missing(profile)?;
         let not_installable: Vec<String> = missing
             .iter()
@@ -347,7 +357,7 @@ impl<B: EnvBackend> App<B> {
             .map(|m| format!("{:?} {} {}", m.pin.tool, m.pin.vendor, m.pin.version))
             .collect();
         if !not_installable.is_empty() {
-            return Err(EnvarlyError::InvalidInput(format!(
+            return Err(WhichcraftError::InvalidInput(format!(
                 "Whichcraft cannot install: {}",
                 not_installable.join(", ")
             )));
@@ -366,7 +376,7 @@ impl<B: EnvBackend> App<B> {
     pub fn profiles_using(
         &self,
         installation: &ToolInstallation,
-    ) -> Result<Vec<String>, EnvarlyError> {
+    ) -> Result<Vec<String>, WhichcraftError> {
         Ok(profiles_using(&self.store.profiles()?, installation))
     }
 
@@ -375,7 +385,7 @@ impl<B: EnvBackend> App<B> {
         &self,
         from: &ToolInstallation,
         to: &ToolInstallation,
-    ) -> Result<Vec<String>, EnvarlyError> {
+    ) -> Result<Vec<String>, WhichcraftError> {
         let mut profiles = self.store.profiles()?;
         let changed = repoint_profiles(&mut profiles, from, to);
         if !changed.is_empty() {
@@ -386,11 +396,11 @@ impl<B: EnvBackend> App<B> {
 
     // --- read-only SDK inventory ---
 
-    pub fn python_supplemental(&self) -> Result<PythonSupplementalView, EnvarlyError> {
+    pub fn python_supplemental(&self) -> Result<PythonSupplementalView, WhichcraftError> {
         python_supplemental(&*self.sdk)
     }
 
-    pub fn android_inventory(&self) -> Result<AndroidInventory, EnvarlyError> {
+    pub fn android_inventory(&self) -> Result<AndroidInventory, WhichcraftError> {
         let local = self.machine.env_var("LOCALAPPDATA").map(PathBuf::from);
         android_inventory(&self.env, &*self.machine, local.as_deref())
     }
@@ -406,7 +416,7 @@ impl<B: EnvBackend> App<B> {
         &self,
         tool: ToolKind,
         root: &Path,
-    ) -> Result<UninstallPlan, EnvarlyError> {
+    ) -> Result<UninstallPlan, WhichcraftError> {
         // How an installation is removed comes from its uninstall entry, so never decide from a reused one.
         self.catalogs.invalidate();
         let views = self.list_tools(tool)?;
@@ -414,7 +424,7 @@ impl<B: EnvBackend> App<B> {
             .iter()
             .find(|v| v.installation.root == root)
             .ok_or_else(|| {
-                EnvarlyError::InvalidInput(format!("unknown {tool:?} root: {}", root.display()))
+                WhichcraftError::InvalidInput(format!("unknown {tool:?} root: {}", root.display()))
             })?;
         let catalog = self.catalogs.load()?;
         let entry = catalog.entries_for_root(root)?.into_iter().next();
@@ -458,7 +468,7 @@ impl<B: EnvBackend> App<B> {
         tool: ToolKind,
         root: &Path,
         replacement: Option<&ToolApplyPlan>,
-    ) -> Result<UninstallOutcome, EnvarlyError> {
+    ) -> Result<UninstallOutcome, WhichcraftError> {
         let plan = self.plan_uninstall(tool, root)?;
         let outcome = uninstall(
             &plan,
@@ -477,11 +487,11 @@ impl<B: EnvBackend> App<B> {
         outcome
     }
 
-    pub fn unfinished_uninstalls(&self) -> Result<Vec<UninstallRecord>, EnvarlyError> {
+    pub fn unfinished_uninstalls(&self) -> Result<Vec<UninstallRecord>, WhichcraftError> {
         unfinished_uninstalls(&*self.store)
     }
 
-    pub fn dismiss_unfinished_uninstall(&self, id: &str) -> Result<(), EnvarlyError> {
+    pub fn dismiss_unfinished_uninstall(&self, id: &str) -> Result<(), WhichcraftError> {
         dismiss_unfinished_uninstall(&*self.store, &*self.machine, &*self.ids, id)
     }
 }

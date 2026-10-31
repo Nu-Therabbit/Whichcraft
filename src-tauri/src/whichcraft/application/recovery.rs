@@ -7,7 +7,7 @@
 use serde::Serialize;
 
 use crate::env_store::EnvBackend;
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::model::{EnvChange, EnvValueKind, VarScope};
 use crate::whichcraft::application::undo::{revert_journal, write_changes, UndoResult};
 use crate::whichcraft::domain::env::get_var;
@@ -51,7 +51,7 @@ pub struct RecoveryView {
 fn current_value<B: EnvBackend>(
     backend: &B,
     mutation: &MutationRecord,
-) -> Result<Option<String>, EnvarlyError> {
+) -> Result<Option<String>, WhichcraftError> {
     let map = match mutation.scope {
         VarScope::System => backend.read_system()?,
         VarScope::User => backend.read_user()?,
@@ -74,7 +74,7 @@ fn state_of(mutation: &MutationRecord, current: Option<&str>) -> ChangeState {
 fn view_of<B: EnvBackend>(
     backend: &B,
     journal: &WhichcraftJournal,
-) -> Result<RecoveryView, EnvarlyError> {
+) -> Result<RecoveryView, WhichcraftError> {
     let mut items = Vec::new();
     for m in &journal.mutations {
         let current = current_value(backend, m)?;
@@ -103,17 +103,17 @@ fn view_of<B: EnvBackend>(
 pub fn inspect_pending<B: EnvBackend>(
     backend: &B,
     store: &dyn Store,
-) -> Result<Option<RecoveryView>, EnvarlyError> {
+) -> Result<Option<RecoveryView>, WhichcraftError> {
     match store.incomplete_journal()? {
         Some(journal) => Ok(Some(view_of(backend, &journal)?)),
         None => Ok(None),
     }
 }
 
-fn load_pending(store: &dyn Store, journal_id: &str) -> Result<WhichcraftJournal, EnvarlyError> {
+fn load_pending(store: &dyn Store, journal_id: &str) -> Result<WhichcraftJournal, WhichcraftError> {
     let journal = store.journal(journal_id)?;
     if journal.status != JournalStatus::Pending {
-        return Err(EnvarlyError::InvalidInput(format!(
+        return Err(WhichcraftError::InvalidInput(format!(
             "journal {journal_id} is not an unfinished apply"
         )));
     }
@@ -126,11 +126,11 @@ pub fn resume_pending<B: EnvBackend>(
     store: &dyn Store,
     elevator: Option<&dyn Elevator>,
     journal_id: &str,
-) -> Result<(), EnvarlyError> {
+) -> Result<(), WhichcraftError> {
     let mut journal = load_pending(store, journal_id)?;
     let view = view_of(backend, &journal)?;
     if !view.can_resume {
-        return Err(EnvarlyError::InvalidInput(
+        return Err(WhichcraftError::InvalidInput(
             "some variables changed since the apply stopped; roll it back instead".into(),
         ));
     }
@@ -169,7 +169,7 @@ pub fn roll_back_pending<B: EnvBackend>(
     store: &dyn Store,
     elevator: Option<&dyn Elevator>,
     journal_id: &str,
-) -> Result<UndoResult, EnvarlyError> {
+) -> Result<UndoResult, WhichcraftError> {
     revert_journal(backend, store, elevator, load_pending(store, journal_id)?)
 }
 

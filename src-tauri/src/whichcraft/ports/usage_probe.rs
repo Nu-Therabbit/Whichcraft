@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::error::EnvarlyError;
+use crate::error::WhichcraftError;
 use crate::whichcraft::domain::ToolKind;
 
 /// Who is using an installation (spike 7).
@@ -21,5 +21,5 @@ impl UsageReport {
 }
 
 pub trait UsageProbe: Send + Sync {
-    fn probe(&self, tool: ToolKind, install_root: &Path) -> Result<UsageReport, EnvarlyError>;
+    fn probe(&self, tool: ToolKind, install_root: &Path) -> Result<UsageReport, WhichcraftError>;
 }

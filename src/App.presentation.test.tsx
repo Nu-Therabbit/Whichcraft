@@ -9,7 +9,7 @@ import { UndoProvider } from "./contexts/UndoContext";
 import { fakeToolsRuntime } from "./test/toolsTestHarness";
 import en from "./locales/en.json";
 import { freezeAppPresentation, resetAppPresentationForTests } from "./lib/appPresentation";
-import { splitEnvarlyApi } from "./composition/appServices";
+import { splitWhichcraftApi } from "./composition/appServices";
 
 function renderApp(search: string) {
   resetAppPresentationForTests();
@@ -36,7 +36,7 @@ describe("App presentation cutover", () => {
       getEnvVars: vi.fn(async () => []),
       prepareMise: vi.fn(async () => false),
     });
-    configureProductionServices(splitEnvarlyApi(fake));
+    configureProductionServices(splitWhichcraftApi(fake));
   });
 
   it("mounts the desktop shell by default instead of the legacy environment header", async () => {
