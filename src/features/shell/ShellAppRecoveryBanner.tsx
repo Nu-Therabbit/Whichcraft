@@ -20,9 +20,9 @@ export function ShellAppRecoveryBanner() {
         <div
           role="status"
           key={u.id}
-          className="text-xs border border-warning/40 rounded-md px-3 py-2 flex flex-col gap-2"
+          className="text-xs border border-warn/40 rounded-md px-3 py-2 flex flex-col gap-2"
         >
-          <p className="text-warning">
+          <p className="text-warn">
             {t("tools.uninstall.unfinished", {
               name: `${u.installation.vendor} ${u.installation.version}`,
               path: u.installation.root,

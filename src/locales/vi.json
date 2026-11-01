@@ -467,6 +467,8 @@
   "desktop_shell": {
     "status_working": "Đang xử lý…",
     "selection_mismatch": "Bản cài đặt đã chọn khác với bản đang có hiệu lực",
+    "mismatch_reason_system_path_may_shadow": "Các tiến trình mới sẽ không dùng bản cài đặt này. Có thể một mục trong PATH hệ thống đang được ưu tiên.",
+    "mismatch_reason_unavailable": "Không tìm thấy thư mục của bản cài đặt đã chọn.",
     "nav_label": "Điều hướng chính",
     "nav_tools": "Công cụ phát triển",
     "nav_profiles": "Profile công cụ",

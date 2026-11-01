@@ -648,6 +648,8 @@
   "desktop_shell": {
     "status_working": "Working…",
     "selection_mismatch": "Selection differs from the effective installation",
+    "mismatch_reason_system_path_may_shadow": "New processes won't get this installation. An entry in the System PATH may be taking priority.",
+    "mismatch_reason_unavailable": "The selected installation's folder is missing.",
     "nav_label": "Primary navigation",
     "nav_tools": "Developer tools",
     "nav_profiles": "Tool profiles",

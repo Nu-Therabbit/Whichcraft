@@ -467,6 +467,8 @@
   "desktop_shell": {
     "status_working": "正在处理…",
     "selection_mismatch": "所选安装与实际生效的安装不同",
+    "mismatch_reason_system_path_may_shadow": "新进程不会使用此安装。系统 PATH 中的条目可能优先生效。",
+    "mismatch_reason_unavailable": "找不到所选安装的文件夹。",
     "nav_label": "主导航",
     "nav_tools": "开发工具",
     "nav_profiles": "工具配置文件",

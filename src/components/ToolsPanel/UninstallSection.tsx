@@ -44,11 +44,11 @@ function OutcomeLine({ outcome, onOpenFolder }: { outcome: UninstallOutcome; onO
     case "removed":
       return <p className="text-success">{t("tools.uninstall.removed")}</p>;
     case "cancelled":
-      return <p className="text-warning">{t("tools.uninstall.cancelled")}</p>;
+      return <p className="text-warn">{t("tools.uninstall.cancelled")}</p>;
     case "incomplete":
       return (
         <div className="flex flex-col gap-1">
-          <p className="text-warning">{t("tools.uninstall.incomplete", { path: outcome.remaining })}</p>
+          <p className="text-warn">{t("tools.uninstall.incomplete", { path: outcome.remaining })}</p>
           <Button variant="secondary" size="sm" onClick={() => onOpenFolder(outcome.remaining)}>
             {t("tools.uninstall.open_folder")}
           </Button>
@@ -112,7 +112,7 @@ export function UninstallSection({
         <>
           <span className="text-xs text-muted font-mono wrap-anywhere">{plan.installation.root}</span>
           <MethodLine method={plan.method} />
-          {plan.noConfirmation && <p className="text-warning">{t("tools.uninstall.no_confirmation")}</p>}
+          {plan.noConfirmation && <p className="text-warn">{t("tools.uninstall.no_confirmation")}</p>}
           {refused && (
             <Button variant="secondary" size="sm" onClick={() => onOpenFolder(plan.installation.root)}>
               {t("tools.uninstall.open_folder")}
@@ -120,7 +120,7 @@ export function UninstallSection({
           )}
 
           {inUse && (
-            <div className="text-warning flex flex-col gap-1">
+            <div className="text-warn flex flex-col gap-1">
               <p>{plan.usage.processes.length > 0 ? t("tools.uninstall.in_use") : t("tools.uninstall.folder_open")}</p>
               {plan.usage.processes.length > 0 && (
                 <ul className="list-disc pl-5 font-mono text-xs">
@@ -134,7 +134,7 @@ export function UninstallSection({
           )}
 
           {plan.affectedProfiles.length > 0 && (
-            <p className="text-warning">
+            <p className="text-warn">
               {t("tools.uninstall.affected_profiles", { names: plan.affectedProfiles.join(", ") })}
             </p>
           )}
@@ -162,7 +162,7 @@ export function UninstallSection({
                 ))}
               </select>
               {plan.replacements.length === 0 && (
-                <span className="text-xs text-warning">{t("tools.uninstall.no_replacement")}</span>
+                <span className="text-xs text-warn">{t("tools.uninstall.no_replacement")}</span>
               )}
             </label>
           )}

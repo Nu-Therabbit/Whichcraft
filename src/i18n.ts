@@ -34,6 +34,11 @@ const stored = getStoredLanguage();
 const lng =
   stored && (SUPPORTED_LANGUAGES as readonly string[]).includes(stored) ? stored : detectLanguage();
 
+// Screen readers and CJK font fallback follow the document's language, not the visible text.
+i18n.on("languageChanged", (language) => {
+  document.documentElement.lang = language;
+});
+
 i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },

@@ -48,7 +48,7 @@ function MissingList({
   const knownBytes = items.reduce((sum, m) => sum + (m.downloadBytes ?? 0), 0);
   const allSizesKnown = items.every((m) => m.downloadBytes != null);
   return (
-    <div className="flex flex-col gap-2 border border-warning/40 rounded-md p-3">
+    <div className="flex flex-col gap-2 border border-warn/40 rounded-md p-3">
       <ul className="text-xs flex flex-col gap-1">
         {items.map((m) => (
           <li key={pinKey(m.pin)}>
@@ -138,7 +138,7 @@ export function ProfilesSection({
               </div>
               <ul className="text-xs text-muted font-mono">
                 {profile.tools.map((pin) => (
-                  <li key={pinKey(pin)} className={unavailable.some((u) => pinKey(u) === pinKey(pin)) ? "text-warning" : ""}>
+                  <li key={pinKey(pin)} className={unavailable.some((u) => pinKey(u) === pinKey(pin)) ? "text-warn" : ""}>
                     <PinLabel pin={pin} />
                   </li>
                 ))}

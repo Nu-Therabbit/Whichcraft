@@ -467,6 +467,8 @@
   "desktop_shell": {
     "status_working": "処理中…",
     "selection_mismatch": "選択したインストールと実際に使われるインストールが異なります",
+    "mismatch_reason_system_path_may_shadow": "新しいプロセスではこのインストールは使われません。システム PATH のエントリが優先されている可能性があります。",
+    "mismatch_reason_unavailable": "選択したインストールのフォルダーが見つかりません。",
     "nav_label": "メインナビゲーション",
     "nav_tools": "開発ツール",
     "nav_profiles": "ツールプロファイル",

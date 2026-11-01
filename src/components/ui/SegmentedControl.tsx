@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { cn } from "../../lib/cn";
 
 interface Option<T extends string> {
@@ -25,6 +26,7 @@ export function SegmentedControl<T extends string>({
   className,
   stretch,
 }: Props<T>) {
+  const name = useId();
   return (
     <div role="radiogroup" aria-label={label} className={cn("flex gap-1", className)}>
       {options.map((opt) => (
@@ -32,7 +34,7 @@ export function SegmentedControl<T extends string>({
           key={opt.value}
           className={cn(
             "flex items-center gap-1 px-2.5 py-1.5 rounded text-sm transition-colors",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-canvas",
+            "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-1 has-[:focus-visible]:ring-offset-canvas",
             opt.disabled && "opacity-40 cursor-not-allowed",
             value === opt.value ? "bg-surface text-fg" : "text-muted hover:bg-hover hover:text-fg",
             stretch && "flex-1 justify-center",
@@ -40,6 +42,7 @@ export function SegmentedControl<T extends string>({
         >
           <input
             type="radio"
+            name={name}
             checked={value === opt.value}
             disabled={opt.disabled}
             onChange={() => onChange(opt.value)}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ToolsDispatch } from "../../features/tools/useToolsStore";
 import type { ToolsState } from "../../features/tools/model";
+import { mismatchReasonText } from "../../features/tools/mismatchReason";
 import { useI18n } from "../../hooks/useI18n";
 import type { ToolKind } from "../../types";
 import { Badge } from "../ui/Badge";
@@ -93,8 +94,8 @@ export function ToolsPanel({ open, onClose, state, dispatch }: Props) {
         )}
 
         {state.unfinished.map((u) => (
-          <div key={u.id} className="text-sm border border-warning/40 rounded-md px-3 py-2 flex flex-col gap-2">
-            <p className="text-warning">
+          <div key={u.id} className="text-sm border border-warn/40 rounded-md px-3 py-2 flex flex-col gap-2">
+            <p className="text-warn">
               {t("tools.uninstall.unfinished", {
                 name: `${u.installation.vendor} ${u.installation.version}`,
                 path: u.installation.root,
@@ -244,7 +245,9 @@ export function ToolsPanel({ open, onClose, state, dispatch }: Props) {
                     <Badge variant="muted">{t(`tools.installer.${item.installerKind}`)}</Badge>
                   </div>
                   <span className="text-xs text-muted font-mono wrap-anywhere">{item.root}</span>
-                  {item.mismatchReason && <span className="text-xs text-warning">{item.mismatchReason}</span>}
+                  {item.mismatchReason && (
+                    <span className="text-xs text-warn">{mismatchReasonText(item.mismatchReason, t)}</span>
+                  )}
                 </button>
                 {item.available && (
                   <Button

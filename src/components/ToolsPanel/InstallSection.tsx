@@ -83,7 +83,7 @@ export function InstallSection({
             {chosen.diskBytes != null && ` ${t("tools.install.disk", { size: formatBytes(chosen.diskBytes) })}`}
           </p>
           {miseStatus && !miseStatus.present && (
-            <p className="text-xs text-warning">
+            <p className="text-xs text-warn">
               {t("tools.install.mise_first", { version: miseStatus.version, size: formatBytes(miseStatus.downloadBytes) })}
             </p>
           )}
@@ -93,7 +93,7 @@ export function InstallSection({
             <p className="text-xs text-muted">{t("tools.install.into", { store: settings.installStore })}</p>
           )}
           {miseStatus?.fetching && (
-            <p className="text-xs text-warning">{t("tools.install.wait_for_mise", { version: miseStatus.version })}</p>
+            <p className="text-xs text-warn">{t("tools.install.wait_for_mise", { version: miseStatus.version })}</p>
           )}
           <Button variant="primary" disabled={busy || !storeConfirmed || !!miseStatus?.fetching} onClick={onInstall}>
             {busy ? t("tools.install.installing") : t("tools.install.install")}

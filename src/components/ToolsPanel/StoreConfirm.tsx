@@ -13,7 +13,7 @@ export function StoreConfirm({ installStore, busy, onConfirmStore }: Props) {
   const { t } = useI18n();
   const [store, setStore] = useState(installStore);
   return (
-    <div className="flex flex-col gap-2 border border-warning/40 rounded-md p-3">
+    <div className="flex flex-col gap-2 border border-warn/40 rounded-md p-3">
       <p className="text-xs">{t("tools.install.confirm_store")}</p>
       <div className="flex gap-2">
         <input

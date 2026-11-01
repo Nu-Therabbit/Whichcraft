@@ -7,6 +7,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import type { ToolsDispatch } from "../tools/useToolsStore";
 import type { ToolsState } from "../tools/model";
+import { mismatchReasonText } from "../tools/mismatchReason";
 import { useI18n } from "../../hooks/useI18n";
 import { ShellUndoResult } from "./ShellUndoResult";
 import type { ToolInstallationView, ToolKind } from "../tools/types";
@@ -177,7 +178,7 @@ function InstallationSwitchRow({
       </div>
       <code className="block mt-1 text-xs text-muted wrap-anywhere">{item.root}</code>
       {item.mismatchReason && (
-        <p className="text-xs text-dim mt-1">{item.mismatchReason}</p>
+        <p className="text-xs text-dim mt-1">{mismatchReasonText(item.mismatchReason, t)}</p>
       )}
       <div className="flex flex-wrap gap-2 mt-2">
         <Button
