@@ -83,6 +83,11 @@ Release builds run one GUI at a time: a second launch brings the open window for
 Subcommands and `--demo` runs are not limited, and Run as admin passes `--replaces-pid` so the
 elevated instance waits for the old one to exit.
 
+Uninstalling keeps `%LOCALAPPDATA%\Whichcraft`, so a reinstall finds its settings again. With the
+NSIS "Delete the application data" box ticked it removes settings, Selections, Tool Profiles, the
+journal and snapshots, but never `installs` or `mise`: those hold tools that PATH or a project may
+still use. The MSI has no such box and keeps everything.
+
 Debug builds (`npm run tauri dev`) stay console apps so their logs show, and are not limited to
 one instance. Programs Whichcraft runs
 in the background go through `background_command` (no window); a layer test enforces it.

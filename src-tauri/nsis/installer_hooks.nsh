@@ -20,3 +20,19 @@
   Delete "$INSTDIR\bin\whichcraft.exe"
   RMDir "$INSTDIR\bin"
 !macroend
+
+!macro NSIS_HOOK_POSTUNINSTALL
+  ; "Delete the application data" only knows the WebView folder, so remove Whichcraft's own
+  ; records here too. installs and mise stay: they hold tools that PATH or a project may still use.
+  ${If} $DeleteAppDataCheckboxState = 1
+  ${AndIf} $UpdateMode <> 1
+    SetShellVarContext current
+    RMDir /r "$LOCALAPPDATA\${PRODUCTNAME}\journal"
+    RMDir /r "$LOCALAPPDATA\${PRODUCTNAME}\snapshots"
+    Delete "$LOCALAPPDATA\${PRODUCTNAME}\selection.json"
+    Delete "$LOCALAPPDATA\${PRODUCTNAME}\settings.json"
+    Delete "$LOCALAPPDATA\${PRODUCTNAME}\profiles.json"
+    Delete "$LOCALAPPDATA\${PRODUCTNAME}\elevation-*.json"
+    RMDir "$LOCALAPPDATA\${PRODUCTNAME}"
+  ${EndIf}
+!macroend
