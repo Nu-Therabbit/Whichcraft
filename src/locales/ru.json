@@ -603,7 +603,6 @@
     "card_differs": "Отличается от вашего выбора",
     "card_not_on_path": "Нет в PATH",
     "card_on_path": "Есть в PATH",
-    "card_nothing_installed": "Пока ничего не установлено",
     "card_add_folder": "Добавьте папку в настройках",
     "install_short": "Установить",
     "retry_scan": "Сканировать снова",
@@ -637,7 +636,8 @@
     "accent_plum": "Сливовый",
     "accent_pink": "Розовый",
     "accent_graphite": "Графит",
-    "applied_not_effective": "Применено, но новые процессы пока не получают {{tool}} {{version}}."
+    "applied_not_effective": "Применено, но новые процессы пока не получают {{tool}} {{version}}.",
+    "uninstall_installation": "Удалить {{vendor}} {{version}}"
   },
   "tools": {
     "profiles": {

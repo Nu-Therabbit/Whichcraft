@@ -87,6 +87,7 @@ function DesktopShellAppInner() {
   const previousPageRef = useRef(page);
   // A switch started from a tool's card waits here until that tool's store has caught up.
   const [pendingUse, setPendingUse] = useState<{ tool: ToolKind; root: string } | null>(null);
+  const pendingUseRead = useRef(false);
 
   useEffect(() => {
     if (previousPageRef.current !== page) {
@@ -114,7 +115,11 @@ function DesktopShellAppInner() {
   useEffect(() => {
     if (!pendingUse) return;
     const { tool, installations, loading } = toolsWrite.state;
-    if (tool !== pendingUse.tool || loading) return;
+    if (tool !== pendingUse.tool) return;
+    // Opening the sheet starts a fresh read, and the installation may have gone since the card was drawn.
+    if (loading) pendingUseRead.current = true;
+    if (loading || !pendingUseRead.current) return;
+    pendingUseRead.current = false;
     setPendingUse(null);
     if (installations.some((item) => item.root === pendingUse.root && item.available)) {
       toolsWrite.dispatch({ type: "buildPlan", root: pendingUse.root });

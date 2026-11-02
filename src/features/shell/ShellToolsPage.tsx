@@ -149,9 +149,10 @@ function ToolCard({ tool, slice, onOpen, onUse, onInstall, onRetry }: { tool: To
         </div>
       )}
       {health !== "loading" && health !== "error" && items.length === 0 && (
-        <div className="flex flex-1 items-center justify-between gap-2 border-t border-rim-subtle p-1.5 pl-3">
-          <span className="text-xs text-muted">{t(meta.switchOnly ? "desktop_shell.card_add_folder" : "desktop_shell.card_nothing_installed")}</span>
-          {!meta.switchOnly && (
+        <div className="flex flex-1 items-center justify-end gap-2 border-t border-rim-subtle p-1.5 pl-3">
+          {meta.switchOnly ? (
+            <span className="flex-1 text-xs text-muted">{t("desktop_shell.card_add_folder")}</span>
+          ) : (
             <Button variant="secondary" size="xs" aria-label={t("desktop_shell.install_heading", { tool: meta.title })} onClick={onInstall}>
               {t("desktop_shell.install_short")}
             </Button>

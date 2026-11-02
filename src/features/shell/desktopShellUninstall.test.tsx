@@ -97,7 +97,7 @@ async function planUninstallForRoot(
 ) {
   const row = within(details).getByText(root).closest("li");
   if (!row) throw new Error(`installation row not found: ${root}`);
-  await user.click(within(row).getByRole("button", { name: /^uninstall$/i }));
+  await user.click(within(row).getByRole("button", { name: /^uninstall /i }));
 }
 
 async function openedUninstallPlanSection() {

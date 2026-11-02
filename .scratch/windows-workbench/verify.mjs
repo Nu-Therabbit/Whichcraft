@@ -31,14 +31,16 @@ try {
     await page.getByRole('button', { name: /Java.*21.0.8/ }).click();
     const detail = page.getByRole('complementary', { name: /installation details/i });
     await detail.getByRole('button', { name: /Switch to.*17.0.16/i }).waitFor();
-    assert.match(await detail.innerText(), /Selection[\s\S]*17\.0\.16[\s\S]*Effective installation[\s\S]*21\.0\.8/);
+    assert.match(await detail.innerText(), /Effective installation[\s\S]*21\.0\.8[\s\S]*Selection[\s\S]*17\.0\.16/);
     await page.screenshot({ path: `${out}/${theme}-detail.png` });
     await audit('detail');
     await detail.getByRole('button', { name: /Switch to.*17.0.16/i }).click();
-    await detail.getByRole('button', { name: /Apply.*plan/i }).waitFor();
+    await page.getByRole('button', { name: /^Apply plan$/ }).waitFor();
     await page.waitForTimeout(200);
     await page.screenshot({ path: `${out}/${theme}-plan.png` });
     await audit('plan-review');
+    await page.getByRole('button', { name: /^Dismiss$/ }).click();
+    await page.getByRole('button', { name: /^Apply plan$/ }).waitFor({ state: 'detached' });
     // Native mutation flow is covered by the existing unit/contract suite; don't simulate successful writes.
     await page.getByRole('button', { name: /close.*details/i }).click();
     assert.match(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), /Java/);
@@ -94,7 +96,7 @@ try {
     await audit('loading');
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${base}?theme=${theme}&state=empty`);
-    await page.getByRole('button', { name: /Java/ }).waitFor();
+    await page.getByRole('button', { name: /^Java,/ }).waitFor();
     await page.screenshot({ path: `${out}/${theme}-empty.png` });
     await audit('empty-reduced-motion');
     await page.goto(`${base}?theme=${theme}&state=error`);

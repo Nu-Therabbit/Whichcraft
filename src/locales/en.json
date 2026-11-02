@@ -749,7 +749,6 @@
     "card_differs": "Differs from your Selection",
     "card_not_on_path": "Not on PATH",
     "card_on_path": "On PATH",
-    "card_nothing_installed": "Nothing installed yet",
     "card_add_folder": "Add its folder in Settings",
     "install_short": "Install",
     "retry_scan": "Retry scan",
@@ -783,6 +782,7 @@
     "accent_plum": "Plum",
     "accent_pink": "Pink",
     "accent_graphite": "Graphite",
-    "applied_not_effective": "Applied, but new processes don't get {{tool}} {{version}} yet."
+    "applied_not_effective": "Applied, but new processes don't get {{tool}} {{version}} yet.",
+    "uninstall_installation": "Uninstall {{vendor}} {{version}}"
   }
 }

@@ -244,6 +244,8 @@ html.light[data-accent="graphite"] { --color-accent: #27272a; --color-accent-hi:
     background: transparent;
     color: var(--color-muted);
     font-size: 13px;
+    /* A long translated label wraps to two lines, and two of these still fit the row. */
+    line-height: 16px;
     text-align: left;
     text-decoration: none;
     transition:
@@ -927,6 +929,43 @@ html.light[data-accent="graphite"] { --color-accent: #27272a; --color-accent-hi:
   }
   .motion-modal-panel {
     overscroll-behavior: contain;
+  }
+}
+
+/* High Contrast paints every background away, so what they carried needs another form here. */
+@media (forced-colors: active) {
+  .shell-nav-pill,
+  .shell-card-mark {
+    display: none;
+  }
+  .shell-card,
+  .shell-sheet-head {
+    background-image: none;
+  }
+  .shell-nav-link[aria-current],
+  [role="tab"][aria-selected="true"],
+  [role="radiogroup"] label:has(input:checked) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  /* A filled button has no edge of its own once its fill is gone. */
+  button:not(.shell-nav-link, .shell-nav-section, .shell-card-head, [role="tab"]) {
+    border: 1px solid ButtonText;
+  }
+  button:disabled {
+    border-color: GrayText;
+  }
+  .shell-pill,
+  .shell-banner-tile {
+    border: 1px solid CanvasText;
+  }
+  /* These keep their own colour: a logo on its white tile, and the dots that report a state. */
+  .shell-logo-tile,
+  .shell-dot,
+  .shell-in-use-dot,
+  .shell-swatch,
+  .shell-footer .rounded-full {
+    forced-color-adjust: none;
   }
 }
 

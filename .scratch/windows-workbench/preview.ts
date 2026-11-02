@@ -7,7 +7,7 @@ import type { ToolInstallationView, ToolKind } from "../../src/features/tools/ty
 
 const params = new URLSearchParams(location.search);
 localStorage.setItem("whichcraft-theme", params.get("theme") === "dark" ? "dark" : "light");
-localStorage.setItem("whichcraft-language", "en");
+localStorage.setItem("whichcraft-language", params.get("lang") ?? "en");
 const options = { demo: true, demoFixture: null };
 const fallback = new Proxy({} as WhichcraftApi, { get: () => async () => null });
 const api = createDemoApi(options, await loadDemoFixture(options), fallback);

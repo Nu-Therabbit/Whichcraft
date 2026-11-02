@@ -565,7 +565,6 @@
     "card_differs": "Khác với lựa chọn của bạn",
     "card_not_on_path": "Không có trong PATH",
     "card_on_path": "Có trong PATH",
-    "card_nothing_installed": "Chưa cài đặt gì",
     "card_add_folder": "Thêm thư mục trong Cài đặt",
     "install_short": "Cài đặt",
     "retry_scan": "Quét lại",
@@ -599,7 +598,8 @@
     "accent_plum": "Mận",
     "accent_pink": "Hồng",
     "accent_graphite": "Than chì",
-    "applied_not_effective": "Đã áp dụng, nhưng các tiến trình mới chưa dùng {{tool}} {{version}}."
+    "applied_not_effective": "Đã áp dụng, nhưng các tiến trình mới chưa dùng {{tool}} {{version}}.",
+    "uninstall_installation": "Gỡ cài đặt {{vendor}} {{version}}"
   },
   "tools": {
     "profiles": {

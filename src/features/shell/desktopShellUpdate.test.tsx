@@ -230,7 +230,7 @@ describe("desktop shell update journey", () => {
     });
 
     expect(within(details).queryByRole("heading", { name: /^uninstall eclipse adoptium/i })).not.toBeInTheDocument();
-    const uninstallButtons = within(details).getAllByRole("button", { name: /^uninstall$/i });
+    const uninstallButtons = within(details).getAllByRole("button", { name: /^uninstall /i });
     expect(uninstallButtons).toHaveLength(1);
     const [rowUninstall] = uninstallButtons;
     expect(rowUninstall).toBeDefined();

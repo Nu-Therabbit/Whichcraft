@@ -312,7 +312,7 @@ function InstallationSwitchRow({
             icon="folder"
             onClick={onOpenFolder}
           />
-          <IconButton className="size-7" aria-label={t("tools.uninstall_button")} title={t("tools.uninstall_button")} icon="trash" disabled={uninstallBusy} onClick={onUninstall} />
+          <IconButton className="size-7" aria-label={t("desktop_shell.uninstall_installation", { vendor: item.vendor, version: item.version })} title={t("tools.uninstall_button")} icon="trash" disabled={uninstallBusy} onClick={onUninstall} />
         </>
       )}
     </li>

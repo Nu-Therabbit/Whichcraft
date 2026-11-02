@@ -565,7 +565,6 @@
     "card_differs": "与你的选择不同",
     "card_not_on_path": "不在 PATH 中",
     "card_on_path": "在 PATH 中",
-    "card_nothing_installed": "尚未安装",
     "card_add_folder": "请在设置中添加其文件夹",
     "install_short": "安装",
     "retry_scan": "重新扫描",
@@ -599,7 +598,8 @@
     "accent_plum": "梅紫",
     "accent_pink": "粉色",
     "accent_graphite": "石墨",
-    "applied_not_effective": "已应用,但新进程尚未使用 {{tool}} {{version}}。"
+    "applied_not_effective": "已应用,但新进程尚未使用 {{tool}} {{version}}。",
+    "uninstall_installation": "卸载 {{vendor}} {{version}}"
   },
   "tools": {
     "profiles": {

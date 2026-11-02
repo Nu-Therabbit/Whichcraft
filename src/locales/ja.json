@@ -565,7 +565,6 @@
     "card_differs": "選択と異なります",
     "card_not_on_path": "PATH にありません",
     "card_on_path": "PATH にあります",
-    "card_nothing_installed": "まだインストールされていません",
     "card_add_folder": "設定でフォルダーを追加してください",
     "install_short": "インストール",
     "retry_scan": "再スキャン",
@@ -599,7 +598,8 @@
     "accent_plum": "プラム",
     "accent_pink": "ピンク",
     "accent_graphite": "グラファイト",
-    "applied_not_effective": "適用しましたが、新しいプロセスではまだ {{tool}} {{version}} が使われません。"
+    "applied_not_effective": "適用しましたが、新しいプロセスではまだ {{tool}} {{version}} が使われません。",
+    "uninstall_installation": "{{vendor}} {{version}} をアンインストール"
   },
   "tools": {
     "profiles": {

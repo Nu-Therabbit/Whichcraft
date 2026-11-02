@@ -565,7 +565,6 @@
     "card_differs": "선택과 다름",
     "card_not_on_path": "PATH에 없음",
     "card_on_path": "PATH에 있음",
-    "card_nothing_installed": "아직 설치된 항목 없음",
     "card_add_folder": "설정에서 폴더를 추가하세요",
     "install_short": "설치",
     "retry_scan": "다시 검색",
@@ -599,7 +598,8 @@
     "accent_plum": "플럼",
     "accent_pink": "분홍",
     "accent_graphite": "그래파이트",
-    "applied_not_effective": "적용했지만 새 프로세스는 아직 {{tool}} {{version}}을(를) 사용하지 않습니다."
+    "applied_not_effective": "적용했지만 새 프로세스는 아직 {{tool}} {{version}}을(를) 사용하지 않습니다.",
+    "uninstall_installation": "{{vendor}} {{version}} 제거"
   },
   "tools": {
     "profiles": {

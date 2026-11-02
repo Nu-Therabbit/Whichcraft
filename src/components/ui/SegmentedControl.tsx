@@ -50,7 +50,7 @@ export function SegmentedControl<T extends string>({
             onChange={() => onChange(opt.value)}
             className="sr-only"
           />
-          {opt.swatch && <span aria-hidden className="size-2.5 rounded-full" style={{ background: opt.swatch }} />}
+          {opt.swatch && <span aria-hidden className="shell-swatch size-2.5 rounded-full" style={{ background: opt.swatch }} />}
           {opt.label}
           {opt.count !== undefined && (
             <span className="text-xs px-1.5 py-0.5 rounded-full bg-hover text-dim leading-none">
