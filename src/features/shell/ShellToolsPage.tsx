@@ -54,21 +54,21 @@ function cardSummary(t: Translate, slice: ToolOverviewSlice): string {
   }
 }
 
-function CardUse({ tool, item, onUse }: { tool: ToolKind; item: ToolInstallationView; onUse: (trigger: HTMLButtonElement) => void }) {
+function CardUse({ tool, item, onUse }: { tool: ToolKind; item: ToolInstallationView; onUse: () => void }) {
   const { t } = useI18n();
   return (
     <Button
       variant="secondary"
       size="xs"
       aria-label={t("desktop_shell.card_use", { tool: TOOL_DISPLAY[tool].title, version: item.version, vendor: item.vendor })}
-      onClick={(e) => onUse(e.currentTarget)}
+      onClick={onUse}
     >
       {t("desktop_shell.use")}
     </Button>
   );
 }
 
-function CardMain({ tool, item, sameElsewhere, arrived, onUse }: { tool: ToolKind; item: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; onUse: (trigger: HTMLButtonElement) => void }) {
+function CardMain({ tool, item, sameElsewhere, arrived, onUse }: { tool: ToolKind; item: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; onUse: () => void }) {
   const { t } = useI18n();
   return (
     <li title={item.root} className="shell-install-row" data-effective={item.effective} data-arrived={arrived}>
@@ -95,7 +95,7 @@ function CardMain({ tool, item, sameElsewhere, arrived, onUse }: { tool: ToolKin
 }
 
 /** The Selection that differs. What it shares with the line above is left out, so only what tells them apart is said. */
-function CardSelection({ tool, item, main, sameElsewhere, arrived, more, onUse }: { tool: ToolKind; item: ToolInstallationView; main: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; more: ReactNode; onUse: (trigger: HTMLButtonElement) => void }) {
+function CardSelection({ tool, item, main, sameElsewhere, arrived, more, onUse }: { tool: ToolKind; item: ToolInstallationView; main: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; more: ReactNode; onUse: () => void }) {
   const { t } = useI18n();
   return (
     <li title={item.root} className="shell-card-foot" data-arrived={arrived}>
@@ -113,7 +113,7 @@ function CardSelection({ tool, item, main, sameElsewhere, arrived, more, onUse }
   );
 }
 
-function ToolCard({ tool, slice, onOpen, onUse, onInstall, onRetry }: { tool: ToolKind; slice: ToolOverviewSlice; onOpen: (trigger: HTMLButtonElement) => void; onUse: (root: string, trigger: HTMLButtonElement) => void; onInstall: () => void; onRetry: () => void }) {
+function ToolCard({ tool, slice, onOpen, onUse, onInstall, onRetry }: { tool: ToolKind; slice: ToolOverviewSlice; onOpen: (trigger: HTMLButtonElement) => void; onUse: (root: string) => void; onInstall: () => void; onRetry: () => void }) {
   const { t } = useI18n();
   const meta = TOOL_DISPLAY[tool];
   const health = scanHealth(slice);
@@ -190,7 +190,7 @@ function ToolCard({ tool, slice, onOpen, onUse, onInstall, onRetry }: { tool: To
         </div>
       ) : (
         <ul className="shell-card-rows">
-          <CardMain tool={tool} item={main} arrived={arrived === main.root} sameElsewhere={sameElsewhere(main)} onUse={(trigger) => onUse(main.root, trigger)} />
+          <CardMain tool={tool} item={main} arrived={arrived === main.root} sameElsewhere={sameElsewhere(main)} onUse={() => onUse(main.root)} />
           {selection ? (
             <CardSelection
               tool={tool}
@@ -199,7 +199,7 @@ function ToolCard({ tool, slice, onOpen, onUse, onInstall, onRetry }: { tool: To
               arrived={arrived === selection.root}
               sameElsewhere={sameElsewhere(selection)}
               more={moreButton(`+${hidden}`)}
-              onUse={(trigger) => onUse(selection.root, trigger)}
+              onUse={() => onUse(selection.root)}
             />
           ) : (
             <li className="shell-card-foot">{hidden > 0 ? moreButton(moreLabel) : <span className="text-xs text-muted">{t("desktop_shell.card_one_version")}</span>}</li>
@@ -215,13 +215,15 @@ interface Props {
   installOpen: boolean;
   terminalDisabled: boolean;
   onOpenTool: (tool: ToolKind, trigger: HTMLButtonElement) => void;
-  onUse: (tool: ToolKind, root: string, trigger: HTMLButtonElement) => void;
+  onUse: (tool: ToolKind, root: string) => void;
   onInstall: (tool?: ToolKind) => void;
   onRescan: () => void;
   onOpenTerminal: () => void;
+  /** What Use on a card led to, since a card has nowhere of its own to say it. */
+  notice: ReactNode;
 }
 
-export function ShellToolsPage({ overview, installOpen, terminalDisabled, onOpenTool, onUse, onInstall, onRescan, onOpenTerminal }: Props) {
+export function ShellToolsPage({ overview, installOpen, terminalDisabled, onOpenTool, onUse, onInstall, onRescan, onOpenTerminal, notice }: Props) {
   const { t } = useI18n();
   const [sdksOpen, setSdksOpen] = useState(false);
   const visibleTools = OVERVIEW_TOOL_KINDS.filter((tool) =>
@@ -274,6 +276,8 @@ export function ShellToolsPage({ overview, installOpen, terminalDisabled, onOpen
         </div>
       )}
 
+      {notice}
+
       <ul className="shell-tool-grid">
         {visibleTools.map((tool) => (
           <ToolCard
@@ -281,7 +285,7 @@ export function ShellToolsPage({ overview, installOpen, terminalDisabled, onOpen
             tool={tool}
             slice={overview.byTool[tool]}
             onOpen={(trigger) => onOpenTool(tool, trigger)}
-            onUse={(root, trigger) => onUse(tool, root, trigger)}
+            onUse={(root) => onUse(tool, root)}
             onInstall={() => onInstall(tool)}
             onRetry={onRescan}
           />

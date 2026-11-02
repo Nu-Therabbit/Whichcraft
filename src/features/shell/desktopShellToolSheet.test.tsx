@@ -165,11 +165,12 @@ describe("desktop shell tool cards", () => {
     const use = await screen.findByRole("button", { name: /^Use Java 17\.0\.2/ });
     gone = true;
     await user.click(use);
-    const details = await sheet();
-    await within(details).findByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/ });
-    await waitFor(() => expect(within(details).getByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/ })).toBeDisabled());
+    // The card catches up with the machine, and focus stays next to it rather than falling off the page.
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Use Java 17\.0\.2/ })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Java,/ })).toHaveFocus());
     expect(planToolApply).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /^Apply plan$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
   });
 
   it("keeps the last result on screen and focus on Rescan while it runs", async () => {

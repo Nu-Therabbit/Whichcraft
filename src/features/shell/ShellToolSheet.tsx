@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef } from "react";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
 import { toolLogoVars, ToolLogo } from "../../components/ui/ToolLogo";
@@ -21,6 +21,7 @@ interface Props {
   blocked: boolean;
   onClose: () => void;
   onInstall: (tool: ToolKind) => void;
+  notice: ReactNode;
 }
 
 function Stat({ label, version, note, warn }: { label: string; version: string; note: string; warn?: boolean }) {
@@ -34,7 +35,7 @@ function Stat({ label, version, note, warn }: { label: string; version: string; 
 }
 
 /** One tool, in a sheet that fills the workspace. The sidebar stays usable, so another tool opens from it directly. */
-export function ShellToolSheet({ tool, slice, state, dispatch, blocked, onClose, onInstall }: Props) {
+export function ShellToolSheet({ tool, slice, state, dispatch, blocked, onClose, onInstall, notice }: Props) {
   const { t } = useI18n();
   const open = tool !== null;
   const presence = usePresence(open, 160);
@@ -90,7 +91,7 @@ export function ShellToolSheet({ tool, slice, state, dispatch, blocked, onClose,
             <Stat label={t("desktop_shell.effective_installation")} version={effective?.version ?? "—"} note={effective?.vendor ?? t("desktop_shell.card_not_on_path")} />
             <Stat label={t("desktop_shell.selection")} version={selected?.version ?? "—"} warn={mismatch} note={selected?.vendor ?? t("desktop_shell.selection_none")} />
           </div>
-          <ShellInstallationDetail tool={shown} state={state} dispatch={dispatch} onInstall={() => onInstall(shown)} />
+          <ShellInstallationDetail tool={shown} state={state} dispatch={dispatch} onInstall={() => onInstall(shown)} notice={notice} />
         </div>
       </div>
     </aside>

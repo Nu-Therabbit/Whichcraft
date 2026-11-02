@@ -41,6 +41,8 @@ export interface ToolsState {
   tool: ToolKind;
   installations: ToolInstallationView[];
   loading: boolean;
+  /** Counts finished inventory reads, since a fast read can start and finish without `loading` ever rendering. */
+  reads: number;
   error: string | null;
   settings: WhichcraftSettings | null;
   recovery: RecoveryView | null;
@@ -93,6 +95,7 @@ export function initialToolsState(tool: ToolKind = "java"): ToolsState {
     tool,
     installations: [],
     loading: false,
+    reads: 0,
     error: null,
     settings: null,
     recovery: null,

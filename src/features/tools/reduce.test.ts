@@ -28,6 +28,14 @@ const withUninstall = (extra: Partial<ToolsState["uninstall"]> = {}): ToolsState
 };
 
 describe("reduce", () => {
+  it("counts a finished inventory read, whether it succeeded or failed", () => {
+    const s = { ...initialToolsState(), loading: true };
+    const failed = reduce(s, { type: "failed", op: "inventory", error: "offline" });
+    expect(failed.reads).toBe(s.reads + 1);
+    expect(reduce(s, { type: "refresh" }).reads).toBe(s.reads);
+    expect(reduce(s, { type: "failed", op: "plan", error: "offline" }).reads).toBe(s.reads);
+  });
+
   it("clears error on a successful refreshed inventory load", () => {
     const s = { ...initialToolsState(), error: "offline", loading: true };
     const next = reduce(s, {

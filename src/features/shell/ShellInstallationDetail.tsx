@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect } from "react";
 import { installStoreGate } from "./installStoreGate";
 import { ShellCheckResult } from "../../components/ToolsPanel/ShellCheckResult";
 import { UpdateList } from "../../components/ToolsPanel/UpdateList";
@@ -6,46 +6,25 @@ import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 import { IconButton } from "../../components/ui/IconButton";
 import type { ToolsDispatch } from "../tools/useToolsStore";
-import { isSingleToolPlan, type ToolsState } from "../tools/model";
+import type { ToolsState } from "../tools/model";
 import { mismatchReasonText } from "../tools/mismatchReason";
 import { useI18n } from "../../hooks/useI18n";
 import { ShellUndoResult } from "./ShellUndoResult";
 import { TOOL_DISPLAY } from "./overviewTools";
 import { byVersion, pickEffective, pickSelected } from "./toolOverviewModel";
 import { useArrival } from "./useArrival";
-import type { ToolApplyPlan, ToolInstallationRef, ToolInstallationView, ToolKind } from "../tools/types";
+import type { ToolInstallationView, ToolKind } from "../tools/types";
 
 interface Props {
   tool: ToolKind;
   state: ToolsState;
   dispatch: ToolsDispatch;
   onInstall: () => void;
+  /** What the last Apply did, held above the sheet so it outlives it. */
+  notice: ReactNode;
 }
 
-/** What a finished Apply changed, offered for Undo until it is dismissed or the tool changes. */
-function useAppliedVersion(state: ToolsState) {
-  const { plan, tool } = state;
-  const [applied, setApplied] = useState<ToolInstallationRef | null>(null);
-  // Undo also runs as `applying`, but with no plan on screen, so it never counts here.
-  const applying = useRef<ToolApplyPlan | null>(null);
-
-  useEffect(() => {
-    if (plan.applying) {
-      if (plan.current && plan.current.tool === tool && isSingleToolPlan(plan.current) && plan.source !== "profile") applying.current = plan.current;
-      return;
-    }
-    // The sheet can have moved to another tool while the Apply was running, and this result is not that tool's.
-    if (applying.current?.tool === tool && !plan.current && !state.error) setApplied(applying.current.selected);
-    applying.current = null;
-  }, [plan.applying, plan.current, plan.source, state.error, tool]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: another tool has its own result
-  useEffect(() => setApplied(null), [tool]);
-
-  return [applied, setApplied] as const;
-}
-
-export function ShellInstallationDetail({ tool, state, dispatch, onInstall }: Props) {
+export function ShellInstallationDetail({ tool, state, dispatch, onInstall, notice }: Props) {
   const { t } = useI18n();
   const { installations, loading, error, plan, uninstall, shellCheck, update, settings, profiles } = state;
   const applyBusy = plan.applying;
@@ -54,7 +33,6 @@ export function ShellInstallationDetail({ tool, state, dispatch, onInstall }: Pr
   const storeGate = installStoreGate(settings, dispatch);
   const items = byVersion(state.tool === tool ? installations : []);
   const arrived = useArrival(items);
-  const [applied, setApplied] = useAppliedVersion(state);
 
   useEffect(() => {
     dispatch({ type: "loadProfiles" });
@@ -79,32 +57,7 @@ export function ShellInstallationDetail({ tool, state, dispatch, onInstall }: Pr
         </div>
       )}
 
-      {applied && (
-        <div aria-live="polite" className="shell-banner" data-tone="ok">
-          <span className="shell-banner-tile text-accent">
-            <Icon name="check" size={16} aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1 font-medium">
-            {/* An Apply can succeed and Windows still resolve elsewhere, so this says what the readback found. */}
-            {t(effective?.root === applied.root ? "desktop_shell.applied_notice" : "desktop_shell.applied_not_effective", {
-              tool: TOOL_DISPLAY[tool].title,
-              version: applied.version,
-            })}
-          </span>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={applyBusy}
-            onClick={() => {
-              setApplied(null);
-              dispatch({ type: "undoLast" });
-            }}
-          >
-            {t("desktop_shell.undo_short")}
-          </Button>
-          <IconButton aria-label={t("desktop_shell.dismiss_undo_result")} icon="x" onClick={() => setApplied(null)} />
-        </div>
-      )}
+      {notice}
 
       <ShellUndoResult state={state} dispatch={dispatch} />
 

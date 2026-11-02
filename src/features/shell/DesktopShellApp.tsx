@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { UninstallSection } from "../../components/ToolsPanel/UninstallSection";
+import { IconButton } from "../../components/ui/IconButton";
 import { Modal } from "../../components/ui/Modal";
 import { useWriteCoordinator } from "../../coordination/WriteCoordinatorContext";
 import { scopesNeedShellRescan } from "../../coordination/scopeGroups";
@@ -10,6 +11,7 @@ import { useTheme } from "../../hooks/useTheme";
 import type { ToolKind } from "../tools/types";
 import { OVERVIEW_TOOL_KINDS } from "./overviewTools";
 import { type InventorySummary, summarizeInventory } from "./toolOverviewModel";
+import { ShellAppliedNotice, useAppliedVersion } from "./ShellAppliedNotice";
 import { ShellEnvironmentWorkspace } from "./ShellEnvironmentWorkspace";
 import { ShellAppHeaderActions } from "./ShellAppHeaderActions";
 import { ShellAppRecoveryBanner } from "./ShellAppRecoveryBanner";
@@ -21,6 +23,7 @@ import { ShellSettingsView } from "./ShellSettingsView";
 import { ShellSidebar } from "./ShellSidebar";
 import { ShellToolSheet } from "./ShellToolSheet";
 import { ShellToolsPage } from "./ShellToolsPage";
+import { ShellUndoResult } from "./ShellUndoResult";
 import { EnvironmentProvider } from "../environment/EnvironmentContext";
 import { ShellEnvironmentUiProvider } from "./ShellEnvironmentUiContext";
 import { ToolsProvider, useTools } from "../tools/ToolsContext";
@@ -73,21 +76,29 @@ const THIS_PC_STATE: Record<InventorySummary["kind"], { dot: string; titleKey: s
   scanned: { dot: "bg-success", titleKey: "desktop_shell.this_pc_scanned" },
 };
 
+function focusCard(tool: ToolKind) {
+  document.querySelector<HTMLElement>(`[data-tool="${tool}"] .shell-card-head`)?.focus({ preventScroll: true });
+}
+
 function DesktopShellAppInner() {
   const services = useAppServices();
   const coordination = useWriteCoordinator();
   const { page, envTab, installOpen, goPage, goEnvTab, navigate } = useShellNavigation();
   const shellTools = useTools();
   const overview = useToolsOverview(services.tools, services.environment, coordination);
-  const toolsWrite = useShellToolsWrite(overview.detailOpen ? overview.selectedTool : null);
+  // A switch started from a tool's card waits here until that tool's store has caught up. The page stays where it is.
+  const [pendingUse, setPendingUse] = useState<{ tool: ToolKind; root: string; reads: number } | null>(null);
+  // A card has no sheet to report into, so a failed switch from one is said on the page, until it is dismissed.
+  const [showUseError, setShowUseError] = useState(false);
+  const toolsWrite = useShellToolsWrite(overview.detailOpen ? overview.selectedTool : (pendingUse?.tool ?? null));
+  const [applied, setApplied] = useAppliedVersion(toolsWrite.state);
+  const noticeRef = useRef<HTMLDivElement>(null);
+  const hadApplied = useRef(false);
   const { theme } = useTheme();
   const { t } = useI18n();
   const detailTriggerRef = useRef<HTMLElement | null>(null);
   const pageHeadingRef = useRef<HTMLHeadingElement>(null);
   const previousPageRef = useRef(page);
-  // A switch started from a tool's card waits here until that tool's store has caught up.
-  const [pendingUse, setPendingUse] = useState<{ tool: ToolKind; root: string } | null>(null);
-  const pendingUseRead = useRef(false);
 
   useEffect(() => {
     if (previousPageRef.current !== page) {
@@ -111,20 +122,39 @@ function DesktopShellAppInner() {
   const { uninstall, plan } = toolsWrite.state;
   const uninstallOpen = uninstall.plan !== null || uninstall.outcome !== null;
   const reviewOpen = plan.current !== null && plan.source !== "cleanup" && plan.current.recordsSelection !== false;
+  const useError = showUseError && !pendingUse && !plan.building && !reviewOpen ? toolsWrite.state.error : null;
+
+  // Once the review is up or the user has moved on, a later error is not this switch's to report.
+  useEffect(() => {
+    if (reviewOpen || openTool || installOpen) setShowUseError(false);
+  }, [reviewOpen, openTool, installOpen]);
+
+  const appliedNotice = applied && <ShellAppliedNotice ref={noticeRef} applied={applied} state={toolsWrite.state} dispatch={toolsWrite.dispatch} onClose={() => setApplied(null)} />;
 
   useEffect(() => {
     if (!pendingUse) return;
-    const { tool, installations, loading } = toolsWrite.state;
-    if (tool !== pendingUse.tool) return;
-    // Opening the sheet starts a fresh read, and the installation may have gone since the card was drawn.
-    if (loading) pendingUseRead.current = true;
-    if (loading || !pendingUseRead.current) return;
-    pendingUseRead.current = false;
+    const { tool, installations, reads } = toolsWrite.state;
+    // Waits for a fresh read, because the installation may have gone since the card was drawn.
+    if (tool !== pendingUse.tool || reads === pendingUse.reads) return;
     setPendingUse(null);
     if (installations.some((item) => item.root === pendingUse.root && item.available)) {
       toolsWrite.dispatch({ type: "buildPlan", root: pendingUse.root });
+      return;
     }
-  }, [pendingUse, toolsWrite]);
+    // The card was out of date, and its Use is about to go away with it.
+    focusCard(pendingUse.tool);
+    void overview.rescan();
+  }, [pendingUse, toolsWrite, overview.rescan]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: moves focus only as the result appears and goes
+  useEffect(() => {
+    const hadResult = hadApplied.current;
+    hadApplied.current = applied !== null;
+    if (openTool) return;
+    if (applied) noticeRef.current?.focus({ preventScroll: true });
+    // The notice had focus when it went, and a keyboard stays next to what just changed.
+    else if (hadResult && document.activeElement === document.body) focusCard(toolsWrite.state.tool);
+  }, [applied]);
 
   useEffect(() => {
     return coordination.subscribeInvalidation((scopes) => {
@@ -136,6 +166,7 @@ function DesktopShellAppInner() {
   const openToolFrom = useCallback(
     (tool: ToolKind, trigger: HTMLElement) => {
       detailTriggerRef.current = trigger;
+      setShowUseError(false);
       overview.selectTool(tool);
     },
     [overview.selectTool],
@@ -191,9 +222,9 @@ function DesktopShellAppInner() {
                       installOpen={installOpen}
                       terminalDisabled={shellTools.state.plan.applying}
                       onOpenTool={openToolFrom}
-                      onUse={(tool, root, trigger) => {
-                        openToolFrom(tool, trigger);
-                        setPendingUse({ tool, root });
+                      onUse={(tool, root) => {
+                        setShowUseError(true);
+                        setPendingUse({ tool, root, reads: toolsWrite.state.reads });
                       }}
                       onInstall={(tool) => {
                         if (tool) overview.selectTool(tool);
@@ -201,6 +232,22 @@ function DesktopShellAppInner() {
                       }}
                       onRescan={() => void overview.rescan(true).then(() => shellTools.dispatch({ type: "refresh" }))}
                       onOpenTerminal={() => shellTools.dispatch({ type: "openTerminal" })}
+                      notice={
+                        !openTool && (
+                          <div className="mb-3 flex flex-col gap-3 empty:hidden">
+                            {useError && (
+                              <div role="alert" className="shell-banner text-danger" data-tone="warn">
+                                <span className="line-clamp-3 min-w-0 flex-1 wrap-anywhere" title={useError}>
+                                  {useError}
+                                </span>
+                                <IconButton aria-label={t("desktop_shell.dismiss_undo_result")} icon="x" onClick={() => setShowUseError(false)} />
+                              </div>
+                            )}
+                            {appliedNotice}
+                            <ShellUndoResult state={toolsWrite.state} dispatch={toolsWrite.dispatch} />
+                          </div>
+                        )
+                      }
                     />
                   )}
                   {activePage === "environment" && <ShellEnvironmentWorkspace envTab={envTab} onEnvTab={goEnvTab} />}
@@ -217,6 +264,7 @@ function DesktopShellAppInner() {
                 blocked={reviewOpen || uninstallOpen || installOpen}
                 onClose={closeDetail}
                 onInstall={() => navigate({ page: "tools", installOpen: true })}
+                notice={appliedNotice}
               />
             </div>
           </section>

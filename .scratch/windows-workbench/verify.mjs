@@ -28,6 +28,14 @@ try {
     await page.screenshot({ path: `${out}/${theme}-search-empty.png` });
     await page.getByRole('searchbox').fill('');
     await page.getByRole('button', { name: /^Rescan$/ }).click();
+    // Use on a card reviews above the page, and leaves focus where it started.
+    const cardUse = page.getByRole('button', { name: /^Use Java 17.0.16/ });
+    await cardUse.click();
+    await page.getByRole('button', { name: /^Apply plan$/ }).waitFor();
+    assert.equal(await page.locator('.shell-tool-sheet').count(), 0);
+    await page.getByRole('button', { name: /^Dismiss$/ }).click();
+    await page.getByRole('button', { name: /^Apply plan$/ }).waitFor({ state: 'detached' });
+    assert.match(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), /^Use Java 17.0.16/);
     await page.getByRole('button', { name: /Java.*21.0.8/ }).click();
     const detail = page.getByRole('complementary', { name: /installation details/i });
     await detail.getByRole('button', { name: /Switch to.*17.0.16/i }).waitFor();
