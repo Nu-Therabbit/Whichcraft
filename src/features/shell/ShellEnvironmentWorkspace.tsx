@@ -124,7 +124,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
       />
 
       <div
-        className="shell-env-tabs flex gap-1 px-4 pt-3 border-b border-rim-subtle shrink-0"
+        className="shell-env-tabs flex gap-1 px-4 py-2 border-b border-rim-subtle shrink-0"
         role="tablist"
         aria-label={t("desktop_shell.env_tabs_label")}
         onKeyDown={(e) => {
@@ -153,10 +153,8 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
             aria-selected={envTab === id}
             aria-controls={tabPanelId(id)}
             tabIndex={envTab === id ? 0 : -1}
-            className={`px-3 py-2 text-sm rounded-t border border-b-0 ${
-              envTab === id
-                ? "border-rim-subtle bg-panel font-medium"
-                : "border-transparent text-muted hover:text-fg"
+            className={`rounded-[6px] px-2.5 py-1 text-sm font-medium transition-colors ${
+              envTab === id ? "bg-selection text-fg" : "text-muted hover:text-fg"
             }`}
             onClick={() => onEnvTab(id)}
           >

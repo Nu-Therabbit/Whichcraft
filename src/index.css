@@ -1,59 +1,79 @@
 @import "tailwindcss";
 
 @theme {
-  --color-canvas: #202020;
-  --color-panel: #272727;
-  --color-surface: #303030;
-  --color-hover: #383838;
-  --color-rim: #858585;
-  --color-rim-subtle: #3a3a3a;
-  --color-fg: #f3f3f3;
-  --color-muted: #bcbcbc;
-  --color-dim: #ababab;
-  --color-accent: #75bfff;
-  --color-accent-hi: #a4d5ff;
-  --color-on-accent: #102235;
-  --color-success: #83cf9a;
-  --color-danger: #ffaaa5;
-  --color-warn: #edc579;
+  --color-frame: #0c0c0f;
+  --color-canvas: #131317;
+  --color-panel: #0f0f13;
+  --color-surface: #17171e;
+  --color-hover: #17171e;
+  --color-selection: #1e1e28;
+  --color-field: #131317;
+  --color-rim: #2c2c35;
+  --color-rim-subtle: #222229;
+  --color-fg: #f4f4f5;
+  --color-muted: #a1a1aa;
+  --color-dim: #8e8e96;
+  --color-accent: #34d399;
+  --color-accent-hi: #6ee7b7;
+  --color-on-accent: #04261b;
+  --color-primary: #047857;
+  --color-primary-hi: #03684b;
+  --color-on-primary: #ffffff;
+  --color-destructive: #b91c1c;
+  --color-destructive-hi: #991b1b;
+  --color-success: #34d399;
+  --color-danger: #f87171;
+  --color-warn: #fb923c;
   --color-violet: #c4b9df;
 
-  --color-frame: #191919;
-  --color-field: #242424;
-  --color-selection: #373737;
   --font-sans: "Segoe UI Variable Text", "Segoe UI", sans-serif;
-
-  --font-mono: "Cascadia Code", "Consolas", monospace;
-  --radius-control: 4px;
-  --radius-panel: 6px;
-  --radius-sheet: 16px;
+  --font-mono: "Cascadia Mono", "Consolas", monospace;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 20px;
+  --radius-control: 8px;
+  --radius-panel: 12px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --spacing-command: 2rem;
   --ease-feedback: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --duration-feedback: 120ms;
 }
 
-/* Light mode token overrides — applied via <html class="light"> */
+/* Light mode token overrides, applied via <html class="light">. */
 .light {
+  --color-frame: #fafafa;
   --color-canvas: #ffffff;
-  --color-panel: #f7f7f7;
-  --color-surface: #f0f0f0;
-  --color-hover: #e9e9e9;
-  --color-rim: #858585;
-  --color-rim-subtle: #e5e5e5;
-  --color-fg: #202020;
-  --color-muted: #5c5c5c;
-  --color-dim: #616161;
-  --color-accent: #005a9e;
-  --color-accent-hi: #004578;
-  --color-on-accent: #ffffff;
-  --color-success: #216638;
-  --color-danger: #b4231d;
-  --color-warn: #805600;
-  --color-violet: #62517c;
-  --color-frame: #f3f3f3;
+  --color-panel: #f4f4f5;
+  --color-surface: #f4f4f5;
+  --color-hover: #f4f4f5;
+  --color-selection: #e4e4e7;
   --color-field: #ffffff;
-  --color-selection: #eaeaea;
+  --color-rim: #d4d4d8;
+  --color-rim-subtle: #e4e4e7;
+  --color-fg: #18181b;
+  --color-muted: #52525b;
+  --color-dim: #606068;
+  --color-accent: #03694c;
+  --color-accent-hi: #059669;
+  --color-on-accent: #ffffff;
+  --color-success: #047857;
+  --color-danger: #b91c1c;
+  --color-warn: #a8380a;
+  --color-violet: #62517c;
 }
+
+/* The accent colour is a setting, emerald by default. Status colours and each tool's own colour stay as they are. */
+html[data-accent="blue"] { --color-accent: #60a5fa; --color-accent-hi: #93c5fd; --color-on-accent: #0b1b3a; --color-primary: #1d4ed8; --color-primary-hi: #1e40af; }
+html.light[data-accent="blue"] { --color-accent: #1d4ed8; --color-accent-hi: #1e40af; --color-on-accent: #ffffff; }
+html[data-accent="plum"] { --color-accent: #c5a0f0; --color-accent-hi: #d6bbf6; --color-on-accent: #241833; --color-primary: #5d3f8c; --color-primary-hi: #4a3166; }
+html.light[data-accent="plum"] { --color-accent: #5d3f8c; --color-accent-hi: #4a3166; --color-on-accent: #ffffff; }
+html[data-accent="pink"] { --color-accent: #f472b6; --color-accent-hi: #f9a8d4; --color-on-accent: #3a0a22; --color-primary: #be185d; --color-primary-hi: #9d174d; }
+html.light[data-accent="pink"] { --color-accent: #a8154f; --color-accent-hi: #9d174d; --color-on-accent: #ffffff; }
+html[data-accent="graphite"] { --color-accent: #e4e4e7; --color-accent-hi: #ffffff; --color-on-accent: #18181b; --color-primary: #3f3f46; --color-primary-hi: #52525b; }
+html.light[data-accent="graphite"] { --color-accent: #27272a; --color-accent-hi: #18181b; --color-on-accent: #ffffff; --color-primary: #27272a; --color-primary-hi: #3f3f46; }
 
 @layer base {
   *,
@@ -80,10 +100,10 @@
 
   body {
     font-family: var(--font-sans);
-    font-size: 14px;
-    background: var(--color-canvas);
+    font-size: 13px;
+    background: var(--color-frame);
     color: var(--color-fg);
-    line-height: 1.5;
+    line-height: 20px;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -142,190 +162,444 @@
 }
 
 @layer components {
-  /* 1440 = 216 navigation + 1216 workspace + 8 outer inset. */
   .desktop-workbench {
+    display: flex;
     height: 100dvh;
+    overflow: hidden;
     background: var(--color-frame);
-    gap: 0;
-    padding-right: 8px;
+    color: var(--color-fg);
   }
+  .shell-skip-link {
+    position: fixed;
+    top: 8px;
+    left: 12px;
+    z-index: 100;
+    padding: 8px 16px;
+    border-radius: var(--radius-control);
+    background: var(--color-fg);
+    color: var(--color-canvas);
+    transform: translateY(-160%);
+  }
+  .shell-skip-link:focus {
+    transform: translateY(0);
+  }
+
+  /* Sidebar. */
   .shell-nav {
-    width: 216px;
-    padding: 24px 12px 16px;
-    gap: 4px;
+    display: flex;
     flex-direction: column;
+    flex: none;
+    width: 208px;
+    background: var(--color-panel);
+    border-right: 1px solid var(--color-rim-subtle);
   }
   .shell-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 0 12px 28px;
-    font-size: 18px;
+    gap: 8px;
+    flex: none;
+    height: 48px;
+    padding: 0 16px;
+    font-size: 15px;
     font-weight: 600;
     letter-spacing: -0.025em;
   }
   .shell-brand img {
     flex: none;
   }
+  .shell-nav-list {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 8px 8px;
+  }
+  .shell-nav-pill {
+    position: absolute;
+    top: 0;
+    left: 8px;
+    right: 8px;
+    height: 36px;
+    border-radius: var(--radius-control);
+    background: var(--color-selection);
+    transition:
+      transform 240ms var(--ease-feedback),
+      opacity 120ms linear;
+  }
+  .shell-nav-pill[data-hidden="true"] {
+    opacity: 0;
+  }
   .shell-nav-link {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-height: 38px;
-    padding: 8px 12px;
+    gap: 10px;
+    flex: none;
+    width: 100%;
+    height: 36px;
+    padding: 0 10px;
     border-radius: var(--radius-control);
+    background: transparent;
     color: var(--color-muted);
-    font-size: 14px;
+    font-size: 13px;
+    text-align: left;
     text-decoration: none;
     transition:
-      background-color var(--duration-feedback) var(--ease-feedback),
-      color var(--duration-feedback) var(--ease-feedback);
+      background-color var(--duration-feedback) linear,
+      color var(--duration-feedback) linear;
   }
   .shell-nav-link:hover {
-    background: var(--color-hover);
+    background: rgb(0 0 0 / 0.04);
     color: var(--color-fg);
   }
-  .shell-nav-link[aria-current="page"] {
-    background: var(--color-selection);
+  :root:not(.light) .shell-nav-link:hover {
+    background: rgb(255 255 255 / 0.04);
+  }
+  .shell-nav-link[aria-current] {
+    background: transparent;
     color: var(--color-fg);
-    font-weight: 600;
+    font-weight: 500;
   }
-  .shell-nav-link:active {
-    background: var(--color-surface);
+  .shell-nav-link[aria-current] > .shell-nav-icon {
+    color: var(--color-accent);
   }
-  .shell-platform {
-    margin-top: auto;
-    padding: 20px 12px 0;
+  .shell-nav-icon {
+    display: inline-flex;
+  }
+  .shell-nav-rule {
+    flex: none;
+    margin: 8px;
+    border-top: 1px solid var(--color-rim-subtle);
+  }
+  .shell-nav-section {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+    flex: none;
+    width: 100%;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: transparent;
     color: var(--color-dim);
     font-size: 12px;
+    font-weight: 600;
+    text-align: left;
   }
-  .shell-header {
-    min-height: 72px;
-    padding: 12px 24px;
-    gap: 16px;
+  .shell-nav-section:hover {
+    color: var(--color-fg);
   }
-  .shell-header h1 {
-    font-size: 20px;
-    line-height: 28px;
-    flex-shrink: 0;
+  .shell-nav-chevron {
+    display: inline-flex;
+    transition: transform 200ms var(--ease-feedback);
   }
-  .shell-header-status {
-    font-size: 12px;
+  .shell-nav-section[aria-expanded="false"] .shell-nav-chevron {
+    transform: rotate(-90deg);
+  }
+  .shell-logo-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    background: #ffffff;
+    border: 1px solid var(--color-rim-subtle);
+  }
+  .shell-dot {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  /* Workspace. */
+  .shell-main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
   }
   .shell-sheet {
     display: flex;
     flex: 1;
+    flex-direction: column;
     min-height: 0;
     min-width: 0;
+  }
+  .shell-sheet:focus-visible {
+    outline: none;
+  }
+  .shell-stage {
+    position: relative;
+    display: flex;
+    flex: 1;
     flex-direction: column;
-    background: var(--color-canvas);
-    border: 1px solid var(--color-rim-subtle);
-    border-radius: var(--radius-sheet);
-    margin-bottom: 8px;
+    min-height: 0;
     overflow: hidden;
   }
-  .shell-command-bar {
-    gap: 8px;
-    padding: 12px 24px;
-  }
-  .shell-command-bar button {
-    min-height: var(--spacing-command);
-  }
-  .shell-search {
-    min-width: 160px;
-    max-width: 300px;
-    flex: 1;
-  }
-  .shell-search input {
-    min-height: var(--spacing-command);
-    background: var(--color-field);
-    border-color: var(--color-rim);
-    padding: 4px 10px;
-  }
-  .shell-tool-workspace {
-    position: relative;
-  }
-  .shell-inventory {
-    padding: 20px 24px 24px;
-  }
-  .shell-section-heading {
-    margin-bottom: 12px;
-  }
-  .shell-section-heading h2 {
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .shell-section-heading p {
-    font-size: 13px;
-    margin-top: 2px;
-  }
-  .shell-tool-list {
+  .shell-page-frame {
     display: flex;
+    flex: 1;
     flex-direction: column;
-    gap: 0;
+    min-height: 0;
   }
-  .shell-tool-row {
-    display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) 16px;
-    gap: 14px;
+  .shell-page {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    animation: shell-page-in 200ms var(--ease-feedback) backwards;
+  }
+  .shell-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 24px 56px;
+  }
+  .shell-header {
+    display: flex;
     align-items: center;
-    min-height: 66px;
-    padding: 12px;
-    border: 0;
+    gap: 10px;
+    flex: none;
+    min-height: 56px;
+    padding: 8px 24px;
     border-bottom: 1px solid var(--color-rim-subtle);
-    border-radius: 0;
-    background: transparent;
   }
-  .shell-tool-row:last-child {
-    border-bottom-color: transparent;
-  }
-  .shell-tool-row:hover {
-    background: var(--color-panel);
-  }
-  .shell-tool-row[aria-pressed="true"] {
-    background: var(--color-selection);
-    border-radius: var(--radius-control);
-  }
-  .shell-tool-row:active {
-    background: var(--color-hover);
-  }
-  .shell-tool-copy {
-    display: grid;
-    grid-template-columns: minmax(100px, 0.6fr) minmax(0, 1fr);
-    gap: 2px 16px;
-    align-items: baseline;
-  }
-  .shell-tool-name {
-    font-size: 14px;
+  .shell-header h1,
+  .shell-dialog-title {
+    font-size: 17px;
+    line-height: 24px;
     font-weight: 600;
+    letter-spacing: -0.015em;
   }
-  .shell-tool-version {
-    font-size: 13px;
-    color: var(--color-fg);
-    overflow-wrap: anywhere;
+  .shell-header h1:focus-visible {
+    outline: none;
   }
-  .shell-tool-meta {
-    grid-column: 2;
-    font-size: 13px;
-    line-height: 18px;
+  .shell-header-actions {
+    margin-left: auto;
+  }
+  .shell-section-title {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--color-dim);
   }
-  .shell-tool-meta[data-attention="true"] {
-    color: var(--color-warn);
+  .shell-panel {
+    background: var(--color-canvas);
+    border: 1px solid var(--color-rim-subtle);
+    border-radius: var(--radius-panel);
+    box-shadow: 0 1px 2px rgb(24 24 27 / 0.04);
   }
-  .shell-tool-mark {
+  :root:not(.light) .shell-panel {
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  }
+  .shell-panel-row {
+    border-bottom: 1px solid var(--color-rim-subtle);
+  }
+  .shell-panel-row:last-child {
+    border-bottom: 0;
+  }
+  .shell-footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: none;
+    min-height: 28px;
+    padding: 4px 24px;
+    border-top: 1px solid var(--color-rim-subtle);
+    background: var(--color-panel);
+    color: var(--color-dim);
+    font-size: 12px;
+    line-height: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Tools page. */
+  .shell-tools-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .shell-search {
+    flex: 1 1 160px;
+    max-width: 300px;
+    margin-right: auto;
+  }
+  .shell-tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 12px;
+  }
+  .shell-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background-image: radial-gradient(
+      ellipse 72% 118px at 100% 0,
+      color-mix(in srgb, var(--tool) var(--tool-glow), transparent),
+      transparent
+    );
+  }
+  .shell-card > :not(.shell-card-mark) {
+    position: relative;
+  }
+  .shell-card-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 56px;
+    padding: 10px 12px;
+    border-radius: 11px 11px 0 0;
+    background: transparent;
+    text-align: left;
+    transition: background-color var(--duration-feedback) linear;
+  }
+  .shell-card-head:hover {
+    background: color-mix(in srgb, var(--tool) 9%, transparent);
+  }
+  .shell-card-name {
+    display: block;
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .shell-card-chevron {
+    display: inline-flex;
+    color: var(--color-dim);
+    transform: rotate(-90deg);
+    transition: transform 160ms var(--ease-feedback);
+  }
+  .shell-card-head:hover .shell-card-chevron {
+    transform: rotate(-90deg) translateY(2px);
+  }
+  /* Stays in the header, so the silhouette never runs behind a version or a button. */
+  .shell-card-mark {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 56px;
+    overflow: hidden;
+    border-radius: 11px 11px 0 0;
+    pointer-events: none;
+  }
+  .shell-card-mark::after {
+    content: "";
+    position: absolute;
+    top: -14px;
+    right: 26px;
+    width: 84px;
+    height: 84px;
+    background: var(--tool);
+    opacity: 0.2;
+    -webkit-mask: var(--tool-logo) center / contain no-repeat;
+    mask: var(--tool-logo) center / contain no-repeat;
+  }
+  /* The hexagon only reads as a hexagon when most of it fits in the header. */
+  [data-tool="node"] > .shell-card-mark::after {
+    top: -3px;
+    right: 36px;
+    width: 62px;
+    height: 62px;
+  }
+  [data-tool="java"] { --tool: #e0364c; }
+  [data-tool="node"] { --tool: #46a341; }
+  [data-tool="python"] { --tool: #f2c230; }
+  [data-tool="go"] { --tool: #12b5d9; }
+  [data-tool="flutter"] { --tool: #3b7bea; }
+  [data-tool="git"] { --tool: #f4722b; }
+  :root {
+    --tool-glow: 20%;
+  }
+  :root.light {
+    --tool-glow: 16%;
+  }
+  .shell-card-rows {
+    padding: 6px;
+    border-top: 1px solid var(--color-rim-subtle);
+  }
+  .shell-install-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 6px;
+    border-radius: var(--radius-control);
+  }
+  .shell-install-row[data-effective="true"] {
+    background: var(--color-hover);
+  }
+  .shell-install-row[data-arrived="true"] {
+    --arrive: var(--tool);
+    animation: shell-arrived 1100ms 130ms ease-out backwards;
+  }
+  .shell-install-version {
+    font-variant-numeric: tabular-nums;
+  }
+  .shell-install-row[data-effective="true"] .shell-install-version {
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 600;
+  }
+  .shell-in-use {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-    color: var(--color-muted);
-    font-size: 13px;
-    font-weight: 600;
+    gap: 6px;
+    flex: none;
+    min-height: 28px;
+    padding: 0 8px;
+    color: var(--color-fg);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .shell-in-use-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--tool);
+  }
+  .shell-pill {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .shell-pill-warn {
+    background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+    color: var(--color-warn);
+  }
+  .shell-pill-ok {
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    color: var(--color-accent);
+  }
+  .shell-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 170ms var(--ease-exit);
+  }
+  .shell-collapse[data-open="true"] {
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 280ms var(--ease-feedback);
+  }
+  .shell-collapse > div {
+    min-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 90ms linear;
+  }
+  .shell-collapse[data-open="true"] > div {
+    opacity: 1;
+    transition: opacity 180ms 50ms linear;
   }
   .shell-sdk-inventory {
     display: grid;
@@ -352,74 +626,134 @@
   .shell-sdk-row dd {
     min-width: 0;
   }
-  .shell-detail {
-    width: 368px;
+
+  /* The tool sheet fills the workspace and leaves the sidebar usable, so another tool opens from it directly. */
+  .shell-tool-sheet {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
     background: var(--color-panel);
   }
-  .shell-resolution {
-    display: grid;
+  .shell-tool-sheet:focus-visible {
+    outline: none;
+  }
+  .shell-tool-sheet[data-state="open"] {
+    animation: shell-sheet-in 240ms var(--ease-feedback) both;
+  }
+  .shell-tool-sheet[data-state="closed"] {
+    animation: shell-sheet-out 150ms var(--ease-exit) both;
+    pointer-events: none;
+  }
+  .shell-sheet-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .shell-sheet-head {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
     gap: 12px;
-    padding: 14px;
-    border: 1px solid var(--color-rim-subtle);
-    border-radius: var(--radius-panel);
-    background: var(--color-canvas);
+    padding: 16px 16px 12px 24px;
+    background:
+      radial-gradient(
+        ellipse 60% 150px at 100% 0,
+        color-mix(in srgb, var(--tool) var(--tool-glow), transparent),
+        transparent
+      ),
+      var(--color-panel);
+    border-bottom: 1px solid var(--color-rim-subtle);
   }
-  .shell-resolution h3,
-  .shell-detail-heading {
-    font-size: 12px;
-    color: var(--color-dim);
+  .shell-sheet-head > :not(.shell-card-mark) {
+    position: relative;
   }
-  .shell-resolution p {
-    overflow-wrap: anywhere;
+  .shell-sheet-head > .shell-card-mark {
+    inset: 0;
+    height: auto;
+    border-radius: 0;
   }
-  .shell-footer {
-    min-height: 30px;
-    font-size: 12px;
-    padding: 5px 24px;
-    gap: 16px;
-    background: var(--color-panel);
+  .shell-sheet-head > .shell-card-mark::after {
+    top: -38px;
+    right: 150px;
+    width: 150px;
+    height: 150px;
+  }
+  .shell-sheet-title {
+    font-size: 28px;
+    line-height: 34px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .shell-sheet-title:focus-visible {
+    outline: none;
+  }
+  .shell-sheet-body {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 16px 24px 56px;
+  }
+  .shell-stat-value {
+    font-size: 17px;
+    line-height: 24px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
     font-variant-numeric: tabular-nums;
   }
-  .shell-settings {
-    max-width: 960px;
-    width: 100%;
-    padding: 24px;
-  }
-  .shell-settings section {
-    padding: 20px;
-    border: 1px solid var(--color-rim-subtle);
-    border-radius: var(--radius-panel);
-    background: var(--color-panel);
+  .shell-banner {
+    display: flex;
+    align-items: center;
     gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid;
+    border-radius: var(--radius-panel);
   }
-  .shell-settings input {
-    min-width: 0;
-    background: var(--color-field);
+  .shell-banner[data-tone="ok"] {
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+  .shell-banner[data-tone="warn"] {
+    background: color-mix(in srgb, var(--color-warn) 10%, transparent);
+    border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
+  }
+  .shell-banner-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--color-rim-subtle);
+    border-radius: var(--radius-control);
+    background: var(--color-canvas);
+  }
+  .shell-dialog-footer {
+    display: flex;
+    gap: 8px;
+    flex: none;
+    padding: 16px 20px;
+    border-top: 1px solid var(--color-rim-subtle);
+    background: var(--color-panel);
+  }
+  .shell-dialog-footer button {
+    flex: 1 1 0;
     min-height: 36px;
   }
-  .shell-settings h2 {
-    font-size: 16px;
+
+  /* Settings and Environment. */
+  .shell-setting-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
   }
-  .shell-settings p {
-    font-size: 13px;
-  }
-  .shell-inventory .text-xs {
-    font-size: 13px;
-    line-height: 1.5;
-  }
-  .shell-skip-link {
-    position: fixed;
-    top: 8px;
-    left: 12px;
-    z-index: 100;
-    padding: 8px 16px;
+  .shell-settings input,
+  .shell-settings select {
+    min-height: 32px;
     border-radius: var(--radius-control);
-    background: var(--color-fg);
-    color: var(--color-canvas);
-    transform: translateY(-160%);
-  }
-  .shell-skip-link:focus {
-    transform: translateY(0);
   }
   .shell-env-tabs {
     overflow-x: auto;
@@ -428,134 +762,62 @@
     flex-shrink: 0;
   }
 
+  @keyframes shell-page-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+  @keyframes shell-sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+  @keyframes shell-sheet-out {
+    to {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  @keyframes shell-arrived {
+    from {
+      background: color-mix(in srgb, var(--arrive) 18%, transparent);
+    }
+  }
+
   @container (min-width: 850px) {
     .shell-sdk-inventory {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       align-items: start;
     }
   }
-  @media (max-width: 1100px) {
-    .shell-header {
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .shell-header-actions {
-      flex-wrap: wrap;
-    }
-    .shell-header-status {
-      max-width: none;
-    }
-    .shell-search {
-      max-width: none;
-    }
-    .shell-tool-copy {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .shell-tool-meta {
-      grid-column: 1;
-    }
-  }
-  @media (max-width: 900px) {
-    .shell-detail {
-      width: 100%;
-      flex: 1;
-      border-left: 0;
-      background: var(--color-canvas);
-    }
-    .shell-tool-workspace:has(.shell-detail) .shell-inventory {
-      display: none;
-    }
-  }
+  /* The native window never gets this narrow; a browser preview still has to stay usable. */
   @media (max-width: 700px) {
     .desktop-workbench {
       flex-direction: column;
-      padding-right: 0;
     }
     .shell-nav {
       width: 100%;
-      padding: 12px;
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-    .shell-brand {
-      width: 100%;
-      padding: 0 4px 8px;
-      font-size: 16px;
-    }
-    .shell-brand img {
-      width: 24px;
-      height: 24px;
-    }
-    .shell-nav-link {
-      flex: 1 1 auto;
-      justify-content: center;
-      padding: 8px 6px;
-      gap: 6px;
-      font-size: 12px;
-      min-width: 0;
-    }
-    .shell-nav-link svg,
-    .shell-platform {
-      display: none;
+      max-height: 40dvh;
+      border-right: 0;
+      border-bottom: 1px solid var(--color-rim-subtle);
     }
     .shell-header {
-      padding: 8px 16px 12px;
-      min-height: 0;
-    }
-    .shell-header h1 {
-      font-size: 18px;
-    }
-    .shell-header-tools {
-      width: 100%;
       flex-wrap: wrap;
-      gap: 8px;
+      padding: 8px 16px;
     }
-    .shell-header-status {
-      flex: 1;
-    }
-    .shell-header-status small {
-      display: none;
-    }
-    .shell-sheet {
-      border-radius: 0;
-      border-left: 0;
-      border-right: 0;
-      border-bottom: 0;
-      margin: 0;
-    }
-    .shell-command-bar {
-      padding: 12px 16px;
-    }
-    .shell-command-bar > span[aria-hidden] {
-      display: none;
-    }
-    .shell-search {
-      flex-basis: 100%;
-      order: -1;
-    }
-    .shell-inventory,
-    .shell-settings {
-      padding: 16px;
-    }
-    .shell-tool-row {
-      gap: 8px;
-      padding: 10px 4px;
+    .shell-scroll {
+      padding: 0 16px 32px;
     }
     .shell-sdk-row {
       grid-template-columns: minmax(0, 1fr);
       gap: 0;
     }
     .shell-footer {
-      padding: 6px 16px;
       flex-wrap: wrap;
       gap: 2px 12px;
-    }
-    .shell-footer span {
-      white-space: normal;
-    }
-    .shell-footer span:last-child {
-      margin-left: 0;
+      padding: 4px 16px;
     }
   }
   @keyframes modal-backdrop-in {
@@ -597,6 +859,12 @@
     }
   }
 
+  .motion-modal-backdrop {
+    background: rgb(0 0 0 / 0.6);
+  }
+  .light .motion-modal-backdrop {
+    background: rgb(0 0 0 / 0.35);
+  }
   .motion-modal-backdrop[data-state="open"] {
     animation: modal-backdrop-in 140ms ease-out both;
   }

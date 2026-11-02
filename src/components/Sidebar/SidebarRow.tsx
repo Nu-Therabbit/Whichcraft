@@ -89,7 +89,7 @@ export function SidebarRow({
       <span
         className={cn(
           "text-xs font-semibold w-4 h-4 rounded flex items-center justify-center shrink-0 mr-4",
-          v.scope === "User" && "bg-accent/15 text-accent",
+          v.scope === "User" && "bg-accent/10 text-accent",
           v.scope === "System" && "bg-violet/15 text-violet",
           v.scope === "OtherUser" && "bg-warn/15 text-warn",
         )}

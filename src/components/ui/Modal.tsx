@@ -121,7 +121,7 @@ export function Modal({
     >
       {/* Backdrop */}
       <div
-        className="motion-modal-backdrop absolute inset-0 bg-canvas/70 backdrop-blur-sm"
+        className="motion-modal-backdrop absolute inset-0"
         data-state={presence.state}
         onClick={onClose}
         aria-hidden="true"
@@ -132,7 +132,7 @@ export function Modal({
         ref={panelRef}
         tabIndex={-1}
         className={cn(
-          "relative z-10 w-full flex flex-col bg-panel border border-rim rounded-lg shadow-xl focus:outline-none",
+          "relative z-10 w-full flex flex-col bg-canvas border border-rim rounded-panel shadow-xl focus:outline-none",
           "max-h-[85vh] overflow-hidden",
           "motion-modal-panel",
           sizeCls[size],

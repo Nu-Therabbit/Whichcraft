@@ -16,5 +16,22 @@ export function applyThemeToDocument(theme: Theme): void {
     themeColor.name = "theme-color";
     document.head.appendChild(themeColor);
   }
-  themeColor.content = theme === "light" ? "#f3f3f3" : "#191919";
+  themeColor.content = theme === "light" ? "#fafafa" : "#0c0c0f";
+}
+
+export const ACCENTS = ["emerald", "blue", "plum", "pink", "graphite"] as const;
+export type Accent = (typeof ACCENTS)[number];
+
+export function getInitialAccent(): Accent {
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem("whichcraft-accent");
+  } catch {
+    // Blocked storage only means the choice is not remembered.
+  }
+  return ACCENTS.find((accent) => accent === stored) ?? "emerald";
+}
+
+export function applyAccentToDocument(accent: Accent): void {
+  document.documentElement.dataset.accent = accent;
 }

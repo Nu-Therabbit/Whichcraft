@@ -63,7 +63,7 @@ describe("desktop shell read journey", () => {
       expect(listToolInstallations.mock.calls.length).toBeGreaterThan(callsBeforeRescan),
     );
 
-    await user.click(await screen.findByRole("button", { name: /Java/i }));
+    await user.click(await screen.findByRole("button", { name: /^Java,/i }));
 
     const details = await screen.findByRole("complementary", { name: /installation details/i });
     expect(details).toHaveTextContent(/Selection/i);

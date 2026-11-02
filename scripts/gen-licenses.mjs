@@ -26,6 +26,9 @@ const rawNpm = await new Promise((resolve, reject) => {
   );
 });
 
+// Copied into src/assets/tool-logos rather than installed, so the checker cannot see it.
+const VENDORED = [{ name: "devicon", version: "2.16.0", license: "MIT", repository: "https://github.com/devicons/devicon" }];
+
 const npm = Object.entries(rawNpm)
   .map(([nameVer, info]) => {
     const atIdx = nameVer.lastIndexOf("@");
@@ -38,6 +41,7 @@ const npm = Object.entries(rawNpm)
       repository: info.repository ?? "",
     };
   })
+  .concat(VENDORED)
   .sort((a, b) => a.name.localeCompare(b.name));
 
 // ── Cargo ──────────────────────────────────────────────────────────────────

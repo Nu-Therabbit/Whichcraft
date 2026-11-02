@@ -5,6 +5,8 @@ import { Button } from "../ui/Button";
 import { PlanDiffList } from "./PlanDiffList";
 
 interface Props {
+  /** Inside a dialog, which is already the frame. */
+  bare?: boolean;
   plan: UninstallPlan | null;
   outcome: UninstallOutcome | null;
   busy: boolean;
@@ -63,6 +65,7 @@ function OutcomeLine({ outcome, onOpenFolder }: { outcome: UninstallOutcome; onO
 
 /** Shows how an installation would be removed and what blocks it, then removes it on confirm. */
 export function UninstallSection({
+  bare,
   plan,
   outcome,
   busy,
@@ -96,7 +99,7 @@ export function UninstallSection({
   const missingReplacement = needsSwitch && (!replacement || !switchShown);
 
   return (
-    <section className="border border-danger/40 rounded-md p-4 flex flex-col gap-3 text-sm">
+    <section className={`flex flex-col gap-3 text-sm ${bare ? "" : "border border-danger/40 rounded-md p-4"}`}>
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-semibold">
           {plan

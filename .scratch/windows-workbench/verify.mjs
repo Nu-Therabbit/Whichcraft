@@ -24,7 +24,7 @@ try {
     await page.getByRole('button', { name: /Java.*21.0.8/ }).waitFor();
     await audit('tools');
     await page.getByRole('searchbox').fill('nonexistent-tool');
-    assert.equal(await page.locator('.shell-tool-row').count(), 0);
+    assert.equal(await page.locator('.shell-card-head').count(), 0);
     await page.screenshot({ path: `${out}/${theme}-search-empty.png` });
     await page.getByRole('searchbox').fill('');
     await page.getByRole('button', { name: /^Rescan$/ }).click();

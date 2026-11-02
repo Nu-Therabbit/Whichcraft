@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ProfileToolPin, ToolProfile } from "../../types";
@@ -33,6 +33,31 @@ describe("ProfilesSection", () => {
     expect(screen.queryByText(/currently active/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
     expect(h.onApply).toHaveBeenCalledWith(android);
+  });
+
+  it("asks before deleting a profile and offers nothing to apply when it already matches", async () => {
+    const h = handlers();
+    render(
+      <ProfilesSection
+        profiles={[{ profile: android, matchesEffective: true, unavailable: [] }]}
+        current={[]}
+        missing={null}
+        busy={false}
+        {...h}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Apply" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(h.onDelete).not.toHaveBeenCalled();
+
+    const dialog = await screen.findByRole("dialog", { name: /delete profile android work/i });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(h.onDelete).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    const again = await screen.findByRole("dialog", { name: /delete profile android work/i });
+    await userEvent.click(within(again).getByRole("button", { name: "Delete" }));
+    expect(h.onDelete).toHaveBeenCalledWith("a");
   });
 
   it("offers to install what is missing with its size, then apply", async () => {

@@ -6,11 +6,12 @@ import { AppServicesProvider } from "./composition/AppServicesContext";
 import { WriteCoordinatorProvider } from "./coordination/WriteCoordinatorContext";
 import { ErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { UndoProvider } from "./contexts/UndoContext";
-import { applyThemeToDocument, getInitialTheme } from "./lib/themeDocument";
+import { applyAccentToDocument, applyThemeToDocument, getInitialAccent, getInitialTheme } from "./lib/themeDocument";
 import "./i18n";
 import "./index.css";
 
 applyThemeToDocument(getInitialTheme());
+applyAccentToDocument(getInitialAccent());
 
 const appPresentation = freezeAppPresentation(
   window.location.search,

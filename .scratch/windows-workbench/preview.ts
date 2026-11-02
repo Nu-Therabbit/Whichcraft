@@ -34,5 +34,14 @@ api.getMsvcInventory = async () => ({ instances: [{ displayName: "Visual Studio 
 api.getPythonLauncherInfo = async () => ({ launcherLines: [{ tag: "3.13", path: inventory.python[0].root + "\\python.exe", isDefault: true }], launcherInstalled: true, storeStub: null, note: "Python Launcher resolves independently of PATH." });
 api.planToolApply = async (tool, root) => ({ planId: "visual-plan", tool, selected: inventory[tool].find((i) => i.root === root)!, requiresUac: false, effectiveAfterUserOnly: true, userDiffs: [{ name: tool === "java" ? "JAVA_HOME" : "PATH", scope: "User", before: inventory[tool][0].root, after: root, valueKind: "String" }], systemDiffs: [], warnings: [], limitationNotice: "Already open programs keep their environment. Open a new terminal to use this installation." });
 api.shellCheck = async (tool) => ({ tool, shell: "windows_terminal", effectivePath: inventory[tool][0]?.root ?? null, shellPath: inventory[tool][0]?.root ?? null, matches: true });
+const pin = (tool: ToolKind, vendor: string, version: string) => ({ tool, vendor, version });
+const demoProfiles = [
+  { id: "android", name: "Android work", tools: [pin("java", "Eclipse Adoptium", "17.0.16"), pin("node", "Node.js", "20.19.4")] },
+  { id: "web", name: "Web apps", tools: [pin("node", "Node.js", "22.18.0"), pin("python", "Python Software Foundation", "3.13.7")] },
+  { id: "client", name: "Old client", tools: [pin("java", "Eclipse Adoptium", "11.0.28"), pin("go", "Go", "1.25.0")] },
+];
+api.listProfiles = async () => structuredClone(demoProfiles);
+api.profileStatus = async (profile) => ({ profile, matchesEffective: profile.id === "web", unavailable: profile.id === "client" ? [profile.tools[0]] : [] });
+api.planUninstall = async (tool, root) => ({ installation: inventory[tool].find((i) => i.root === root)!, method: { kind: "recycleFolder" }, usage: { processes: [], folderLocked: false }, needsReplacement: false, replacements: [], affectedProfiles: [], gradleHint: false, noConfirmation: false });
 configureProductionServices(splitWhichcraftApi(api));
 await import("../../src/main");

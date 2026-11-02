@@ -2089,6 +2089,12 @@
       "repository": "https://github.com/lovell/detect-libc"
     },
     {
+      "name": "devicon",
+      "version": "2.16.0",
+      "license": "MIT",
+      "repository": "https://github.com/devicons/devicon"
+    },
+    {
       "name": "diff",
       "version": "9.0.0",
       "license": "BSD-3-Clause",

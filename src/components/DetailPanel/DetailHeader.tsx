@@ -58,7 +58,7 @@ export function DetailHeader({
           </>
         )}
         {isStagedSet && !dirty && (
-          <span className="text-xs font-semibold px-2 py-1 rounded bg-accent/15 text-accent shrink-0">
+          <span className="text-xs font-semibold px-2 py-1 rounded bg-accent/10 text-accent shrink-0">
             {t("detail.staged_badge")}
           </span>
         )}

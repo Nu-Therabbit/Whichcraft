@@ -155,7 +155,7 @@ describe("desktop shell settings and install", () => {
     renderDesktopShell(services);
 
     const user = userEvent.setup();
-    await screen.findByRole("button", { name: /Java/i });
+    await screen.findByRole("button", { name: /^Java,/i });
     await waitFor(() => expect(getWhichcraftSettings).toHaveBeenCalled());
     await user.click(screen.getByRole("link", { name: /^settings/i }));
     await screen.findByTestId("shell-settings-ready");
@@ -235,7 +235,7 @@ describe("desktop shell settings and install", () => {
     renderDesktopShell(services);
 
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: /Node\.js/i }));
+    await user.click(await screen.findByRole("button", { name: /^Node\.js,/i }));
     await waitFor(() => expect(listRemoteVersions).toHaveBeenCalledTimes(1));
     const installSection = await screen.findByRole("region", { name: /install node/i });
     await user.click(within(installSection).getByRole("button", { name: "22.0.1" }));
@@ -293,7 +293,7 @@ describe("desktop shell settings and install", () => {
     renderDesktopShell(services);
 
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: /Node\.js/i }));
+    await user.click(await screen.findByRole("button", { name: /^Node\.js,/i }));
     await waitFor(() => expect(listRemoteVersions).toHaveBeenCalled());
     await user.click(screen.getByRole("button", { name: /22\.0\.1/ }));
     await user.click(screen.getByRole("button", { name: /^install$/i }));
@@ -347,7 +347,7 @@ describe("desktop shell settings and install", () => {
     renderDesktopShell(services);
 
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: /Node\.js/i }));
+    await user.click(await screen.findByRole("button", { name: /^Node\.js,/i }));
     await waitFor(() => expect(listRemoteVersions).toHaveBeenCalledTimes(1));
     await user.click(screen.getByRole("button", { name: /22\.0\.1/ }));
     await user.click(screen.getByRole("button", { name: /^install$/i }));
@@ -402,7 +402,7 @@ describe("desktop shell settings and install", () => {
     renderDesktopShell(services);
 
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: /Node\.js/i }));
+    await user.click(await screen.findByRole("button", { name: /^Node\.js,/i }));
     await user.click(await screen.findByRole("button", { name: /22\.0\.1/ }));
     await user.click(screen.getByRole("button", { name: /^install$/i }));
 
@@ -437,7 +437,7 @@ describe("desktop shell settings and install", () => {
     renderDesktopShell(services);
 
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: /Git/i }));
+    await user.click(await screen.findByRole("button", { name: /^Git,/i }));
     expect(screen.getByText(/switch-only/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^install$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /check for updates/i })).not.toBeInTheDocument();

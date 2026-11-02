@@ -54,6 +54,25 @@ export function summarizeInventory(
   };
 }
 
+export type ToolScanSlice = {
+  loading: boolean;
+  error: string | null;
+  installations: ToolInstallationView[];
+  boundRequestId: number;
+};
+
+/** What a tool's card shows. Only a first scan has nothing to show: a rescan keeps the last result on screen until the new one arrives. */
+export function scanHealth(slice: ToolScanSlice): ReturnType<typeof toolHealth> {
+  if (slice.error !== null) return "error";
+  if (slice.boundRequestId === 0 && (slice.loading || slice.installations.length === 0)) return "loading";
+  return toolHealth({ ...slice, loading: false });
+}
+
+/** Sorted so a tool's versions read in the same order on its card and on its sheet. */
+export function byVersion(installations: ToolInstallationView[]): ToolInstallationView[] {
+  return [...installations].sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true }));
+}
+
 /** Status dot of one tool tile: a failed or empty scan is never shown as healthy. */
 export function toolHealth(slice: {
   loading: boolean;
