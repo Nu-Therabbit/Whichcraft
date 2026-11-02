@@ -1,14 +1,34 @@
-import i18n from "i18next";
+import i18n, { type BackendModule } from "i18next";
 import { initReactI18next } from "react-i18next";
 import en from "./locales/en.json";
-import ja from "./locales/ja.json";
-import ko from "./locales/ko.json";
-import ru from "./locales/ru.json";
-import vi from "./locales/vi.json";
-import zhCN from "./locales/zh-CN.json";
 
 const STORAGE_KEY = "whichcraft-language";
 const SUPPORTED_LANGUAGES = ["en", "ja", "zh-CN", "ru", "ko", "vi"] as const;
+
+// English is the fallback, so it ships in the main bundle. The rest load when chosen.
+const LOCALE_LOADERS: Record<string, () => Promise<{ default: object }>> = {
+  ja: () => import("./locales/ja.json"),
+  "zh-CN": () => import("./locales/zh-CN.json"),
+  ru: () => import("./locales/ru.json"),
+  ko: () => import("./locales/ko.json"),
+  vi: () => import("./locales/vi.json"),
+};
+
+const localeBackend: BackendModule = {
+  type: "backend",
+  init() {},
+  read(language, _namespace, callback) {
+    const load = LOCALE_LOADERS[language];
+    if (!load) {
+      callback(null, {});
+      return;
+    }
+    load().then(
+      (locale) => callback(null, locale.default as never),
+      (error) => callback(error, false),
+    );
+  },
+};
 
 function getStoredLanguage() {
   try {
@@ -39,18 +59,17 @@ i18n.on("languageChanged", (language) => {
   document.documentElement.lang = language;
 });
 
-i18n.use(initReactI18next).init({
-  resources: {
-    en: { translation: en },
-    ja: { translation: ja },
-    "zh-CN": { translation: zhCN },
-    ru: { translation: ru },
-    ko: { translation: ko },
-    vi: { translation: vi },
-  },
-  lng,
-  fallbackLng: "en",
-  interpolation: { escapeValue: false },
-});
+/** Settled once the starting language is in place, so the first render is not in English first. */
+export const i18nReady = i18n
+  .use(initReactI18next)
+  .use(localeBackend)
+  .init({
+    resources: { en: { translation: en } },
+    partialBundledLanguages: true,
+    lng,
+    fallbackLng: "en",
+    interpolation: { escapeValue: false },
+    react: { useSuspense: false },
+  });
 
 export default i18n;

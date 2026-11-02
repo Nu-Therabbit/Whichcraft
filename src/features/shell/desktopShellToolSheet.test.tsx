@@ -57,7 +57,7 @@ describe("desktop shell tool sheet", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /^Java,/ }));
     await sheet();
-    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Java" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "Java" })).toHaveFocus());
 
     await user.keyboard("{Escape}");
     await noSheet();
@@ -88,7 +88,7 @@ describe("desktop shell tool sheet", () => {
     await screen.findByTestId("shell-settings-ready");
     await user.click(screen.getByRole("button", { name: "Java" }));
     const details = await sheet();
-    expect(within(details).getByRole("heading", { level: 2, name: "Java" })).toBeInTheDocument();
+    expect(within(details).getByRole("heading", { level: 1, name: "Java" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Java" })).toHaveAttribute("aria-current", "true");
   });
 

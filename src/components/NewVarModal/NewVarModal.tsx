@@ -121,7 +121,7 @@ export function NewVarModal({
           {t("new_var.scope")}
         </p>
         <SegmentedControl
-          aria-label="Variable scope"
+          aria-label={t("ui.variable_scope")}
           options={[
             {
               value: personalScope,
@@ -166,12 +166,12 @@ export function NewVarModal({
         )}
       </div>
 
-      <div className="flex gap-2 justify-end pt-1">
-        <Button variant="ghost" size="md" type="button" onClick={onClose}>
-          {t("new_var.cancel")}
-        </Button>
+      <div className="flex gap-2 pt-1">
         <Button variant="primary" size="md" type="submit" disabled={!canSubmit}>
           {t("new_var.stage")}
+        </Button>
+        <Button variant="ghost" size="md" type="button" onClick={onClose}>
+          {t("new_var.cancel")}
         </Button>
       </div>
     </form>

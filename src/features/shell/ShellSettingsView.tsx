@@ -69,14 +69,14 @@ export function ShellSettingsView() {
 
   if (!settings) {
     return (
-      <main className="shell-scroll">
+      <div className="shell-scroll">
         <p className="mt-3 text-dim">{t("desktop_shell.settings_loading")}</p>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="shell-scroll shell-settings" data-testid="shell-settings-ready">
+    <div className="shell-scroll shell-settings" data-testid="shell-settings-ready">
       <p className="my-3 text-muted">{t("desktop_shell.settings_intro")}</p>
       <Appearance />
       <ToolsSettings
@@ -84,6 +84,6 @@ export function ShellSettingsView() {
         busy={busy}
         onSave={(next) => dispatch({ type: "saveSettings", settings: next })}
       />
-    </main>
+    </div>
   );
 }

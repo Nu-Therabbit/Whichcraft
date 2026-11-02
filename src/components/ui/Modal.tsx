@@ -1,3 +1,4 @@
+import { useI18n } from "../../hooks/useI18n";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
@@ -53,6 +54,7 @@ export function Modal({
   const presence = usePresence(open);
   const panelRef = useRef<HTMLDivElement>(null);
 
+  const { t } = useI18n();
   const returnFocusRef = useRef<Element | null>(null);
 
   // Layout effects run before a child's own effect, which may focus its first field.
@@ -144,7 +146,7 @@ export function Modal({
             <h2 id={titleId} className="text-base font-semibold text-fg">
               {title}
             </h2>
-            <IconButton aria-label="Close" icon="x" onClick={onClose} />
+            <IconButton aria-label={t("ui.close")} icon="x" onClick={onClose} />
           </div>
         )}
         <div className={flex ? "flex-1 min-h-0 flex flex-col" : "flex-1 overflow-y-auto"}>

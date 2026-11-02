@@ -672,11 +672,9 @@ html.light[data-accent="graphite"] { --color-accent: #27272a; --color-accent-hi:
   .shell-collapse {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 170ms var(--ease-exit);
   }
   .shell-collapse[data-open="true"] {
     grid-template-rows: 1fr;
-    transition: grid-template-rows 280ms var(--ease-feedback);
   }
   .shell-collapse > div {
     min-height: 0;
@@ -839,6 +837,10 @@ html.light[data-accent="graphite"] { --color-accent: #27272a; --color-accent-hi:
   .shell-settings select {
     min-height: 32px;
     border-radius: var(--radius-control);
+  }
+  /* A short window scrolls the page rather than squeezing the list to a few rows. */
+  .shell-env-panes {
+    min-height: 380px;
   }
   .shell-env-tabs {
     overflow-x: auto;
@@ -1057,5 +1059,10 @@ html.light[data-accent="graphite"] { --color-accent: #27272a; --color-accent-hi:
   .desktop-workbench *::after {
     animation-duration: 0.01ms;
     transition-duration: 0.01ms;
+  }
+  /* A colour fade moves nothing, and it is how a row says it just became effective. */
+  .desktop-workbench .shell-card-foot[data-arrived="true"],
+  .desktop-workbench .shell-install-row[data-arrived="true"] {
+    animation-duration: 1100ms;
   }
 }

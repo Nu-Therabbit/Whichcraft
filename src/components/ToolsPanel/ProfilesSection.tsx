@@ -27,9 +27,12 @@ const pinKey = (p: ProfileToolPin) => `${p.tool}|${p.vendor}|${p.version}`;
 
 function PinLabel({ pin }: { pin: ProfileToolPin }) {
   const { t } = useI18n();
+  const tool = t(`tools.kind.${pin.tool}`);
+  // Some vendors already carry the tool's name: Node.js, Go, Python Software Foundation.
+  const namesTool = pin.vendor.toLowerCase().startsWith(tool.toLowerCase());
   return (
     <>
-      {t(`tools.kind.${pin.tool}`)} {pin.vendor} {pin.version}
+      {namesTool ? pin.vendor : `${tool} ${pin.vendor}`} {pin.version}
     </>
   );
 }
@@ -160,7 +163,7 @@ export function ProfilesSection({
       )}
 
       <div className="shell-panel mt-3 p-3 flex flex-col gap-2">
-        <h3 className="font-semibold">{t("tools.profiles.new_title")}</h3>
+        <h2 className="font-semibold">{t("tools.profiles.new_title")}</h2>
         <p className="text-xs text-muted">{t("tools.profiles.new_hint")}</p>
         {current.map((pin) => (
           <label key={pinKey(pin)} className="flex items-center gap-2 text-xs">

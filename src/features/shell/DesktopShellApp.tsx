@@ -203,7 +203,7 @@ function DesktopShellAppInner() {
         />
 
         <div className="shell-main">
-          <section id="shell-workspace" tabIndex={-1} className="shell-sheet" aria-label={pageTitle}>
+          <main id="shell-workspace" tabIndex={-1} className="shell-sheet" aria-label={pageTitle}>
             <ShellRegistryErrorBanner />
             <ShellAppRecoveryBanner />
 
@@ -267,7 +267,7 @@ function DesktopShellAppInner() {
                 notice={appliedNotice}
               />
             </div>
-          </section>
+          </main>
 
           <footer aria-live="polite" aria-atomic="true" className="shell-footer">
             <span role="status" className="inline-flex shrink-0 items-center gap-1.5" title={t(thisPc.titleKey)}>

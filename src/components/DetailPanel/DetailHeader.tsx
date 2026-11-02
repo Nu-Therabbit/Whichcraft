@@ -51,7 +51,7 @@ export function DetailHeader({
                 if (services) void services.platform.restartAsAdmin();
               }}
               className="text-xs text-accent hover:text-accent-hi px-2 py-1 rounded hover:bg-accent/10 transition-colors shrink-0"
-              title="Restart as administrator to edit system variables"
+              title={t("ui.restart_admin_hint")}
             >
               {t("detail.restart_admin")}
             </button>

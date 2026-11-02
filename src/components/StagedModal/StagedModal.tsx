@@ -1,3 +1,4 @@
+import { scopeLabel } from "../../lib/scopeLabel";
 import { useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
 import { cn } from "../../lib/cn";
@@ -123,7 +124,7 @@ export function StagedModal({
             >
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-mono font-semibold text-fg">{entry.name}</span>
-                <span className="text-xs">{entry.scope}</span>
+                <span className="text-xs">{scopeLabel(t, entry.scope)}</span>
                 <span className="ml-auto text-xs font-semibold uppercase tracking-wide">
                   {t(`staged.kind_${entry.kind}`)}
                 </span>
@@ -180,6 +181,14 @@ export function StagedModal({
           </p>
         )}
         <div className="flex items-center justify-between gap-2">
+          <div className="flex gap-2">
+            <Button variant="primary" size="md" onClick={() => onApply(true)} disabled={busy}>
+              {busy ? t("staged.applying") : t("staged.apply", { count: diff.length })}
+            </Button>
+            <Button variant="ghost" size="md" onClick={onClose} disabled={busy}>
+              {t("staged.cancel")}
+            </Button>
+          </div>
           <Button
             variant="ghost"
             size="md"
@@ -192,14 +201,6 @@ export function StagedModal({
           >
             {t("header.discard_all")}
           </Button>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="md" onClick={onClose} disabled={busy}>
-              {t("staged.cancel")}
-            </Button>
-            <Button variant="primary" size="md" onClick={() => onApply(true)} disabled={busy}>
-              {busy ? t("staged.applying") : t("staged.apply", { count: diff.length })}
-            </Button>
-          </div>
         </div>
       </div>
     </div>

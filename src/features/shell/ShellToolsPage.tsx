@@ -233,7 +233,7 @@ export function ShellToolsPage({ overview, installOpen, terminalDisabled, onOpen
     }),
   );
   return (
-    <main className="shell-scroll @container">
+    <div className="shell-scroll @container">
       <p className="mt-3 text-muted">{pageSummary(t, overview)}</p>
       <div className="shell-tools-toolbar" role="toolbar" aria-label={t("desktop_shell.command_bar")}>
         <label className="shell-search">
@@ -315,6 +315,6 @@ export function ShellToolsPage({ overview, installOpen, terminalDisabled, onOpen
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

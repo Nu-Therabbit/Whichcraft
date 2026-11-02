@@ -108,7 +108,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
   const tabPanelId = (tab: ShellEnvironmentTab) => `shell-env-panel-${tab}`;
 
   return (
-    <div className="flex flex-1 flex-col min-h-0 min-w-0">
+    <div className="flex flex-1 flex-col min-h-0 min-w-0 overflow-y-auto">
       <ShellEnvironmentToolbar
         loading={loading}
         stagedCount={staged.size}
@@ -191,7 +191,7 @@ export function ShellEnvironmentWorkspace({ envTab, onEnvTab }: Props) {
         </div>
       )}
 
-      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
+      <div className="shell-env-panes flex flex-1 min-w-0 overflow-hidden">
         {envTab === "variables" && (
           <div
             id={tabPanelId("variables")}

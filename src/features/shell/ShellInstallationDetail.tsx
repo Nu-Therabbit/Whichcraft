@@ -79,7 +79,7 @@ export function ShellInstallationDetail({ tool, state, dispatch, onInstall, noti
       )}
 
       <section>
-        <h3 className="shell-section-title mb-2">{t("desktop_shell.installations")}</h3>
+        <h2 className="shell-section-title mb-2">{t("desktop_shell.installations")}</h2>
         <div className="shell-panel">
           {loading && installations.length === 0 && <p className="p-3 text-xs text-dim">{t("desktop_shell.loading")}</p>}
           {!loading && installations.length === 0 && <p className="p-3 text-muted">{t("desktop_shell.no_installations")}</p>}
@@ -105,7 +105,7 @@ export function ShellInstallationDetail({ tool, state, dispatch, onInstall, noti
 
       <section>
         <div className="mb-2 flex items-center gap-2">
-          <h3 className="shell-section-title min-w-0 flex-1">{t("desktop_shell.shell_resolution")}</h3>
+          <h2 className="shell-section-title min-w-0 flex-1">{t("desktop_shell.shell_resolution")}</h2>
           <Button variant="secondary" size="xs" onClick={() => dispatch({ type: "checkShell" })} disabled={loading || applyBusy}>
             {t("tools.check_in_shell")}
           </Button>
@@ -118,7 +118,7 @@ export function ShellInstallationDetail({ tool, state, dispatch, onInstall, noti
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] items-start gap-3">
         <section>
-          <h3 className="shell-section-title mb-2">{t("desktop_shell.page_profiles")}</h3>
+          <h2 className="shell-section-title mb-2">{t("desktop_shell.page_profiles")}</h2>
           <div className="shell-panel">
             {pins.length === 0 && <p className="p-3 text-muted">{t("desktop_shell.profile_none_for_tool", { tool: TOOL_DISPLAY[tool].title })}</p>}
             {pins.map(({ status, pin }) => (
@@ -150,7 +150,7 @@ export function ShellInstallationDetail({ tool, state, dispatch, onInstall, noti
         </section>
 
         <section>
-          <h3 className="shell-section-title mb-2">{t("desktop_shell.versions_section")}</h3>
+          <h2 className="shell-section-title mb-2">{t("desktop_shell.versions_section")}</h2>
           <div className="shell-panel flex flex-col gap-3 p-3">
             <div className="flex flex-wrap gap-2">
               {canInstall && (

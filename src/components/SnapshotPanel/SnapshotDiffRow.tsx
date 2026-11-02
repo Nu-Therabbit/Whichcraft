@@ -1,3 +1,4 @@
+import { useI18n } from "../../hooks/useI18n";
 import { useState } from "react";
 import type { DiffEntry } from "../../lib/diff";
 import { registryKindLabel } from "../../lib/envValueKind";
@@ -60,6 +61,7 @@ export function DiffRow({ entry }: { entry: DiffEntry }) {
 }
 
 export function DiffTable({ diff }: { diff: DiffEntry[] }) {
+  const { t } = useI18n();
   const added = diff.filter((e) => e.kind === "added").length;
   const removed = diff.filter((e) => e.kind === "removed").length;
   const changed = diff.filter((e) => e.kind === "changed").length;
@@ -67,14 +69,14 @@ export function DiffTable({ diff }: { diff: DiffEntry[] }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="flex shrink-0 gap-3 text-xs">
-        {added > 0 && <span className="text-success">+{added} added</span>}
-        {removed > 0 && <span className="text-danger">−{removed} removed</span>}
-        {changed > 0 && <span className="text-warn">~{changed} changed</span>}
+        {added > 0 && <span className="text-success">{t("staged.added", { count: added })}</span>}
+        {removed > 0 && <span className="text-danger">{t("staged.removed", { count: removed })}</span>}
+        {changed > 0 && <span className="text-warn">{t("staged.changed", { count: changed })}</span>}
       </div>
 
       <section
         data-testid="snapshot-diff-scroll"
-        aria-label="Snapshot differences"
+        aria-label={t("ui.snapshot_differences")}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable content must be keyboard reachable.
         tabIndex={0}
         className="min-h-0 flex-1 rounded border border-rim overflow-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -83,13 +85,13 @@ export function DiffTable({ diff }: { diff: DiffEntry[] }) {
           <thead>
             <tr className="border-b border-rim bg-surface text-muted text-xs uppercase tracking-wide">
               <th className="px-2 py-2 w-5">
-                <span className="sr-only">Change</span>
+                <span className="sr-only">{t("ui.col_change")}</span>
               </th>
-              <th className="px-2 py-2 text-left">Name</th>
-              <th className="px-2 py-2 text-left">Scope</th>
-              <th className="px-2 py-2 text-left">Value</th>
+              <th className="px-2 py-2 text-left">{t("var_table.col_name")}</th>
+              <th className="px-2 py-2 text-left">{t("var_table.col_scope")}</th>
+              <th className="px-2 py-2 text-left">{t("var_table.col_value")}</th>
               <th className="px-2 py-2 w-10">
-                <span className="sr-only">Actions</span>
+                <span className="sr-only">{t("ui.col_actions")}</span>
               </th>
             </tr>
           </thead>

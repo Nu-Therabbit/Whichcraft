@@ -54,7 +54,7 @@ export function SnapshotPanelDock({ open, onClose, onStageSnapshot, pendingStage
       >
         <div className="flex items-center justify-between px-5 py-3 border-b border-rim shrink-0">
           <span className="text-sm font-semibold text-fg">{t("header.snapshots")}</span>
-          <IconButton aria-label="Close snapshots" icon="x" onClick={onClose} />
+          <IconButton aria-label={t("ui.close_snapshots")} icon="x" onClick={onClose} />
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
           <SnapshotPanel

@@ -1,3 +1,4 @@
+import { useI18n } from "../../hooks/useI18n";
 import { useMemo, useState } from "react";
 import packageMetadata from "../../../package.json";
 import licensesData from "../../assets/oss-licenses.json";
@@ -78,6 +79,7 @@ function RepoLink({ url }: { url: string }) {
 }
 
 export function LicensesPanel() {
+  const { t } = useI18n();
   const platform = usePlatformApi();
   const [tab, setTab] = useState<TopTab>("envarly");
   const [eco, setEco] = useState<Ecosystem>("npm");
@@ -95,7 +97,7 @@ export function LicensesPanel() {
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Top-level tabs */}
       <div className="px-5 pt-4 pb-0 border-b border-rim shrink-0">
-        <h2 className="text-sm font-semibold text-fg mb-3">Licenses</h2>
+        <h2 className="text-sm font-semibold text-fg mb-3">{t("header.licenses")}</h2>
         <div className="flex gap-1">
           {(
             [
@@ -125,7 +127,7 @@ export function LicensesPanel() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-fg">Envarly</p>
-              <p className="text-xs text-muted mt-0.5">Version {packageMetadata.version}</p>
+              <p className="text-xs text-muted mt-0.5">{t("ui.version_number", { version: packageMetadata.version })}</p>
               <p className="text-xs text-dim mt-0.5">
                 MIT License · Copyright © 2025-2026 iray-tno
               </p>
@@ -167,7 +169,7 @@ export function LicensesPanel() {
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Filter by name or license…"
+                placeholder={t("ui.filter_licenses")}
                 className="flex-1 min-w-0 rounded border border-rim bg-canvas px-3 py-1 text-xs text-fg placeholder:text-dim focus:outline-none focus:border-accent"
               />
               <span className="text-xs text-dim shrink-0">
@@ -184,11 +186,11 @@ export function LicensesPanel() {
               <table className="text-xs border-collapse">
                 <thead className="sticky top-0 bg-panel z-10">
                   <tr className="border-b border-rim text-muted uppercase text-xs tracking-wide">
-                    <th className="px-5 py-2 text-left font-medium whitespace-nowrap">Package</th>
-                    <th className="px-3 py-2 text-left font-medium whitespace-nowrap">Version</th>
-                    <th className="px-3 py-2 text-left font-medium whitespace-nowrap">License</th>
+                    <th className="px-5 py-2 text-left font-medium whitespace-nowrap">{t("ui.col_package")}</th>
+                    <th className="px-3 py-2 text-left font-medium whitespace-nowrap">{t("ui.col_version")}</th>
+                    <th className="px-3 py-2 text-left font-medium whitespace-nowrap">{t("ui.col_license")}</th>
                     <th className="px-5 py-2 text-left font-medium whitespace-nowrap">
-                      Repository
+                      {t("ui.col_repository")}
                     </th>
                   </tr>
                 </thead>

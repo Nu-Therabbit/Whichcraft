@@ -165,7 +165,7 @@ export function ImportTab({ onStage, onStatus, pendingStagedCount = 0 }: ImportT
           {t("import.choose_file")}
         </Button>
         <SegmentedControl
-          aria-label="Import format"
+          aria-label={t("ui.import_format")}
           options={importFormatOptions}
           value={format}
           onChange={setFormat}
@@ -176,7 +176,7 @@ export function ImportTab({ onStage, onStatus, pendingStagedCount = 0 }: ImportT
           accept=".json,.reg"
           className="hidden"
           onChange={handleFileChange}
-          aria-label="Import file"
+          aria-label={t("ui.import_file")}
         />
       </div>
 
@@ -233,7 +233,7 @@ export function ImportTab({ onStage, onStatus, pendingStagedCount = 0 }: ImportT
               {t("import.merge_strategy")}
             </span>
             <SegmentedControl
-              aria-label="Merge strategy"
+              aria-label={t("ui.merge_strategy")}
               options={strategyOptions}
               value={strategy}
               onChange={setStrategy}

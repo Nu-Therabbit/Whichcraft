@@ -1,3 +1,6 @@
+import { useThemeContext } from "../../context/ThemeContext";
+import { useI18n } from "../../hooks/useI18n";
+import { scopeLabel } from "../../lib/scopeLabel";
 import { useState } from "react";
 import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued";
 import { cn } from "../../lib/cn";
@@ -6,9 +9,36 @@ import { registryKindLabel } from "../../lib/envValueKind";
 import { Icon } from "../ui/Icon";
 
 const KIND_LABEL: Record<DiffEntry["kind"], string> = {
-  added: "Added",
-  removed: "Removed",
-  changed: "Changed",
+  added: "ui.kind_added",
+  removed: "ui.kind_removed",
+  changed: "ui.kind_changed",
+};
+
+const DIFF_COLORS = {
+  diffViewerBackground: "var(--color-surface)",
+  diffViewerColor: "var(--color-fg)",
+  addedBackground: "color-mix(in srgb, var(--color-success) 14%, transparent)",
+  addedColor: "var(--color-success)",
+  removedBackground: "color-mix(in srgb, var(--color-danger) 14%, transparent)",
+  removedColor: "var(--color-danger)",
+  wordAddedBackground: "color-mix(in srgb, var(--color-success) 24%, transparent)",
+  wordRemovedBackground: "color-mix(in srgb, var(--color-danger) 24%, transparent)",
+  addedGutterBackground: "color-mix(in srgb, var(--color-success) 14%, transparent)",
+  removedGutterBackground: "color-mix(in srgb, var(--color-danger) 14%, transparent)",
+  addedGutterColor: "var(--color-success)",
+  removedGutterColor: "var(--color-danger)",
+  gutterBackground: "var(--color-surface)",
+  gutterBackgroundDark: "var(--color-surface)",
+  gutterColor: "var(--color-muted)",
+  emptyLineBackground: "var(--color-surface)",
+  highlightBackground: "var(--color-hover)",
+  highlightGutterBackground: "var(--color-hover)",
+  codeFoldBackground: "var(--color-hover)",
+  codeFoldGutterBackground: "var(--color-hover)",
+  codeFoldContentColor: "var(--color-muted)",
+  diffViewerTitleBackground: "var(--color-hover)",
+  diffViewerTitleColor: "var(--color-muted)",
+  diffViewerTitleBorderColor: "var(--color-rim-subtle)",
 };
 
 const KIND_COLORS: Record<DiffEntry["kind"], string> = {
@@ -39,6 +69,8 @@ interface EntryRowProps {
 }
 
 export function EntryRow({ entry, accepted, onToggle }: EntryRowProps) {
+  const { t } = useI18n();
+  const dark = useThemeContext() === "dark";
   const [expanded, setExpanded] = useState(false);
   const showDiff = entry.kind === "changed" && isLongOrPath(entry);
   const showExpand = isLongOrPath(entry);
@@ -62,14 +94,14 @@ export function EntryRow({ entry, accepted, onToggle }: EntryRowProps) {
           checked={accepted}
           onChange={onToggle}
           className="shrink-0 accent-accent w-3.5 h-3.5 cursor-pointer"
-          aria-label={`${entry.kind} ${entry.name}`}
+          aria-label={`${t(KIND_LABEL[entry.kind])} ${entry.name}`}
         />
         <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", KIND_DOT[entry.kind])} />
         <span className="font-mono text-xs font-semibold text-fg truncate flex-1">
           {entry.name}
         </span>
         <span className="text-xs uppercase tracking-wide font-semibold shrink-0">
-          {entry.scope}
+          {scopeLabel(t, entry.scope)}
         </span>
         <span
           className={cn(
@@ -77,13 +109,13 @@ export function EntryRow({ entry, accepted, onToggle }: EntryRowProps) {
             KIND_COLORS[entry.kind],
           )}
         >
-          {KIND_LABEL[entry.kind]}
+          {t(KIND_LABEL[entry.kind])}
         </span>
         {showExpand && (
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            aria-label={`${expanded ? "Collapse" : "Expand"} ${entry.name}`}
+            aria-label={t(expanded ? "ui.collapse_entry" : "ui.expand_entry", { name: entry.name })}
             aria-expanded={expanded}
             className="text-dim hover:text-fg text-xs shrink-0 transition-colors"
           >
@@ -117,21 +149,9 @@ export function EntryRow({ entry, accepted, onToggle }: EntryRowProps) {
                 newValue={pathLines(displayNew)}
                 splitView={false}
                 compareMethod={DiffMethod.LINES}
-                useDarkTheme
+                useDarkTheme={dark}
                 hideLineNumbers
-                styles={{
-                  variables: {
-                    dark: {
-                      diffViewerBackground: "#1c2333",
-                      addedBackground: "#1a3a2a",
-                      addedColor: "#3fb950",
-                      removedBackground: "#3a1a1a",
-                      removedColor: "#f85149",
-                      wordAddedBackground: "#1a3a2a",
-                      wordRemovedBackground: "#3a1a1a",
-                    },
-                  },
-                }}
+                styles={{ variables: { dark: DIFF_COLORS, light: DIFF_COLORS } }}
               />
             </div>
           ) : (

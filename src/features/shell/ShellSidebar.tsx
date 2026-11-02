@@ -116,7 +116,11 @@ export function ShellSidebar({ activePage, openTool, byTool, onPage, onTool }: P
                     <span
                       className="shell-dot bg-warn"
                       title={t(health === "error" ? "desktop_shell.load_error" : "desktop_shell.card_differs")}
-                    />
+                    >
+                      <span className="sr-only">
+                        {t(health === "error" ? "desktop_shell.load_error" : "desktop_shell.card_differs")}
+                      </span>
+                    </span>
                   )}
                   <span className="text-xs text-dim tabular-nums" aria-hidden>
                     {health === "loading" ? "…" : health === "error" ? "—" : slice.installations.length}

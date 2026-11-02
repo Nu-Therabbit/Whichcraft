@@ -27,7 +27,7 @@ interface Props {
 function Stat({ label, version, note, warn }: { label: string; version: string; note: string; warn?: boolean }) {
   return (
     <div className="shell-panel p-3">
-      <h3 className="text-xs text-muted">{label}</h3>
+      <h2 className="text-xs text-muted">{label}</h2>
       <p className={`shell-stat-value ${warn ? "text-warn" : ""}`}>{version}</p>
       <p className="truncate text-xs text-muted">{note}</p>
     </div>
@@ -76,9 +76,9 @@ export function ShellToolSheet({ tool, slice, state, dispatch, blocked, onClose,
           <span aria-hidden className="shell-card-mark" />
           <ToolLogo tool={shown} tile={44} size={30} />
           <div className="min-w-0 flex-1">
-            <h2 ref={heading} tabIndex={-1} className="shell-sheet-title" translate="no">
+            <h1 ref={heading} tabIndex={-1} className="shell-sheet-title" translate="no">
               {TOOL_DISPLAY[shown].title}
-            </h2>
+            </h1>
             <p className="truncate text-muted">{t(toolDescriptionKey(shown))}</p>
           </div>
           <Button variant="secondary" size="sm" onClick={() => dispatch({ type: "openTerminal" })} disabled={state.plan.applying}>
