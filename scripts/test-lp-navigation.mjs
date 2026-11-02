@@ -22,7 +22,7 @@ let origin;
 async function checkFaq(page, width) {
   const faq = page.locator("#faq");
   assert.equal(await faq.locator("h2").count(), 1);
-  assert.equal(await faq.locator("h3").count(), 7);
+  assert.equal(await faq.locator("h3").count(), 8);
   const items = await faq.locator(":scope > div").evaluateAll((elements) =>
     elements.map((element) => ({
       id: element.id,
@@ -32,7 +32,7 @@ async function checkFaq(page, width) {
   );
   assert.deepEqual(
     items.map((item) => item.id),
-    ["tools", "switching", "existing", "mise", "admin", "terminal", "cli"].map(
+    ["tools", "switching", "existing", "mise", "admin", "terminal", "cli", "uninstall"].map(
       (id) => `faq-${id}`,
     ),
   );

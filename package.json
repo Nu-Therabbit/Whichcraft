@@ -24,6 +24,7 @@
     "gen-licenses": "node scripts/gen-licenses.mjs",
     "gen-icons": "node scripts/generate-icons.mjs",
     "gen-installer-art": "node scripts/generate-installer-art.mjs",
+    "capture-lp": "node scripts/capture-lp-screenshots.mjs",
     "check-version": "node scripts/check-version.mjs",
     "version": "node scripts/sync-version.mjs && git add src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock lp/src/lib/lpContent.ts"
   },
