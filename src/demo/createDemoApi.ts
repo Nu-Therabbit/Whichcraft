@@ -14,7 +14,7 @@ import bundledFixture from "./whichcraft-demo.json";
 
 interface DemoFixture {
   elevated: boolean;
-  installDir: string;
+  cliDir: string;
   pathStatus: {
     userHasEntry: boolean;
     systemHasEntry: boolean;
@@ -188,7 +188,7 @@ export function createDemoApi(
       return normalizeSnapshot(JSON.parse(content));
     },
     getPathStatus: async () => ({
-      installDir: fixture.installDir,
+      cliDir: fixture.cliDir,
       userHasEntry: fixture.pathStatus.userHasEntry,
       systemHasEntry: fixture.pathStatus.systemHasEntry,
       otherUserHasEntry: null, // demo mode has no other-user accounts
@@ -196,10 +196,10 @@ export function createDemoApi(
     getPathProposal: async (scope) => {
       const path = scopedRecord(current, scope).Path?.value ?? "";
       const entries = path.split(";").filter(Boolean);
-      if (entries.some((entry) => entry.toLowerCase() === fixture.installDir.toLowerCase())) {
+      if (entries.some((entry) => entry.toLowerCase() === fixture.cliDir.toLowerCase())) {
         return null;
       }
-      return [fixture.installDir, ...entries].join(";");
+      return [fixture.cliDir, ...entries].join(";");
     },
     checkCommand: async (input) => {
       const unquoted = input.trim().replace(/^"(.*)"$/, "$1");

@@ -1,6 +1,6 @@
 // Release builds are GUI apps, so starting Whichcraft from Explorer or the Start menu opens no
 // console window (on Windows 11 that console became a Windows Terminal window left behind).
-// The CLI goes through `whichcraft.com` (src/bin/whichcraft-cli.rs), a console program the
+// The CLI goes through `bin\whichcraft.exe` (src/bin/whichcraft-cli.rs), a console program the
 // shell waits for. Debug builds stay console apps so `npm run tauri dev` shows their logs.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 

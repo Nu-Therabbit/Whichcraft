@@ -19,7 +19,7 @@ export function fakeApi(overrides: Partial<WhichcraftApi>): WhichcraftApi {
     listLocalAccounts: vi.fn(async () => []),
     getSelectedAccount: vi.fn(async () => null),
     getPathStatus: vi.fn(async () => ({
-      installDir: "",
+      cliDir: "",
       userHasEntry: false,
       systemHasEntry: false,
       otherUserHasEntry: null,

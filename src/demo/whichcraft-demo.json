@@ -1,6 +1,6 @@
 {
   "elevated": false,
-  "installDir": "C:\\Program Files\\Whichcraft",
+  "cliDir": "C:\\Program Files\\Whichcraft\\bin",
   "pathStatus": {
     "userHasEntry": false,
     "systemHasEntry": true

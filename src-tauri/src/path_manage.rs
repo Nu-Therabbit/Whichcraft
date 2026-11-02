@@ -195,18 +195,33 @@ pub fn check_command_with(
 
 // ── Public API ────────────────────────────────────────────────────────────
 
-/// The install directory (directory containing the running exe).
-pub fn install_dir() -> Option<std::path::PathBuf> {
-    std::env::current_exe()
-        .ok()?
-        .parent()
-        .map(|p| p.to_path_buf())
+/// The folder that belongs on PATH for the running exe: `bin` holds the console
+/// `whichcraft.exe`, so terminals never reach the GUI above it. A portable copy has no `bin`, so
+/// its own folder is used.
+fn cli_dir_for(
+    exe: &std::path::Path,
+    is_dir: impl Fn(&std::path::Path) -> bool,
+) -> Option<std::path::PathBuf> {
+    let dir = exe.parent()?;
+    if dir
+        .file_name()
+        .is_some_and(|name| name.eq_ignore_ascii_case("bin"))
+    {
+        return Some(dir.to_path_buf());
+    }
+    let bin = dir.join("bin");
+    Some(if is_dir(&bin) { bin } else { dir.to_path_buf() })
+}
+
+/// The folder Whichcraft adds to and removes from PATH.
+pub fn cli_dir() -> Option<std::path::PathBuf> {
+    cli_dir_for(&std::env::current_exe().ok()?, std::path::Path::is_dir)
 }
 
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PathStatus {
-    pub install_dir: String,
+    pub cli_dir: String,
     pub user_has_entry: bool,
     pub system_has_entry: bool,
     /// `None` when no other-user account is currently selected.
@@ -219,10 +234,10 @@ fn has_entry(current: &str, dir_lc: &str) -> bool {
         .any(|p| p.trim().to_lowercase() == dir_lc)
 }
 
-/// Read whether the install dir is currently in User / System PATH.
+/// Read whether the CLI folder is currently in User / System PATH.
 #[cfg(windows)]
 pub fn path_status() -> PathStatus {
-    let dir = install_dir()
+    let dir = cli_dir()
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_default();
     let dir_lc = dir.to_lowercase();
@@ -241,18 +256,18 @@ pub fn path_status() -> PathStatus {
         .map(|current| has_entry(&current, &dir_lc));
 
     PathStatus {
-        install_dir: dir,
+        cli_dir: dir,
         user_has_entry: user_has,
         system_has_entry: sys_has,
         other_user_has_entry: other_user_has,
     }
 }
 
-/// Returns the proposed new PATH value after adding the install dir, or `None`
+/// Returns the proposed new PATH value after adding the CLI folder, or `None`
 /// if it is already present. `user = true` → User PATH, `false` → System PATH.
 #[cfg(windows)]
 pub fn propose_add(user: bool) -> Result<Option<String>, WhichcraftError> {
-    let dir = install_dir()
+    let dir = cli_dir()
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_default();
     let key = open_path_key(user, false)?;
@@ -263,7 +278,7 @@ pub fn propose_add(user: bool) -> Result<Option<String>, WhichcraftError> {
 /// Same as `propose_add`, but for the currently-selected other-user account.
 #[cfg(windows)]
 pub fn propose_add_for_other_user() -> Result<Option<String>, WhichcraftError> {
-    let dir = install_dir()
+    let dir = cli_dir()
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_default();
     let current = crate::path_backend::read_other_user_path()?.ok_or_else(|| {
@@ -290,18 +305,18 @@ pub fn check_command(raw_input: &str) -> Result<CheckCommandResult, WhichcraftEr
     ))
 }
 
-/// Remove the install dir from User PATH and/or System PATH (if elevated).
+/// Remove the CLI folder from User PATH and/or System PATH (if elevated).
 /// When `dry_run` is true, prints what would change without modifying the registry.
 #[cfg(windows)]
 pub fn cleanup_path(dry_run: bool) {
-    let dir = match install_dir() {
+    let dir = match cli_dir() {
         Some(d) => d.to_string_lossy().into_owned(),
         None => {
-            eprintln!("path-cleanup: could not determine install directory");
+            eprintln!("path-cleanup: could not determine the CLI folder");
             return;
         }
     };
-    println!("install dir: {}", dir);
+    println!("CLI folder: {}", dir);
 
     for (user, label) in [(true, "User"), (false, "System")] {
         let Ok(key) = open_path_key(user, !dry_run) else {
@@ -398,6 +413,27 @@ mod tests {
     }
 
     const PATHEXT: &str = ".COM;.EXE;.BAT;.CMD";
+
+    #[test]
+    fn path_gets_the_bin_folder_and_a_portable_copy_gets_its_own() {
+        use std::path::{Path, PathBuf};
+        let installed = PathBuf::from(r"C:\Apps\Whichcraft\bin");
+        assert_eq!(
+            cli_dir_for(Path::new(r"C:\Apps\Whichcraft\whichcraft.exe"), |p| p
+                == installed),
+            Some(installed.clone())
+        );
+        assert_eq!(
+            cli_dir_for(Path::new(r"C:\Apps\Whichcraft\bin\whichcraft.exe"), |_| {
+                false
+            }),
+            Some(installed)
+        );
+        assert_eq!(
+            cli_dir_for(Path::new(r"D:\Tools\whichcraft.exe"), |_| false),
+            Some(PathBuf::from(r"D:\Tools"))
+        );
+    }
 
     const PROCESS_LAUNCH_TOKENS: &[&str] = &[
         "std::process",

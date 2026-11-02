@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Windows developer tool discovery, switching, and installation"
 authors = ["zigza"]
 edition = "2021"
-# The GUI; src/bin/whichcraft-cli.rs is the console launcher shipped as whichcraft.com.
+# The GUI; src/bin/whichcraft-cli.rs is the console launcher shipped as bin\whichcraft.exe.
 default-run = "whichcraft"
 
 [lib]
@@ -32,6 +32,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2.7.1"
+tauri-plugin-single-instance = "2"
 reqwest = { version = "0.13", default-features = false, features = ["json", "native-tls", "blocking"] }
 winreg = "0.56"
 msi = "0.10"
