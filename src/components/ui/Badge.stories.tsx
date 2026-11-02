@@ -78,8 +78,8 @@ export const LightTheme: Story = {
   globals: { theme: "light" },
   play: async ({ canvasElement }) => {
     const style = getComputedStyle(within(canvasElement).getByText("User"));
-    await expect(style.color).toBe("rgb(0, 90, 158)");
-    await expect(style.backgroundColor).toMatch(/(?:, |\/ )0\.15\)$/);
+    await expect(style.color).toBe("rgb(3, 105, 76)");
+    await expect(style.backgroundColor).toMatch(/(?:, |\/ )0\.1\)$/);
   },
 };
 
@@ -88,7 +88,7 @@ export const DarkTheme: Story = {
   globals: { theme: "dark" },
   play: async ({ canvasElement }) => {
     const style = getComputedStyle(within(canvasElement).getByText("User"));
-    await expect(style.color).toBe("rgb(117, 191, 255)");
-    await expect(style.backgroundColor).toMatch(/(?:, |\/ )0\.15\)$/);
+    await expect(style.color).toBe("rgb(52, 211, 153)");
+    await expect(style.backgroundColor).toMatch(/(?:, |\/ )0\.1\)$/);
   },
 };
