@@ -133,10 +133,12 @@ function DesktopShellAppInner() {
 
   useEffect(() => {
     if (!pendingUse) return;
-    const { tool, installations, reads } = toolsWrite.state;
+    const { tool, installations, reads, lastReadSucceeded } = toolsWrite.state;
     // Waits for a fresh read, because the installation may have gone since the card was drawn.
     if (tool !== pendingUse.tool || reads === pendingUse.reads) return;
     setPendingUse(null);
+    // A failed read leaves cached installations; keep its error visible instead of planning from them.
+    if (!lastReadSucceeded) return;
     if (installations.some((item) => item.root === pendingUse.root && item.available)) {
       toolsWrite.dispatch({ type: "buildPlan", root: pendingUse.root });
       return;

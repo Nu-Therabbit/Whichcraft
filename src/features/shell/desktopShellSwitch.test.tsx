@@ -185,6 +185,36 @@ describe("desktop shell switch apply and undo", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("stops a card switch when inventory refresh fails, and lets Use retry with fresh data", async () => {
+    const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });
+    let fail = false;
+    const listToolInstallations = vi.fn(async (tool: string) => {
+      if (tool !== "java") return [];
+      if (fail) throw new Error("registry denied");
+      return [before, target];
+    });
+    const planToolApply = vi.fn(async () => planFor(target));
+    renderShell({ listToolInstallations, planToolApply });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await within(details).findByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/i });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("complementary")).not.toBeInTheDocument());
+
+    fail = true;
+    await user.click(screen.getByRole("button", { name: /^Use Java 17\.0\.2/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("registry denied");
+    expect(planToolApply).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /^Apply plan$/i })).not.toBeInTheDocument();
+
+    fail = false;
+    await user.click(screen.getByRole("button", { name: /^Use Java 17\.0\.2/i }));
+    await screen.findByRole("button", { name: /^Apply plan$/i });
+    expect(planToolApply).toHaveBeenCalledExactlyOnceWith("java", "C:\\jdk17");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("leaves an error from elsewhere off the page after a switch from a card", async () => {
     const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
     const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });
