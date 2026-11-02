@@ -4,6 +4,12 @@ export const STORYBOOK_URL = '/Whichcraft/storybook/';
 export const REPORTS_URL = '/Whichcraft/reports/';
 export const VERSION = '0.1.0';
 
+// Set to true when a release has published its installers. Until then the Download buttons lead to
+// the build instructions, and structured data and llms.txt stop promising a download.
+export const RELEASE_PUBLISHED = false;
+export const BUILD_URL = `${GITHUB_URL}#build-from-source`;
+export const DOWNLOAD_URL = RELEASE_PUBLISHED ? RELEASE_URL : BUILD_URL;
+
 export type LandingLang = 'en' | 'ja' | 'zh-CN' | 'ru' | 'ko' | 'vi';
 
 export const LANGUAGES: Array<{ code: LandingLang; path: string; label: string }> = [
@@ -26,11 +32,14 @@ export type LandingCopy = {
     storybook: string;
     reports: string;
     download: string;
+    getSource: string;
   };
   hero: {
     eyebrow: string;
     lead: string;
     download: string;
+    getSource: string;
+    note: string;
     github: string;
   };
   screenshots: {
@@ -136,11 +145,14 @@ export const enCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: 'Reports',
     download: 'Download',
+    getSource: 'Build',
   },
   hero: {
     eyebrow: `Developer Tool Manager for Windows · v${VERSION}`,
     lead: 'See every version of your developer tools in one place, and decide which one Windows runs. Review the exact PATH changes before you apply them, and undo them if you change your mind.',
     download: `Download v${VERSION} for Windows`,
+    getSource: `Build v${VERSION} from source`,
+    note: 'No installer is published yet. Builds from source are not code signed, so Windows SmartScreen may warn when you run one.',
     github: 'View on GitHub →',
   },
   screenshots: {
@@ -297,11 +309,14 @@ export const jaCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: 'Reports',
     download: 'ダウンロード',
+    getSource: 'ビルド',
   },
   hero: {
     eyebrow: `Windows 向け開発ツールマネージャー · v${VERSION}`,
     lead: '開発ツールの全バージョンを一か所で確認し、Windows で使うものを決められます。PATH の変更内容を適用前に確認でき、気が変わったら元に戻せます。',
     download: `Windows 版 v${VERSION} をダウンロード`,
+    getSource: `v${VERSION} をソースからビルド`,
+    note: 'インストーラーはまだ公開されていません。ソースからのビルドはコード署名されていないため、実行時に Windows SmartScreen が警告する場合があります。',
     github: 'GitHub で見る →',
   },
   screenshots: {
@@ -458,11 +473,14 @@ export const zhCNCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: '报告',
     download: '下载',
+    getSource: '构建',
   },
   hero: {
     eyebrow: `Windows 开发工具管理器 · v${VERSION}`,
     lead: '在一处查看开发工具的所有版本，并决定 Windows 运行哪一个。应用前可以查看确切的 PATH 更改，改变主意时也能撤销。',
     download: `下载 Windows 版 v${VERSION}`,
+    getSource: `从源码构建 v${VERSION}`,
+    note: '安装程序尚未发布。从源码构建的版本没有代码签名，运行时 Windows SmartScreen 可能会给出警告。',
     github: '在 GitHub 上查看 →',
   },
   screenshots: {
@@ -619,11 +637,14 @@ export const ruCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: 'Отчёты',
     download: 'Скачать',
+    getSource: 'Сборка',
   },
   hero: {
     eyebrow: `Менеджер инструментов разработки для Windows · v${VERSION}`,
     lead: 'Все версии инструментов разработки в одном месте, и вы решаете, какую запускает Windows. Проверяйте точные изменения PATH перед применением и отменяйте их, если передумаете.',
     download: `Скачать v${VERSION} для Windows`,
+    getSource: `Собрать v${VERSION} из исходников`,
+    note: 'Установщик пока не опубликован. Сборки из исходников не подписаны, поэтому при запуске Windows SmartScreen может показать предупреждение.',
     github: 'Смотреть на GitHub →',
   },
   screenshots: {
@@ -780,11 +801,14 @@ export const koCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: '리포트',
     download: '다운로드',
+    getSource: '빌드',
   },
   hero: {
     eyebrow: `Windows용 개발 도구 관리자 · v${VERSION}`,
     lead: '개발 도구의 모든 버전을 한곳에서 보고 Windows가 어떤 버전을 실행할지 정하세요. 적용 전에 PATH 변경 내용을 정확히 확인하고, 마음이 바뀌면 되돌릴 수 있습니다.',
     download: `Windows용 v${VERSION} 다운로드`,
+    getSource: `v${VERSION} 소스에서 빌드`,
+    note: '설치 프로그램은 아직 게시되지 않았습니다. 소스에서 빌드한 파일은 코드 서명이 없어 실행할 때 Windows SmartScreen이 경고할 수 있습니다.',
     github: 'GitHub에서 보기 →',
   },
   screenshots: {
@@ -941,11 +965,14 @@ export const viCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: 'Báo cáo',
     download: 'Tải xuống',
+    getSource: 'Biên dịch',
   },
   hero: {
     eyebrow: `Trình quản lý công cụ phát triển cho Windows · v${VERSION}`,
     lead: 'Xem mọi phiên bản công cụ phát triển ở một nơi và quyết định Windows chạy phiên bản nào. Xem chính xác các thay đổi PATH trước khi áp dụng và hoàn tác nếu bạn đổi ý.',
     download: `Tải xuống v${VERSION} cho Windows`,
+    getSource: `Biên dịch v${VERSION} từ mã nguồn`,
+    note: 'Chưa có trình cài đặt được phát hành. Bản biên dịch từ mã nguồn không được ký mã, nên Windows SmartScreen có thể cảnh báo khi chạy.',
     github: 'Xem trên GitHub →',
   },
   screenshots: {

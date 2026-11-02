@@ -1,10 +1,11 @@
 import { Header, Link, Nav, View } from "@hozo/core";
 import { NativeSelect } from "@hozo/form";
 import {
+  DOWNLOAD_URL,
   GITHUB_URL,
   LANGUAGES,
   type LandingCopy,
-  RELEASE_URL,
+  RELEASE_PUBLISHED,
   REPORTS_URL,
   STORYBOOK_URL,
 } from "../lib/lpContent";
@@ -60,12 +61,12 @@ export default function LandingHeader({ copy }: LandingHeaderProps) {
           />
           <Link
             nativeID="nav-download"
-            href={RELEASE_URL}
+            href={DOWNLOAD_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="shrink-0 whitespace-nowrap text-sm px-3 sm:px-4 py-1.5 rounded-full bg-[var(--color-accent)] text-[var(--color-bg)] font-medium hover:bg-[var(--color-accent-dim)] transition-colors"
           >
-            {copy.nav.download}
+            {RELEASE_PUBLISHED ? copy.nav.download : copy.nav.getSource}
           </Link>
         </Nav>
       </View>

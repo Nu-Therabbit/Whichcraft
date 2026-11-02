@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, isAbsolute, relative, resolve } from "node:path";
@@ -8,6 +9,13 @@ import { chromium } from "playwright";
 
 const dist = fileURLToPath(new URL("../lp/dist/", import.meta.url));
 const locales = ["", "ja/", "zh-cn/", "ru/", "ko/", "vi/"];
+// The Download buttons lead to the release only once the site says one is published.
+const released = /RELEASE_PUBLISHED = true/.test(
+  readFileSync(new URL("../lp/src/lib/lpContent.ts", import.meta.url), "utf8"),
+);
+const downloadHref = released
+  ? "https://github.com/Nu-Therabbit/Whichcraft/releases/latest"
+  : "https://github.com/Nu-Therabbit/Whichcraft#build-from-source";
 const mime = {
   ".html": "text/html",
   ".css": "text/css",
@@ -243,8 +251,10 @@ for (const [index, locale] of locales.entries()) {
         assert.equal(heroType.lineHeight / heroType.fontSize, 1.625);
         assert.equal(
           await page.locator("#hero-download").getAttribute("href"),
-          "https://github.com/Nu-Therabbit/Whichcraft/releases/latest",
+          downloadHref,
         );
+        assert.equal(await page.locator("#nav-download").getAttribute("href"), downloadHref);
+        assert.equal(await page.locator("#hero-note").count(), released ? 0 : 1);
         assert.equal(
           await page.locator("#hero-github").getAttribute("href"),
           "https://github.com/Nu-Therabbit/Whichcraft",

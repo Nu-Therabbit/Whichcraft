@@ -1,5 +1,5 @@
 import { Heading, Link, Paragraph, Text, View } from "@hozo/core";
-import { GITHUB_URL, type LandingCopy, RELEASE_URL } from "../lib/lpContent";
+import { DOWNLOAD_URL, GITHUB_URL, type LandingCopy, RELEASE_PUBLISHED } from "../lib/lpContent";
 
 interface LandingHeroProps {
   copy: LandingCopy["hero"];
@@ -19,15 +19,15 @@ export default function LandingHero({ copy }: LandingHeroProps) {
       <Paragraph className="text-lg sm:text-xl text-muted max-w-2xl mx-auto mb-10 leading-relaxed sm:leading-relaxed">
         {copy.lead}
       </Paragraph>
-      <View className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+      <View className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${RELEASE_PUBLISHED ? "mb-16" : "mb-5"}`}>
         <Link
           nativeID="hero-download"
-          href={RELEASE_URL}
+          href={DOWNLOAD_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="px-6 py-3 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-dim transition-colors"
         >
-          {copy.download}
+          {RELEASE_PUBLISHED ? copy.download : copy.getSource}
         </Link>
         <Link
           nativeID="hero-github"
@@ -39,6 +39,11 @@ export default function LandingHero({ copy }: LandingHeroProps) {
           {copy.github}
         </Link>
       </View>
+      {!RELEASE_PUBLISHED && (
+        <Paragraph nativeID="hero-note" className="text-sm text-muted max-w-xl mx-auto mb-16">
+          {copy.note}
+        </Paragraph>
+      )}
     </>
   );
 }

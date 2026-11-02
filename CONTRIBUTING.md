@@ -65,6 +65,14 @@ both themes, and interaction tests in Storybook. Generated `*.hozo.css` files ar
 ignored build artifacts. Interactive components keep their current DOM APIs
 until their event, focus, ref, and accessibility contracts can be preserved.
 
+## Publishing a release
+
+Until the first release has installers, the website sends its Download buttons to the build
+instructions. When a release has its installers, set `RELEASE_PUBLISHED` to `true` in
+`lp/src/lib/lpContent.ts`. That points the buttons at the release, restores the download link in
+the structured data and `llms.txt`, and removes the note about the missing installer. Then rerun
+`npm run test:lp`, which follows the flag.
+
 ## Windows binaries: GUI and CLI
 
 Release builds ship two programs in the install folder:

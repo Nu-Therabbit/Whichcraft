@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import { LANGUAGES, VERSION, type LandingLang } from '../lib/lpContent';
+import { LANGUAGES, RELEASE_PUBLISHED, RELEASE_URL, VERSION, type LandingLang } from '../lib/lpContent';
 
 interface Props {
   title: string;
@@ -33,7 +33,7 @@ const jsonLd = {
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   description,
   url: canonicalURL.toString(),
-  downloadUrl: 'https://github.com/Nu-Therabbit/Whichcraft/releases/latest',
+  ...(RELEASE_PUBLISHED ? { downloadUrl: RELEASE_URL } : {}),
   softwareVersion: VERSION,
   license: 'https://opensource.org/licenses/MIT',
   author: { '@type': 'Person', name: 'Nu-Therabbit' },
