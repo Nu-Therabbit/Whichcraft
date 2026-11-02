@@ -1,11 +1,17 @@
 import { useI18n } from "../../hooks/useI18n";
 import type { AndroidInventory, MsvcInventory, PythonSupplementalView } from "../../types";
 
+/** One line each: what does not fit is cut, and stays readable in the tooltip. */
 function Row({ label, values }: { label: string; values: string[] }) {
+  const value = values.length ? values.join(", ") : "—";
   return (
     <div className="shell-sdk-row">
-      <dt className="text-muted">{label}</dt>
-      <dd className="font-mono wrap-anywhere">{values.length ? values.join(", ") : "—"}</dd>
+      <dt className="truncate text-muted" title={label}>
+        {label}
+      </dt>
+      <dd className="truncate font-mono" title={value}>
+        {value}
+      </dd>
     </div>
   );
 }
@@ -22,7 +28,7 @@ export function PythonLauncherInfo({ info }: { info: PythonSupplementalView }) {
       ) : (
         <ul className="flex flex-col gap-1">
           {info.launcherLines.map((line) => (
-            <li key={line.tag} className="font-mono text-xs wrap-anywhere">
+            <li key={line.tag} className="truncate font-mono text-xs" title={line.path}>
               py -V:{line.tag} {line.isDefault ? `(${t("tools.python.default")})` : ""} →{" "}
               {line.path}
             </li>
@@ -55,7 +61,7 @@ export function SdkInventory({
         {!android?.sdkRoot ? (
           <p className="text-xs text-muted">{t("tools.sdks.android_missing")}</p>
         ) : (
-          <dl className="flex flex-col gap-1">
+          <dl className="shell-sdk-list">
             <Row
               label={t("tools.sdks.sdk_root")}
               values={[`${android.sdkRoot} (${android.rootSource})`]}
@@ -77,7 +83,7 @@ export function SdkInventory({
       </section>
       <section className="border border-rim-subtle rounded-md p-4 flex flex-col gap-2">
         <h3 className="font-semibold">{t("tools.sdks.msvc")}</h3>
-        <dl className="flex flex-col gap-1">
+        <dl className="shell-sdk-list">
           {(msvc?.instances ?? []).map((vs) => (
             <Row key={vs.path} label={`${vs.displayName} ${vs.version}`} values={vs.msvcToolsets} />
           ))}

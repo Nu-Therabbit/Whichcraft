@@ -73,6 +73,17 @@ export function byVersion(installations: ToolInstallationView[]): ToolInstallati
   return [...installations].sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true }));
 }
 
+/**
+ * What a tool's card holds: what Windows uses, or with nothing on PATH the Selection or else the newest
+ * usable version; then the Selection when it differs, because that difference is never hidden. The rest is a count.
+ */
+export function cardLines(installations: ToolInstallationView[]): { main: ToolInstallationView | null; selection: ToolInstallationView | null; hidden: number } {
+  const newestFirst = byVersion(installations).reverse();
+  const main = pickEffective(installations) ?? pickSelected(installations) ?? newestFirst.find((item) => item.available) ?? newestFirst[0] ?? null;
+  const selection = selectionDiffers(installations) ? pickSelected(installations) : null;
+  return { main, selection, hidden: installations.length - (main ? 1 : 0) - (selection ? 1 : 0) };
+}
+
 /** Status dot of one tool tile: a failed or empty scan is never shown as healthy. */
 export function toolHealth(slice: {
   loading: boolean;

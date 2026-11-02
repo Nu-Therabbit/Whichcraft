@@ -599,7 +599,10 @@
     "accent_pink": "ピンク",
     "accent_graphite": "グラファイト",
     "applied_not_effective": "適用しましたが、新しいプロセスではまだ {{tool}} {{version}} が使われません。",
-    "uninstall_installation": "{{vendor}} {{version}} をアンインストール"
+    "uninstall_installation": "{{vendor}} {{version}} をアンインストール",
+    "card_more_versions_one": "他 {{count}} 個のバージョン",
+    "card_more_versions_other": "他 {{count}} 個のバージョン",
+    "card_one_version": "インストール済み: 1 バージョン"
   },
   "tools": {
     "profiles": {

@@ -637,7 +637,12 @@
     "accent_pink": "Розовый",
     "accent_graphite": "Графит",
     "applied_not_effective": "Применено, но новые процессы пока не получают {{tool}} {{version}}.",
-    "uninstall_installation": "Удалить {{vendor}} {{version}}"
+    "uninstall_installation": "Удалить {{vendor}} {{version}}",
+    "card_more_versions_one": "Ещё {{count}} версия",
+    "card_more_versions_few": "Ещё {{count}} версии",
+    "card_more_versions_many": "Ещё {{count}} версий",
+    "card_more_versions_other": "Ещё {{count}} версии",
+    "card_one_version": "Установлена 1 версия"
   },
   "tools": {
     "profiles": {

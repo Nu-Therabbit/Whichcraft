@@ -599,7 +599,10 @@
     "accent_pink": "Hồng",
     "accent_graphite": "Than chì",
     "applied_not_effective": "Đã áp dụng, nhưng các tiến trình mới chưa dùng {{tool}} {{version}}.",
-    "uninstall_installation": "Gỡ cài đặt {{vendor}} {{version}}"
+    "uninstall_installation": "Gỡ cài đặt {{vendor}} {{version}}",
+    "card_more_versions_one": "+ {{count}} phiên bản khác",
+    "card_more_versions_other": "+ {{count}} phiên bản khác",
+    "card_one_version": "Đã cài 1 phiên bản"
   },
   "tools": {
     "profiles": {

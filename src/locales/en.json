@@ -783,6 +783,9 @@
     "accent_pink": "Pink",
     "accent_graphite": "Graphite",
     "applied_not_effective": "Applied, but new processes don't get {{tool}} {{version}} yet.",
-    "uninstall_installation": "Uninstall {{vendor}} {{version}}"
+    "uninstall_installation": "Uninstall {{vendor}} {{version}}",
+    "card_more_versions_one": "+ {{count}} more version",
+    "card_more_versions_other": "+ {{count}} more versions",
+    "card_one_version": "1 version installed"
   }
 }

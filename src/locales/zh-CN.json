@@ -599,7 +599,10 @@
     "accent_pink": "粉色",
     "accent_graphite": "石墨",
     "applied_not_effective": "已应用,但新进程尚未使用 {{tool}} {{version}}。",
-    "uninstall_installation": "卸载 {{vendor}} {{version}}"
+    "uninstall_installation": "卸载 {{vendor}} {{version}}",
+    "card_more_versions_one": "另外 {{count}} 个版本",
+    "card_more_versions_other": "另外 {{count}} 个版本",
+    "card_one_version": "已安装 1 个版本"
   },
   "tools": {
     "profiles": {

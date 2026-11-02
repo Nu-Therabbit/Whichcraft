@@ -118,8 +118,8 @@ describe("desktop shell switch apply and undo", () => {
   });
 
   it("opens the review directly from a tool's card and says what the readback found", async () => {
-    const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true });
-    const target = inst("java", "17.0.2", "C:\\jdk17");
+    const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });
     let applied = false;
     const plan = planFor(target, { planId: "from-card" });
     const applyToolPlan = vi.fn(async (reviewed: typeof plan) => {

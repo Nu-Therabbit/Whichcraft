@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { PythonLauncherInfo, SdkInventory } from "../../components/ToolsPanel/SupplementalInfo";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
@@ -8,6 +8,7 @@ import type { ToolInstallationView, ToolKind } from "../tools/types";
 import { OVERVIEW_TOOL_KINDS, TOOL_DISPLAY, toolDescriptionKey } from "./overviewTools";
 import {
   byVersion,
+  cardLines,
   formatInstallationLabel,
   pickEffective,
   pickSelected,
@@ -53,37 +54,60 @@ function cardSummary(t: Translate, slice: ToolOverviewSlice): string {
   }
 }
 
-function CardRow({ tool, item, sameElsewhere, arrived, onUse }: { tool: ToolKind; item: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; onUse: (trigger: HTMLButtonElement) => void }) {
+function CardUse({ tool, item, onUse }: { tool: ToolKind; item: ToolInstallationView; onUse: (trigger: HTMLButtonElement) => void }) {
+  const { t } = useI18n();
+  return (
+    <Button
+      variant="secondary"
+      size="xs"
+      aria-label={t("desktop_shell.card_use", { tool: TOOL_DISPLAY[tool].title, version: item.version, vendor: item.vendor })}
+      onClick={(e) => onUse(e.currentTarget)}
+    >
+      {t("desktop_shell.use")}
+    </Button>
+  );
+}
+
+function CardMain({ tool, item, sameElsewhere, arrived, onUse }: { tool: ToolKind; item: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; onUse: (trigger: HTMLButtonElement) => void }) {
   const { t } = useI18n();
   return (
     <li title={item.root} className="shell-install-row" data-effective={item.effective} data-arrived={arrived}>
-      <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-1.5">
-          <span className="shell-install-version">{item.version}</span>
-          {item.selected && !item.effective && <span className="shell-pill shell-pill-warn">{t("desktop_shell.selection")}</span>}
-          {!item.available && <span className="shell-pill shell-pill-warn">{t("tools.unavailable")}</span>}
-        </span>
-        <span className="block text-xs text-muted">
+      <span className="shell-install-version">{item.version}</span>
+      {item.selected && !item.effective && <span className="shell-pill shell-pill-warn">{t("desktop_shell.selection")}</span>}
+      {!item.available && <span className="shell-pill shell-pill-warn">{t("tools.unavailable")}</span>}
+      {sameElsewhere ? (
+        <code className="shell-card-detail font-mono">{item.root}</code>
+      ) : (
+        <span className="shell-card-detail">
           {item.vendor} · {t(`tools.installer.${item.installerKind}`)}
         </span>
-        {sameElsewhere && <code className="block text-xs font-mono wrap-anywhere text-muted">{item.root}</code>}
-      </span>
+      )}
       {item.effective ? (
         <span className="shell-in-use">
           <span aria-hidden className="shell-in-use-dot" />
           {t("desktop_shell.in_use")}
         </span>
       ) : (
-        item.available && (
-          <Button
-            variant="secondary"
-            size="xs"
-            aria-label={t("desktop_shell.card_use", { tool: TOOL_DISPLAY[tool].title, version: item.version, vendor: item.vendor })}
-            onClick={(e) => onUse(e.currentTarget)}
-          >
-            {t("desktop_shell.use")}
-          </Button>
-        )
+        item.available && <CardUse tool={tool} item={item} onUse={onUse} />
+      )}
+    </li>
+  );
+}
+
+/** The Selection that differs. What it shares with the line above is left out, so only what tells them apart is said. */
+function CardSelection({ tool, item, main, sameElsewhere, arrived, more, onUse }: { tool: ToolKind; item: ToolInstallationView; main: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; more: ReactNode; onUse: (trigger: HTMLButtonElement) => void }) {
+  const { t } = useI18n();
+  return (
+    <li title={item.root} className="shell-card-foot" data-arrived={arrived}>
+      <span className="shell-pill shell-pill-warn">{t("desktop_shell.selection")}</span>
+      <span className="shell-install-version">{item.version}</span>
+      {!item.available && <span className="shell-pill shell-pill-warn">{t("tools.unavailable")}</span>}
+      {sameElsewhere ? <code className="shell-card-detail font-mono">{item.root}</code> : item.vendor !== main.vendor && <span className="shell-card-detail">{item.vendor}</span>}
+      {more}
+      {item.available && (
+        <span className="ml-auto flex-none">
+          <CardUse tool={tool} item={item} onUse={onUse} />
+        </span>
       )}
     </li>
   );
@@ -95,6 +119,15 @@ function ToolCard({ tool, slice, onOpen, onUse, onInstall, onRetry }: { tool: To
   const health = scanHealth(slice);
   const items = byVersion(slice.installations);
   const arrived = useArrival(items);
+  const { main, selection, hidden } = cardLines(slice.installations);
+  const sameElsewhere = (item: ToolInstallationView) => items.some((other) => other.root !== item.root && other.version === item.version && other.vendor === item.vendor);
+  const moreLabel = t("desktop_shell.card_more_versions", { count: hidden });
+  const moreButton = (text: string) =>
+    hidden > 0 && (
+      <button type="button" className="shell-card-more" title={moreLabel} aria-label={`${meta.title}: ${moreLabel}`} onClick={(e) => onOpen(e.currentTarget)}>
+        {text}
+      </button>
+    );
   const effective = pickEffective(slice.installations);
   const liveHealth = toolHealth(slice);
   const healthLabel = t(
@@ -138,39 +171,39 @@ function ToolCard({ tool, slice, onOpen, onUse, onInstall, onRetry }: { tool: To
           <Icon name="chevron-down" size={14} aria-hidden />
         </span>
       </button>
-      {(health === "loading" || health === "error") && (
-        <div className="flex items-center justify-end gap-3 border-t border-rim-subtle p-3">
+      {health === "loading" || health === "error" || !main ? (
+        <div className="shell-card-empty">
           {health === "loading" && <p className="min-w-0 flex-1 text-xs text-muted">{t("desktop_shell.loading")}</p>}
           {health === "error" && (
             <Button variant="secondary" size="xs" title={slice.error ?? undefined} onClick={onRetry}>
               {t("desktop_shell.retry_scan")}
             </Button>
           )}
+          {health === "missing" &&
+            (meta.switchOnly ? (
+              <span className="flex-1 text-xs text-muted">{t("desktop_shell.card_add_folder")}</span>
+            ) : (
+              <Button variant="secondary" size="xs" aria-label={t("desktop_shell.install_heading", { tool: meta.title })} onClick={onInstall}>
+                {t("desktop_shell.install_short")}
+              </Button>
+            ))}
         </div>
-      )}
-      {health !== "loading" && health !== "error" && items.length === 0 && (
-        <div className="flex flex-1 items-center justify-end gap-2 border-t border-rim-subtle p-1.5 pl-3">
-          {meta.switchOnly ? (
-            <span className="flex-1 text-xs text-muted">{t("desktop_shell.card_add_folder")}</span>
-          ) : (
-            <Button variant="secondary" size="xs" aria-label={t("desktop_shell.install_heading", { tool: meta.title })} onClick={onInstall}>
-              {t("desktop_shell.install_short")}
-            </Button>
-          )}
-        </div>
-      )}
-      {health !== "loading" && health !== "error" && items.length > 0 && (
+      ) : (
         <ul className="shell-card-rows">
-          {items.map((item) => (
-            <CardRow
-              key={item.root}
+          <CardMain tool={tool} item={main} arrived={arrived === main.root} sameElsewhere={sameElsewhere(main)} onUse={(trigger) => onUse(main.root, trigger)} />
+          {selection ? (
+            <CardSelection
               tool={tool}
-              item={item}
-              arrived={arrived === item.root}
-              sameElsewhere={items.some((other) => other.root !== item.root && other.version === item.version && other.vendor === item.vendor)}
-              onUse={(trigger) => onUse(item.root, trigger)}
+              item={selection}
+              main={main}
+              arrived={arrived === selection.root}
+              sameElsewhere={sameElsewhere(selection)}
+              more={moreButton(`+${hidden}`)}
+              onUse={(trigger) => onUse(selection.root, trigger)}
             />
-          ))}
+          ) : (
+            <li className="shell-card-foot">{hidden > 0 ? moreButton(moreLabel) : <span className="text-xs text-muted">{t("desktop_shell.card_one_version")}</span>}</li>
+          )}
         </ul>
       )}
     </li>

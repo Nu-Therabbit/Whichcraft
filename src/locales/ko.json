@@ -599,7 +599,10 @@
     "accent_pink": "분홍",
     "accent_graphite": "그래파이트",
     "applied_not_effective": "적용했지만 새 프로세스는 아직 {{tool}} {{version}}을(를) 사용하지 않습니다.",
-    "uninstall_installation": "{{vendor}} {{version}} 제거"
+    "uninstall_installation": "{{vendor}} {{version}} 제거",
+    "card_more_versions_one": "다른 버전 {{count}}개",
+    "card_more_versions_other": "다른 버전 {{count}}개",
+    "card_one_version": "버전 1개 설치됨"
   },
   "tools": {
     "profiles": {

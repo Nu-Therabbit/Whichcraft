@@ -25,6 +25,7 @@ const sdkMocks = {
 const effective = inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true });
 const other = inst("java", "17.0.2", "C:\\jdk17");
 const javaOnly = async (tool: string) => (tool === "java" ? [effective, other] : []);
+const differs = async (tool: string) => (tool === "java" ? [{ ...effective, selected: false }, { ...other, selected: true }] : []);
 
 function renderShell(api: Parameters<typeof fakeToolsRuntime>[0]) {
   const coordination = createWriteCoordinator();
@@ -157,7 +158,7 @@ describe("desktop shell tool cards", () => {
     let gone = false;
     const planToolApply = vi.fn(async () => planFor(other));
     renderShell({
-      listToolInstallations: async (tool: string) => (tool !== "java" ? [] : [effective, { ...other, available: !gone }]),
+      listToolInstallations: async (tool: string) => (tool !== "java" ? [] : [{ ...effective, selected: false }, { ...other, selected: true, available: !gone }]),
       planToolApply,
     });
     const user = userEvent.setup();
@@ -177,7 +178,7 @@ describe("desktop shell tool cards", () => {
     renderShell({
       listToolInstallations: async (tool: string) => {
         if (gate) await gate;
-        return javaOnly(tool);
+        return differs(tool);
       },
     });
     const user = userEvent.setup();
@@ -201,7 +202,7 @@ describe("desktop shell tool cards", () => {
     let fail = true;
     const listToolInstallations = vi.fn(async (tool: string) => {
       if (tool === "java" && fail) throw new Error("registry denied");
-      return javaOnly(tool);
+      return differs(tool);
     });
     renderShell({ listToolInstallations });
     const user = userEvent.setup();
@@ -217,9 +218,84 @@ describe("desktop shell tool cards", () => {
     expect(screen.queryByRole("button", { name: "Retry scan" })).not.toBeInTheDocument();
   });
 
+  it("shows what Windows uses and counts the rest, which open from the card", async () => {
+    const extra = inst("java", "11.0.3", "C:\\jdk11");
+    renderShell({ listToolInstallations: async (tool: string) => (tool === "java" ? [effective, other, extra] : []) });
+    const user = userEvent.setup();
+    const more = await screen.findByRole("button", { name: "Java: + 2 more versions" });
+    const card = more.closest(".shell-card") as HTMLElement;
+    expect(within(card).getByText("21.0.1")).toBeInTheDocument();
+    expect(within(card).queryByText("17.0.2")).not.toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: /^Use Java/ })).not.toBeInTheDocument();
+
+    await user.click(more);
+    const details = await sheet();
+    expect(await within(details).findByRole("button", { name: /Switch to Eclipse Adoptium 11\.0\.3/ })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await noSheet();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Java: + 2 more versions" })).toHaveFocus());
+  });
+
+  it("keeps a Selection that differs on the card, with Use", async () => {
+    renderShell({ listToolInstallations: differs });
+    const use = await screen.findByRole("button", { name: /^Use Java 17\.0\.2/ });
+    const card = use.closest(".shell-card") as HTMLElement;
+    expect(within(card).getByText("21.0.1")).toBeInTheDocument();
+    expect(within(card).getByText("17.0.2")).toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: /more version/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps the count beside a Selection that differs, and it opens the sheet", async () => {
+    const extra = inst("java", "11.0.3", "C:\\jdk11");
+    renderShell({ listToolInstallations: async (tool: string) => (tool === "java" ? [{ ...effective, selected: false }, { ...other, selected: true }, extra] : []) });
+    const user = userEvent.setup();
+    const more = await screen.findByRole("button", { name: "Java: + 1 more version" });
+    expect(more).toHaveTextContent("+1");
+    await user.click(more);
+    expect(await within(await sheet()).findByRole("button", { name: /Switch to Eclipse Adoptium 11\.0\.3/ })).toBeInTheDocument();
+  });
+
+  it("offers a rescan on a card whose rescan failed, even with an earlier result", async () => {
+    let fail = false;
+    renderShell({
+      listToolInstallations: async (tool: string) => {
+        if (tool === "java" && fail) throw new Error("registry denied");
+        return javaOnly(tool);
+      },
+    });
+    const user = userEvent.setup();
+    const card = (await screen.findByRole("button", { name: /^Java,/ })).closest(".shell-card") as HTMLElement;
+    await within(card).findByText("21.0.1");
+    fail = true;
+    await user.click(screen.getByRole("button", { name: /^rescan/i }));
+    expect(await within(card).findByRole("button", { name: /rescan|retry/i })).toBeInTheDocument();
+  });
+
+  it("says a tool has one version when there is nothing more to open", async () => {
+    renderShell({ listToolInstallations: async (tool: string) => (tool === "java" ? [effective] : []) });
+    const row = await screen.findByText("1 version installed");
+    expect(within(row.closest(".shell-card") as HTMLElement).getByText("21.0.1")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /more version/ })).not.toBeInTheDocument();
+  });
+
+  it("names the Selection's vendor only when that is what tells the two apart", async () => {
+    const zulu = inst("java", "21.0.1", "C:\\zulu21", { selected: true, vendor: "Azul Zulu" });
+    renderShell({ listToolInstallations: async (tool: string) => (tool === "java" ? [{ ...effective, selected: false }, zulu] : []) });
+    await screen.findByRole("button", { name: /^Use Java 21\.0\.1/ });
+    expect(screen.getByText("Azul Zulu")).toBeInTheDocument();
+  });
+
+  it("shows the folder when two installations have the same version and vendor", async () => {
+    const twin = inst("java", "21.0.1", "C:\\other\\jdk21", { selected: true });
+    renderShell({ listToolInstallations: async (tool: string) => (tool === "java" ? [{ ...effective, selected: false }, twin] : []) });
+    await screen.findByRole("button", { name: /^Use Java 21\.0\.1/ });
+    expect(screen.getByText("C:\\jdk21")).toBeInTheDocument();
+    expect(screen.getByText("C:\\other\\jdk21")).toBeInTheDocument();
+  });
+
   it("says once that a tool has nothing installed", async () => {
     renderShell({ listToolInstallations: javaOnly });
-    await screen.findByRole("button", { name: /^Use Java 17\.0\.2/ });
+    await screen.findByRole("button", { name: /^Java: \+ 1 more version/ });
     const flutter = screen.getByRole("button", { name: /^Flutter,/ }).closest("li") as HTMLElement;
     expect(within(flutter).getAllByText(/no installations found|nothing installed/i)).toHaveLength(1);
     expect(within(flutter).getByRole("button", { name: "Install Flutter" })).toBeInTheDocument();

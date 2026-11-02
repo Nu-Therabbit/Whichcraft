@@ -24,7 +24,9 @@ describe("SdkInventory", () => {
         }}
       />,
     );
-    expect(screen.getByText("26.3.11579264, 27.0.12077973")).toBeInTheDocument();
+    // Each row keeps to one line, so what a narrow window cuts has to stay readable.
+    expect(screen.getByText("26.3.11579264, 27.0.12077973")).toHaveAttribute("title", "26.3.11579264, 27.0.12077973");
+    expect(screen.getByText("Visual Studio Build Tools 2022 17.14")).toHaveAttribute("title", "Visual Studio Build Tools 2022 17.14");
     expect(screen.getByText("14.44.35207")).toBeInTheDocument();
     expect(screen.getByText("10.0.26100.0")).toBeInTheDocument();
     expect(screen.queryByRole("button")).toBeNull();
