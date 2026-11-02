@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { useI18n } from "../../hooks/useI18n";
 import type { StagedChange } from "../../hooks/useStaged";
 import type { DiffEntry } from "../../lib/diff";
@@ -9,12 +10,14 @@ import type {
   VarScope,
 } from "../../types";
 import { CheckCommandPanel } from "../CheckCommandPanel/CheckCommandPanel";
-import { DiffPanel } from "../DiffPanel/DiffPanel";
 import { ImportExportPanel } from "../ImportExportPanel/ImportExportPanel";
-import { LicensesPanel } from "../LicensesPanel/LicensesPanel";
 import { NewVarModal } from "../NewVarModal/NewVarModal";
 import { StagedModal } from "../StagedModal/StagedModal";
 import { Modal } from "../ui/Modal";
+
+// Opened rarely and heavy: the diff viewer's library and the full licence list.
+const DiffPanel = lazy(() => import("../DiffPanel/DiffPanel").then((m) => ({ default: m.DiffPanel })));
+const LicensesPanel = lazy(() => import("../LicensesPanel/LicensesPanel").then((m) => ({ default: m.LicensesPanel })));
 
 type Dialog = "importexport" | "changes" | "staged" | "licenses" | "newvar" | "checkcommand" | null;
 
@@ -126,13 +129,15 @@ export function AppModals({
         size="xl"
       >
         <div className="px-6 py-5">
-          <DiffPanel
+          <Suspense fallback={null}>
+            <DiffPanel
             entries={diffEntries}
             onApply={onDiffApply}
             onDismiss={onDiffDismiss}
             busy={applyBusy}
             error={applyError}
           />
+          </Suspense>
         </div>
       </Modal>
 
@@ -159,7 +164,9 @@ export function AppModals({
         size="2xl"
         flex
       >
-        <LicensesPanel />
+        <Suspense fallback={null}>
+          <LicensesPanel />
+        </Suspense>
       </Modal>
     </>
   );

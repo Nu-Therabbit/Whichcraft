@@ -7,10 +7,10 @@ export function ShellCheckResult({ check }: { check: ShellCheck }) {
   const shell = t(`tools.settings.terminal_kind.${check.shell}`);
   return (
     <div
-      className={`border rounded-md p-3 text-sm flex flex-col gap-1 ${check.matches ? "border-rim" : "border-warning/40"}`}
+      className={`border rounded-md p-3 text-sm flex flex-col gap-1 ${check.matches ? "border-rim" : "border-warn/40"}`}
       role="status"
     >
-      <p className={check.matches ? "" : "text-warning"}>
+      <p className={check.matches ? "" : "text-warn"}>
         {check.matches ? t("tools.shell_check.matches", { shell }) : t("tools.shell_check.differs", { shell })}
       </p>
       <p className="text-xs">

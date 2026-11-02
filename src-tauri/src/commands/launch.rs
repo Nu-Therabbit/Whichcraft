@@ -4,18 +4,26 @@ use serde::Serialize;
 
 use crate::error::WhichcraftError;
 
-/// The GUI program installed beside the console launcher (`whichcraft.com`, or
-/// `whichcraft-cli.exe` in a cargo build).
-pub fn gui_exe_beside(cli_exe: &Path) -> PathBuf {
-    cli_exe.with_file_name("whichcraft.exe")
+/// The GUI program for a console launcher: one folder up from the installed
+/// `bin\whichcraft.exe`, or beside `whichcraft-cli.exe` in a cargo build. The installed launcher
+/// shares the GUI's file name, so a sibling lookup would make it start itself.
+pub fn gui_exe_for_cli(cli_exe: &Path) -> PathBuf {
+    const GUI: &str = "whichcraft.exe";
+    let shares_gui_name = cli_exe
+        .file_name()
+        .is_some_and(|name| name.eq_ignore_ascii_case(GUI));
+    match cli_exe.parent().and_then(Path::parent) {
+        Some(install_dir) if shares_gui_name => install_dir.join(GUI),
+        _ => cli_exe.with_file_name(GUI),
+    }
 }
 
-/// Starts the GUI beside this console launcher with `args` (GUI flags only) and does not wait.
+/// Starts the GUI for this console launcher with `args` (GUI flags only) and does not wait.
 /// The GUI is a windows-subsystem program, so it gets no console window. It must not inherit
 /// this launcher's stdio: a caller capturing the output (a script, `whichcraft | more`) would
 /// otherwise wait on the pipe until the window is closed. `Command` always lets the child inherit
 /// inheritable handles, so the launcher's own standard handles are made non-inheritable first.
-pub fn open_gui_beside(args: &[String]) -> std::io::Result<()> {
+pub fn open_gui_from_cli(args: &[String]) -> std::io::Result<()> {
     use std::process::Stdio;
     use windows_sys::Win32::Foundation::{SetHandleInformation, HANDLE_FLAG_INHERIT};
     use windows_sys::Win32::System::Console::{
@@ -29,7 +37,7 @@ pub fn open_gui_beside(args: &[String]) -> std::io::Result<()> {
             }
         }
     }
-    let gui = gui_exe_beside(&std::env::current_exe()?);
+    let gui = gui_exe_for_cli(&std::env::current_exe()?);
     std::process::Command::new(gui)
         .args(args)
         .stdin(Stdio::null())
@@ -42,6 +50,54 @@ pub fn open_gui_beside(args: &[String]) -> std::io::Result<()> {
 /// Starts the legacy presentation inherited from the fork instead of the desktop shell.
 /// Read once at startup; switching needs a relaunch.
 pub const LEGACY_UI_FLAG: &str = "--legacy-ui";
+
+/// Given to the elevated instance from Run as admin, naming the instance it replaces.
+const REPLACES_PID_FLAG: &str = "--replaces-pid=";
+
+/// How long a relaunched instance waits for the instance it replaces to exit.
+const REPLACED_INSTANCE_WAIT_MS: u32 = 15_000;
+
+fn is_demo_arg(arg: &str) -> bool {
+    arg == "--demo" || arg.starts_with("--demo-fixture")
+}
+
+/// A demo run holds no real data, so it may run beside the real app (`media/capture.mjs`).
+pub fn uses_single_instance(args: &[String]) -> bool {
+    !args.iter().any(|arg| is_demo_arg(arg))
+}
+
+/// The arguments for the instance that replaces this one, keeping its GUI flags.
+pub fn relaunch_args(args: &[String], own_pid: u32) -> Vec<String> {
+    args.iter()
+        .filter(|arg| !arg.starts_with(REPLACES_PID_FLAG))
+        .cloned()
+        .chain(Some(format!("{REPLACES_PID_FLAG}{own_pid}")))
+        .collect()
+}
+
+fn replaced_pid(args: &[String]) -> Option<u32> {
+    args.iter()
+        .find_map(|arg| arg.strip_prefix(REPLACES_PID_FLAG)?.parse().ok())
+}
+
+/// The old instance holds the single-instance lock until it exits. Without this wait the
+/// relaunched instance would hand off to it and exit, and then no window would remain.
+pub fn wait_for_replaced_instance(args: &[String]) {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, WaitForSingleObject, PROCESS_SYNCHRONIZE,
+    };
+    let Some(pid) = replaced_pid(args) else {
+        return;
+    };
+    unsafe {
+        let process = OpenProcess(PROCESS_SYNCHRONIZE, 0, pid);
+        if !process.is_null() {
+            WaitForSingleObject(process, REPLACED_INSTANCE_WAIT_MS);
+            CloseHandle(process);
+        }
+    }
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,7 +134,7 @@ pub fn get_launch_options() -> LaunchOptions {
 pub fn is_gui_launch(args: &[String]) -> bool {
     args.is_empty()
         || args.iter().any(|arg| {
-            arg == "--demo" || arg.starts_with("--demo-fixture") || arg == LEGACY_UI_FLAG
+            is_demo_arg(arg) || arg == LEGACY_UI_FLAG || arg.starts_with(REPLACES_PID_FLAG)
         })
 }
 
@@ -189,13 +245,35 @@ mod tests {
     }
 
     #[test]
-    fn the_console_launcher_opens_the_gui_installed_beside_it() {
+    fn a_relaunch_names_the_instance_it_replaces_and_stays_a_gui_launch() {
+        let relaunch = relaunch_args(&args(&["--legacy-ui", "--replaces-pid=7"]), 42);
+        assert_eq!(relaunch, args(&["--legacy-ui", "--replaces-pid=42"]));
+        assert_eq!(replaced_pid(&relaunch), Some(42));
+        assert!(is_gui_launch(&args(&["--replaces-pid=42"])));
+        assert_eq!(replaced_pid(&args(&["--replaces-pid=x"])), None);
+        assert_eq!(replaced_pid(&args(&["--legacy-ui"])), None);
+    }
+
+    #[test]
+    fn only_a_demo_run_may_sit_beside_the_real_app() {
+        assert!(uses_single_instance(&args(&[])));
+        assert!(uses_single_instance(&args(&["--legacy-ui"])));
+        assert!(!uses_single_instance(&args(&["--demo"])));
+        assert!(!uses_single_instance(&args(&["--demo-fixture=a.json"])));
+    }
+
+    #[test]
+    fn the_console_launcher_opens_the_gui_and_never_itself() {
         assert_eq!(
-            gui_exe_beside(Path::new(r"C:\Program Files\Whichcraft\whichcraft.com")),
+            gui_exe_for_cli(Path::new(r"C:\Program Files\Whichcraft\bin\whichcraft.exe")),
             PathBuf::from(r"C:\Program Files\Whichcraft\whichcraft.exe")
         );
         assert_eq!(
-            gui_exe_beside(Path::new(r"E:\target\release\whichcraft-cli.exe")),
+            gui_exe_for_cli(Path::new(r"C:\Program Files\Whichcraft\bin\WHICHCRAFT.EXE")),
+            PathBuf::from(r"C:\Program Files\Whichcraft\whichcraft.exe")
+        );
+        assert_eq!(
+            gui_exe_for_cli(Path::new(r"E:\target\release\whichcraft-cli.exe")),
             PathBuf::from(r"E:\target\release\whichcraft.exe")
         );
     }

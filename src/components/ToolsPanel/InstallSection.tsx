@@ -46,10 +46,10 @@ export function InstallSection({
   const storeConfirmed = settings.installStoreConfirmed ?? false;
 
   return (
-    <section className="border border-rim rounded-md p-4 flex flex-col gap-3 text-sm">
-      <h3 className="font-semibold">{t("tools.install.title", { tool: t(`tools.kind.${tool}`) })}</h3>
+    <section className="flex flex-col gap-3 text-sm">
+      <h3 className="shell-section-title">{t("tools.install.title", { tool: t(`tools.kind.${tool}`) })}</h3>
       <input
-        className="bg-surface border border-rim rounded-md px-2 py-1 font-mono"
+        className="bg-field border border-rim-subtle rounded-control px-2.5 h-8 font-mono"
         aria-label={t("tools.install.filter")}
         placeholder={t("tools.install.filter")}
         value={filter}
@@ -58,12 +58,12 @@ export function InstallSection({
       {loading ? (
         <p className="text-muted">{t("app.loading")}</p>
       ) : (
-        <ul className="max-h-40 overflow-auto border border-rim rounded-md divide-y divide-rim">
+        <ul className="max-h-48 overflow-auto border border-rim-subtle rounded-control divide-y divide-rim-subtle">
           {newestFirst.map((v) => (
             <li key={v.version}>
               <button
                 type="button"
-                className={`w-full text-left px-3 py-1 font-mono hover:bg-surface/60 ${chosen?.version === v.version ? "bg-surface" : ""}`}
+                className={`w-full text-left px-3 py-1 font-mono hover:bg-hover ${chosen?.version === v.version ? "bg-selection" : ""}`}
                 onClick={() => onChoose(v.version)}
               >
                 {v.version}
@@ -83,7 +83,7 @@ export function InstallSection({
             {chosen.diskBytes != null && ` ${t("tools.install.disk", { size: formatBytes(chosen.diskBytes) })}`}
           </p>
           {miseStatus && !miseStatus.present && (
-            <p className="text-xs text-warning">
+            <p className="text-xs text-warn">
               {t("tools.install.mise_first", { version: miseStatus.version, size: formatBytes(miseStatus.downloadBytes) })}
             </p>
           )}
@@ -93,7 +93,7 @@ export function InstallSection({
             <p className="text-xs text-muted">{t("tools.install.into", { store: settings.installStore })}</p>
           )}
           {miseStatus?.fetching && (
-            <p className="text-xs text-warning">{t("tools.install.wait_for_mise", { version: miseStatus.version })}</p>
+            <p className="text-xs text-warn">{t("tools.install.wait_for_mise", { version: miseStatus.version })}</p>
           )}
           <Button variant="primary" disabled={busy || !storeConfirmed || !!miseStatus?.fetching} onClick={onInstall}>
             {busy ? t("tools.install.installing") : t("tools.install.install")}

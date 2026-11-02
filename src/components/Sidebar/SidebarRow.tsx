@@ -1,3 +1,4 @@
+import { useI18n } from "../../hooks/useI18n";
 import type { StagedChange } from "../../hooks/useStaged";
 import { cn } from "../../lib/cn";
 import type { SecretInfo } from "../../lib/secrets";
@@ -33,6 +34,7 @@ export function SidebarRow({
 }: Props) {
   const isDelete = stagedChange?.kind === "delete";
   const isSet = stagedChange?.kind === "set";
+  const { t } = useI18n();
   const isNew = isSet && stagedChange.originalValue === null;
 
   return (
@@ -76,8 +78,8 @@ export function SidebarRow({
           e.stopPropagation();
           onCopy();
         }}
-        aria-label={`Copy value of ${v.name}`}
-        title="Copy value"
+        aria-label={t("ui.copy_value_of", { name: v.name })}
+        title={t("ui.copy_value")}
         className={cn(
           "shrink-0 text-xs p-1 rounded transition-all",
           "opacity-0 group-hover:opacity-100 focus:opacity-100",
@@ -89,7 +91,7 @@ export function SidebarRow({
       <span
         className={cn(
           "text-xs font-semibold w-4 h-4 rounded flex items-center justify-center shrink-0 mr-4",
-          v.scope === "User" && "bg-accent/15 text-accent",
+          v.scope === "User" && "bg-accent/10 text-accent",
           v.scope === "System" && "bg-violet/15 text-violet",
           v.scope === "OtherUser" && "bg-warn/15 text-warn",
         )}

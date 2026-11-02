@@ -20,7 +20,7 @@ const STATE_VARIANT = {
 export function RecoveryBanner({ recovery, busy, onResume, onRollBack }: Props) {
   const { t } = useI18n();
   return (
-    <div className="border border-warning/40 rounded-md p-4 flex flex-col gap-3" role="alert">
+    <div className="border border-warn/40 rounded-md p-4 flex flex-col gap-3" role="alert">
       <div>
         <h3 className="font-semibold text-sm">{t("tools.recovery.title")}</h3>
         <p className="text-xs text-muted">{t("tools.recovery.body", { createdAt: recovery.createdAt })}</p>
@@ -40,7 +40,7 @@ export function RecoveryBanner({ recovery, busy, onResume, onRollBack }: Props) 
           </li>
         ))}
       </ul>
-      {!recovery.canResume && <p className="text-xs text-warning">{t("tools.recovery.cannot_resume")}</p>}
+      {!recovery.canResume && <p className="text-xs text-warn">{t("tools.recovery.cannot_resume")}</p>}
       <div className="flex gap-2">
         <Button variant="primary" size="sm" onClick={onResume} disabled={busy || !recovery.canResume}>
           {t("tools.recovery.resume")}

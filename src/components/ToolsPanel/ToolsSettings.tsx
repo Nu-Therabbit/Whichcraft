@@ -26,9 +26,9 @@ export function ToolsSettings({ settings, busy, onSave }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-4 text-sm">
+    <div className="flex flex-col gap-6 text-sm">
       <section className="flex flex-col gap-2">
-        <h2 className="font-semibold">{t("tools.settings.scan_roots")}</h2>
+        <h2 className="shell-section-title">{t("tools.settings.scan_roots")}</h2>
         <p className="text-xs text-muted">{t("tools.settings.scan_roots_hint")}</p>
         <ul className="flex flex-col gap-1">
           {settings.scanRoots.map((root) => (
@@ -68,7 +68,7 @@ export function ToolsSettings({ settings, busy, onSave }: Props) {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="font-semibold">{t("tools.settings.install_store")}</h2>
+        <h2 className="shell-section-title">{t("tools.settings.install_store")}</h2>
         <p className="text-xs text-muted">{t("tools.settings.install_store_hint")}</p>
         <div className="flex gap-2">
           <input
@@ -98,7 +98,7 @@ export function ToolsSettings({ settings, busy, onSave }: Props) {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="font-semibold">{t("tools.settings.terminal")}</h2>
+        <h2 className="shell-section-title">{t("tools.settings.terminal")}</h2>
         <select
           className="bg-field border border-rim rounded-control px-2 py-1 w-fit"
           aria-label={t("tools.settings.terminal")}

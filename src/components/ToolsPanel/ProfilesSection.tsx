@@ -3,6 +3,8 @@ import { useI18n } from "../../hooks/useI18n";
 import type { MissingPin, ProfileMatchStatus, ProfileToolPin, ToolProfile } from "../../types";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
+import { Modal } from "../ui/Modal";
+import { ToolLogo } from "../ui/ToolLogo";
 import { formatBytes } from "./InstallSection";
 import { StoreConfirm } from "./StoreConfirm";
 
@@ -25,9 +27,12 @@ const pinKey = (p: ProfileToolPin) => `${p.tool}|${p.vendor}|${p.version}`;
 
 function PinLabel({ pin }: { pin: ProfileToolPin }) {
   const { t } = useI18n();
+  const tool = t(`tools.kind.${pin.tool}`);
+  // Some vendors already carry the tool's name: Node.js, Go, Python Software Foundation.
+  const namesTool = pin.vendor.toLowerCase().startsWith(tool.toLowerCase());
   return (
     <>
-      {t(`tools.kind.${pin.tool}`)} {pin.vendor} {pin.version}
+      {namesTool ? pin.vendor : `${tool} ${pin.vendor}`} {pin.version}
     </>
   );
 }
@@ -48,7 +53,7 @@ function MissingList({
   const knownBytes = items.reduce((sum, m) => sum + (m.downloadBytes ?? 0), 0);
   const allSizesKnown = items.every((m) => m.downloadBytes != null);
   return (
-    <div className="flex flex-col gap-2 border border-warning/40 rounded-md p-3">
+    <div className="flex flex-col gap-2 border border-warn/40 rounded-md p-3">
       <ul className="text-xs flex flex-col gap-1">
         {items.map((m) => (
           <li key={pinKey(m.pin)}>
@@ -95,6 +100,7 @@ export function ProfilesSection({
   const { t } = useI18n();
   const [name, setName] = useState("");
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState<ToolProfile | null>(null);
   const chosen = current.filter((p) => !excluded.has(pinKey(p)));
 
   const toggle = (key: string) =>
@@ -110,11 +116,11 @@ export function ProfilesSection({
       {profiles.length === 0 ? (
         <p className="text-muted">{t("tools.profiles.none")}</p>
       ) : (
-        <ul className="border border-rim rounded-md divide-y divide-rim">
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-3">
           {profiles.map(({ profile, matchesEffective, unavailable }) => (
-            <li key={profile.id} className="p-3 flex flex-col gap-2">
+            <li key={profile.id} className="shell-panel p-3 flex flex-col gap-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium">{profile.name}</span>
+                <span className="font-semibold">{profile.name}</span>
                 {unavailable.length > 0 ? (
                   <Badge variant="warn">{t("tools.profiles.unavailable", { count: unavailable.length })}</Badge>
                 ) : matchesEffective ? (
@@ -128,18 +134,23 @@ export function ProfilesSection({
                     {t("tools.profiles.whats_missing")}
                   </Button>
                 ) : (
-                  <Button variant="secondary" size="xs" disabled={busy || matchesEffective} onClick={() => onApply(profile)}>
-                    {t("tools.profiles.apply")}
-                  </Button>
+                  !matchesEffective && (
+                    <Button variant="secondary" size="xs" disabled={busy} onClick={() => onApply(profile)}>
+                      {t("tools.profiles.apply")}
+                    </Button>
+                  )
                 )}
-                <Button variant="ghost" size="xs" disabled={busy} onClick={() => onDelete(profile.id)}>
+                <Button variant="ghost" size="xs" disabled={busy} onClick={() => setDeleting(profile)}>
                   {t("tools.profiles.delete")}
                 </Button>
               </div>
-              <ul className="text-xs text-muted font-mono">
+              <ul className="flex flex-col gap-1 text-xs text-muted">
                 {profile.tools.map((pin) => (
-                  <li key={pinKey(pin)} className={unavailable.some((u) => pinKey(u) === pinKey(pin)) ? "text-warning" : ""}>
-                    <PinLabel pin={pin} />
+                  <li key={pinKey(pin)} className={`flex items-center gap-2 ${unavailable.some((u) => pinKey(u) === pinKey(pin)) ? "text-warn" : ""}`}>
+                    <ToolLogo tool={pin.tool} tile={22} size={16} />
+                    <span className="min-w-0 wrap-anywhere">
+                      <PinLabel pin={pin} />
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -151,18 +162,18 @@ export function ProfilesSection({
         </ul>
       )}
 
-      <div className="border border-rim rounded-md p-3 flex flex-col gap-2">
-        <h3 className="font-semibold">{t("tools.profiles.new_title")}</h3>
+      <div className="shell-panel mt-3 p-3 flex flex-col gap-2">
+        <h2 className="font-semibold">{t("tools.profiles.new_title")}</h2>
         <p className="text-xs text-muted">{t("tools.profiles.new_hint")}</p>
         {current.map((pin) => (
-          <label key={pinKey(pin)} className="flex items-center gap-2 text-xs font-mono">
+          <label key={pinKey(pin)} className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={!excluded.has(pinKey(pin))} onChange={() => toggle(pinKey(pin))} />
             <PinLabel pin={pin} />
           </label>
         ))}
         <div className="flex gap-2">
           <input
-            className="flex-1 bg-surface border border-rim rounded-md px-2 py-1"
+            className="flex-1 bg-field border border-rim-subtle rounded-control px-2.5 h-8"
             aria-label={t("tools.profiles.name")}
             placeholder={t("tools.profiles.name")}
             value={name}
@@ -181,6 +192,31 @@ export function ProfilesSection({
           </Button>
         </div>
       </div>
+
+      <Modal open={deleting !== null} onClose={() => setDeleting(null)} ariaLabel={t("tools.profiles.delete_title", { name: deleting?.name ?? "" })} size="md" flex>
+        {deleting && (
+          <>
+            <div className="p-5">
+              <h2 className="shell-dialog-title mb-1">{t("tools.profiles.delete_title", { name: deleting.name })}</h2>
+              <p className="text-muted">{t("tools.profiles.delete_body")}</p>
+            </div>
+            <div className="shell-dialog-footer">
+              <Button
+                variant="danger"
+                onClick={() => {
+                  onDelete(deleting.id);
+                  setDeleting(null);
+                }}
+              >
+                {t("tools.profiles.delete")}
+              </Button>
+              <Button variant="secondary" onClick={() => setDeleting(null)}>
+                {t("tools.profiles.delete_cancel")}
+              </Button>
+            </div>
+          </>
+        )}
+      </Modal>
     </section>
   );
 }

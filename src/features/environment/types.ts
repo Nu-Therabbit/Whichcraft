@@ -93,7 +93,7 @@ export interface CheckCommandResult {
 }
 
 export interface PathStatusView {
-  installDir: string;
+  cliDir: string;
   userHasEntry: boolean;
   systemHasEntry: boolean;
   /** `null` when no other-user account is selected. */

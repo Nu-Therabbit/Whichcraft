@@ -1,4 +1,12 @@
-import { type ReactNode, useEffect, useId } from "react";
+import { useI18n } from "../../hooks/useI18n";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { createPortal } from "react-dom";
 import { usePresence } from "../../hooks/usePresence";
 import { cn } from "../../lib/cn";
@@ -23,6 +31,16 @@ const sizeCls = {
   "2xl": "max-w-[900px]",
 };
 
+// An unchecked radio in a checked group is not a tab stop, so it can't be the end of the cycle.
+const TABBABLE =
+  'a[href], button:not(:disabled), input:not(:disabled):not([type="radio"]:not(:checked)), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
+function tabbableIn(panel: HTMLElement) {
+  return Array.from(panel.querySelectorAll<HTMLElement>(TABBABLE)).filter(
+    (el) => el.checkVisibility?.() ?? true,
+  );
+}
+
 export function Modal({
   open,
   onClose,
@@ -34,6 +52,50 @@ export function Modal({
 }: Props) {
   const titleId = useId();
   const presence = usePresence(open);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const { t } = useI18n();
+  const returnFocusRef = useRef<Element | null>(null);
+
+  // Layout effects run before a child's own effect, which may focus its first field.
+  useLayoutEffect(() => {
+    if (open) returnFocusRef.current = document.activeElement;
+  }, [open]);
+
+  // A passive cleanup, because React restores the prior focus after a commit's layout cleanups.
+  useEffect(() => {
+    if (!open) return;
+    return () => {
+      // Leave focus alone if the action that closed the dialog already moved it somewhere else.
+      const active = document.activeElement;
+      if (active && active !== document.body && !active.closest('[aria-modal="true"]')) return;
+      const returnTo = returnFocusRef.current;
+      if (returnTo instanceof HTMLElement && returnTo.isConnected) returnTo.focus();
+    };
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (open && presence.mounted && !panelRef.current?.contains(document.activeElement)) {
+      panelRef.current?.focus();
+    }
+  }, [open, presence.mounted]);
+
+  const keepTabInside = (e: ReactKeyboardEvent) => {
+    const panel = panelRef.current;
+    if (e.key !== "Tab" || !panel?.contains(e.target as Node)) return;
+    const tabbable = tabbableIn(panel);
+    const first = tabbable[0];
+    const last = tabbable[tabbable.length - 1];
+    if (!first) {
+      e.preventDefault();
+    } else if (e.shiftKey && (e.target === first || e.target === panel)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && e.target === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -57,10 +119,11 @@ export function Modal({
       aria-modal="true"
       aria-label={title ? undefined : ariaLabel}
       aria-labelledby={title ? titleId : undefined}
+      onKeyDown={keepTabInside}
     >
       {/* Backdrop */}
       <div
-        className="motion-modal-backdrop absolute inset-0 bg-canvas/70 backdrop-blur-sm"
+        className="motion-modal-backdrop absolute inset-0"
         data-state={presence.state}
         onClick={onClose}
         aria-hidden="true"
@@ -68,8 +131,10 @@ export function Modal({
 
       {/* Panel */}
       <div
+        ref={panelRef}
+        tabIndex={-1}
         className={cn(
-          "relative z-10 w-full flex flex-col bg-panel border border-rim rounded-lg shadow-xl",
+          "relative z-10 w-full flex flex-col bg-canvas border border-rim rounded-panel shadow-xl focus:outline-none",
           "max-h-[85vh] overflow-hidden",
           "motion-modal-panel",
           sizeCls[size],
@@ -81,7 +146,7 @@ export function Modal({
             <h2 id={titleId} className="text-base font-semibold text-fg">
               {title}
             </h2>
-            <IconButton aria-label="Close" icon="x" onClick={onClose} />
+            <IconButton aria-label={t("ui.close")} icon="x" onClick={onClose} />
           </div>
         )}
         <div className={flex ? "flex-1 min-h-0 flex flex-col" : "flex-1 overflow-y-auto"}>

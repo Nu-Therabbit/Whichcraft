@@ -364,10 +364,10 @@ describe("desktop shell tool profiles", () => {
     const user = userEvent.setup();
     await waitFor(() => expect(screen.getByText("Android")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: /^apply$/i })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /what is missing/i }));
+    await user.click(screen.getByRole("button", { name: /what is unavailable/i }));
     await waitFor(() => expect(profileMissing).toHaveBeenCalledWith(profile));
     expect(planProfile).not.toHaveBeenCalled();
-    await user.click(await screen.findByRole("button", { name: /install the missing/i }));
+    await user.click(await screen.findByRole("button", { name: /install the unavailable/i }));
     await waitFor(() => expect(installMissing).toHaveBeenCalledWith(profile));
     await waitFor(() => expect(planProfile).toHaveBeenCalledWith(profile));
     expect(await screen.findByText(/User JAVA_HOME/i)).toBeInTheDocument();

@@ -65,19 +65,39 @@ both themes, and interaction tests in Storybook. Generated `*.hozo.css` files ar
 ignored build artifacts. Interactive components keep their current DOM APIs
 until their event, focus, ref, and accessibility contracts can be preserved.
 
+## Publishing a release
+
+Until the first release has installers, the website sends its Download buttons to the build
+instructions. When a release has its installers, set `RELEASE_PUBLISHED` to `true` in
+`lp/src/lib/lpContent.ts`. That points the buttons at the release, restores the download link in
+the structured data and `llms.txt`, and removes the note about the missing installer. Then rerun
+`npm run test:lp`, which follows the flag.
+
 ## Windows binaries: GUI and CLI
 
-Release builds ship two programs side by side in the install folder:
+Release builds ship two programs in the install folder:
 
 - `whichcraft.exe` is the GUI (a windows-subsystem app, so Explorer and the Start menu open no
   console window). Given a subcommand it still runs it, which the installers rely on for
   `whichcraft.exe path-cleanup`.
-- `whichcraft.com` is the console launcher (`src-tauri/src/bin/whichcraft-cli.rs`, copied by
-  `scripts/build-cli-launcher.mjs` before bundling). PATHEXT tries `.COM` before `.EXE`, so
-  `whichcraft list` in a terminal runs it and the shell waits; with no subcommand it opens the GUI
-  and returns.
+- `bin\whichcraft.exe` is the console launcher (`src-tauri/src/bin/whichcraft-cli.rs`, copied by
+  `scripts/build-cli-launcher.mjs` before bundling). Only `bin` goes on PATH, so `whichcraft list`
+  in a terminal runs it and the shell waits; with no subcommand it opens the GUI and returns.
 
-Debug builds (`npm run tauri dev`) stay console apps so their logs show. Programs Whichcraft runs
+Do not ship the launcher as `whichcraft.com` on PATH. Bitdefender flagged that layout as malware
+and removed the installed app when it ran from a terminal.
+
+Release builds run one GUI at a time: a second launch brings the open window forward and exits.
+Subcommands and `--demo` runs are not limited, and Run as admin passes `--replaces-pid` so the
+elevated instance waits for the old one to exit.
+
+Uninstalling keeps `%LOCALAPPDATA%\Whichcraft`, so a reinstall finds its settings again. With the
+NSIS "Delete the application data" box ticked it removes settings, Selections, Tool Profiles, the
+journal and snapshots, but never `installs` or `mise`: those hold tools that PATH or a project may
+still use. The MSI has no such box and keeps everything.
+
+Debug builds (`npm run tauri dev`) stay console apps so their logs show, and are not limited to
+one instance. Programs Whichcraft runs
 in the background go through `background_command` (no window); a layer test enforces it.
 
 ## Adding or updating translations

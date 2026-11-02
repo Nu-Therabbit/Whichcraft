@@ -1,3 +1,4 @@
+import { scopeLabel } from "../../lib/scopeLabel";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
 import { useResizableWidth } from "../../hooks/useResizableWidth";
@@ -105,7 +106,7 @@ export function Sidebar({
 
   const scopeOptions = scopeTabs.map((s) => ({
     value: s,
-    label: s === "OtherUser" ? (personalScopeLabel ?? s) : s,
+    label: s === "OtherUser" ? (personalScopeLabel ?? s) : s === "All" ? t("ui.scope_all") : scopeLabel(t, s),
     count: s === "All" ? vars.length : countFor(s),
   }));
   const sortOptions = [
@@ -159,7 +160,7 @@ export function Sidebar({
 
       <div className="px-3 pb-2">
         <SegmentedControl
-          aria-label="Filter by scope"
+          aria-label={t("ui.filter_by_scope")}
           options={scopeOptions}
           value={scopeFilter}
           onChange={setScopeFilter}
@@ -189,7 +190,7 @@ export function Sidebar({
           <span />
         )}
         <Select
-          aria-label="Sort order"
+          aria-label={t("ui.sort_order")}
           value={sortBy}
           onValueChange={setSortBy}
           options={sortOptions}
@@ -205,7 +206,7 @@ export function Sidebar({
           <p className="text-center text-dim text-sm py-8">{t("sidebar.empty")}</p>
         )}
         {sorted.length > 0 && (
-          <ul aria-label="Environment variables">
+          <ul aria-label={t("ui.environment_variables")}>
             {sorted.map((v) => {
               const key = stagedKey(v.name, v.scope);
               const isSelected = selected?.name === v.name && selected?.scope === v.scope;

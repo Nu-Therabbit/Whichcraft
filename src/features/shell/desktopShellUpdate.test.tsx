@@ -70,8 +70,8 @@ function renderShell(apiOverrides: Record<string, unknown> = {}) {
 }
 
 async function openJavaDetail(user: ReturnType<typeof userEvent.setup>) {
-  await waitFor(() => expect(screen.getByRole("button", { name: /Java/i })).toBeInTheDocument());
-  await user.click(screen.getByRole("button", { name: /Java/i }));
+  await waitFor(() => expect(screen.getByRole("button", { name: /^Java,/i })).toBeInTheDocument());
+  await user.click(screen.getByRole("button", { name: /^Java,/i }));
   return screen.findByRole("complementary", { name: /installation details/i });
 }
 
@@ -98,7 +98,7 @@ describe("desktop shell update journey", () => {
     await act(async () => { failUpdate(new Error("update download cancelled")); });
     await waitFor(() => expect(screen.getByRole("contentinfo")).toHaveTextContent("update download cancelled"));
     await user.click(screen.getByRole("link", { name: /^developer tools/i }));
-    await user.click(screen.getByRole("button", { name: /Java/i }));
+    await user.click(screen.getByRole("button", { name: /^Java,/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent("update download cancelled");
   });
 
@@ -220,7 +220,7 @@ describe("desktop shell update journey", () => {
     expect(lastPlanCall?.type).toBe("return");
     const planPromise = lastPlanCall?.value as Promise<UninstallPlan>;
 
-    await user.click(screen.getByRole("button", { name: /Node\.js/i }));
+    await user.click(screen.getByRole("button", { name: /^Node\.js,/i }));
     const details = await screen.findByRole("complementary", { name: /installation details/i });
 
     await act(async () => {
@@ -230,7 +230,7 @@ describe("desktop shell update journey", () => {
     });
 
     expect(within(details).queryByRole("heading", { name: /^uninstall eclipse adoptium/i })).not.toBeInTheDocument();
-    const uninstallButtons = within(details).getAllByRole("button", { name: /^uninstall$/i });
+    const uninstallButtons = within(details).getAllByRole("button", { name: /^uninstall /i });
     expect(uninstallButtons).toHaveLength(1);
     const [rowUninstall] = uninstallButtons;
     expect(rowUninstall).toBeDefined();
@@ -268,7 +268,7 @@ describe("desktop shell update journey", () => {
     await waitFor(() => expect(planUninstall).toHaveBeenCalled());
     expect(await screen.findByText(/uninstall eclipse adoptium/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Node\.js/i }));
+    await user.click(screen.getByRole("button", { name: /^Node\.js,/i }));
     await waitFor(() => expect(screen.queryByText(/uninstall eclipse adoptium/i)).not.toBeInTheDocument());
   });
 
@@ -278,8 +278,8 @@ describe("desktop shell update journey", () => {
         tool === "git" ? [inst("git", "2.45.0", "C:\\git", { effective: true, selected: true })] : [],
     });
     const user = userEvent.setup();
-    await waitFor(() => expect(screen.getByRole("button", { name: /Git/i })).toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: /Git/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Git,/i })).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /^Git,/i }));
     const details = await screen.findByRole("complementary", { name: /installation details/i });
     expect(within(details).queryByRole("button", { name: /check for updates/i })).not.toBeInTheDocument();
     expect(within(details).queryByRole("button", { name: /^update$/i })).not.toBeInTheDocument();

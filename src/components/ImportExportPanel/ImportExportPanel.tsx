@@ -47,7 +47,7 @@ export function ImportExportPanel({ onStage, pendingStagedCount = 0 }: Props) {
           <h2 className="text-sm font-semibold text-fg">{t("modal.import_export")}</h2>
           <div className="ml-auto">
             <SegmentedControl
-              aria-label="Mode"
+              aria-label={t("ui.import_export_mode")}
               options={modeOptions}
               value={mode}
               onChange={(m) => {

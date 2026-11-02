@@ -1,6 +1,7 @@
 import { installStoreGate } from "./installStoreGate";
 import { useEffect } from "react";
 import { InstallSection } from "../../components/ToolsPanel/InstallSection";
+import { Button } from "../../components/ui/Button";
 import { useI18n } from "../../hooks/useI18n";
 import type { ToolKind } from "../tools/types";
 import { INSTALLABLE_TOOL_KINDS, TOOL_DISPLAY } from "./overviewTools";
@@ -28,56 +29,61 @@ export function ShellInstallView({ tool, onPickTool, onClose }: Props) {
     dispatch({ type: "openInstallList" });
   }, [tool, state.tool, install.busy, install.catalogTool, dispatch]);
 
-  if (tool === "git") {
-    return (
-      <div className="px-5 py-4 text-sm text-dim">
-        {t("desktop_shell.git_switch_only")}
-        <button type="button" className="ml-2 text-accent underline" onClick={onClose}>
-          {t("desktop_shell.close_install")}
-        </button>
-      </div>
-    );
-  }
-
   const header = (
-    <div className="flex items-center justify-between gap-2 mb-3">
-      <h2 id="shell-install-heading" className="text-sm font-semibold">
-        {tool
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <h2 id="shell-install-heading" className="shell-dialog-title">
+        {tool && tool !== "git"
           ? t("desktop_shell.install_heading", { tool: TOOL_DISPLAY[tool].title })
           : t("desktop_shell.install_pick_heading")}
       </h2>
-      <button type="button" className="text-xs text-accent hover:underline" onClick={onClose}>
+      <Button variant="ghost" size="xs" onClick={onClose}>
         {t("desktop_shell.close_install")}
-      </button>
+      </Button>
     </div>
   );
 
+  // The tool stays changeable here, because the dialog hides the cards it was opened from.
+  const picker = (
+    <fieldset aria-labelledby="shell-install-heading" className="mb-3 flex flex-wrap gap-2">
+      {INSTALLABLE_TOOL_KINDS.map((kind) => (
+        <label
+          key={kind}
+          className={`flex items-center gap-2 rounded-control border px-3 py-1.5 hover:bg-hover has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent ${tool === kind ? "border-accent bg-selection" : "border-rim-subtle"}`}
+        >
+          <input
+            type="radio"
+            name="shell-install-tool"
+            className="accent-accent"
+            checked={tool === kind}
+            onChange={() => onPickTool(kind)}
+          />
+          {TOOL_DISPLAY[kind].title}
+        </label>
+      ))}
+    </fieldset>
+  );
+
+  if (tool === "git") {
+    return (
+      <section className="p-5" aria-labelledby="shell-install-heading">
+        {header}
+        {picker}
+        <p className="text-dim">{t("desktop_shell.git_switch_only")}</p>
+      </section>
+    );
+  }
+
   if (!tool) {
     return (
-      <section className="px-5 py-4 border-b border-rim-subtle shrink-0" aria-labelledby="shell-install-heading">
+      <section className="p-5" aria-labelledby="shell-install-heading">
         {header}
-        <fieldset aria-labelledby="shell-install-heading" className="flex flex-wrap gap-2">
-          {INSTALLABLE_TOOL_KINDS.map((kind) => (
-            <label
-              key={kind}
-              className="flex items-center gap-2 rounded border border-rim-subtle bg-panel px-3 py-1.5 text-sm hover:bg-hover has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
-            >
-              <input
-                type="radio"
-                name="shell-install-tool"
-                className="accent-accent"
-                onChange={() => onPickTool(kind)}
-              />
-              {TOOL_DISPLAY[kind].title}
-            </label>
-          ))}
-        </fieldset>
+        {picker}
       </section>
     );
   }
 
   if (!settings) {
-    return <p className="px-5 py-4 text-sm text-dim">{t("app.loading")}</p>;
+    return <p className="p-5 text-dim">{t("app.loading")}</p>;
   }
 
   const catalogError = install.catalogTool === tool ? install.catalogError : null;
@@ -86,17 +92,18 @@ export function ShellInstallView({ tool, onPickTool, onClose }: Props) {
   const storeGate = installStoreGate(settings, dispatch);
 
   return (
-    <section className="px-5 py-4 border-b border-rim-subtle shrink-0" aria-labelledby="shell-install-heading">
+    <section className="p-5" aria-labelledby="shell-install-heading">
       {header}
+      {picker}
       {(catalogError || state.error) && (
-        <div role="alert" className="text-sm text-danger border border-danger/30 rounded-md px-3 py-2 mb-3">
+        <div role="alert" className="shell-banner mb-3 text-danger" data-tone="warn">
           {catalogError || state.error}
         </div>
       )}
       {catalogReady && !install.loading && !install.busy && install.versions.length === 0 && (
-        <button type="button" className="text-xs text-accent hover:underline mb-3" onClick={() => dispatch({ type: "openInstallList" })}>
+        <Button variant="secondary" size="xs" className="mb-3" onClick={() => dispatch({ type: "openInstallList" })}>
           {t("tools.refresh")}
-        </button>
+        </Button>
       )}
       <InstallSection
         key={tool}

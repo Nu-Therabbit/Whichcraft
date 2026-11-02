@@ -2,8 +2,10 @@ import type { APIRoute } from "astro";
 import {
   enCopy,
   GITHUB_URL,
+  RELEASE_PUBLISHED,
   RELEASE_URL,
   REPORTS_URL,
+  BUILD_URL,
   STORYBOOK_URL,
   VERSION,
 } from "../lib/lpContent";
@@ -26,9 +28,13 @@ Whichcraft is a free, open-source GUI (desktop app) for Windows 10/11 (Tauri v2 
 
 ## Docs
 
-- [Landing page](${url("")}): Overview, screenshots, download links. Also available in 日本語, 简体中文, Русский, 한국어, and Tiếng Việt.
+- [Landing page](${url("")}): Overview and screenshots${RELEASE_PUBLISHED ? ", download links" : ""}. Also available in 日本語, 简体中文, Русский, 한국어, and Tiếng Việt.
 - [GitHub repository](${GITHUB_URL}): Source, DESIGN.md architecture notes, issue tracker.
-- [Latest release](${RELEASE_URL}): Windows installer (.exe), MSI, and portable .zip downloads. Current version: ${VERSION}.
+${
+  RELEASE_PUBLISHED
+    ? `- [Latest release](${RELEASE_URL}): Windows installer (.exe), MSI, and portable .zip downloads. Current version: ${VERSION}.`
+    : `- [Build from source](${BUILD_URL}): No release has been published yet, so there is no installer to download. Build version ${VERSION} from source on Windows; builds are not code signed.`
+}
 - [Component Storybook](${absolute(STORYBOOK_URL)}): Interactive UI component explorer, not the app itself.
 - [CI test reports](${absolute(REPORTS_URL)}): Automated test/lint report archive, not user-facing documentation.
 

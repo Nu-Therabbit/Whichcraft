@@ -8,8 +8,12 @@ Architecture decisions, security model, and data format specs. Not a tutorial; r
 
 ```
 src/                    React frontend (TypeScript)
-  api.ts                Tauri command bridge — all invoke() calls live here
-  App.tsx               Root: state, layout, dialog orchestration
+  transport/            Tauri command bridge — all invoke() calls live here
+  App.tsx               Root: picks the desktop shell or the legacy presentation
+  features/
+    shell/              The desktop shell: sidebar, tool cards, tool sheet, plan review
+    tools/              Tool inventory, plans, and effects
+    environment/        Environment workspace state
   hooks/
     useStaged.ts        Staging area: Map<"Scope:name", StagedChange>; effectiveVars merge
     useUndoStack.ts     Generic undo/redo stack (stage-level Ctrl+Z/Y)
@@ -32,11 +36,14 @@ src/                    React frontend (TypeScript)
     DiffPanel/          Unified diff view (external-change detection)
     SnapshotPanel/      Snapshot list (rendered in right sidebar)
     ImportExportPanel/  Import/Export wizard (rendered in modal)
-    LicensesPanel/      Envarly MIT license + third-party OSS listing (rendered in modal)
+    LicensesPanel/      Envarly MIT license + third-party OSS listing (rendered in modal, loaded on demand)
     ui/                 Atomic components: Button, TextInput, Textarea, Badge, Modal, …
 
 src-tauri/src/          Rust backend
-  lib.rs                Entry point: CLI dispatch or Tauri run
+  main.rs               GUI entry point: a GUI launch runs Tauri, a subcommand runs the CLI
+  bin/whichcraft-cli.rs Console launcher, installed as bin\whichcraft.exe
+  lib.rs                Tauri setup, single-instance handling, and shared entry points
+  whichcraft/           Tool inventory, plans, apply and undo, mise, and persistence
   commands/             Tauri command handlers per domain (env, export, launch, path, snapshot, update, users)
   env_store.rs          Registry read/write via winreg; EnvBackend trait + MemBackend for tests
   env_backend.rs        Windows registry implementation (WinregBackend)
@@ -54,7 +61,7 @@ src-tauri/src/          Rust backend
 
 ### Frontend ↔ Backend boundary
 
-All communication goes through `src/api.ts`. No `invoke()` call appears anywhere else in the frontend. This makes the boundary easy to audit, mock in tests, and replace if the IPC layer changes.
+All communication goes through `src/transport/tauriWhichcraftApi.ts`. No real `invoke()` call appears anywhere else in the frontend. This makes the boundary easy to audit, mock in tests, and replace if the IPC layer changes.
 
 ### Staging area
 
@@ -156,15 +163,23 @@ The JSON payload contains a `version` field. Current version is **1**.
 
 | Purpose | Path |
 |---------|------|
+| Settings | `%LOCALAPPDATA%\Whichcraft\settings.json` |
+| Selections | `%LOCALAPPDATA%\Whichcraft\selection.json` |
+| Tool Profiles | `%LOCALAPPDATA%\Whichcraft\profiles.json` |
+| Apply journal, for Undo and recovery | `%LOCALAPPDATA%\Whichcraft\journal\` |
 | Snapshots | `%LOCALAPPDATA%\Whichcraft\snapshots\` |
+| Elevation requests, removed after use | `%LOCALAPPDATA%\Whichcraft\elevation-*.json` |
+| Default Install Store | `%LOCALAPPDATA%\Whichcraft\installs\` |
+| Pinned mise | `%LOCALAPPDATA%\Whichcraft\mise\` |
+| WebView data | `%LOCALAPPDATA%\com.whichcraft.app\` |
 
-No other files are written. Settings are kept in Tauri's default store if added later.
+A per-user NSIS install also places the app in `%LOCALAPPDATA%\Whichcraft`, so this folder holds both. Uninstalling keeps the data. Ticking "Delete the application data" removes everything above except `installs` and `mise`, which hold tools that PATH or a project may still use. The MSI has no such option.
 
 ---
 
 ## CLI mode
 
-When launched with arguments, `try_run_cli()` intercepts before the GUI starts and exits the process after the command completes.
+Terminals reach the console program `bin\whichcraft.exe`, because only `bin` goes on PATH ([ADR-0006](docs/adr/0006-cli-in-bin-folder-not-com.md)). With a subcommand it runs the command and exits. With no subcommand, or only GUI flags such as `--legacy-ui`, it starts the GUI one folder up and returns. The GUI `whichcraft.exe` given a subcommand also runs it, which the installers use for `path-cleanup`.
 
 `get`/`list`/`export` call `env_store::read_all()` / `export::*` directly and never write. `import`/`set`/`delete` are dry-run by default and only call `env_store::apply_changes()` when `--apply` is passed. This is the GUI's shared apply path with best-effort rollback of completed mutations. Restoration checks for conflicting external changes and reports unresolved entries; it does not provide crash safety or transactional isolation.
 
@@ -179,18 +194,15 @@ whichcraft delete <NAME> [--scope user|system] [--apply]
 
 ---
 
-## Component sizing conventions
+## Single instance
 
-Spacing follows a 4px/8px grid. Tailwind class mapping:
+Release builds run one GUI at a time through `tauri-plugin-single-instance`, so two instances never write the same settings and journal. A second launch brings the open window forward and exits. Subcommands, `--demo` runs, and debug builds are not limited. Run as admin passes `--replaces-pid` so the elevated instance waits for the old one to exit before taking the lock.
 
-| Intent | Classes |
-|--------|---------|
-| Button (sm) | `px-4 py-2.5 text-sm` |
-| Button (md) | `px-5 py-3 text-sm font-medium` |
-| IconButton | `p-1.5` |
-| Input / Textarea | `px-4 py-2.5 text-sm` |
-| Sidebar item | `px-4 py-2.5 rounded` |
-| Badge | `px-3 py-1 text-xs` |
+---
+
+## Visual system
+
+Tokens, type, spacing, and interaction rules live in [design-system/whichcraft/MASTER.md](design-system/whichcraft/MASTER.md), and their implementation in `src/index.css`.
 
 ---
 

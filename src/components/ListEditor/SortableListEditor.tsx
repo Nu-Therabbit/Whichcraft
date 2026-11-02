@@ -1,3 +1,4 @@
+import { useI18n } from "../../hooks/useI18n";
 import {
   closestCenter,
   DndContext,
@@ -57,6 +58,7 @@ function SortableRow({
   onMoveDown,
   reducedMotion,
 }: RowProps) {
+  const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: entry.id,
     transition: reducedMotion
@@ -96,8 +98,8 @@ function SortableRow({
         type="button"
         {...(readOnly ? {} : attributes)}
         {...(readOnly ? {} : listeners)}
-        aria-label="Drag to reorder"
-        title="Drag to reorder"
+        aria-label={t("ui.drag_to_reorder")}
+        title={t("ui.drag_to_reorder")}
         disabled={readOnly}
         className={cn(
           "w-8 flex items-center justify-center shrink-0 self-stretch text-dim",
@@ -112,7 +114,7 @@ function SortableRow({
       <div className="flex-1 py-2 pr-2">
         <input
           ref={inputRef}
-          aria-label={`Entry: ${entry.value}`}
+          aria-label={t("ui.entry_label", { value: entry.value })}
           value={entry.value}
           onChange={(e) => onEdit(e.target.value)}
           onKeyDown={(e) => {
@@ -138,7 +140,7 @@ function SortableRow({
           }}
           readOnly={readOnly}
           spellCheck={false}
-          title="Alt+↑/↓ to reorder"
+          title={t("ui.keys_to_reorder")}
           className={cn(
             "w-full bg-transparent font-mono text-xs text-fg focus:outline-none",
             readOnly && "cursor-default",
@@ -149,12 +151,12 @@ function SortableRow({
       {entry.exists !== undefined && (
         <div className="w-6 flex items-center justify-center shrink-0 text-xs">
           {entry.exists === false && (
-            <span title="Not found on disk">
+            <span title={t("ui.not_on_disk")}>
               <Icon name="x" size={14} className="text-danger" />
             </span>
           )}
           {entry.exists === true && (
-            <span title="Exists">
+            <span title={t("ui.exists")}>
               <Icon name="check" size={14} className="text-success" />
             </span>
           )}
@@ -165,8 +167,8 @@ function SortableRow({
         <div className="w-7 flex items-center justify-center shrink-0">
           <IconButton
             icon="folder"
-            aria-label={`Browse folder for ${entry.value}`}
-            title="Browse for folder"
+            aria-label={t("ui.browse_folder_for", { value: entry.value })}
+            title={t("ui.browse_for_folder")}
             onClick={onBrowse}
           />
         </div>
@@ -176,7 +178,7 @@ function SortableRow({
         <div className="w-7 flex items-center justify-center shrink-0">
           <IconButton
             icon="x"
-            aria-label={`Remove ${entry.value}`}
+            aria-label={t("ui.remove_entry", { value: entry.value })}
             variant="danger"
             onClick={onRemove}
           />
@@ -236,6 +238,7 @@ export function SortableListEditor({
     readOnly,
   });
 
+  const { t } = useI18n();
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -255,7 +258,7 @@ export function SortableListEditor({
       )}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-          <ol aria-label="List entries" className="border border-rim rounded overflow-hidden">
+          <ol aria-label={t("ui.list_entries")} className="border border-rim rounded overflow-hidden">
             {entries.map((entry, index) => (
               <SortableRow
                 key={entry.id}
@@ -280,7 +283,7 @@ export function SortableListEditor({
               />
             ))}
             {entries.length === 0 && (
-              <li className="px-4 py-3 text-xs text-dim text-center">No entries</li>
+              <li className="px-4 py-3 text-xs text-dim text-center">{t("ui.no_entries")}</li>
             )}
           </ol>
         </SortableContext>
@@ -290,7 +293,7 @@ export function SortableListEditor({
         <div className="flex gap-2">
           <div className="relative flex flex-1">
             <input
-              aria-label="New entry"
+              aria-label={t("ui.new_entry")}
               className={cn(
                 "h-full min-h-10 w-full px-2 py-2 bg-surface border border-rim rounded font-mono text-xs text-fg",
                 onBrowseNewEntry && "pr-9",
@@ -306,8 +309,8 @@ export function SortableListEditor({
             {onBrowseNewEntry && (
               <IconButton
                 icon="folder"
-                aria-label="Browse folder to add"
-                title="Browse folder to add"
+                aria-label={t("ui.browse_folder_to_add")}
+                title={t("ui.browse_folder_to_add")}
                 onClick={() => void browseNewEntry()}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2"
               />

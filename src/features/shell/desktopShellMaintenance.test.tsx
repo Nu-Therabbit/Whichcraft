@@ -130,7 +130,8 @@ describe("desktop shell maintenance and recovery", () => {
     for (const detail of ["35.0.0", "27.2.0", "35.0.2", "35.2.0", "3.22.1", "14.40", "10.0.26100.0", "py -V:3.13", "default", "Launcher resolution is separate from PATH.", "C:\\WindowsApps\\python.exe"]) {
       expect(sdk).toHaveTextContent(detail);
     }
-    expect(within(sdk).queryByRole("button")).not.toBeInTheDocument();
+    // Inventory Only: the one button opens the listing, and nothing in it can be selected or installed.
+    expect(within(sdk).getAllByRole("button")).toEqual([within(sdk).getByRole("button", { name: /other sdks/i })]);
   });
 
   it("exposes inventory status and selection mismatch without relying on color", async () => {
@@ -140,7 +141,7 @@ describe("desktop shell maintenance and recovery", () => {
       inst("java", "17.0.1", "C:\\selected", { selected: true }),
     ] : [] });
     const java = await screen.findByRole("button", { name: /^Java,.*selection differs from the effective installation/i });
-    expect(java).toHaveTextContent(/selection differs from the effective installation/i);
+    expect(java).toHaveTextContent(/differs from your selection/i);
     expect(screen.getByRole("status")).toHaveTextContent(/inventory of this pc is up to date/i);
   });
 
@@ -301,7 +302,7 @@ describe("desktop shell maintenance and recovery", () => {
       validatePaths: async () => [],
     });
 
-    expect(await screen.findByText(/TOOLS/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^TOOLS$/)).toBeInTheDocument();
     await userEvent.click(await screen.findByText(/^show$/i));
     expect(await screen.findByRole("button", { name: /stage type change/i })).toBeInTheDocument();
   });

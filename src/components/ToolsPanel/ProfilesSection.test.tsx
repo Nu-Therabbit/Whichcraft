@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ProfileToolPin, ToolProfile } from "../../types";
@@ -18,6 +18,37 @@ const handlers = () => ({
 });
 
 describe("ProfilesSection", () => {
+  it("does not say the tool's name twice when the vendor already carries it", () => {
+    const python: ProfileToolPin = { tool: "python", vendor: "Python Software Foundation", version: "3.13.7", preferredRoot: null };
+    render(
+      <ProfilesSection
+        profiles={[{ profile: { id: "b", name: "Web", tools: [node20, python, java17] }, matchesEffective: true, unavailable: [] }]}
+        current={[]}
+        missing={null}
+        busy={false}
+        {...handlers()}
+      />,
+    );
+    expect(screen.getByText("Node.js 20.19.0")).toBeInTheDocument();
+    expect(screen.getByText("Python Software Foundation 3.13.7")).toBeInTheDocument();
+    expect(screen.getByText("Java Eclipse Adoptium 17.0.20.1")).toBeInTheDocument();
+  });
+
+  it("calls a pinned version that cannot be found unavailable, not missing", () => {
+    render(
+      <ProfilesSection
+        profiles={[{ profile: android, matchesEffective: false, unavailable: [java17] }]}
+        current={[]}
+        missing={null}
+        busy={false}
+        {...handlers()}
+      />,
+    );
+    expect(screen.getByText("1 unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "What is unavailable?" })).toBeInTheDocument();
+    expect(screen.queryByText(/missing/i)).not.toBeInTheDocument();
+  });
+
   it("shows whether each profile matches and applies one that differs", async () => {
     const h = handlers();
     render(
@@ -35,6 +66,31 @@ describe("ProfilesSection", () => {
     expect(h.onApply).toHaveBeenCalledWith(android);
   });
 
+  it("asks before deleting a profile and offers nothing to apply when it already matches", async () => {
+    const h = handlers();
+    render(
+      <ProfilesSection
+        profiles={[{ profile: android, matchesEffective: true, unavailable: [] }]}
+        current={[]}
+        missing={null}
+        busy={false}
+        {...h}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Apply" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(h.onDelete).not.toHaveBeenCalled();
+
+    const dialog = await screen.findByRole("dialog", { name: /delete profile android work/i });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(h.onDelete).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    const again = await screen.findByRole("dialog", { name: /delete profile android work/i });
+    await userEvent.click(within(again).getByRole("button", { name: "Delete" }));
+    expect(h.onDelete).toHaveBeenCalledWith("a");
+  });
+
   it("offers to install what is missing with its size, then apply", async () => {
     const h = handlers();
     render(
@@ -47,7 +103,7 @@ describe("ProfilesSection", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: "Apply" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Install the missing ones (30 MB), then apply" }));
+    await userEvent.click(screen.getByRole("button", { name: "Install the unavailable ones (30 MB), then apply" }));
     expect(h.onInstallMissing).toHaveBeenCalledWith(android);
   });
 
@@ -62,7 +118,7 @@ describe("ProfilesSection", () => {
         {...h}
       />,
     );
-    expect(screen.getByRole("button", { name: /Install the missing/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Install the unavailable/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Use this folder" })).toBeInTheDocument();
   });
 
@@ -77,7 +133,7 @@ describe("ProfilesSection", () => {
         {...handlers()}
       />,
     );
-    expect(screen.queryByRole("button", { name: /Install the missing/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Install the unavailable/ })).not.toBeInTheDocument();
     expect(screen.getByText(/Nothing is written/)).toBeInTheDocument();
   });
 

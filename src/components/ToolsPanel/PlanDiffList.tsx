@@ -27,9 +27,9 @@ export function PlanDiffList({ plan }: { plan: ToolApplyPlan }) {
   const { t } = useI18n();
   return (
     <>
-      {plan.requiresUac && <p className="text-xs text-warning">{t("tools.uac_required")}</p>}
+      {plan.requiresUac && <p className="text-xs text-warn">{t("tools.uac_required")}</p>}
       {plan.warnings.map((w) => (
-        <p key={w} className="text-xs text-warning">
+        <p key={w} className="text-xs text-warn">
           {w}
         </p>
       ))}
@@ -44,8 +44,8 @@ export function PlanDiffList({ plan }: { plan: ToolApplyPlan }) {
               <PathEntryDiff before={d.before} after={d.after} />
             ) : (
               <>
-                <div className="text-xs text-danger line-through truncate">{d.before ?? "(empty)"}</div>
-                <div className="text-xs text-success truncate">{d.after}</div>
+                <div className="text-xs text-danger line-through wrap-anywhere">{d.before ?? "(empty)"}</div>
+                <div className="text-xs text-success wrap-anywhere">{d.after}</div>
               </>
             )}
           </li>

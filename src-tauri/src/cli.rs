@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 #[derive(Parser)]
 #[command(
     name = "whichcraft",
-    about = "Windows environment variable manager",
+    about = "Whichcraft, the developer tool manager for Windows. These commands read and change environment variables; run whichcraft without a command to open the app.",
     version
 )]
 struct Cli {

@@ -70,8 +70,8 @@ function renderShell(apiOverrides: Record<string, unknown> = {}) {
 }
 
 async function openJavaDetail(user: ReturnType<typeof userEvent.setup>) {
-  await waitFor(() => expect(screen.getByRole("button", { name: /Java/i })).toBeInTheDocument());
-  await user.click(screen.getByRole("button", { name: /Java/i }));
+  await waitFor(() => expect(screen.getByRole("button", { name: /^Java,/i })).toBeInTheDocument());
+  await user.click(screen.getByRole("button", { name: /^Java,/i }));
   return screen.findByRole("complementary", { name: /installation details/i });
 }
 
@@ -298,13 +298,11 @@ describe("desktop shell check command and shell resolution", () => {
     });
     const user = userEvent.setup();
     const commandBar = await screen.findByRole("toolbar", { name: /tool actions/i });
-    expect(within(commandBar).getByRole("button", { name: /check in shell/i })).toBeDisabled();
-
     await user.click(within(commandBar).getByRole("button", { name: /open terminal/i }));
     await waitFor(() => expect(openTerminal).toHaveBeenCalledTimes(1));
 
     const details = await openJavaDetail(user);
-    const check = within(commandBar).getByRole("button", { name: /check in shell/i });
+    const check = within(details).getByRole("button", { name: /check in shell/i });
     await waitFor(() => expect(check).toBeEnabled());
     await user.click(check);
     await waitFor(() => expect(shellCheck).toHaveBeenCalledWith("java"));

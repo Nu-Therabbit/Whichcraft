@@ -66,7 +66,7 @@ export function VarTable({ vars, checked, onToggle, onToggleAll }: VarTableProps
                   checked={allChecked}
                   onChange={(e) => onToggleAll(e.target.checked)}
                   className="accent-accent"
-                  aria-label="Select all"
+                  aria-label={t("ui.select_all")}
                 />
               </th>
               <th className="px-3 py-2 text-left">{t("var_table.col_name")}</th>

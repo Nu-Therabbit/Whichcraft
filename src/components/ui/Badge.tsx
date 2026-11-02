@@ -5,7 +5,7 @@ import { cn } from "../../lib/cn";
 type Variant = "user" | "system" | "otherUser" | "warn" | "muted" | "readonly";
 
 const variantCls: Record<Variant, string> = {
-  user: "bg-accent/15 text-accent",
+  user: "bg-accent/10 text-accent",
   system: "bg-violet/15 text-violet",
   otherUser: "bg-warn/15 text-warn",
   warn: "bg-warn/15 text-warn",

@@ -85,8 +85,8 @@ function renderShell(
 }
 
 async function openJavaDetail(user: ReturnType<typeof userEvent.setup>) {
-  await waitFor(() => expect(screen.getByRole("button", { name: /Java/i })).toBeInTheDocument());
-  await user.click(screen.getByRole("button", { name: /Java/i }));
+  await waitFor(() => expect(screen.getByRole("button", { name: /^Java,/i })).toBeInTheDocument());
+  await user.click(screen.getByRole("button", { name: /^Java,/i }));
   return screen.findByRole("complementary", { name: /installation details/i });
 }
 
@@ -97,7 +97,12 @@ async function planUninstallForRoot(
 ) {
   const row = within(details).getByText(root).closest("li");
   if (!row) throw new Error(`installation row not found: ${root}`);
-  await user.click(within(row).getByRole("button", { name: /^uninstall$/i }));
+  await user.click(within(row).getByRole("button", { name: /^uninstall /i }));
+}
+
+async function openedUninstallPlanSection() {
+  await screen.findByRole("heading", { name: /^uninstall eclipse adoptium/i });
+  return uninstallPlanSection();
 }
 
 function uninstallPlanSection() {
@@ -198,7 +203,7 @@ describe("desktop shell uninstall", () => {
     await user.selectOptions(within(uninstallPlanSection()).getByRole("combobox"), "C:\\jdk17");
     await waitFor(() => expect(planToolApply).toHaveBeenCalledTimes(1));
     coordination.invalidate(["environment-variables"]);
-    await user.click(within(uninstallPlanSection()).getByRole("button", { name: /^uninstall$/i }));
+    await user.click(within(await openedUninstallPlanSection()).getByRole("button", { name: /^uninstall$/i }));
     await waitFor(() => expect(planToolApply).toHaveBeenCalledTimes(2));
     expect(uninstall).not.toHaveBeenCalled();
   });
@@ -253,7 +258,8 @@ describe("desktop shell uninstall", () => {
     const user = userEvent.setup();
     const details = await openJavaDetail(user);
     await planUninstallForRoot(user, details, "C:\\jdk21");
-    expect(await screen.findByText(/in use/i)).toBeInTheDocument();
+    await screen.findByRole("heading", { name: /^uninstall eclipse adoptium/i });
+    expect(within(uninstallPlanSection()).getByText(/in use/i)).toBeInTheDocument();
     expect(within(uninstallPlanSection()).getByRole("button", { name: /^uninstall$/i })).toBeDisabled();
   });
 
@@ -298,7 +304,7 @@ describe("desktop shell uninstall", () => {
     const user = userEvent.setup();
     const details = await openJavaDetail(user);
     await planUninstallForRoot(user, details, "C:\\jdk21");
-    await user.click(within(uninstallPlanSection()).getByRole("button", { name: /^uninstall$/i }));
+    await user.click(within(await openedUninstallPlanSection()).getByRole("button", { name: /^uninstall$/i }));
     expect(await screen.findByText(/uninstaller was cancelled/i)).toBeInTheDocument();
   });
 
@@ -315,8 +321,8 @@ describe("desktop shell uninstall", () => {
     const user = userEvent.setup();
     const details = await openJavaDetail(user);
     await planUninstallForRoot(user, details, "C:\\jdk21");
-    await user.click(within(uninstallPlanSection()).getByRole("button", { name: /^uninstall$/i }));
+    await user.click(within(await openedUninstallPlanSection()).getByRole("button", { name: /^uninstall$/i }));
     expect(await screen.findByText(/folder is still there/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /open folder/i })).toBeInTheDocument();
+    expect(within(screen.getByRole("dialog", { name: /uninstall/i })).getByRole("button", { name: /open folder/i })).toBeInTheDocument();
   });
 });

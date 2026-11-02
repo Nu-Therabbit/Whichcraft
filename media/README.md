@@ -1,5 +1,7 @@
 # whichcraft-media
 
+> The website's screenshots now come from `npm run capture-lp` at the repo root, which renders the real desktop shell with the sample data in `.scratch/windows-workbench`. `capture.mjs` and `capture-video.mjs` below still drive the previous interface, and the site no longer uses the walkthrough video, so update them before relying on them. `npm run build:titlebar` still works.
+
 Regenerates `docs/screenshot-dark.png`, `lp/public/screenshot-*.png`, and a short walkthrough video/GIF from the **real, running app** instead of hand-captured/hand-edited assets — so they stay in sync as the UI changes, with no manual editing step anywhere.
 
 ## How it works
@@ -20,7 +22,7 @@ npm install          # first time only
 npm run screenshots   # capture + compose in one step
 ```
 
-Then `cd lp && npm run build` to confirm the OG-image generator (which embeds `screenshot-path-editor.png`) still succeeds, and eyeball the regenerated PNGs before committing.
+Then `cd lp && npm run build` to confirm the OG-image generator (which embeds `screenshot-tools.png`) still succeeds, and eyeball the regenerated PNGs before committing.
 
 If `titlebar.png` ever needs to change (e.g. the app icon changes), run `npm run build:titlebar` first.
 

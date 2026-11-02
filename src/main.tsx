@@ -6,27 +6,30 @@ import { AppServicesProvider } from "./composition/AppServicesContext";
 import { WriteCoordinatorProvider } from "./coordination/WriteCoordinatorContext";
 import { ErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { UndoProvider } from "./contexts/UndoContext";
-import { applyThemeToDocument, getInitialTheme } from "./lib/themeDocument";
-import "./i18n";
+import { applyAccentToDocument, applyThemeToDocument, getInitialAccent, getInitialTheme } from "./lib/themeDocument";
+import { i18nReady } from "./i18n";
 import "./index.css";
 
 applyThemeToDocument(getInitialTheme());
+applyAccentToDocument(getInitialAccent());
 
 const appPresentation = freezeAppPresentation(
   window.location.search,
   window.__WHICHCRAFT_PRESENTATION__,
 );
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <UndoProvider>
-        <AppServicesProvider>
-          <WriteCoordinatorProvider>
-            <App presentation={appPresentation} />
-          </WriteCoordinatorProvider>
-        </AppServicesProvider>
-      </UndoProvider>
-    </ErrorBoundary>
-  </React.StrictMode>,
-);
+void i18nReady.finally(() => {
+  ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <UndoProvider>
+          <AppServicesProvider>
+            <WriteCoordinatorProvider>
+              <App presentation={appPresentation} />
+            </WriteCoordinatorProvider>
+          </AppServicesProvider>
+        </UndoProvider>
+      </ErrorBoundary>
+    </React.StrictMode>,
+  );
+});

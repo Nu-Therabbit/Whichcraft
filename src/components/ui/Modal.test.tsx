@@ -1,4 +1,5 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Modal } from "./Modal";
 
@@ -85,5 +86,92 @@ describe("Modal", () => {
     );
 
     expect(screen.getByRole("dialog").parentElement).toBe(document.body);
+  });
+
+  describe("focus", () => {
+    function Harness({ open, children }: { open: boolean; children?: ReactNode }) {
+      return (
+        <>
+          <button type="button">Trigger</button>
+          <Modal open={open} title="Example" onClose={vi.fn()}>
+            {children ?? <button type="button">Save</button>}
+          </Modal>
+        </>
+      );
+    }
+
+    function FocusesItself() {
+      const ref = useRef<HTMLInputElement>(null);
+      useEffect(() => ref.current?.focus(), []);
+      return <input ref={ref} aria-label="Name" />;
+    }
+
+    it("moves focus into the dialog when it opens", async () => {
+      const { rerender } = render(<Harness open={false} />);
+      screen.getByRole("button", { name: "Trigger" }).focus();
+
+      rerender(<Harness open />);
+
+      await screen.findByRole("dialog");
+      expect(screen.getByRole("dialog")).toContainElement(document.activeElement as HTMLElement);
+    });
+
+    it("keeps a field the dialog's content focused for itself", async () => {
+      const { rerender } = render(<Harness open={false}><FocusesItself /></Harness>);
+
+      rerender(<Harness open><FocusesItself /></Harness>);
+
+      expect(await screen.findByRole("textbox", { name: "Name" })).toHaveFocus();
+    });
+
+    it("returns focus to the trigger when it closes, even if the content focused itself", async () => {
+      const { rerender } = render(<Harness open={false}><FocusesItself /></Harness>);
+      const trigger = screen.getByRole("button", { name: "Trigger" });
+      trigger.focus();
+      rerender(<Harness open><FocusesItself /></Harness>);
+      await screen.findByRole("textbox", { name: "Name" });
+
+      rerender(<Harness open={false}><FocusesItself /></Harness>);
+
+      expect(trigger).toHaveFocus();
+    });
+
+    it("does not take focus back from an element outside the dialog", async () => {
+      const { rerender } = render(<Harness open={false} />);
+      const trigger = screen.getByRole("button", { name: "Trigger" });
+      const elsewhere = document.createElement("button");
+      document.body.append(elsewhere);
+      trigger.focus();
+      rerender(<Harness open />);
+      await screen.findByRole("dialog");
+
+      elsewhere.focus();
+      rerender(<Harness open={false} />);
+
+      expect(elsewhere).toHaveFocus();
+      elsewhere.remove();
+    });
+
+    it("cycles Tab inside the dialog in both directions", () => {
+      render(<Harness open />);
+      const close = screen.getByRole("button", { name: "Close" });
+      const save = screen.getByRole("button", { name: "Save" });
+
+      save.focus();
+      fireEvent.keyDown(save, { key: "Tab" });
+      expect(close).toHaveFocus();
+
+      fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+      expect(save).toHaveFocus();
+    });
+
+    it("sends Shift+Tab from the panel itself to the last control", () => {
+      render(<Harness open />);
+      const panel = document.activeElement as HTMLElement;
+
+      fireEvent.keyDown(panel, { key: "Tab", shiftKey: true });
+
+      expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
+    });
   });
 });

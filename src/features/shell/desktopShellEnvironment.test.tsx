@@ -191,7 +191,7 @@ describe("desktop shell environment workspace", () => {
     renderDesktopShell(services);
 
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: /Java/i }));
+    await user.click(await screen.findByRole("button", { name: /^Java,/i }));
     await user.click(
       await screen.findByRole("button", { name: /Switch to Eclipse Adoptium 21\.0\.1/i }),
     );

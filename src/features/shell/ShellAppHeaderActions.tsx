@@ -35,7 +35,7 @@ export function ShellAppHeaderActions() {
       <div className="flex items-center gap-1">
         <Icon name="globe" size={14} className="text-dim shrink-0" aria-hidden />
         <Select
-          aria-label="Language"
+          aria-label={t("ui.language")}
           value={language}
           onValueChange={(v) => setLanguage(v as Language)}
           options={LANGUAGE_OPTIONS}

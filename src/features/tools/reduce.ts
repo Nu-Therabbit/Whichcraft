@@ -81,6 +81,8 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
       return {
         ...s,
         loading: false,
+        reads: s.reads + 1,
+        lastReadSucceeded: true,
         error:
           s.loading && !isApplyPlanOutcomeError(s.error) && !s.install.retainErrorOnRefresh
             ? null
@@ -303,7 +305,7 @@ export function canConfirmUninstall(s: ToolsState, replacementRoot: string | nul
 function endBusy(s: ToolsState, op: Operation): ToolsState {
   switch (op) {
     case "inventory":
-      return { ...s, loading: false };
+      return { ...s, loading: false, reads: s.reads + 1, lastReadSucceeded: false };
     case "plan":
       return { ...s, plan: { ...s.plan, building: false } };
     case "apply":

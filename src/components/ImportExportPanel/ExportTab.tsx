@@ -147,7 +147,7 @@ export function ExportTab({ onStatus }: ExportTabProps) {
           {t("export.scope_label")}
         </span>
         <SegmentedControl
-          aria-label="Export scope"
+          aria-label={t("ui.export_scope")}
           options={scopeOptions}
           value={scope}
           onChange={handleScopeChange}
@@ -159,7 +159,7 @@ export function ExportTab({ onStatus }: ExportTabProps) {
           {t("export.format_label")}
         </span>
         <SegmentedControl
-          aria-label="Export format"
+          aria-label={t("ui.export_format")}
           options={formatOptions}
           value={format}
           onChange={setFormat}

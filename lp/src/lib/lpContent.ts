@@ -4,6 +4,12 @@ export const STORYBOOK_URL = '/Whichcraft/storybook/';
 export const REPORTS_URL = '/Whichcraft/reports/';
 export const VERSION = '0.1.0';
 
+// Set to true when a release has published its installers. Until then the Download buttons lead to
+// the build instructions, and structured data and llms.txt stop promising a download.
+export const RELEASE_PUBLISHED = false;
+export const BUILD_URL = `${GITHUB_URL}#build-from-source`;
+export const DOWNLOAD_URL = RELEASE_PUBLISHED ? RELEASE_URL : BUILD_URL;
+
 export type LandingLang = 'en' | 'ja' | 'zh-CN' | 'ru' | 'ko' | 'vi';
 
 export const LANGUAGES: Array<{ code: LandingLang; path: string; label: string }> = [
@@ -26,11 +32,14 @@ export type LandingCopy = {
     storybook: string;
     reports: string;
     download: string;
+    getSource: string;
   };
   hero: {
     eyebrow: string;
     lead: string;
     download: string;
+    getSource: string;
+    note: string;
     github: string;
   };
   screenshots: {
@@ -117,8 +126,13 @@ export const enCopy: LandingCopy = {
         question: 'Can I use Whichcraft from the command line or scripts?',
         answer: 'For environment variables, yes. get, list, and export read them, while set, delete, and import change them. Write commands default to a dry run and only modify the registry when you add --apply. Switching and installing tools are done in the app. Run whichcraft --help to see the commands and options.',
       },
+      {
+        id: 'uninstall',
+        question: 'What stays on my PC after I uninstall Whichcraft?',
+        answer: 'The app, its shortcuts, and its PATH entry are removed. Tools you installed through Whichcraft stay in place, because PATH or a project may still use them, so remove them in the app first if you no longer want them. With the .exe installer, tick Delete the application data to also remove settings, profiles, snapshots, and undo history. The MSI has no such option and keeps them.',
+      },
     ],
-    cliSetup: 'Run these commands from a terminal. Add the Whichcraft installation folder to PATH using the app, or invoke whichcraft.com by its full path.',
+    cliSetup: 'Run these commands from a terminal. Add Whichcraft to PATH using the app, or invoke bin\\whichcraft.exe in the installation folder by its full path.',
     cliDocs: 'CLI usage and examples',
   },
   lang: 'en',
@@ -131,16 +145,19 @@ export const enCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: 'Reports',
     download: 'Download',
+    getSource: 'Build',
   },
   hero: {
     eyebrow: `Developer Tool Manager for Windows · v${VERSION}`,
     lead: 'See every version of your developer tools in one place, and decide which one Windows runs. Review the exact PATH changes before you apply them, and undo them if you change your mind.',
     download: `Download v${VERSION} for Windows`,
+    getSource: `Build v${VERSION} from source`,
+    note: 'No installer is published yet. Builds from source are not code signed, so Windows SmartScreen may warn when you run one.',
     github: 'View on GitHub →',
   },
   screenshots: {
     toolsAlt: 'Whichcraft — developer tools overview showing the effective version of Java, Node.js, Python, Go, Flutter, and Git',
-    planAlt: 'Whichcraft — Java installations with an apply plan showing the JAVA_HOME and Path changes before they are written',
+    planAlt: 'Whichcraft — apply plan dialog showing the JAVA_HOME change before it is written',
     profilesAlt: 'Whichcraft — tool profiles showing which saved set matches what is in effect',
     firstLabel: 'Screenshot 1',
     secondLabel: 'Screenshot 2',
@@ -273,8 +290,13 @@ export const jaCopy: LandingCopy = {
         question: 'Whichcraft をコマンドラインやスクリプトから使えますか？',
         answer: '環境変数については使えます。読み取り用の get・list・export と、変更用の set・delete・import があります。変更用コマンドは既定ではドライランになり、--apply を付けたときだけレジストリへ書き込みます。ツールの切り替えとインストールはアプリで行います。whichcraft --help でコマンドとオプションを確認できます。',
       },
+      {
+        id: 'uninstall',
+        question: 'Whichcraft をアンインストールすると PC に何が残りますか？',
+        answer: 'アプリ、ショートカット、PATH のエントリは削除されます。Whichcraft でインストールしたツールは、PATH やプロジェクトが使っている可能性があるため残ります。不要な場合は先にアプリから削除してください。.exe インストーラーでアプリケーションデータを削除するオプションを選ぶと、設定、プロファイル、スナップショット、元に戻す履歴も削除されます。MSI にはこのオプションがなく、これらは残ります。',
+      },
     ],
-    cliSetup: 'ターミナルから実行してください。アプリで Whichcraft のインストール先を PATH に追加するか、whichcraft.com をフルパスで指定します。',
+    cliSetup: 'ターミナルから実行してください。アプリで Whichcraft を PATH に追加するか、インストール先の bin\\whichcraft.exe をフルパスで指定します。',
     cliDocs: 'CLI の使い方と実行例',
   },
   lang: 'ja',
@@ -287,16 +309,19 @@ export const jaCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: 'Reports',
     download: 'ダウンロード',
+    getSource: 'ビルド',
   },
   hero: {
     eyebrow: `Windows 向け開発ツールマネージャー · v${VERSION}`,
     lead: '開発ツールの全バージョンを一か所で確認し、Windows で使うものを決められます。PATH の変更内容を適用前に確認でき、気が変わったら元に戻せます。',
     download: `Windows 版 v${VERSION} をダウンロード`,
+    getSource: `v${VERSION} をソースからビルド`,
+    note: 'インストーラーはまだ公開されていません。ソースからのビルドはコード署名されていないため、実行時に Windows SmartScreen が警告する場合があります。',
     github: 'GitHub で見る →',
   },
   screenshots: {
     toolsAlt: 'Whichcraft — Java、Node.js、Python、Go、Flutter、Git の有効なバージョンを表示する開発ツール一覧',
-    planAlt: 'Whichcraft — Java のインストール一覧と、書き込み前の JAVA_HOME と Path の変更を示す適用プラン',
+    planAlt: 'Whichcraft — 書き込み前の JAVA_HOME の変更を示す適用プランのダイアログ',
     profilesAlt: 'Whichcraft — 保存したセットが現在の状態と一致するかを示すツールプロファイル',
     firstLabel: 'スクリーンショット 1',
     secondLabel: 'スクリーンショット 2',
@@ -429,8 +454,13 @@ export const zhCNCopy: LandingCopy = {
         question: '可以从命令行或脚本使用 Whichcraft 吗？',
         answer: '环境变量可以。get、list 和 export 用于读取，set、delete 和 import 用于修改。修改命令默认为试运行，只有添加 --apply 才会写入注册表。切换和安装工具需要在应用中完成。运行 whichcraft --help 可查看命令和选项。',
       },
+      {
+        id: 'uninstall',
+        question: '卸载 Whichcraft 后电脑上还会留下什么？',
+        answer: '应用、快捷方式和 PATH 条目会被移除。通过 Whichcraft 安装的工具会保留，因为 PATH 或项目可能仍在使用；如果不再需要，请先在应用中卸载。使用 .exe 安装程序时，勾选删除应用数据的选项，还会移除设置、配置、快照和撤销记录。MSI 没有此选项，这些内容会保留。',
+      },
     ],
-    cliSetup: '请在终端中运行。通过应用将 Whichcraft 安装目录添加到 PATH，或使用 whichcraft.com 的完整路径。',
+    cliSetup: '请在终端中运行。通过应用将 Whichcraft 添加到 PATH，或使用安装目录中 bin\\whichcraft.exe 的完整路径。',
     cliDocs: 'CLI 用法和示例',
   },
   lang: 'zh-CN',
@@ -443,16 +473,19 @@ export const zhCNCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: '报告',
     download: '下载',
+    getSource: '构建',
   },
   hero: {
     eyebrow: `Windows 开发工具管理器 · v${VERSION}`,
     lead: '在一处查看开发工具的所有版本，并决定 Windows 运行哪一个。应用前可以查看确切的 PATH 更改，改变主意时也能撤销。',
     download: `下载 Windows 版 v${VERSION}`,
+    getSource: `从源码构建 v${VERSION}`,
+    note: '安装程序尚未发布。从源码构建的版本没有代码签名，运行时 Windows SmartScreen 可能会给出警告。',
     github: '在 GitHub 上查看 →',
   },
   screenshots: {
     toolsAlt: 'Whichcraft — 显示 Java、Node.js、Python、Go、Flutter 和 Git 实际生效版本的开发工具总览',
-    planAlt: 'Whichcraft — Java 安装列表，以及写入前显示 JAVA_HOME 和 Path 更改的应用计划',
+    planAlt: 'Whichcraft — 写入前显示 JAVA_HOME 更改的应用计划对话框',
     profilesAlt: 'Whichcraft — 显示已保存组合是否与当前生效版本一致的工具配置',
     firstLabel: '截图 1',
     secondLabel: '截图 2',
@@ -585,8 +618,13 @@ export const ruCopy: LandingCopy = {
         question: 'Можно ли использовать Whichcraft из командной строки или скриптов?',
         answer: 'Для переменных окружения — да. Команды get, list и export читают их, а set, delete и import изменяют. По умолчанию команды изменения работают в пробном режиме и записывают в реестр только с флагом --apply. Переключение и установка инструментов выполняются в приложении. Команда whichcraft --help показывает доступные команды и параметры.',
       },
+      {
+        id: 'uninstall',
+        question: 'Что останется на компьютере после удаления Whichcraft?',
+        answer: 'Приложение, ярлыки и запись в PATH удаляются. Инструменты, установленные через Whichcraft, остаются, так как их может использовать PATH или проект; если они больше не нужны, сначала удалите их в приложении. В установщике .exe отметьте удаление данных приложения, чтобы также удалить настройки, профили, снимки и историю отмены. В MSI такого параметра нет, и эти данные сохраняются.',
+      },
     ],
-    cliSetup: 'Запускайте команды из терминала. Добавьте папку установки Whichcraft в PATH через приложение или укажите полный путь к whichcraft.com.',
+    cliSetup: 'Запускайте команды из терминала. Добавьте Whichcraft в PATH через приложение или укажите полный путь к bin\\whichcraft.exe в папке установки.',
     cliDocs: 'Использование CLI и примеры',
   },
   lang: 'ru',
@@ -599,16 +637,19 @@ export const ruCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: 'Отчёты',
     download: 'Скачать',
+    getSource: 'Сборка',
   },
   hero: {
     eyebrow: `Менеджер инструментов разработки для Windows · v${VERSION}`,
     lead: 'Все версии инструментов разработки в одном месте, и вы решаете, какую запускает Windows. Проверяйте точные изменения PATH перед применением и отменяйте их, если передумаете.',
     download: `Скачать v${VERSION} для Windows`,
+    getSource: `Собрать v${VERSION} из исходников`,
+    note: 'Установщик пока не опубликован. Сборки из исходников не подписаны, поэтому при запуске Windows SmartScreen может показать предупреждение.',
     github: 'Смотреть на GitHub →',
   },
   screenshots: {
     toolsAlt: 'Whichcraft — обзор инструментов разработки с действующими версиями Java, Node.js, Python, Go, Flutter и Git',
-    planAlt: 'Whichcraft — установки Java и план применения с изменениями JAVA_HOME и Path до их записи',
+    planAlt: 'Whichcraft — диалог плана применения с изменением JAVA_HOME до записи',
     profilesAlt: 'Whichcraft — профили инструментов и соответствие сохранённых наборов текущему состоянию',
     firstLabel: 'Скриншот 1',
     secondLabel: 'Скриншот 2',
@@ -741,8 +782,13 @@ export const koCopy: LandingCopy = {
         question: '명령줄이나 스크립트에서 Whichcraft를 사용할 수 있나요?',
         answer: '환경 변수에 대해서는 가능합니다. get, list, export는 읽기에, set, delete, import는 변경에 사용합니다. 변경 명령은 기본적으로 미리 실행만 하며 --apply를 추가할 때만 레지스트리에 기록합니다. 도구 전환과 설치는 앱에서 합니다. whichcraft --help로 명령과 옵션을 확인할 수 있습니다.',
       },
+      {
+        id: 'uninstall',
+        question: 'Whichcraft를 제거하면 PC에 무엇이 남나요?',
+        answer: '앱, 바로 가기, PATH 항목은 제거됩니다. Whichcraft로 설치한 도구는 PATH나 프로젝트에서 계속 쓸 수 있으므로 남습니다. 더 이상 필요 없다면 먼저 앱에서 제거하세요. .exe 설치 프로그램에서 앱 데이터 삭제 옵션을 선택하면 설정, 프로필, 스냅샷, 실행 취소 기록도 함께 제거됩니다. MSI에는 이 옵션이 없어 이 데이터가 유지됩니다.',
+      },
     ],
-    cliSetup: '터미널에서 실행하세요. 앱에서 Whichcraft 설치 폴더를 PATH에 추가하거나 whichcraft.com의 전체 경로를 지정하세요.',
+    cliSetup: '터미널에서 실행하세요. 앱에서 Whichcraft를 PATH에 추가하거나 설치 폴더에 있는 bin\\whichcraft.exe의 전체 경로를 지정하세요.',
     cliDocs: 'CLI 사용법과 예제',
   },
   lang: 'ko',
@@ -755,16 +801,19 @@ export const koCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: '리포트',
     download: '다운로드',
+    getSource: '빌드',
   },
   hero: {
     eyebrow: `Windows용 개발 도구 관리자 · v${VERSION}`,
     lead: '개발 도구의 모든 버전을 한곳에서 보고 Windows가 어떤 버전을 실행할지 정하세요. 적용 전에 PATH 변경 내용을 정확히 확인하고, 마음이 바뀌면 되돌릴 수 있습니다.',
     download: `Windows용 v${VERSION} 다운로드`,
+    getSource: `v${VERSION} 소스에서 빌드`,
+    note: '설치 프로그램은 아직 게시되지 않았습니다. 소스에서 빌드한 파일은 코드 서명이 없어 실행할 때 Windows SmartScreen이 경고할 수 있습니다.',
     github: 'GitHub에서 보기 →',
   },
   screenshots: {
     toolsAlt: 'Whichcraft — Java, Node.js, Python, Go, Flutter, Git의 유효 버전을 보여 주는 개발 도구 개요',
-    planAlt: 'Whichcraft — Java 설치 목록과 기록 전 JAVA_HOME 및 Path 변경을 보여 주는 적용 계획',
+    planAlt: 'Whichcraft — 기록 전 JAVA_HOME 변경을 보여 주는 적용 계획 대화 상자',
     profilesAlt: 'Whichcraft — 저장한 조합이 현재 적용된 상태와 일치하는지 보여 주는 도구 프로필',
     firstLabel: '스크린샷 1',
     secondLabel: '스크린샷 2',
@@ -897,8 +946,13 @@ export const viCopy: LandingCopy = {
         question: 'Tôi có thể dùng Whichcraft từ dòng lệnh hoặc script không?',
         answer: 'Có, đối với biến môi trường. get, list và export dùng để đọc; set, delete và import dùng để thay đổi. Các lệnh thay đổi mặc định chỉ chạy thử và chỉ ghi vào registry khi thêm --apply. Việc chuyển đổi và cài đặt công cụ được thực hiện trong ứng dụng. Chạy whichcraft --help để xem các lệnh và tùy chọn.',
       },
+      {
+        id: 'uninstall',
+        question: 'Sau khi gỡ Whichcraft, những gì còn lại trên máy?',
+        answer: 'Ứng dụng, lối tắt và mục PATH sẽ bị xóa. Các công cụ đã cài qua Whichcraft vẫn được giữ vì PATH hoặc dự án có thể vẫn dùng; nếu không cần nữa, hãy gỡ chúng trong ứng dụng trước. Với trình cài đặt .exe, chọn tùy chọn xóa dữ liệu ứng dụng để xóa cả cài đặt, hồ sơ, bản chụp nhanh và lịch sử hoàn tác. MSI không có tùy chọn này nên dữ liệu vẫn được giữ.',
+      },
     ],
-    cliSetup: 'Chạy từ terminal. Thêm thư mục cài đặt Whichcraft vào PATH bằng ứng dụng, hoặc dùng đường dẫn đầy đủ tới whichcraft.com.',
+    cliSetup: 'Chạy từ terminal. Thêm Whichcraft vào PATH bằng ứng dụng, hoặc dùng đường dẫn đầy đủ tới bin\\whichcraft.exe trong thư mục cài đặt.',
     cliDocs: 'Cách dùng CLI và ví dụ',
   },
   lang: 'vi',
@@ -911,16 +965,19 @@ export const viCopy: LandingCopy = {
     storybook: 'Storybook',
     reports: 'Báo cáo',
     download: 'Tải xuống',
+    getSource: 'Biên dịch',
   },
   hero: {
     eyebrow: `Trình quản lý công cụ phát triển cho Windows · v${VERSION}`,
     lead: 'Xem mọi phiên bản công cụ phát triển ở một nơi và quyết định Windows chạy phiên bản nào. Xem chính xác các thay đổi PATH trước khi áp dụng và hoàn tác nếu bạn đổi ý.',
     download: `Tải xuống v${VERSION} cho Windows`,
+    getSource: `Biên dịch v${VERSION} từ mã nguồn`,
+    note: 'Chưa có trình cài đặt được phát hành. Bản biên dịch từ mã nguồn không được ký mã, nên Windows SmartScreen có thể cảnh báo khi chạy.',
     github: 'Xem trên GitHub →',
   },
   screenshots: {
     toolsAlt: 'Whichcraft — tổng quan công cụ phát triển với phiên bản có hiệu lực của Java, Node.js, Python, Go, Flutter và Git',
-    planAlt: 'Whichcraft — các bản cài đặt Java và kế hoạch áp dụng hiển thị thay đổi JAVA_HOME và Path trước khi ghi',
+    planAlt: 'Whichcraft — hộp thoại kế hoạch áp dụng hiển thị thay đổi JAVA_HOME trước khi ghi',
     profilesAlt: 'Whichcraft — hồ sơ công cụ cho biết bộ đã lưu nào khớp với trạng thái đang có hiệu lực',
     firstLabel: 'Ảnh chụp màn hình 1',
     secondLabel: 'Ảnh chụp màn hình 2',

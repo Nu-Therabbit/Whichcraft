@@ -12,6 +12,8 @@ use crate::whichcraft::tools::background::background_command;
 const FLUTTER_PLUGIN_NAME: &str = "vfox-jdx-vfox-flutter";
 const FLUTTER_PLUGIN_URL: &str = "https://github.com/jdx/vfox-flutter";
 const JAVA_VENDOR_PREFIX: &str = "temurin-";
+/// A second caller waits out a clone in progress, because mise cannot load a half-cloned plugin.
+static FLUTTER_PLUGIN_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Result of one mise invocation.
 pub struct MiseOutput {
@@ -171,6 +173,9 @@ impl<R: MiseRunner> MiseToolManager<R> {
     /// `plugin_autoupdate_last_check_duration` setting is deprecated as never implemented), and
     /// this check runs before every Flutter install anyway (I-17).
     pub fn ensure_flutter_plugin(&self) -> Result<(), WhichcraftError> {
+        let _clone = FLUTTER_PLUGIN_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let listing = self.run_ok(&["plugins", "ls", "--urls", "--refs"])?;
         match plugin_ref(&String::from_utf8_lossy(&listing), FLUTTER_PLUGIN_NAME) {
             Some(r) if pins::VFOX_FLUTTER_PLUGIN_SHA.starts_with(&r) => return Ok(()),
@@ -735,6 +740,63 @@ mod tests {
         let calls = mgr.runner.calls.lock().unwrap();
         assert!(calls.contains(&"plugins uninstall vfox-jdx-vfox-flutter".to_string()));
         assert!(calls.iter().any(|c| c.starts_with("plugins install ")));
+    }
+
+    /// A real clone takes a moment, and until it ends the plugin folder is only half there.
+    #[derive(Default)]
+    struct CloningRunner {
+        installed: std::sync::atomic::AtomicBool,
+        installs: std::sync::atomic::AtomicUsize,
+    }
+
+    impl MiseRunner for CloningRunner {
+        fn run(&self, args: &[&str]) -> Result<MiseOutput, WhichcraftError> {
+            use std::sync::atomic::Ordering::SeqCst;
+            let mut success = true;
+            let mut stdout = String::new();
+            match args[0] {
+                "plugins" if args[1] == "install" => {
+                    self.installs.fetch_add(1, SeqCst);
+                    std::thread::sleep(std::time::Duration::from_millis(150));
+                    self.installed.store(true, SeqCst);
+                }
+                "plugins" if self.installed.load(SeqCst) => {
+                    stdout = format!(
+                        "vfox-jdx-vfox-flutter  https://github.com/jdx/vfox-flutter  HEAD {}
+",
+                        &pins::VFOX_FLUTTER_PLUGIN_SHA[..7]
+                    );
+                }
+                "ls-remote" => {
+                    success = self.installed.load(SeqCst);
+                    stdout = "[]".to_string();
+                }
+                _ => {}
+            }
+            Ok(MiseOutput {
+                success,
+                stdout: stdout.into_bytes(),
+                stderr: b"module 'metadata' not found".to_vec(),
+            })
+        }
+    }
+
+    #[test]
+    fn listing_flutter_twice_at_once_clones_its_plugin_once() {
+        let mgr = MiseToolManager::with_runner(CloningRunner::default());
+        std::thread::scope(|scope| {
+            let lists: Vec<_> = (0..2)
+                .map(|_| scope.spawn(|| mgr.list_remote(ToolKind::Flutter)))
+                .collect();
+            for list in lists {
+                assert!(list.join().unwrap().is_ok());
+            }
+        });
+        let installs = mgr
+            .runner
+            .installs
+            .load(std::sync::atomic::Ordering::SeqCst);
+        assert_eq!(installs, 1);
     }
 
     #[test]

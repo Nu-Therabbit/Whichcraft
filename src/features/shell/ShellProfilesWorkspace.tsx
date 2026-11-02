@@ -2,7 +2,6 @@ import { installStoreGate } from "./installStoreGate";
 import { useEffect } from "react";
 import { ProfilesSection } from "../../components/ToolsPanel/ProfilesSection";
 import { useI18n } from "../../hooks/useI18n";
-import { ShellProfilePlanPanel } from "./ShellProfilePlanPanel";
 import { useTools } from "../tools/ToolsContext";
 
 /** Tool profiles workspace in the desktop shell (saved pins, apply, install-missing). */
@@ -18,11 +17,8 @@ export function ShellProfilesWorkspace() {
 
   const storeGate = installStoreGate(settings, dispatch);
   return (
-    <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
-      <div>
-        <h2 className="text-sm font-semibold">{t("desktop_shell.page_profiles")}</h2>
-        <p className="text-xs text-dim">{t("desktop_shell.profiles_intro")}</p>
-      </div>
+    <div className="shell-scroll">
+      <p className="mb-3 mt-3 text-muted">{t("desktop_shell.profiles_intro")}</p>
       <ProfilesSection
         profiles={profiles.list}
         current={profiles.current}
@@ -35,7 +31,6 @@ export function ShellProfilesWorkspace() {
         onInstallMissing={(profile) => dispatch({ type: "installMissing", profile })}
         store={storeGate}
       />
-      <ShellProfilePlanPanel state={state} dispatch={dispatch} />
     </div>
   );
 }

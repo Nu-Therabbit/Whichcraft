@@ -177,19 +177,16 @@
                 {{/each~}}
             </Component>
             <!--
-              The console launcher (scripts/build-cli-launcher.mjs puts it beside the main binary).
-              PATHEXT tries .COM before .EXE, so "whichcraft <command>" in a terminal runs it and
-              the shell waits, while Explorer and the Start menu run the GUI whichcraft.exe.
+              The console launcher (scripts/build-cli-launcher.mjs puts it in target/release/bin).
+              Only bin goes on PATH, so "whichcraft <command>" in a terminal runs it and the shell
+              waits, while Explorer and the Start menu run the GUI whichcraft.exe above it.
               The path is relative to target/release/wix/x64, where the bundler runs candle/light.
             -->
-            <Component Id="CliLauncher" Guid="{6B0E8C1A-3F57-4E2B-9A8D-5C4F1E7B2D90}" Win64="$(var.Win64)">
-                <File Id="CliLauncher" Name="whichcraft.com" Source="..\..\whichcraft.com" KeyPath="yes" Checksum="yes"/>
-            </Component>
-            {{#each binaries as |bin| ~}}
-            <Component Id="{{ bin.id }}" Guid="{{bin.guid}}" Win64="$(var.Win64)">
-                <File Id="Bin_{{ bin.id }}" Source="{{bin.path}}" KeyPath="yes"/>
-            </Component>
-            {{/each~}}
+            <Directory Id="CliBinDir" Name="bin">
+                <Component Id="CliLauncher" Guid="{9D2F4A67-1C8E-4B35-A06D-7E3B58C1F204}" Win64="$(var.Win64)">
+                    <File Id="CliLauncher" Name="whichcraft.exe" Source="..\..\bin\whichcraft.exe" KeyPath="yes" Checksum="yes"/>
+                </Component>
+            </Directory>
             {{#if enable_elevated_update_task}}
             <Component Id="UpdateTask" Guid="C492327D-9720-4CD5-8DB8-F09082AF44BE" Win64="$(var.Win64)">
                 <File Id="UpdateTask" Source="update.xml" KeyPath="yes" Checksum="yes"/>
@@ -286,9 +283,6 @@
                 Level="1"
                 Absent="allow">
             <ComponentRef Id="Path"/>
-            {{#each binaries as |bin| ~}}
-            <ComponentRef Id="{{ bin.id }}"/>
-            {{/each~}}
             </Feature>
         </Feature>
 

@@ -62,8 +62,8 @@ function renderShell(
 }
 
 async function openJavaDetail(user: ReturnType<typeof userEvent.setup>) {
-  await waitFor(() => expect(screen.getByRole("button", { name: /Java/i })).toBeInTheDocument());
-  await user.click(screen.getByRole("button", { name: /Java/i }));
+  await waitFor(() => expect(screen.getByRole("button", { name: /^Java,/i })).toBeInTheDocument());
+  await user.click(screen.getByRole("button", { name: /^Java,/i }));
   return screen.findByRole("complementary", { name: /installation details/i });
 }
 
@@ -115,6 +115,147 @@ describe("desktop shell switch apply and undo", () => {
       expect(block).not.toHaveTextContent("11.0.28");
       expect(block).not.toHaveTextContent("17.0.2");
     });
+  });
+
+  it("opens the review directly from a tool's card and says what the readback found", async () => {
+    const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });
+    let applied = false;
+    const plan = planFor(target, { planId: "from-card" });
+    const applyToolPlan = vi.fn(async (reviewed: typeof plan) => {
+      applied = true;
+      return { planId: reviewed.planId, stale: false, needsElevation: false };
+    });
+    const planToolApply = vi.fn(async () => plan);
+    renderShell({
+      listToolInstallations: async (tool: string) =>
+        tool !== "java"
+          ? []
+          : applied
+            ? [{ ...before, effective: false, selected: false }, { ...target, effective: true, selected: true }]
+            : [before, target],
+      planToolApply,
+      applyToolPlan,
+      undoLastApply: vi.fn(async () => ({ restored: 1, conflicts: [] })),
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Use Java 17\.0\.2/i }));
+    await waitFor(() => expect(planToolApply).toHaveBeenCalledWith("java", "C:\\jdk17"));
+    await user.click(await screen.findByRole("button", { name: /^Apply plan$/i }));
+    await waitFor(() => expect(applyToolPlan).toHaveBeenCalled());
+    const notice = await screen.findByText(/New processes now get Java 17\.0\.2/i);
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    await waitFor(() => expect(notice.closest(".shell-banner")).toHaveFocus());
+
+    await user.click(screen.getByRole("button", { name: /^Undo$/i }));
+    await waitFor(() => expect(screen.queryByText(/New processes now get/i)).not.toBeInTheDocument());
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+  });
+
+  it("keeps the page behind the review from a card, and Dismiss returns to the Use that opened it", async () => {
+    const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });
+    const plan = planFor(target);
+    renderShell({ listToolInstallations: async (tool: string) => (tool === "java" ? [before, target] : []), planToolApply: vi.fn(async () => plan) });
+    const user = userEvent.setup();
+    const use = await screen.findByRole("button", { name: /^Use Java 17\.0\.2/i });
+    await user.click(use);
+    await user.click(await screen.findByRole("button", { name: /^Dismiss$/i }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Apply plan$/i })).not.toBeInTheDocument());
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /^developer tools$/i })).toBeInTheDocument();
+    await waitFor(() => expect(use).toHaveFocus());
+  });
+
+  it("says on the page when a plan from a card could not be built, until it is dismissed", async () => {
+    const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [before, target] : []),
+      planToolApply: vi.fn(async () => {
+        throw new Error("disk full");
+      }),
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Use Java 17\.0\.2/i }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/disk full/i);
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    await user.click(within(alert).getByRole("button"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("stops a card switch when inventory refresh fails, and lets Use retry with fresh data", async () => {
+    const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });
+    let fail = false;
+    const listToolInstallations = vi.fn(async (tool: string) => {
+      if (tool !== "java") return [];
+      if (fail) throw new Error("registry denied");
+      return [before, target];
+    });
+    const planToolApply = vi.fn(async () => planFor(target));
+    renderShell({ listToolInstallations, planToolApply });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await within(details).findByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/i });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("complementary")).not.toBeInTheDocument());
+
+    fail = true;
+    await user.click(screen.getByRole("button", { name: /^Use Java 17\.0\.2/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("registry denied");
+    expect(planToolApply).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /^Apply plan$/i })).not.toBeInTheDocument();
+
+    fail = false;
+    await user.click(screen.getByRole("button", { name: /^Use Java 17\.0\.2/i }));
+    await screen.findByRole("button", { name: /^Apply plan$/i });
+    expect(planToolApply).toHaveBeenCalledExactlyOnceWith("java", "C:\\jdk17");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("leaves an error from elsewhere off the page after a switch from a card", async () => {
+    const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });
+    const plan = planFor(target);
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [before, target] : []),
+      planToolApply: vi.fn(async () => plan),
+      listRemoteVersions: vi.fn(async () => {
+        throw new Error("mise ls-remote failed");
+      }),
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Use Java 17\.0\.2/i }));
+    await user.click(await screen.findByRole("button", { name: /^Dismiss$/i }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Apply plan$/i })).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /install flutter/i }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText(/mise ls-remote failed/i);
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("complementary")).not.toBeInTheDocument());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("does not claim new processes get a version when Windows still resolves elsewhere", async () => {
+    const other = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });
+    const plan = planFor(target);
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [other, target] : []),
+      planToolApply: vi.fn(async () => plan),
+      applyToolPlan: vi.fn(async (reviewed: typeof plan) => ({ planId: reviewed.planId, stale: false, needsElevation: false })),
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await user.click(await screen.findByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/i }));
+    await user.click(await screen.findByRole("button", { name: /^Apply plan$/i }));
+    await within(details).findByText(/new processes don't get Java 17\.0\.2 yet/i);
+    expect(within(details).queryByText(/New processes now get/i)).not.toBeInTheDocument();
   });
 
   it("does not allow choosing an unavailable installation", async () => {
@@ -242,9 +383,9 @@ describe("desktop shell switch apply and undo", () => {
     await openJavaDetail(user);
     await waitFor(() => expect(screen.getAllByText(/offline/i).length).toBeGreaterThan(0));
     failNext = false;
-    await user.click(screen.getByRole("button", { name: /Java/i }));
-    await user.click(screen.getByRole("button", { name: /Node\.js/i }));
-    await user.click(screen.getByRole("button", { name: /Java/i }));
+    await user.click(screen.getByRole("button", { name: /^Java,/i }));
+    await user.click(screen.getByRole("button", { name: /^Node\.js,/i }));
+    await user.click(screen.getByRole("button", { name: /^Java,/i }));
     await waitFor(() => expect(screen.queryByText(/offline/i)).not.toBeInTheDocument());
   });
 
@@ -264,11 +405,11 @@ describe("desktop shell switch apply and undo", () => {
     renderShell({ listToolInstallations });
     const user = userEvent.setup();
     const details = await openJavaDetail(user);
-    await waitFor(() => expect(within(details).getByText("21.0.12")).toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: /Node\.js/i }));
+    await waitFor(() => expect(within(details).getAllByText("21.0.12").length).toBeGreaterThan(0));
+    await user.click(screen.getByRole("button", { name: /^Node\.js,/i }));
     expect(within(details).queryByText("21.0.12")).not.toBeInTheDocument();
     releaseNode([node]);
-    await waitFor(() => expect(within(details).getByText("22.0.0")).toBeInTheDocument());
+    await waitFor(() => expect(within(details).getAllByText("22.0.0").length).toBeGreaterThan(0));
   });
 
   it("does not leave the panel busy when a late apply returns after switching tools", async () => {
@@ -296,7 +437,7 @@ describe("desktop shell switch apply and undo", () => {
     await openJavaDetail(user);
     await user.click(await screen.findByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/i }));
     await user.click(await screen.findByRole("button", { name: /^Apply plan$/i }));
-    await user.click(screen.getByRole("button", { name: /Node\.js/i }));
+    await user.click(screen.getByRole("button", { name: /^Node\.js,/i }));
     releaseApply({ planId: "p", stale: false, needsElevation: false });
     await waitFor(() => expect(screen.queryByText(/Applying changes/i)).not.toBeInTheDocument());
     expect(screen.getByRole("complementary")).not.toHaveTextContent("17.0.2");
@@ -348,12 +489,12 @@ describe("desktop shell switch apply and undo", () => {
       applyEnvChanges,
     });
     const user = userEvent.setup();
-    const details = await openJavaDetail(user);
+    await openJavaDetail(user);
     await user.click(await screen.findByRole("button", { name: /Switch to Eclipse Adoptium 17\.0\.2/i }));
-    expect(await within(details).findByText(/User JAVA_HOME/i)).toBeInTheDocument();
+    expect(await screen.findByText(/User JAVA_HOME/i)).toBeInTheDocument();
 
-    await user.click(within(details).getByRole("button", { name: /^Dismiss$/i }));
-    await waitFor(() => expect(within(details).queryByText(/User JAVA_HOME/i)).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /^Dismiss$/i }));
+    await waitFor(() => expect(screen.queryByText(/User JAVA_HOME/i)).not.toBeInTheDocument());
     expect(applyToolPlan).not.toHaveBeenCalled();
     expect(applyToolPlanWithUac).not.toHaveBeenCalled();
     expect(applyEnvChanges).not.toHaveBeenCalled();

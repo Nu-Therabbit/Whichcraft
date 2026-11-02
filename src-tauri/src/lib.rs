@@ -61,11 +61,11 @@ pub fn detach_console() {
     }
 }
 
-/// `whichcraft.com` started without a subcommand: open the GUI installed beside it with the
+/// `bin\whichcraft.exe` started without a subcommand: open the GUI installed above it with the
 /// same flags and return, so the shell is not held until the window closes.
 #[cfg(windows)]
-pub fn open_gui_beside_cli() -> ! {
-    match commands::launch::open_gui_beside(&launch_args()) {
+pub fn open_gui_from_cli() -> ! {
+    match commands::launch::open_gui_from_cli(&launch_args()) {
         Ok(()) => std::process::exit(0),
         Err(e) => {
             eprintln!("Cannot start the Whichcraft window: {e}");
@@ -77,7 +77,24 @@ pub fn open_gui_beside_cli() -> ! {
 #[cfg(windows)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let args = launch_args();
+    commands::launch::wait_for_replaced_instance(&args);
+
+    let mut builder = tauri::Builder::default();
+    // A second launch brings the open window forward and exits, so two instances never write the
+    // same settings and journal. It stays off in debug builds, which would otherwise exit when
+    // the installed app is open. This plugin must be registered first.
+    if !cfg!(debug_assertions) && commands::launch::uses_single_instance(&args) {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }));
+    }
+
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {

@@ -97,7 +97,10 @@ pub fn restart_as_admin(app: tauri::AppHandle) -> Result<(), WhichcraftError> {
             .collect();
         let verb: Vec<u16> = "runas\0".encode_utf16().collect();
         // Relaunch with the same flags, so a --legacy-ui session stays in the legacy UI.
-        let launch_args: Vec<String> = std::env::args().skip(1).collect();
+        let launch_args = crate::commands::launch::relaunch_args(
+            &std::env::args().skip(1).collect::<Vec<_>>(),
+            std::process::id(),
+        );
         let params_wide: Vec<u16> = crate::commands::launch::relaunch_parameters(&launch_args)
             .encode_utf16()
             .chain(Some(0))

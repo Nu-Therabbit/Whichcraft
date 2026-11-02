@@ -13,10 +13,10 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantCls: Record<Variant, string> = {
-  primary: "bg-accent text-on-accent hover:bg-accent-hi transition-opacity",
-  secondary: "bg-field border border-rim text-fg hover:bg-hover",
+  primary: "bg-primary text-on-primary hover:bg-primary-hi",
+  secondary: "bg-canvas border border-rim-subtle text-fg hover:bg-hover",
   ghost: "text-muted hover:bg-hover hover:text-fg",
-  danger: "bg-danger/15 text-danger border border-danger hover:bg-danger/25",
+  danger: "bg-destructive text-white hover:bg-destructive-hi",
   warn: "border border-warn text-warn hover:bg-warn/10",
   link: "text-muted hover:text-fg hover:underline",
 };

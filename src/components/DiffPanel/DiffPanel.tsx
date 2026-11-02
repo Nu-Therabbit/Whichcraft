@@ -50,7 +50,7 @@ export function DiffPanel({ entries, onApply, onDismiss, busy, error }: Props) {
       <div className="px-5 py-4 border-b border-rim shrink-0">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-semibold text-fg">{t("diff.title")}</h2>
-          <IconButton aria-label="Close" icon="x" onClick={onDismiss} />
+          <IconButton aria-label={t("ui.close")} icon="x" onClick={onDismiss} />
         </div>
         <p className="text-xs text-muted mb-3">{t("diff.description")}</p>
 
@@ -97,18 +97,8 @@ export function DiffPanel({ entries, onApply, onDismiss, busy, error }: Props) {
         ))}
       </div>
 
-      <div className="px-5 py-3 border-t border-rim shrink-0 flex gap-2 justify-end">
-        <div className="flex flex-1 flex-col gap-2">
-          {error && (
-            <p className="rounded border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
-              {error}
-            </p>
-          )}
-        </div>
+      <div className="px-5 py-3 border-t border-rim shrink-0 flex gap-2">
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={onDismiss} disabled={busy}>
-            {t("diff.dismiss")}
-          </Button>
           <Button variant="primary" size="sm" onClick={handleApply} disabled={busy}>
             {busy
               ? t("diff.applying")
@@ -117,6 +107,16 @@ export function DiffPanel({ entries, onApply, onDismiss, busy, error }: Props) {
                   reverted: entries.length - acceptedCount,
                 })}
           </Button>
+          <Button variant="ghost" size="sm" onClick={onDismiss} disabled={busy}>
+            {t("diff.dismiss")}
+          </Button>
+        </div>
+        <div className="flex flex-1 flex-col gap-2">
+          {error && (
+            <p className="rounded border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+              {error}
+            </p>
+          )}
         </div>
       </div>
     </div>
