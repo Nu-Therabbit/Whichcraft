@@ -179,6 +179,19 @@ pub fn revert_journal<B: EnvBackend>(
     let restored = planned.len();
     write_changes(backend, elevator, planned)?;
 
+    // Undo means "go back to what I had": put back the choice this apply replaced, unless the
+    // user has chosen again since.
+    for previous in &journal.previous_selections {
+        let recorded = journal.selections.iter().find(|s| s.tool == previous.tool);
+        if store.selection(previous.tool)?.as_ref() != recorded {
+            continue;
+        }
+        match &previous.selection {
+            Some(selection) => store.save_selection(selection)?,
+            None => store.clear_selection(previous.tool)?,
+        }
+    }
+
     // Mark it undone so the next Undo does not pick the same apply again.
     journal.status = JournalStatus::Undone;
     store.save_journal(&journal)?;
@@ -274,6 +287,7 @@ mod tests {
             baseline: crate::env_store::read_snapshot_with(backend).unwrap(),
             mutations,
             selections: vec![],
+            previous_selections: vec![],
         })
         .unwrap();
     }

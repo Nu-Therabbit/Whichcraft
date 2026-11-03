@@ -11,9 +11,7 @@ use crate::whichcraft::domain::ToolKind;
 use crate::whichcraft::ports::installer_catalog::InstallerCatalog;
 use crate::whichcraft::ports::machine::Machine;
 use crate::whichcraft::ports::store::Store;
-use crate::whichcraft::tools::{
-    command_name, infer_root_from_command_dir, paths_equal,
-};
+use crate::whichcraft::tools::{command_name, infer_root_from_command_dir, paths_equal};
 
 #[derive(Debug, Clone, Copy)]
 pub struct ToolDiscoveryOptions {

@@ -5,7 +5,9 @@ use crate::whichcraft::application::tool_plan::{
     build_tool_apply_plan, diff_to_env_value, plan_to_mutations, tool_plan_is_stale,
 };
 use crate::whichcraft::domain::env::get_var;
-use crate::whichcraft::domain::journal::{JournalStatus, MutationRecord, WhichcraftJournal};
+use crate::whichcraft::domain::journal::{
+    JournalStatus, MutationRecord, PreviousSelection, WhichcraftJournal,
+};
 use crate::whichcraft::domain::plan::ToolApplyPlan;
 use crate::whichcraft::domain::selection::ToolSelection;
 use crate::whichcraft::domain::PlanVariableDiff;
@@ -98,6 +100,26 @@ fn apply_tool_plan_with<B: EnvBackend>(
         }
     }
 
+    let selections: Vec<ToolSelection> = std::iter::once(&plan.selected)
+        .chain(&plan.additional_selections)
+        .filter(|_| plan.records_selection)
+        .map(|i| ToolSelection {
+            tool: i.tool,
+            root: i.root.clone(),
+            vendor: i.vendor.clone(),
+            version: i.version.clone(),
+        })
+        .collect();
+    let previous_selections = selections
+        .iter()
+        .map(|s| {
+            Ok(PreviousSelection {
+                tool: s.tool,
+                selection: store.selection(s.tool)?,
+            })
+        })
+        .collect::<Result<Vec<_>, WhichcraftError>>()?;
+
     // Journal every mutation, System included, before anything is written.
     let mut journal = WhichcraftJournal {
         id: plan.plan_id.clone(),
@@ -110,16 +132,8 @@ fn apply_tool_plan_with<B: EnvBackend>(
         created_at: ids.now_rfc3339(),
         baseline: plan.baseline.clone(),
         mutations,
-        selections: std::iter::once(&plan.selected)
-            .chain(&plan.additional_selections)
-            .filter(|_| plan.records_selection)
-            .map(|i| ToolSelection {
-                tool: i.tool,
-                root: i.root.clone(),
-                vendor: i.vendor.clone(),
-                version: i.version.clone(),
-            })
-            .collect(),
+        selections,
+        previous_selections,
     };
     store.save_journal(&journal)?;
     let fail = |journal: &mut WhichcraftJournal| {
@@ -419,6 +433,65 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(selected.root, jdk);
+    }
+
+    fn fake_java(dir: &std::path::Path, name: &str, version: &str) -> ToolInstallation {
+        let jdk = dir.join(name);
+        std::fs::create_dir_all(jdk.join("bin")).unwrap();
+        std::fs::write(
+            jdk.join("release"),
+            format!("IMPLEMENTOR=\"V\"\nJAVA_VERSION=\"{version}\"\n"),
+        )
+        .unwrap();
+        std::fs::write(jdk.join("bin").join("java.exe"), b"").unwrap();
+        ToolInstallation {
+            tool: ToolKind::Java,
+            vendor: "V".into(),
+            version: version.into(),
+            root: jdk,
+            managed: false,
+        }
+    }
+
+    fn apply_java(b: &MemBackend, installation: &ToolInstallation) {
+        let plan = create_tool_plan(b, &LocalMachine, installation, &SystemOperationIds).unwrap();
+        apply_tool_plan(b, &FileStore, &SystemOperationIds, &plan).unwrap();
+    }
+
+    fn java_root() -> Option<std::path::PathBuf> {
+        crate::whichcraft::persistence::load_tool_selection(ToolKind::Java)
+            .unwrap()
+            .map(|s| s.root)
+    }
+
+    #[test]
+    fn undo_puts_the_earlier_selection_back() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let old = fake_java(dir.path(), "jdk17", "17.0.1");
+        let new = fake_java(dir.path(), "jdk21", "21.0.1");
+        let b = MemBackend::new().with_user([("Path", "C:\\old")]);
+        apply_java(&b, &old);
+        apply_java(&b, &new);
+        assert_eq!(java_root(), Some(new.root.clone()));
+
+        crate::whichcraft::application::undo::undo_last_apply(&b, &FileStore, None).unwrap();
+
+        assert_eq!(java_root(), Some(old.root));
+    }
+
+    #[test]
+    fn undoing_the_first_selection_forgets_it() {
+        let dir = tempfile::tempdir().unwrap();
+        use_test_data_dir(dir.path());
+        let jdk = fake_java(dir.path(), "jdk21", "21.0.1");
+        let b = MemBackend::new().with_user([("Path", "C:\\old")]);
+        apply_java(&b, &jdk);
+
+        crate::whichcraft::application::undo::undo_last_apply(&b, &FileStore, None).unwrap();
+
+        assert_eq!(java_root(), None);
+        assert_eq!(b.read_user().unwrap()["Path"].value, "C:\\old");
     }
 
     #[test]

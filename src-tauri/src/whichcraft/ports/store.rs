@@ -15,6 +15,8 @@ pub trait Store: Send + Sync {
 
     fn selection(&self, tool: ToolKind) -> Result<Option<ToolSelection>, WhichcraftError>;
     fn save_selection(&self, selection: &ToolSelection) -> Result<(), WhichcraftError>;
+    /// Forgets the tool's choice, as if none had been made.
+    fn clear_selection(&self, tool: ToolKind) -> Result<(), WhichcraftError>;
 
     fn save_journal(&self, journal: &WhichcraftJournal) -> Result<(), WhichcraftError>;
     fn journal(&self, id: &str) -> Result<WhichcraftJournal, WhichcraftError>;

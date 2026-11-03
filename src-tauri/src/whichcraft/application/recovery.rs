@@ -225,6 +225,7 @@ mod tests {
                 vendor: "Eclipse Adoptium".into(),
                 version: "17.0.20.1".into(),
             }],
+            previous_selections: vec![],
         };
         save_journal(&journal).unwrap();
         journal
@@ -336,6 +337,7 @@ mod tests {
                 path_removed: removed,
             }],
             selections: vec![],
+            previous_selections: vec![],
         })
         .unwrap();
         let elevator = FakeElevator::new(&b, vec![]);

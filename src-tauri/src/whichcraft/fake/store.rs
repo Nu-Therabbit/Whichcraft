@@ -38,6 +38,10 @@ impl Store for MemStore {
             .insert(selection.tool, selection.clone());
         Ok(())
     }
+    fn clear_selection(&self, tool: ToolKind) -> Result<(), WhichcraftError> {
+        self.selections.lock().unwrap().remove(&tool);
+        Ok(())
+    }
     fn save_journal(&self, journal: &WhichcraftJournal) -> Result<(), WhichcraftError> {
         let mut all = self.journals.lock().unwrap();
         all.retain(|j| j.id != journal.id);

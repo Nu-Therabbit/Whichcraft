@@ -27,6 +27,9 @@ impl Store for FileStore {
     fn save_selection(&self, selection: &ToolSelection) -> Result<(), WhichcraftError> {
         super::save_tool_selection(selection)
     }
+    fn clear_selection(&self, tool: ToolKind) -> Result<(), WhichcraftError> {
+        super::clear_tool_selection(tool)
+    }
     fn save_journal(&self, journal: &WhichcraftJournal) -> Result<(), WhichcraftError> {
         super::save_journal(journal)
     }
