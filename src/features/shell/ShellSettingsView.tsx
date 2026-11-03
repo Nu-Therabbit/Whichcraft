@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { ToolsSettings } from "../../components/ToolsPanel/ToolsSettings";
+import { useAppServices } from "../../composition/AppServicesContext";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { useAccent } from "../../hooks/useAccent";
 import { useI18n } from "../../hooks/useI18n";
@@ -60,7 +61,10 @@ function Appearance() {
 export function ShellSettingsView() {
   const { t } = useI18n();
   const { state, dispatch } = useTools();
+  const { platform, environment } = useAppServices();
   const settings = state.settings;
+  const pickFolder = useCallback((defaultPath?: string) => platform.pickFolder(defaultPath), [platform]);
+  const pathsExist = useCallback((paths: string[]) => environment.validatePaths(paths), [environment]);
 
   useEffect(() => {
     if (!settings && !state.loading) dispatch({ type: "refresh" });
@@ -83,6 +87,8 @@ export function ShellSettingsView() {
         settings={settings}
         busy={busy}
         onSave={(next) => dispatch({ type: "saveSettings", settings: next })}
+        pickFolder={pickFolder}
+        pathsExist={pathsExist}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useI18n } from "../../hooks/useI18n";
 import type { TerminalKind, WhichcraftSettings } from "../../types";
 import { Button } from "../ui/Button";
@@ -7,22 +7,99 @@ interface Props {
   settings: WhichcraftSettings;
   busy: boolean;
   onSave: (settings: WhichcraftSettings) => void;
+  /** The system folder picker; without it there is no Browse button. Keep it stable across renders. */
+  pickFolder?: (defaultPath?: string) => Promise<string | null>;
+  /** Whether each path exists; without it folders are taken as typed. Keep it stable across renders. */
+  pathsExist?: (paths: string[]) => Promise<boolean[]>;
 }
 
 const TERMINALS: TerminalKind[] = ["windows_terminal", "power_shell", "cmd"];
 
+/** A typed folder as it is stored: trimmed, without a trailing separator (except a drive root). */
+export function normalizeFolder(raw: string): string {
+  const trimmed = raw.trim().replace(/[\\/]+$/, "");
+  return /^[a-z]:$/i.test(trimmed) ? `${trimmed}\\` : trimmed;
+}
+
+/** Windows folders ignore case and a trailing separator, so `E:\Dev\` and `e:\dev` are one folder. */
+function sameFolder(a: string, b: string): boolean {
+  return normalizeFolder(a).toLowerCase() === normalizeFolder(b).toLowerCase();
+}
+
 /** Scan folders (06), where Whichcraft installs tools (13) and which terminal it opens (09). */
-export function ToolsSettings({ settings, busy, onSave }: Props) {
+export function ToolsSettings({ settings, busy, onSave, pickFolder, pathsExist }: Props) {
   const { t } = useI18n();
   const [newRoot, setNewRoot] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [missingRoots, setMissingRoots] = useState<string[]>([]);
   const [store, setStore] = useState(settings.installStore);
+  const [storeMissing, setStoreMissing] = useState(false);
+
+  const scanRootsKey = settings.scanRoots.join("\n");
+  // A saved scan folder can disappear later (renamed, drive unplugged); say so instead of finding nothing.
+  useEffect(() => {
+    const roots = scanRootsKey ? scanRootsKey.split("\n") : [];
+    if (!pathsExist || roots.length === 0) {
+      setMissingRoots([]);
+      return;
+    }
+    let cancelled = false;
+    pathsExist(roots)
+      .then((exists) => {
+        if (!cancelled) setMissingRoots(roots.filter((_, i) => exists[i] === false));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pathsExist, scanRootsKey]);
+
+  useEffect(() => {
+    const path = store.trim();
+    if (!pathsExist || !path) {
+      setStoreMissing(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      pathsExist([path])
+        .then(([exists]) => {
+          if (!cancelled) setStoreMissing(exists === false);
+        })
+        .catch(() => {});
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [pathsExist, store]);
 
   const save = (patch: Partial<WhichcraftSettings>) => onSave({ ...settings, ...patch });
-  const addRoot = () => {
-    const root = newRoot.trim();
-    if (!root || settings.scanRoots.includes(root)) return;
+  const addRoot = async (raw: string) => {
+    const root = normalizeFolder(raw);
+    if (!root) return;
+    if (settings.scanRoots.some((r) => sameFolder(r, root))) {
+      setAddError(t("tools.settings.scan_root_duplicate", { path: root }));
+      return;
+    }
+    if (pathsExist) {
+      const [exists] = await pathsExist([root]).catch(() => [true]);
+      if (exists === false) {
+        setAddError(t("tools.settings.scan_root_not_found", { path: root }));
+        return;
+      }
+    }
+    setAddError(null);
     save({ scanRoots: [...settings.scanRoots, root] });
     setNewRoot("");
+  };
+  const browseRoot = async () => {
+    const picked = await pickFolder?.(newRoot.trim() || undefined);
+    if (picked) await addRoot(picked);
+  };
+  const browseStore = async () => {
+    const picked = await pickFolder?.(store.trim() || undefined);
+    if (picked) setStore(picked);
   };
 
   return (
@@ -33,7 +110,12 @@ export function ToolsSettings({ settings, busy, onSave }: Props) {
         <ul className="flex flex-col gap-1">
           {settings.scanRoots.map((root) => (
             <li key={root} className="flex items-center justify-between gap-2">
-              <span className="font-mono wrap-anywhere">{root}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="font-mono wrap-anywhere">{root}</span>
+                {missingRoots.includes(root) && (
+                  <span className="shell-pill shell-pill-warn shrink-0">{t("tools.settings.scan_root_missing")}</span>
+                )}
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -54,17 +136,35 @@ export function ToolsSettings({ settings, busy, onSave }: Props) {
             spellCheck={false}
             placeholder="E:\Dev"
             value={newRoot}
-            onChange={(e) => setNewRoot(e.target.value)}
+            aria-invalid={addError !== null}
+            aria-describedby={addError ? "scan-root-error" : undefined}
+            onChange={(e) => {
+              setNewRoot(e.target.value);
+              setAddError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !busy) void addRoot(newRoot);
+            }}
           />
+          {pickFolder && (
+            <Button variant="secondary" size="sm" disabled={busy} onClick={() => void browseRoot()}>
+              {t("tools.settings.browse")}
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="sm"
             disabled={busy || !newRoot.trim()}
-            onClick={addRoot}
+            onClick={() => void addRoot(newRoot)}
           >
             {t("tools.settings.add")}
           </Button>
         </div>
+        {addError && (
+          <p id="scan-root-error" role="alert" className="text-xs text-warn">
+            {addError}
+          </p>
+        )}
       </section>
 
       <section className="flex flex-col gap-2">
@@ -78,17 +178,28 @@ export function ToolsSettings({ settings, busy, onSave }: Props) {
             autoComplete="off"
             spellCheck={false}
             value={store}
+            aria-describedby={storeMissing ? "install-store-missing" : undefined}
             onChange={(e) => setStore(e.target.value)}
           />
+          {pickFolder && (
+            <Button variant="secondary" size="sm" disabled={busy} onClick={() => void browseStore()}>
+              {t("tools.settings.browse")}
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="sm"
-            disabled={busy || !store.trim() || store.trim() === settings.installStore}
-            onClick={() => save({ installStore: store.trim(), installStoreConfirmed: true })}
+            disabled={busy || !normalizeFolder(store) || normalizeFolder(store) === settings.installStore}
+            onClick={() => save({ installStore: normalizeFolder(store), installStoreConfirmed: true })}
           >
             {t("tools.settings.save")}
           </Button>
         </div>
+        {storeMissing && (
+          <p id="install-store-missing" className="text-xs text-warn">
+            {t("tools.settings.install_store_missing")}
+          </p>
+        )}
         {(settings.previousInstallStores ?? []).length > 0 && (
           <p className="text-xs text-muted">
             {t("tools.settings.previous_stores")}{" "}
