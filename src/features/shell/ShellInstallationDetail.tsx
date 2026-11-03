@@ -216,7 +216,7 @@ function InstallationSwitchRow({
   const settled = item.effective && item.selected;
   return (
     <li className="shell-panel-row shell-install-row !items-center !rounded-none first:!rounded-t-[11px] last:!rounded-b-[11px] !px-3 !py-2.5" data-effective={item.effective} data-arrived={arrived}>
-      <span className="w-[4.75rem] shrink-0">
+      <span className="min-w-[4.75rem] shrink-0 whitespace-nowrap">
         <span className="shell-install-version font-semibold">{item.version}</span>
       </span>
       <span className="min-w-0 flex-1">
