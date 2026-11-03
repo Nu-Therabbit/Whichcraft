@@ -232,9 +232,17 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
       });
     }
 
-    case "saveSettings":
+    case "saveSettings": {
+      const before = state.settings;
       await platform.saveWhichcraftSettings(msg.settings);
+      // Scan and install folders decide what is found, so every tool's count on the shell is stale too.
+      const foldersChanged =
+        !before ||
+        before.installStore !== msg.settings.installStore ||
+        before.scanRoots.join("\n") !== msg.settings.scanRoots.join("\n");
+      if (foldersChanged) coordination.invalidate(["shell-overview"]);
       return reload(ctx, tool);
+    }
     case "checkShell": {
       const binding = coordination.beginShellCheck(tool);
       const check = await tools.shellCheck(tool);

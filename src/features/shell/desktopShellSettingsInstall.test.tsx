@@ -190,6 +190,41 @@ describe("desktop shell settings and install", () => {
     ).toBeInTheDocument();
   });
 
+  it("rescans every tool after a scan folder is added, but not after the terminal changes", async () => {
+    let scanRoots: string[] = [];
+    const listToolInstallations = vi.fn(async () => []);
+    const services = splitWhichcraftApi(
+      fakeToolsRuntime({
+        ...sdkMocks,
+        getWhichcraftSettings: async () => ({
+          installStore: "D:\\store",
+          scanRoots,
+          terminal: "windows_terminal" as const,
+          installStoreConfirmed: true,
+          previousInstallStores: [],
+        }),
+        saveWhichcraftSettings: vi.fn(async (settings: { scanRoots: string[] }) => {
+          scanRoots = settings.scanRoots;
+        }),
+        listToolInstallations,
+      }).api,
+    );
+    window.history.replaceState(null, "", shellNavigationHref({ page: "settings" }));
+    renderDesktopShell(services);
+    const user = userEvent.setup();
+    await screen.findByTestId("shell-settings-ready");
+    const goScans = () => listToolInstallations.mock.calls.filter(([tool]) => tool === "go").length;
+    await waitFor(() => expect(goScans()).toBe(1));
+
+    await user.selectOptions(screen.getByRole("combobox", { name: /terminal/i }), "cmd");
+    await waitFor(() => expect(screen.getByRole("combobox", { name: /terminal/i })).toBeEnabled());
+    expect(goScans()).toBe(1);
+
+    await user.type(screen.getByRole("textbox", { name: /folder to scan/i }), "E:\\Dev");
+    await user.click(screen.getByRole("button", { name: /^add$/i }));
+    await waitFor(() => expect(goScans()).toBe(2));
+  });
+
   it("refreshes the tool overview after install via coordinator invalidation", async () => {
     const node20 = inst("node", "20.0.0", "C:\\node20", { effective: true, selected: true });
     const node22 = inst("node", "22.0.1", "C:\\store\\node\\22.0.1", { managed: true });
