@@ -12,7 +12,7 @@ use crate::whichcraft::ports::installer_catalog::InstallerCatalog;
 use crate::whichcraft::ports::machine::Machine;
 use crate::whichcraft::ports::store::Store;
 use crate::whichcraft::tools::{
-    command_name, command_search_dirs, infer_root_from_command_dir, paths_equal,
+    command_name, infer_root_from_command_dir, paths_equal,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -83,16 +83,10 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
         .and_then(|hit| infer_root_from_command_dir(tool, Path::new(&hit.directory)));
 
     let mut roots: HashSet<PathBuf> = HashSet::new();
+    // A PATH entry is the folder that holds the command (`Go\bin`), so it maps to its root as is.
     for dir in path_dirs(user_path, &expand).chain(path_dirs(system_path, &expand)) {
-        for sub in command_search_dirs(tool) {
-            let candidate = if *sub == "." {
-                dir.clone()
-            } else {
-                dir.join(sub)
-            };
-            if let Some(root) = infer_root_from_command_dir(tool, &candidate) {
-                roots.insert(root);
-            }
+        if let Some(root) = infer_root_from_command_dir(tool, &dir) {
+            roots.insert(root);
         }
     }
 
@@ -516,6 +510,37 @@ mod tests {
         let roots: Vec<&PathBuf> = views.iter().map(|v| &v.installation.root).collect();
         assert!(roots.contains(&&in_a) && roots.contains(&&in_b));
         assert!(views.iter().all(|v| v.installation.managed));
+    }
+
+    #[test]
+    fn a_flutter_sdk_on_path_is_listed_and_effective() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        let sdk = dir.path().join("flutter");
+        std::fs::create_dir_all(sdk.join("bin").join("cache")).unwrap();
+        std::fs::write(sdk.join("bin").join("flutter.bat"), b"").unwrap();
+        std::fs::write(
+            sdk.join("bin").join("cache").join("flutter.version.json"),
+            r#"{"frameworkVersion":"3.32.4"}"#,
+        )
+        .unwrap();
+        let backend =
+            MemBackend::new().with_user([("Path", leak(&sdk.join("bin").to_string_lossy()))]);
+        let views = list_tool_installations_with_options(
+            &backend,
+            &FileStore,
+            &LocalMachine,
+            &FakeInstallerCatalog::default(),
+            ToolKind::Flutter,
+            None,
+            ToolDiscoveryOptions {
+                include_standard_locations: false,
+            },
+        )
+        .unwrap();
+        assert_eq!(views.len(), 1);
+        assert!(views[0].effective);
+        assert_eq!(views[0].installation.version, "3.32.4");
     }
 
     /// Reads the real registry and disk (no writes) and prints what the survey machine has.

@@ -153,17 +153,6 @@ fn run_version_cmd(exe: &Path, args: &[&str]) -> Option<String> {
     Some(text.trim().to_string())
 }
 
-pub fn command_search_dirs(tool: ToolKind) -> &'static [&'static str] {
-    match tool {
-        ToolKind::Java => &["bin"],
-        ToolKind::Node => &["."],
-        ToolKind::Python => &["."],
-        ToolKind::Go => &["bin"],
-        ToolKind::Flutter => &["bin"],
-        ToolKind::Git => &["bin", "cmd"],
-    }
-}
-
 pub fn command_name(tool: ToolKind) -> &'static str {
     match tool {
         ToolKind::Java => "java",
