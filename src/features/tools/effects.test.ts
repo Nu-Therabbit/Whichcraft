@@ -643,6 +643,67 @@ describe("tools effects", () => {
     releaseFirst(shellPayload("older"));
     await h.settle();
     expect(h.state.shellCheck?.effectivePath).toBe("newer");
+    expect(h.state.shellChecking).toBe(false);
+  });
+
+  it("says a shell check, an update check and a settings save are running until each ends", async () => {
+    const jdk = inst("java", "21.0.12", "C:\jdk21", { selected: true, effective: true });
+    const shellPayload = (path: string) => ({
+      tool: "java" as const,
+      shell: "windows_terminal" as const,
+      effectivePath: path,
+      shellPath: path,
+      matches: true,
+    });
+    let finishCheck: (value: ReturnType<typeof shellPayload>) => void = () => {};
+    let finishUpdates: (value: []) => void = () => {};
+    let finishSave: () => void = () => {};
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async () => [jdk]),
+      shellCheck: vi.fn(() => new Promise((resolve) => { finishCheck = resolve; })),
+      updateCandidates: vi.fn(() => new Promise((resolve) => { finishUpdates = resolve; })),
+      saveWhichcraftSettings: vi.fn(() => new Promise<void>((resolve) => { finishSave = resolve; })),
+    });
+    const h = harness(runtime, { installations: [jdk] });
+    h.dispatch({ type: "checkShell" });
+    h.dispatch({ type: "checkUpdates" });
+    h.dispatch({
+      type: "saveSettings",
+      settings: { installStore: "C:\\store", scanRoots: [], terminal: "cmd", installStoreConfirmed: true },
+    });
+    expect(h.state.shellChecking).toBe(true);
+    expect(h.state.update.checking).toBe(true);
+    expect(h.state.savingSettings).toBe(true);
+
+    finishCheck(shellPayload("done"));
+    finishUpdates([]);
+    finishSave();
+    await h.settle();
+    expect(h.state.shellChecking).toBe(false);
+    expect(h.state.update.checking).toBe(false);
+    expect(h.state.savingSettings).toBe(false);
+  });
+
+  it("ends the shell check and settings save flags when they fail", async () => {
+    const jdk = inst("java", "21.0.12", "C:\jdk21", { selected: true, effective: true });
+    const { runtime } = fakeToolsRuntime({
+      listToolInstallations: vi.fn(async () => [jdk]),
+      shellCheck: vi.fn(async () => {
+        throw new Error("shell would not start");
+      }),
+      saveWhichcraftSettings: vi.fn(async () => {
+        throw new Error("disk full");
+      }),
+    });
+    const h = harness(runtime, { installations: [jdk] });
+    h.dispatch({ type: "checkShell" });
+    h.dispatch({
+      type: "saveSettings",
+      settings: { installStore: "C:\\store", scanRoots: [], terminal: "cmd", installStoreConfirmed: true },
+    });
+    await h.settle();
+    expect(h.state.shellChecking).toBe(false);
+    expect(h.state.savingSettings).toBe(false);
   });
 
   it("does not commit apply when the on-screen plan id is not the reviewed plan", async () => {

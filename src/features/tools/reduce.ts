@@ -56,8 +56,10 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
           ...s.update,
           list: null,
           busy: false,
+          checking: false,
           pending: sameTool ? s.update.pending : null,
         },
+        shellChecking: sameTool && s.shellChecking,
         plan:
           sameTool || keepPlan
             ? s.plan
@@ -178,6 +180,13 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
 
     // --- settings, shell, terminal, SDKs ---
     case "saveSettings":
+      return {
+        ...s,
+        savingSettings: true,
+        error: isApplyPlanOutcomeError(s.error) || s.install.retainErrorOnRefresh ? s.error : null,
+      };
+    case "settingsSaved":
+      return { ...s, savingSettings: false };
     case "openTerminal":
     case "loadSdks":
     case "dismissUnfinished":
@@ -191,11 +200,13 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
     case "deleteProfile":
       return { ...s, error: null };
     case "checkShell":
-      return { ...s, error: null, shellCheck: null };
+      return { ...s, error: null, shellCheck: null, shellChecking: true };
     case "clearShellCheck":
       return { ...s, shellCheck: null };
     case "shellChecked":
-      return { ...s, shellCheck: msg.check };
+      return { ...s, shellCheck: msg.check, shellChecking: false };
+    case "shellCheckDropped":
+      return { ...s, shellChecking: false };
     case "sdksLoaded":
       return { ...s, sdks: { android: msg.android, msvc: msg.msvc } };
 
@@ -219,15 +230,17 @@ export function reduce(s: ToolsState, msg: ToolsMsg): ToolsState {
 
     // --- update ---
     case "checkUpdates":
+      return { ...s, error: null, update: { ...s.update, busy: true, checking: true } };
     case "update":
       return { ...s, error: null, update: { ...s.update, busy: true } };
     case "updatesChecked":
-      return { ...s, update: { ...s.update, busy: false, list: msg.list } };
+      return { ...s, update: { ...s.update, busy: false, checking: false, list: msg.list } };
     case "updateInstalled":
       return {
         ...s,
         update: {
           busy: false,
+          checking: false,
           list: s.update.list?.filter((u) => u.root !== msg.candidateRoot) ?? null,
           pending: msg.pending,
         },
@@ -313,7 +326,11 @@ function endBusy(s: ToolsState, op: Operation): ToolsState {
     case "install":
       return { ...s, install: { ...s.install, busy: false, loading: false } };
     case "update":
-      return { ...s, update: { ...s.update, busy: false } };
+      return { ...s, update: { ...s.update, busy: false, checking: false } };
+    case "shell":
+      return { ...s, shellChecking: false };
+    case "settings":
+      return { ...s, savingSettings: false };
     case "uninstall":
       return { ...s, uninstall: { ...s.uninstall, busy: false } };
     case "profiles":

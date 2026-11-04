@@ -26,8 +26,10 @@ interface Props {
 
 export function ShellInstallationDetail({ tool, state, dispatch, onInstall, notice }: Props) {
   const { t } = useI18n();
-  const { installations, loading, error, plan, uninstall, shellCheck, update, settings, profiles } = state;
+  const { installations, loading, error, plan, uninstall, shellCheck, shellChecking, update, settings, profiles } = state;
   const applyBusy = plan.applying;
+  // Undo applies no plan of its own, so applying with none on screen is an undo running.
+  const undoing = plan.applying && plan.current === null;
   const current = plan.current;
   const canInstall = tool !== "git";
   const storeGate = installStoreGate(settings, dispatch);
@@ -106,8 +108,8 @@ export function ShellInstallationDetail({ tool, state, dispatch, onInstall, noti
       <section>
         <div className="mb-2 flex items-center gap-2">
           <h2 className="shell-section-title min-w-0 flex-1">{t("desktop_shell.shell_resolution")}</h2>
-          <Button variant="secondary" size="xs" onClick={() => dispatch({ type: "checkShell" })} disabled={loading || applyBusy}>
-            {t("tools.check_in_shell")}
+          <Button variant="secondary" size="xs" onClick={() => dispatch({ type: "checkShell" })} disabled={loading || applyBusy || shellChecking}>
+            {shellChecking ? t("desktop_shell.checking") : t("tools.check_in_shell")}
           </Button>
         </div>
         <div className="shell-panel flex flex-col gap-3 p-3">
@@ -160,11 +162,11 @@ export function ShellInstallationDetail({ tool, state, dispatch, onInstall, noti
               )}
               {canInstall && (
                 <Button variant="secondary" size="xs" onClick={() => dispatch({ type: "checkUpdates" })} disabled={update.busy || applyBusy}>
-                  {t("tools.check_updates")}
+                  {update.checking ? t("desktop_shell.checking") : t("tools.check_updates")}
                 </Button>
               )}
               <Button variant="secondary" size="xs" onClick={() => dispatch({ type: "undoLast" })} disabled={applyBusy}>
-                {t("tools.undo_last")}
+                {undoing ? t("desktop_shell.undoing") : t("tools.undo_last")}
               </Button>
             </div>
             {canInstall && update.list && (

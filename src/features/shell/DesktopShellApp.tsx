@@ -37,7 +37,14 @@ type Translate = ReturnType<typeof useI18n>["t"];
 
 function shellStatusLine(t: Translate, toolsState: ReturnType<typeof useTools>["state"]): string {
   if (toolsState.install.busy) return t("desktop_shell.status_installing");
-  if (toolsState.update.busy || toolsState.profiles.busy) return t("desktop_shell.status_working");
+  if (
+    toolsState.update.busy ||
+    toolsState.profiles.busy ||
+    toolsState.uninstall.busy ||
+    toolsState.shellChecking ||
+    toolsState.savingSettings
+  )
+    return t("desktop_shell.status_working");
   if (toolsState.plan.applying) return t("desktop_shell.status_applying");
   if (toolsState.plan.building) return t("desktop_shell.status_building_plan");
   if (toolsState.error) return toolsState.error;
@@ -88,6 +95,8 @@ function DesktopShellAppInner() {
   const overview = useToolsOverview(services.tools, services.environment, coordination);
   // A switch started from a tool's card waits here until that tool's store has caught up. The page stays where it is.
   const [pendingUse, setPendingUse] = useState<{ tool: ToolKind; root: string; reads: number } | null>(null);
+  /** The card Use last clicked, shown as preparing until its plan is built. */
+  const [cardUse, setCardUse] = useState<{ tool: ToolKind; root: string } | null>(null);
   // A card has no sheet to report into, so a failed switch from one is said on the page, until it is dismissed.
   const [showUseError, setShowUseError] = useState(false);
   const toolsWrite = useShellToolsWrite(overview.detailOpen ? overview.selectedTool : (pendingUse?.tool ?? null));
@@ -120,7 +129,8 @@ function DesktopShellAppInner() {
   const inspectedTool = overview.detailOpen ? overview.selectedTool : null;
   const openTool = activePage === "tools" ? inspectedTool : null;
   const { uninstall, plan } = toolsWrite.state;
-  const uninstallOpen = uninstall.plan !== null || uninstall.outcome !== null;
+  // Opens as soon as the trash is clicked: planning reads every uninstall entry, which takes a moment.
+  const uninstallOpen = uninstall.plan !== null || uninstall.outcome !== null || uninstall.busy;
   const reviewOpen = plan.current !== null && plan.source !== "cleanup" && plan.current.recordsSelection !== false;
   const useError = showUseError && !pendingUse && !plan.building && !reviewOpen ? toolsWrite.state.error : null;
 
@@ -128,6 +138,11 @@ function DesktopShellAppInner() {
   useEffect(() => {
     if (reviewOpen || openTool || installOpen) setShowUseError(false);
   }, [reviewOpen, openTool, installOpen]);
+
+  const preparingUse = pendingUse ?? (plan.building ? cardUse : null);
+  useEffect(() => {
+    if (cardUse && !pendingUse && !plan.building) setCardUse(null);
+  }, [cardUse, pendingUse, plan.building]);
 
   const appliedNotice = applied && <ShellAppliedNotice ref={noticeRef} applied={applied} state={toolsWrite.state} dispatch={toolsWrite.dispatch} onClose={() => setApplied(null)} />;
 
@@ -224,8 +239,10 @@ function DesktopShellAppInner() {
                       installOpen={installOpen}
                       terminalDisabled={shellTools.state.plan.applying}
                       onOpenTool={openToolFrom}
+                      preparingUse={preparingUse}
                       onUse={(tool, root) => {
                         setShowUseError(true);
+                        setCardUse({ tool, root });
                         setPendingUse({ tool, root, reads: toolsWrite.state.reads });
                       }}
                       onInstall={(tool) => {

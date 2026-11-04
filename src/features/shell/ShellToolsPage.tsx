@@ -54,21 +54,27 @@ function cardSummary(t: Translate, slice: ToolOverviewSlice): string {
   }
 }
 
-function CardUse({ tool, item, onUse }: { tool: ToolKind; item: ToolInstallationView; onUse: () => void }) {
+/** The card Use whose switch is being prepared; while one is, no other card starts another. */
+type Preparing = { tool: ToolKind; root: string } | null;
+
+function CardUse({ tool, item, preparing, onUse }: { tool: ToolKind; item: ToolInstallationView; preparing: Preparing; onUse: () => void }) {
   const { t } = useI18n();
+  const mine = preparing?.tool === tool && preparing.root === item.root;
   return (
     <Button
       variant="secondary"
       size="xs"
       aria-label={t("desktop_shell.card_use", { tool: TOOL_DISPLAY[tool].title, version: item.version, vendor: item.vendor })}
+      aria-busy={mine || undefined}
+      disabled={preparing !== null}
       onClick={onUse}
     >
-      {t("desktop_shell.use")}
+      {mine ? t("desktop_shell.preparing") : t("desktop_shell.use")}
     </Button>
   );
 }
 
-function CardMain({ tool, item, sameElsewhere, arrived, onUse }: { tool: ToolKind; item: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; onUse: () => void }) {
+function CardMain({ tool, item, sameElsewhere, arrived, preparing, onUse }: { tool: ToolKind; item: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; preparing: Preparing; onUse: () => void }) {
   const { t } = useI18n();
   return (
     <li title={item.root} className="shell-install-row" data-effective={item.effective} data-arrived={arrived}>
@@ -88,14 +94,14 @@ function CardMain({ tool, item, sameElsewhere, arrived, onUse }: { tool: ToolKin
           {t("desktop_shell.in_use")}
         </span>
       ) : (
-        item.available && <CardUse tool={tool} item={item} onUse={onUse} />
+        item.available && <CardUse tool={tool} item={item} preparing={preparing} onUse={onUse} />
       )}
     </li>
   );
 }
 
 /** The Selection that differs. What it shares with the line above is left out, so only what tells them apart is said. */
-function CardSelection({ tool, item, main, sameElsewhere, arrived, more, onUse }: { tool: ToolKind; item: ToolInstallationView; main: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; more: ReactNode; onUse: () => void }) {
+function CardSelection({ tool, item, main, sameElsewhere, arrived, more, preparing, onUse }: { tool: ToolKind; item: ToolInstallationView; main: ToolInstallationView; sameElsewhere: boolean; arrived: boolean; more: ReactNode; preparing: Preparing; onUse: () => void }) {
   const { t } = useI18n();
   return (
     <li title={item.root} className="shell-card-foot" data-arrived={arrived}>
@@ -106,14 +112,14 @@ function CardSelection({ tool, item, main, sameElsewhere, arrived, more, onUse }
       {more}
       {item.available && (
         <span className="ml-auto flex-none">
-          <CardUse tool={tool} item={item} onUse={onUse} />
+          <CardUse tool={tool} item={item} preparing={preparing} onUse={onUse} />
         </span>
       )}
     </li>
   );
 }
 
-function ToolCard({ tool, slice, onOpen, onUse, onInstall, onRetry }: { tool: ToolKind; slice: ToolOverviewSlice; onOpen: (trigger: HTMLButtonElement) => void; onUse: (root: string) => void; onInstall: () => void; onRetry: () => void }) {
+function ToolCard({ tool, slice, preparing, onOpen, onUse, onInstall, onRetry }: { tool: ToolKind; slice: ToolOverviewSlice; preparing: Preparing; onOpen: (trigger: HTMLButtonElement) => void; onUse: (root: string) => void; onInstall: () => void; onRetry: () => void }) {
   const { t } = useI18n();
   const meta = TOOL_DISPLAY[tool];
   const health = scanHealth(slice);
@@ -190,7 +196,7 @@ function ToolCard({ tool, slice, onOpen, onUse, onInstall, onRetry }: { tool: To
         </div>
       ) : (
         <ul className="shell-card-rows">
-          <CardMain tool={tool} item={main} arrived={arrived === main.root} sameElsewhere={sameElsewhere(main)} onUse={() => onUse(main.root)} />
+          <CardMain tool={tool} item={main} arrived={arrived === main.root} sameElsewhere={sameElsewhere(main)} preparing={preparing} onUse={() => onUse(main.root)} />
           {selection ? (
             <CardSelection
               tool={tool}
@@ -199,6 +205,7 @@ function ToolCard({ tool, slice, onOpen, onUse, onInstall, onRetry }: { tool: To
               arrived={arrived === selection.root}
               sameElsewhere={sameElsewhere(selection)}
               more={moreButton(`+${hidden}`)}
+              preparing={preparing}
               onUse={() => onUse(selection.root)}
             />
           ) : (
@@ -215,6 +222,8 @@ interface Props {
   installOpen: boolean;
   terminalDisabled: boolean;
   onOpenTool: (tool: ToolKind, trigger: HTMLButtonElement) => void;
+  /** The card Use whose switch is being prepared. */
+  preparingUse: Preparing;
   onUse: (tool: ToolKind, root: string) => void;
   onInstall: (tool?: ToolKind) => void;
   onRescan: () => void;
@@ -223,7 +232,7 @@ interface Props {
   notice: ReactNode;
 }
 
-export function ShellToolsPage({ overview, installOpen, terminalDisabled, onOpenTool, onUse, onInstall, onRescan, onOpenTerminal, notice }: Props) {
+export function ShellToolsPage({ overview, installOpen, terminalDisabled, onOpenTool, preparingUse, onUse, onInstall, onRescan, onOpenTerminal, notice }: Props) {
   const { t } = useI18n();
   const [sdksOpen, setSdksOpen] = useState(false);
   const visibleTools = OVERVIEW_TOOL_KINDS.filter((tool) =>
@@ -285,6 +294,7 @@ export function ShellToolsPage({ overview, installOpen, terminalDisabled, onOpen
             tool={tool}
             slice={overview.byTool[tool]}
             onOpen={(trigger) => onOpenTool(tool, trigger)}
+            preparing={preparingUse}
             onUse={(root) => onUse(tool, root)}
             onInstall={() => onInstall(tool)}
             onRetry={onRescan}

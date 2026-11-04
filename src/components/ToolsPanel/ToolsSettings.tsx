@@ -6,6 +6,8 @@ import { Button } from "../ui/Button";
 interface Props {
   settings: WhichcraftSettings;
   busy: boolean;
+  /** Settings are being written; the buttons that save them say so. */
+  saving?: boolean;
   onSave: (settings: WhichcraftSettings) => void;
   /** The system folder picker; without it there is no Browse button. Keep it stable across renders. */
   pickFolder?: (defaultPath?: string) => Promise<string | null>;
@@ -27,7 +29,7 @@ function sameFolder(a: string, b: string): boolean {
 }
 
 /** Scan folders (06), where Whichcraft installs tools (13) and which terminal it opens (09). */
-export function ToolsSettings({ settings, busy, onSave, pickFolder, pathsExist }: Props) {
+export function ToolsSettings({ settings, busy, saving = false, onSave, pickFolder, pathsExist }: Props) {
   const { t } = useI18n();
   const [newRoot, setNewRoot] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
@@ -74,7 +76,13 @@ export function ToolsSettings({ settings, busy, onSave, pickFolder, pathsExist }
     };
   }, [pathsExist, store]);
 
-  const save = (patch: Partial<WhichcraftSettings>) => onSave({ ...settings, ...patch });
+  // Which button started the save, so that one says "Saving…" while it runs.
+  const [savedFrom, setSavedFrom] = useState<string | null>(null);
+  const savingFrom = (action: string) => saving && savedFrom === action;
+  const save = (patch: Partial<WhichcraftSettings>, action = "other") => {
+    setSavedFrom(action);
+    onSave({ ...settings, ...patch });
+  };
   const addRoot = async (raw: string) => {
     const root = normalizeFolder(raw);
     if (!root) return;
@@ -90,7 +98,7 @@ export function ToolsSettings({ settings, busy, onSave, pickFolder, pathsExist }
       }
     }
     setAddError(null);
-    save({ scanRoots: [...settings.scanRoots, root] });
+    save({ scanRoots: [...settings.scanRoots, root] }, "add");
     setNewRoot("");
   };
   const browseRoot = async () => {
@@ -120,9 +128,9 @@ export function ToolsSettings({ settings, busy, onSave, pickFolder, pathsExist }
                 variant="ghost"
                 size="sm"
                 disabled={busy}
-                onClick={() => save({ scanRoots: settings.scanRoots.filter((r) => r !== root) })}
+                onClick={() => save({ scanRoots: settings.scanRoots.filter((r) => r !== root) }, `remove:${root}`)}
               >
-                {t("tools.settings.remove")}
+                {savingFrom(`remove:${root}`) ? t("tools.settings.saving") : t("tools.settings.remove")}
               </Button>
             </li>
           ))}
@@ -157,7 +165,7 @@ export function ToolsSettings({ settings, busy, onSave, pickFolder, pathsExist }
             disabled={busy || !newRoot.trim()}
             onClick={() => void addRoot(newRoot)}
           >
-            {t("tools.settings.add")}
+            {savingFrom("add") ? t("tools.settings.saving") : t("tools.settings.add")}
           </Button>
         </div>
         {addError && (
@@ -190,9 +198,9 @@ export function ToolsSettings({ settings, busy, onSave, pickFolder, pathsExist }
             variant="secondary"
             size="sm"
             disabled={busy || !normalizeFolder(store) || normalizeFolder(store) === settings.installStore}
-            onClick={() => save({ installStore: normalizeFolder(store), installStoreConfirmed: true })}
+            onClick={() => save({ installStore: normalizeFolder(store), installStoreConfirmed: true }, "store")}
           >
-            {t("tools.settings.save")}
+            {savingFrom("store") ? t("tools.settings.saving") : t("tools.settings.save")}
           </Button>
         </div>
         {storeMissing && (

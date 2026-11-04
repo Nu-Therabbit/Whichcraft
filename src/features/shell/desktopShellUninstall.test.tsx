@@ -141,6 +141,22 @@ describe("desktop shell uninstall", () => {
     expect(within(uninstallSection).getByRole("button", { name: /^uninstall$/i })).toBeDisabled();
   });
 
+  it("opens the uninstall dialog with a loading line while the plan is read", async () => {
+    let finish: (plan: UninstallPlan) => void = () => {};
+    renderShell({
+      listToolInstallations: async (tool: string) =>
+        tool === "java" ? [effective, replacement] : [],
+      planUninstall: vi.fn(() => new Promise<UninstallPlan>((resolve) => { finish = resolve; })),
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await planUninstallForRoot(user, details, "C:\\jdk21");
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Loading…")).toBeInTheDocument();
+    finish(uninstallPlan());
+    await openedUninstallPlanSection();
+  });
+
   it("uninstalls with the switch plan that was shown and reloads tool inventory", async () => {
     const shown = planFor(replacement, { planId: "switch-for-uninstall" });
     const planUninstall = vi.fn(async () => uninstallPlan());

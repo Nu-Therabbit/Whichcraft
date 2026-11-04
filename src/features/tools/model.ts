@@ -52,6 +52,10 @@ export interface ToolsState {
   pythonInfo: PythonSupplementalView | null;
   sdks: { android: AndroidInventory | null; msvc: MsvcInventory | null };
   shellCheck: ShellCheck | null;
+  /** A shell check is running for this tool. */
+  shellChecking: boolean;
+  /** Settings are being written. */
+  savingSettings: boolean;
   plan: {
     current: ToolApplyPlan | null;
     building: boolean;
@@ -74,7 +78,8 @@ export interface ToolsState {
     /** Keep panel error through the next inventory readback after install failure. */
     retainErrorOnRefresh: boolean;
   };
-  update: { list: UpdateCandidate[] | null; busy: boolean; pending: PendingUpdate | null };
+  /** `checking` is the list being fetched; `busy` also covers installing an update. */
+  update: { list: UpdateCandidate[] | null; busy: boolean; checking: boolean; pending: PendingUpdate | null };
   uninstall: {
     plan: UninstallPlan | null;
     outcome: UninstallOutcome | null;
@@ -106,6 +111,8 @@ export function initialToolsState(tool: ToolKind = "java"): ToolsState {
     pythonInfo: null,
     sdks: { android: null, msvc: null },
     shellCheck: null,
+    shellChecking: false,
+    savingSettings: false,
     plan: { current: null, building: false, applying: false, undoResult: null, source: null, cleanup: null },
     install: {
       catalogTool: null,
@@ -117,7 +124,7 @@ export function initialToolsState(tool: ToolKind = "java"): ToolsState {
       chosen: null,
       retainErrorOnRefresh: false,
     },
-    update: { list: null, busy: false, pending: null },
+    update: { list: null, busy: false, checking: false, pending: null },
     uninstall: { plan: null, outcome: null, busy: false, switchPlan: null, defaultReplacement: null },
     profiles: { list: [], current: [], missing: null, busy: false },
   };

@@ -130,6 +130,30 @@ describe("desktop shell check command and shell resolution", () => {
     expect(within(status).queryByText(/C:\\jdk17\\bin/i)).not.toBeInTheDocument();
   });
 
+  it("says Checking on the button while the shell check runs, and allows no second one", async () => {
+    const effective = inst("java", "21.0.1", "C:\\jdk21", { selected: true, effective: true });
+    let finish: (value: unknown) => void = () => {};
+    const shellCheck = vi.fn(() => new Promise((resolve) => { finish = resolve; }));
+    renderShell({
+      listToolInstallations: async (tool: string) => (tool === "java" ? [effective] : []),
+      shellCheck,
+    });
+    const user = userEvent.setup();
+    const details = await openJavaDetail(user);
+    await user.click(within(details).getByRole("button", { name: /check in shell/i }));
+    const checking = await within(details).findByRole("button", { name: "Checking…" });
+    expect(checking).toBeDisabled();
+    finish({
+      tool: "java",
+      shell: "windows_terminal",
+      effectivePath: "C:\\jdk21\\bin\\java.exe",
+      shellPath: "C:\\jdk21\\bin\\java.exe",
+      matches: true,
+    });
+    await within(details).findByRole("button", { name: /check in shell/i });
+    expect(shellCheck).toHaveBeenCalledTimes(1);
+  });
+
   it("opens the configured terminal through the platform API", async () => {
     const jdk = inst("java", "21.0.1", "C:\\jdk21", { effective: true, selected: true });
     const openTerminal = vi.fn(async () => {});

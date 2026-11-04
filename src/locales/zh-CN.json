@@ -471,6 +471,9 @@
   },
   "desktop_shell": {
     "status_working": "正在处理…",
+    "checking": "正在检查…",
+    "undoing": "正在撤销…",
+    "preparing": "正在准备…",
     "selection_mismatch": "所选安装与实际生效的安装不同",
     "mismatch_reason_system_path_may_shadow": "新进程不会使用此安装。系统 PATH 中的条目可能优先生效。",
     "mismatch_reason_unavailable": "找不到所选安装的文件夹。",
@@ -764,6 +767,7 @@
       "scan_roots_hint": "用于查找安装的额外文件夹，例如 E:\\Dev。其他驱动器不会被自动扫描。",
       "scan_root_input": "要扫描的文件夹",
       "browse": "浏览…",
+      "saving": "正在保存…",
       "scan_root_missing": "找不到文件夹",
       "scan_root_not_found": "{{path}} 不存在。请检查拼写，或用“浏览”选择。",
       "scan_root_duplicate": "{{path}} 已在列表中。",

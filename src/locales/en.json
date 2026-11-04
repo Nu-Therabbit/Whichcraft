@@ -426,6 +426,7 @@
       "scan_roots_hint": "Extra folders searched for installations, such as E:\\Dev. Other drives are never scanned on their own.",
       "scan_root_input": "Folder to scan",
       "browse": "Browse…",
+      "saving": "Saving…",
       "scan_root_missing": "Folder not found",
       "scan_root_not_found": "{{path}} does not exist. Check the spelling, or pick it with Browse.",
       "scan_root_duplicate": "{{path}} is already in the list.",
@@ -656,6 +657,9 @@
   },
   "desktop_shell": {
     "status_working": "Working…",
+    "checking": "Checking…",
+    "undoing": "Undoing…",
+    "preparing": "Preparing…",
     "selection_mismatch": "Selection differs from the effective installation",
     "mismatch_reason_system_path_may_shadow": "New processes won't get this installation. An entry in the System PATH may be taking priority.",
     "mismatch_reason_unavailable": "The selected installation's folder is missing.",

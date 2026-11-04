@@ -471,6 +471,9 @@
   },
   "desktop_shell": {
     "status_working": "Đang xử lý…",
+    "checking": "Đang kiểm tra…",
+    "undoing": "Đang hoàn tác…",
+    "preparing": "Đang chuẩn bị…",
     "selection_mismatch": "Bản cài đặt đã chọn khác với bản đang có hiệu lực",
     "mismatch_reason_system_path_may_shadow": "Các tiến trình mới sẽ không dùng bản cài đặt này. Có thể một mục trong PATH hệ thống đang được ưu tiên.",
     "mismatch_reason_unavailable": "Không tìm thấy thư mục của bản cài đặt đã chọn.",
@@ -764,6 +767,7 @@
       "scan_roots_hint": "Các thư mục bổ sung để tìm bản cài đặt, ví dụ E:\\Dev. Các ổ đĩa khác không bao giờ tự được quét.",
       "scan_root_input": "Thư mục cần quét",
       "browse": "Duyệt…",
+      "saving": "Đang lưu…",
       "scan_root_missing": "Không tìm thấy thư mục",
       "scan_root_not_found": "{{path}} không tồn tại. Hãy kiểm tra chính tả hoặc chọn bằng Duyệt.",
       "scan_root_duplicate": "{{path}} đã có trong danh sách.",

@@ -235,6 +235,7 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     case "saveSettings": {
       const before = state.settings;
       await platform.saveWhichcraftSettings(msg.settings);
+      dispatch({ type: "settingsSaved" });
       // Scan and install folders decide what is found, so every tool's count on the shell is stale too.
       const foldersChanged =
         !before ||
@@ -246,8 +247,11 @@ async function run(msg: ToolsIntent, ctx: EffectContext): Promise<void> {
     case "checkShell": {
       const binding = coordination.beginShellCheck(tool);
       const check = await tools.shellCheck(tool);
-      if (!coordination.isShellCheckCurrent(binding)) return;
-      dispatch({ type: "shellChecked", tool, check });
+      dispatch(
+        coordination.isShellCheckCurrent(binding)
+          ? { type: "shellChecked", tool, check }
+          : { type: "shellCheckDropped", tool },
+      );
       return;
     }
     case "clearShellCheck":
@@ -523,6 +527,10 @@ function operationOf(intent: ToolsIntent): Operation {
     case "checkMissing":
     case "installMissing":
       return "profiles";
+    case "checkShell":
+      return "shell";
+    case "saveSettings":
+      return "settings";
     default:
       return "other";
   }

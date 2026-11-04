@@ -85,7 +85,8 @@ export function ShellSettingsView() {
       <Appearance />
       <ToolsSettings
         settings={settings}
-        busy={busy}
+        busy={busy || state.savingSettings}
+        saving={state.savingSettings}
         onSave={(next) => dispatch({ type: "saveSettings", settings: next })}
         pickFolder={pickFolder}
         pathsExist={pathsExist}

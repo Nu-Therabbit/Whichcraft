@@ -61,7 +61,17 @@ export type ToolsIntent =
   | { type: "planCleanup" };
 
 /** Which busy flag a failure ends. */
-export type Operation = "inventory" | "plan" | "apply" | "install" | "update" | "uninstall" | "profiles" | "other";
+export type Operation =
+  | "inventory"
+  | "plan"
+  | "apply"
+  | "install"
+  | "update"
+  | "uninstall"
+  | "profiles"
+  | "shell"
+  | "settings"
+  | "other";
 
 /** What came back from the backend. Only effects dispatch these. One that names a `tool` is
  * dropped when the panel has moved to another tool by the time it arrives. */
@@ -83,6 +93,9 @@ export type ToolsEvent =
   | { type: "undone"; tool: ToolKind; result: UndoResult }
   | { type: "recoveryResolved"; tool: ToolKind; result: UndoResult | null }
   | { type: "shellChecked"; tool: ToolKind; check: ShellCheck }
+  /** A newer read made this check's result stale; only the busy flag ends. */
+  | { type: "shellCheckDropped"; tool: ToolKind }
+  | { type: "settingsSaved" }
   | { type: "sdksLoaded"; android: AndroidInventory; msvc: MsvcInventory }
   | { type: "versionsLoaded"; tool: ToolKind; miseStatus: MiseStatus; versions: RemoteVersion[] }
   | { type: "versionSized"; tool: ToolKind; chosen: ChosenVersion }
@@ -113,6 +126,8 @@ const EVENT_TYPES: ReadonlySet<string> = new Set<ToolsEvent["type"]>([
   "undone",
   "recoveryResolved",
   "shellChecked",
+  "shellCheckDropped",
+  "settingsSaved",
   "sdksLoaded",
   "versionsLoaded",
   "versionSized",

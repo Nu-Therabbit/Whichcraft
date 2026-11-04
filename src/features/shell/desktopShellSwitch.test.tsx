@@ -152,6 +152,28 @@ describe("desktop shell switch apply and undo", () => {
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
   });
 
+  it("says Preparing on the card's Use while its plan is built, and holds the other cards' Use", async () => {
+    const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
+    const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });
+    const node = inst("node", "22.0.0", "C:\\node22", { selected: true });
+    const node20 = inst("node", "20.0.0", "C:\\node20", { effective: true });
+    let finish: (plan: ReturnType<typeof planFor>) => void = () => {};
+    renderShell({
+      listToolInstallations: async (tool: string) =>
+        tool === "java" ? [before, target] : tool === "node" ? [node20, node] : [],
+      planToolApply: vi.fn(() => new Promise((resolve) => { finish = resolve; })),
+    });
+    const user = userEvent.setup();
+    const use = await screen.findByRole("button", { name: /^Use Java 17\.0\.2/i });
+    await user.click(use);
+    await waitFor(() => expect(use).toHaveTextContent("Preparing…"));
+    expect(use).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Use Node\.js 22\.0\.0/i })).toBeDisabled();
+    finish(planFor(target));
+    await screen.findByRole("button", { name: /^Apply plan$/i });
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Use Node\.js 22\.0\.0/i })).toBeEnabled());
+  });
+
   it("keeps the page behind the review from a card, and Dismiss returns to the Use that opened it", async () => {
     const before = inst("java", "21.0.1", "C:\\jdk21", { effective: true });
     const target = inst("java", "17.0.2", "C:\\jdk17", { selected: true });

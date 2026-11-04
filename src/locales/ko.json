@@ -471,6 +471,9 @@
   },
   "desktop_shell": {
     "status_working": "처리 중…",
+    "checking": "확인 중…",
+    "undoing": "되돌리는 중…",
+    "preparing": "준비 중…",
     "selection_mismatch": "선택한 설치와 실제 적용된 설치가 다릅니다",
     "mismatch_reason_system_path_may_shadow": "새 프로세스에는 이 설치가 적용되지 않습니다. 시스템 PATH의 항목이 우선 적용되고 있을 수 있습니다.",
     "mismatch_reason_unavailable": "선택한 설치의 폴더를 찾을 수 없습니다.",
@@ -764,6 +767,7 @@
       "scan_roots_hint": "설치를 찾을 추가 폴더입니다(예: E:\\Dev). 다른 드라이브는 자동으로 검색되지 않습니다.",
       "scan_root_input": "검색할 폴더",
       "browse": "찾아보기…",
+      "saving": "저장 중…",
       "scan_root_missing": "폴더를 찾을 수 없음",
       "scan_root_not_found": "{{path}}이(가) 없습니다. 철자를 확인하거나 찾아보기로 선택하세요.",
       "scan_root_duplicate": "{{path}}은(는) 이미 목록에 있습니다.",

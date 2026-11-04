@@ -66,7 +66,7 @@ export function ShellEnvironmentToolbar({
         onClick={() => tools.dispatch({ type: "undoLast" })}
         disabled={toolsBusy}
       >
-        {t("tools.undo_last")}
+        {tools.state.plan.applying && tools.state.plan.current === null ? t("desktop_shell.undoing") : t("tools.undo_last")}
       </Button>
       {stagedCount > 0 && (
         <Button variant="primary" size="sm" onClick={onApplyStaged}>
