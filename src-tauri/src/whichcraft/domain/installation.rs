@@ -23,6 +23,8 @@ pub enum InstallerKind {
     InnoSetup,
     PythonInstallManager,
     ManagedByOtherTool,
+    /// Inside another program's folder, such as the runtime Android Studio ships in `jbr`.
+    Bundled,
     FolderOnly,
     ManagedByWhichcraft,
 }

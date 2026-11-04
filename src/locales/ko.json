@@ -637,6 +637,7 @@
       "inno_setup": "Inno Setup",
       "python_install_manager": "Python 설치 관리자",
       "managed_by_other_tool": "다른 도구에서 관리",
+      "bundled": "다른 앱에 포함됨",
       "folder_only": "폴더만",
       "managed_by_whichcraft": "Whichcraft에서 설치"
     },

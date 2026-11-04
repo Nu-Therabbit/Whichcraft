@@ -204,6 +204,13 @@ pub fn plan_uninstall(
                         reason: "the MSI entry has no product code".into(),
                     },
                 },
+                // Its uninstaller would remove the whole program, not just this runtime.
+                (InstallerKind::Bundled, _) => UninstallMethod::Refused {
+                    reason: format!(
+                        "this comes with {0}; it goes when {0} is uninstalled",
+                        entry.display_name
+                    ),
+                },
                 (InstallerKind::ManagedByOtherTool, _) => UninstallMethod::Refused {
                     reason: format!(
                         "{} is managed by another tool; remove it there",
@@ -563,6 +570,26 @@ mod tests {
         .unwrap();
         assert!(
             matches!(&plan.method, UninstallMethod::Refused { reason } if reason.contains("Android Studio"))
+        );
+    }
+
+    #[test]
+    fn a_runtime_bundled_with_another_program_is_refused_instead_of_running_its_uninstaller() {
+        let dir = tempfile::tempdir().unwrap();
+        let v = jdk(dir.path(), "jbr", "25.0.4");
+        let entry = CatalogEntry {
+            install_root: dir.path().to_path_buf(),
+            kind: InstallerKind::Bundled,
+            display_name: "Android Studio".into(),
+            uninstall_command: Some(r#""C:\Android Studio\uninstall.exe""#.into()),
+        };
+        let plan = plan_uninstall(
+            inputs(&v, &[v.clone()], Some(entry)),
+            &FakeUsageProbe::default(),
+        )
+        .unwrap();
+        assert!(
+            matches!(&plan.method, UninstallMethod::Refused { reason } if reason.contains("comes with Android Studio"))
         );
     }
 

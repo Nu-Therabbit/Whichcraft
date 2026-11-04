@@ -637,6 +637,7 @@
       "inno_setup": "Inno Setup",
       "python_install_manager": "Python インストールマネージャー",
       "managed_by_other_tool": "他のツールで管理",
+      "bundled": "他のアプリに同梱",
       "folder_only": "フォルダーのみ",
       "managed_by_whichcraft": "Whichcraft でインストール"
     },

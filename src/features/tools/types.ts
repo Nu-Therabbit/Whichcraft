@@ -30,6 +30,7 @@ export type InstallerKind =
   | "inno_setup"
   | "python_install_manager"
   | "managed_by_other_tool"
+  | "bundled"
   | "folder_only"
   | "managed_by_whichcraft";
 

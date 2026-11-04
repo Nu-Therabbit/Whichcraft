@@ -677,6 +677,7 @@
       "inno_setup": "Inno Setup",
       "python_install_manager": "Диспетчер установки Python",
       "managed_by_other_tool": "Управляется другим инструментом",
+      "bundled": "Входит в другое приложение",
       "folder_only": "Только папка",
       "managed_by_whichcraft": "Установлено Whichcraft"
     },

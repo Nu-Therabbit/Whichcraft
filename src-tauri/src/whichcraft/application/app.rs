@@ -427,7 +427,8 @@ impl<B: EnvBackend> App<B> {
                 WhichcraftError::InvalidInput(format!("unknown {tool:?} root: {}", root.display()))
             })?;
         let catalog = self.catalogs.load()?;
-        let entry = catalog.entries_for_root(root)?.into_iter().next();
+        let entry =
+            crate::whichcraft::ports::installer_catalog::owning_entry(&*catalog, tool, root)?;
         let settings = self.store.settings()?;
         // Only a plain folder (no registered uninstaller) needs every other tool's roots for Q26.
         let mut other_tool_roots = Vec::new();

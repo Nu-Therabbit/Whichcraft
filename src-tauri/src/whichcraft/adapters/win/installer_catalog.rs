@@ -133,11 +133,20 @@ impl InstallerCatalog for SharedCatalog {
     fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, WhichcraftError> {
         self.0.entries_for_root(root)
     }
+    fn install_roots(&self) -> Vec<PathBuf> {
+        self.0.install_roots()
+    }
 }
 
 impl InstallerCatalog for WinInstallerCatalog {
     fn entries_for_root(&self, root: &Path) -> Result<Vec<CatalogEntry>, WhichcraftError> {
         Ok(self.match_root(root))
+    }
+    fn install_roots(&self) -> Vec<PathBuf> {
+        self.index
+            .iter()
+            .filter_map(|row| row.install_root.clone())
+            .collect()
     }
 }
 
@@ -430,11 +439,12 @@ mod tests {
     fn contract_msi_products_without_install_location_resolve_to_their_folder() {
         let catalog = WinInstallerCatalog::load().unwrap();
         let program_files = std::env::var("ProgramFiles").unwrap();
-        for folder in ["nodejs", "Go"] {
+        use crate::whichcraft::domain::ToolKind;
+        for (tool, folder) in [(ToolKind::Node, "nodejs"), (ToolKind::Go, "Go")] {
             let root = Path::new(&program_files).join(folder);
             if root.is_dir() {
                 assert_eq!(
-                    catalog.kind_for_root(&root),
+                    catalog.kind_for_root(tool, &root),
                     InstallerKind::Msi,
                     "{}",
                     root.display()

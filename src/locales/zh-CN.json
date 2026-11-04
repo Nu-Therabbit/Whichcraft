@@ -637,6 +637,7 @@
       "inno_setup": "Inno Setup",
       "python_install_manager": "Python 安装管理器",
       "managed_by_other_tool": "由其他工具管理",
+      "bundled": "随其他应用附带",
       "folder_only": "仅文件夹",
       "managed_by_whichcraft": "由 Whichcraft 安装"
     },

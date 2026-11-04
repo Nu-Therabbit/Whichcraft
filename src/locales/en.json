@@ -299,6 +299,7 @@
       "inno_setup": "Inno Setup",
       "python_install_manager": "Python install manager",
       "managed_by_other_tool": "Managed by another tool",
+      "bundled": "Comes with another app",
       "folder_only": "Folder only",
       "managed_by_whichcraft": "Installed by Whichcraft"
     },

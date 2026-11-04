@@ -637,6 +637,7 @@
       "inno_setup": "Inno Setup",
       "python_install_manager": "Trình quản lý cài đặt Python",
       "managed_by_other_tool": "Do công cụ khác quản lý",
+      "bundled": "Đi kèm ứng dụng khác",
       "folder_only": "Chỉ có thư mục",
       "managed_by_whichcraft": "Do Whichcraft cài đặt"
     },

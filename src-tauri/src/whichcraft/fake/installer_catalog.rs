@@ -14,9 +14,15 @@ impl InstallerCatalog for FakeInstallerCatalog {
         Ok(self
             .entries
             .iter()
-            .filter(|e| e.install_root == root)
+            .filter(|e| root.starts_with(&e.install_root))
             .cloned()
             .collect())
+    }
+    fn install_roots(&self) -> Vec<std::path::PathBuf> {
+        self.entries
+            .iter()
+            .map(|e| e.install_root.clone())
+            .collect()
     }
 }
 

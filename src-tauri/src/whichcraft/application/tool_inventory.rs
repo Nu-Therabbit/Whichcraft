@@ -96,6 +96,7 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
                 system_path,
                 &user,
                 &system,
+                &catalog.install_roots(),
                 options.include_standard_locations,
             ),
         );
@@ -138,7 +139,7 @@ pub fn list_tool_installations_with_options<B: EnvBackend>(
             let installer_kind = if installation.managed {
                 InstallerKind::ManagedByWhichcraft
             } else {
-                catalog.kind_for_root(&installation.root)
+                catalog.kind_for_root(tool, &installation.root)
             };
             let mismatch_reason = if selected && !effective_match {
                 Some(format!(
@@ -372,6 +373,50 @@ mod tests {
             user_view.mismatch_reason.is_some(),
             "the selection is shadowed"
         );
+    }
+
+    #[test]
+    fn jdks_are_found_where_installed_programs_registered_them() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::whichcraft::persistence::use_test_data_dir(dir.path());
+        // A vendor installer registered the JDK itself; an IDE registered its own folder.
+        let corretto = fake_jdk(dir.path(), "corretto-21", "21.0.8");
+        let studio = dir.path().join("Android Studio");
+        let jbr = fake_jdk(&studio, "jbr", "25.0.4");
+        let entry =
+            |root: &Path, name: &str| crate::whichcraft::ports::installer_catalog::CatalogEntry {
+                install_root: root.to_path_buf(),
+                kind: InstallerKind::Msi,
+                display_name: name.into(),
+                uninstall_command: Some("uninstall.exe".into()),
+            };
+        let catalog = FakeInstallerCatalog {
+            entries: vec![
+                entry(&corretto, "Amazon Corretto 21"),
+                entry(&studio, "Android Studio"),
+            ],
+        };
+        let views = list_tool_installations_with_options(
+            &MemBackend::new(),
+            &FileStore,
+            &LocalMachine,
+            &catalog,
+            ToolKind::Java,
+            None,
+            ToolDiscoveryOptions {
+                include_standard_locations: false,
+            },
+        )
+        .unwrap();
+        let kind_of = |root: &Path| {
+            views
+                .iter()
+                .find(|v| v.installation.root == root)
+                .map(|v| v.installer_kind.clone())
+        };
+        assert_eq!(views.len(), 2);
+        assert_eq!(kind_of(&corretto), Some(InstallerKind::Msi));
+        assert_eq!(kind_of(&jbr), Some(InstallerKind::Bundled));
     }
 
     /// The local machine, except for the environment variables a test sets.
