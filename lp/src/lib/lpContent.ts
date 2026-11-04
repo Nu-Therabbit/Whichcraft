@@ -131,14 +131,19 @@ export const enCopy: LandingCopy = {
         question: 'What stays on my PC after I uninstall Whichcraft?',
         answer: 'The app, its shortcuts, and its PATH entry are removed. Tools you installed through Whichcraft stay in place, because PATH or a project may still use them, so remove them in the app first if you no longer want them. With the .exe installer, tick Delete the application data to also remove settings, profiles, snapshots, and undo history. The MSI has no such option and keeps them.',
       },
+      {
+        id: 'configuration',
+        question: 'Can I edit Git and SSH configuration?',
+        answer: 'Yes. Edit existing Git identity and SSH-command values, add or edit supported global includeIf rules, and edit existing SSH IdentityFile entries. Review the source diff before Apply and Undo the latest configuration change. Repository impact covers only your selected and remembered repositories. SSH inspection is static and does not test authentication.',
+      },
     ],
     cliSetup: 'Run these commands from a terminal. Add Whichcraft to PATH using the app, or invoke bin\\whichcraft.exe in the installation folder by its full path.',
     cliDocs: 'CLI usage and examples',
   },
   lang: 'en',
   title: 'Whichcraft — Developer Tool Manager for Windows',
-  description: 'Find, install, switch, and uninstall versions of Java, Node.js, Python, Go, Flutter, and Git on Windows, and review every environment change before it applies. Free and open source for Windows 10/11.',
-  ogDescription: 'Find, install, switch, and uninstall versions of Java, Node.js, Python, Go, Flutter, and Git on Windows, and review every environment change before it applies. Free and open source for Windows 10/11.',
+  description: 'Manage Java, Node.js, Python, Go, Flutter, and Git on Windows, and inspect Git/SSH configuration. Review changes before Apply. Free and open source for Windows 10/11.',
+  ogDescription: 'Manage Java, Node.js, Python, Go, Flutter, and Git on Windows, and inspect Git/SSH configuration. Review changes before Apply. Free and open source for Windows 10/11.',
   canonicalPath: '/Whichcraft/',
   nav: {
     features: 'Features',
@@ -191,6 +196,16 @@ export const enCopy: LandingCopy = {
   ],
   otherFeaturesHeading: 'Also included',
   otherFeatures: [
+    {
+      icon: '⑂',
+      title: 'Git configuration',
+      desc: 'Inspect repository commit identity and its sources. Edit existing values and includeIf rules with a diff, impact preview, and Undo.',
+    },
+    {
+      icon: '⌁',
+      title: 'SSH configuration',
+      desc: 'Inspect hosts, sources, and key references. Edit existing IdentityFile entries with a diff and Undo, without connecting to a server.',
+    },
     {
       icon: '◎',
       title: 'What really runs',
@@ -295,14 +310,19 @@ export const jaCopy: LandingCopy = {
         question: 'Whichcraft をアンインストールすると PC に何が残りますか？',
         answer: 'アプリ、ショートカット、PATH のエントリは削除されます。Whichcraft でインストールしたツールは、PATH やプロジェクトが使っている可能性があるため残ります。不要な場合は先にアプリから削除してください。.exe インストーラーでアプリケーションデータを削除するオプションを選ぶと、設定、プロファイル、スナップショット、元に戻す履歴も削除されます。MSI にはこのオプションがなく、これらは残ります。',
       },
+      {
+        id: 'configuration',
+        question: 'Git と SSH の設定を編集できますか？',
+        answer: 'はい。既存の Git の名前・メール・SSH コマンド、対応するグローバル includeIf ルール、既存の SSH IdentityFile を編集できます。適用前に差分を確認し、直近の変更を取り消せます。影響プレビューの対象は選択中と履歴のリポジトリのみです。SSH は静的な検査で、認証テストは行いません。',
+      },
     ],
     cliSetup: 'ターミナルから実行してください。アプリで Whichcraft を PATH に追加するか、インストール先の bin\\whichcraft.exe をフルパスで指定します。',
     cliDocs: 'CLI の使い方と実行例',
   },
   lang: 'ja',
   title: 'Whichcraft — Windows 向け開発ツールマネージャー',
-  description: 'Windows で Java、Node.js、Python、Go、Flutter、Git の各バージョンを検出、インストール、切り替え、アンインストール。環境変数の変更は適用前に必ず確認できます。Windows 10/11 向けの無料オープンソースアプリです。',
-  ogDescription: 'Windows で Java、Node.js、Python、Go、Flutter、Git の各バージョンを検出、インストール、切り替え、アンインストール。環境変数の変更は適用前に必ず確認できます。Windows 10/11 向けの無料オープンソースアプリです。',
+  description: 'Windows で Java、Node.js、Python、Go、Flutter、Git を管理し、Git/SSH 設定を確認。変更は適用前にレビューできます。Windows 10/11 向けの無料オープンソースアプリです。',
+  ogDescription: 'Windows で Java、Node.js、Python、Go、Flutter、Git を管理し、Git/SSH 設定を確認。変更は適用前にレビューできます。Windows 10/11 向けの無料オープンソースアプリです。',
   canonicalPath: '/Whichcraft/ja/',
   nav: {
     features: '機能',
@@ -355,6 +375,16 @@ export const jaCopy: LandingCopy = {
   ],
   otherFeaturesHeading: 'そのほかの機能',
   otherFeatures: [
+    {
+      icon: '⑂',
+      title: 'Git の設定',
+      desc: 'リポジトリのコミット名・メールと設定元を確認。既存の値と includeIf ルールを差分・影響プレビュー・Undo 付きで編集できます。',
+    },
+    {
+      icon: '⌁',
+      title: 'SSH の設定',
+      desc: 'ホスト、設定元、鍵の参照を確認。サーバーに接続せず、既存の IdentityFile を差分と Undo 付きで編集できます。',
+    },
     {
       icon: '◎',
       title: '実際に動くものを表示',
@@ -459,14 +489,19 @@ export const zhCNCopy: LandingCopy = {
         question: '卸载 Whichcraft 后电脑上还会留下什么？',
         answer: '应用、快捷方式和 PATH 条目会被移除。通过 Whichcraft 安装的工具会保留，因为 PATH 或项目可能仍在使用；如果不再需要，请先在应用中卸载。使用 .exe 安装程序时，勾选删除应用数据的选项，还会移除设置、配置、快照和撤销记录。MSI 没有此选项，这些内容会保留。',
       },
+      {
+        id: 'configuration',
+        question: '可以编辑 Git 和 SSH 配置吗？',
+        answer: '可以编辑已有的 Git 提交身份和 SSH 命令值、添加或编辑支持的全局 includeIf 规则，以及编辑已有的 SSH IdentityFile。应用前查看来源文件差异，并可撤销最近一次配置更改。影响预览仅覆盖所选及最近使用的仓库。SSH 检查为静态分析，不测试身份验证。',
+      },
     ],
     cliSetup: '请在终端中运行。通过应用将 Whichcraft 添加到 PATH，或使用安装目录中 bin\\whichcraft.exe 的完整路径。',
     cliDocs: 'CLI 用法和示例',
   },
   lang: 'zh-CN',
   title: 'Whichcraft — Windows 开发工具管理器',
-  description: '在 Windows 上查找、安装、切换和卸载 Java、Node.js、Python、Go、Flutter 和 Git 的各个版本，并在应用前查看每一处环境更改。免费开源，适用于 Windows 10/11。',
-  ogDescription: '在 Windows 上查找、安装、切换和卸载 Java、Node.js、Python、Go、Flutter 和 Git 的各个版本，并在应用前查看每一处环境更改。免费开源，适用于 Windows 10/11。',
+  description: '在 Windows 上管理 Java、Node.js、Python、Go、Flutter 和 Git，并查看 Git/SSH 配置。应用前预览更改。免费开源，适用于 Windows 10/11。',
+  ogDescription: '在 Windows 上管理 Java、Node.js、Python、Go、Flutter 和 Git，并查看 Git/SSH 配置。应用前预览更改。免费开源，适用于 Windows 10/11。',
   canonicalPath: '/Whichcraft/zh-cn/',
   nav: {
     features: '功能',
@@ -519,6 +554,16 @@ export const zhCNCopy: LandingCopy = {
   ],
   otherFeaturesHeading: '还包括',
   otherFeatures: [
+    {
+      icon: '⑂',
+      title: 'Git 配置',
+      desc: '查看仓库提交身份及其来源。编辑已有配置值和 includeIf 规则，支持差异、影响预览和撤销。',
+    },
+    {
+      icon: '⌁',
+      title: 'SSH 配置',
+      desc: '查看主机、配置来源和密钥引用。无需连接服务器，即可通过差异预览和撤销编辑已有的 IdentityFile。',
+    },
     {
       icon: '◎',
       title: '实际运行的版本',
@@ -623,14 +668,19 @@ export const ruCopy: LandingCopy = {
         question: 'Что останется на компьютере после удаления Whichcraft?',
         answer: 'Приложение, ярлыки и запись в PATH удаляются. Инструменты, установленные через Whichcraft, остаются, так как их может использовать PATH или проект; если они больше не нужны, сначала удалите их в приложении. В установщике .exe отметьте удаление данных приложения, чтобы также удалить настройки, профили, снимки и историю отмены. В MSI такого параметра нет, и эти данные сохраняются.',
       },
+      {
+        id: 'configuration',
+        question: 'Можно ли редактировать настройки Git и SSH?',
+        answer: 'Да. Можно менять существующие значения имени, почты и SSH-команды Git, добавлять и редактировать поддерживаемые глобальные правила includeIf и существующие записи SSH IdentityFile. Перед применением показываются различия; последнее изменение можно отменить. Влияние проверяется только для выбранного и недавних репозиториев. Проверка SSH статическая и не выполняет аутентификацию.',
+      },
     ],
     cliSetup: 'Запускайте команды из терминала. Добавьте Whichcraft в PATH через приложение или укажите полный путь к bin\\whichcraft.exe в папке установки.',
     cliDocs: 'Использование CLI и примеры',
   },
   lang: 'ru',
   title: 'Whichcraft — менеджер инструментов разработки для Windows',
-  description: 'Находите, устанавливайте, переключайте и удаляйте версии Java, Node.js, Python, Go, Flutter и Git в Windows и проверяйте каждое изменение окружения перед применением. Бесплатно, с открытым исходным кодом, для Windows 10/11.',
-  ogDescription: 'Находите, устанавливайте, переключайте и удаляйте версии Java, Node.js, Python, Go, Flutter и Git в Windows и проверяйте каждое изменение окружения перед применением. Бесплатно, с открытым исходным кодом, для Windows 10/11.',
+  description: 'Управляйте Java, Node.js, Python, Go, Flutter и Git в Windows и проверяйте настройки Git/SSH. Просматривайте изменения перед применением. Бесплатно, с открытым исходным кодом, для Windows 10/11.',
+  ogDescription: 'Управляйте Java, Node.js, Python, Go, Flutter и Git в Windows и проверяйте настройки Git/SSH. Просматривайте изменения перед применением. Бесплатно, с открытым исходным кодом, для Windows 10/11.',
   canonicalPath: '/Whichcraft/ru/',
   nav: {
     features: 'Возможности',
@@ -683,6 +733,16 @@ export const ruCopy: LandingCopy = {
   ],
   otherFeaturesHeading: 'Также включено',
   otherFeatures: [
+    {
+      icon: '⑂',
+      title: 'Настройки Git',
+      desc: 'Проверяйте имя и почту коммитов и их источники. Редактируйте существующие значения и правила includeIf с просмотром различий, влияния и отменой.',
+    },
+    {
+      icon: '⌁',
+      title: 'Настройки SSH',
+      desc: 'Проверяйте хосты, источники и ссылки на ключи. Редактируйте существующие IdentityFile с просмотром различий и отменой без подключения к серверу.',
+    },
     {
       icon: '◎',
       title: 'Что запускается на самом деле',
@@ -787,14 +847,19 @@ export const koCopy: LandingCopy = {
         question: 'Whichcraft를 제거하면 PC에 무엇이 남나요?',
         answer: '앱, 바로 가기, PATH 항목은 제거됩니다. Whichcraft로 설치한 도구는 PATH나 프로젝트에서 계속 쓸 수 있으므로 남습니다. 더 이상 필요 없다면 먼저 앱에서 제거하세요. .exe 설치 프로그램에서 앱 데이터 삭제 옵션을 선택하면 설정, 프로필, 스냅샷, 실행 취소 기록도 함께 제거됩니다. MSI에는 이 옵션이 없어 이 데이터가 유지됩니다.',
       },
+      {
+        id: 'configuration',
+        question: 'Git과 SSH 설정을 편집할 수 있나요?',
+        answer: '네. 기존 Git 커밋 이름, 이메일, SSH 명령 값과 지원되는 전역 includeIf 규칙, 기존 SSH IdentityFile 항목을 편집할 수 있습니다. 적용 전에 원본 파일의 차이를 확인하고 최근 설정 변경을 실행 취소할 수 있습니다. 영향 미리보기는 선택한 저장소와 최근 저장소만 포함합니다. SSH 검사는 정적 분석이며 인증을 테스트하지 않습니다.',
+      },
     ],
     cliSetup: '터미널에서 실행하세요. 앱에서 Whichcraft를 PATH에 추가하거나 설치 폴더에 있는 bin\\whichcraft.exe의 전체 경로를 지정하세요.',
     cliDocs: 'CLI 사용법과 예제',
   },
   lang: 'ko',
   title: 'Whichcraft — Windows용 개발 도구 관리자',
-  description: 'Windows에서 Java, Node.js, Python, Go, Flutter, Git의 버전을 찾고, 설치하고, 전환하고, 제거하세요. 모든 환경 변경은 적용 전에 확인할 수 있습니다. Windows 10/11용 무료 오픈소스 앱입니다.',
-  ogDescription: 'Windows에서 Java, Node.js, Python, Go, Flutter, Git의 버전을 찾고, 설치하고, 전환하고, 제거하세요. 모든 환경 변경은 적용 전에 확인할 수 있습니다. Windows 10/11용 무료 오픈소스 앱입니다.',
+  description: 'Windows에서 Java, Node.js, Python, Go, Flutter, Git을 관리하고 Git/SSH 설정을 확인하세요. 적용 전에 변경 사항을 검토합니다. Windows 10/11용 무료 오픈소스 앱입니다.',
+  ogDescription: 'Windows에서 Java, Node.js, Python, Go, Flutter, Git을 관리하고 Git/SSH 설정을 확인하세요. 적용 전에 변경 사항을 검토합니다. Windows 10/11용 무료 오픈소스 앱입니다.',
   canonicalPath: '/Whichcraft/ko/',
   nav: {
     features: '기능',
@@ -847,6 +912,16 @@ export const koCopy: LandingCopy = {
   ],
   otherFeaturesHeading: '이 외에도',
   otherFeatures: [
+    {
+      icon: '⑂',
+      title: 'Git 설정',
+      desc: '저장소의 커밋 이름과 이메일, 설정 출처를 확인하세요. 기존 값과 includeIf 규칙을 차이 및 영향 미리보기, 실행 취소와 함께 편집합니다.',
+    },
+    {
+      icon: '⌁',
+      title: 'SSH 설정',
+      desc: '호스트, 설정 출처, 키 참조를 확인하세요. 서버에 연결하지 않고 기존 IdentityFile을 차이 미리보기와 실행 취소로 편집합니다.',
+    },
     {
       icon: '◎',
       title: '실제로 실행되는 버전',
@@ -951,14 +1026,19 @@ export const viCopy: LandingCopy = {
         question: 'Sau khi gỡ Whichcraft, những gì còn lại trên máy?',
         answer: 'Ứng dụng, lối tắt và mục PATH sẽ bị xóa. Các công cụ đã cài qua Whichcraft vẫn được giữ vì PATH hoặc dự án có thể vẫn dùng; nếu không cần nữa, hãy gỡ chúng trong ứng dụng trước. Với trình cài đặt .exe, chọn tùy chọn xóa dữ liệu ứng dụng để xóa cả cài đặt, hồ sơ, bản chụp nhanh và lịch sử hoàn tác. MSI không có tùy chọn này nên dữ liệu vẫn được giữ.',
       },
+      {
+        id: 'configuration',
+        question: 'Có thể chỉnh sửa cấu hình Git và SSH không?',
+        answer: 'Có. Bạn có thể sửa tên, email và lệnh SSH hiện có của Git, thêm hoặc sửa quy tắc includeIf toàn cục được hỗ trợ và sửa mục SSH IdentityFile hiện có. Xem khác biệt trước khi áp dụng và hoàn tác thay đổi cấu hình gần nhất. Xem trước tác động chỉ bao gồm kho mã đang chọn và các kho gần đây. Kiểm tra SSH là phân tích tĩnh, không thử xác thực.',
+      },
     ],
     cliSetup: 'Chạy từ terminal. Thêm Whichcraft vào PATH bằng ứng dụng, hoặc dùng đường dẫn đầy đủ tới bin\\whichcraft.exe trong thư mục cài đặt.',
     cliDocs: 'Cách dùng CLI và ví dụ',
   },
   lang: 'vi',
   title: 'Whichcraft — Trình quản lý công cụ phát triển cho Windows',
-  description: 'Tìm, cài đặt, chuyển đổi và gỡ bỏ các phiên bản Java, Node.js, Python, Go, Flutter và Git trên Windows, đồng thời xem lại mọi thay đổi môi trường trước khi áp dụng. Miễn phí, mã nguồn mở, dành cho Windows 10/11.',
-  ogDescription: 'Tìm, cài đặt, chuyển đổi và gỡ bỏ các phiên bản Java, Node.js, Python, Go, Flutter và Git trên Windows, đồng thời xem lại mọi thay đổi môi trường trước khi áp dụng. Miễn phí, mã nguồn mở, dành cho Windows 10/11.',
+  description: 'Quản lý Java, Node.js, Python, Go, Flutter và Git trên Windows, đồng thời xem cấu hình Git/SSH. Xem trước thay đổi trước khi áp dụng. Miễn phí và mã nguồn mở cho Windows 10/11.',
+  ogDescription: 'Quản lý Java, Node.js, Python, Go, Flutter và Git trên Windows, đồng thời xem cấu hình Git/SSH. Xem trước thay đổi trước khi áp dụng. Miễn phí và mã nguồn mở cho Windows 10/11.',
   canonicalPath: '/Whichcraft/vi/',
   nav: {
     features: 'Tính năng',
@@ -1011,6 +1091,16 @@ export const viCopy: LandingCopy = {
   ],
   otherFeaturesHeading: 'Còn có thêm',
   otherFeatures: [
+    {
+      icon: '⑂',
+      title: 'Cấu hình Git',
+      desc: 'Xem danh tính commit và nguồn cấu hình theo kho mã. Sửa giá trị hiện có và quy tắc includeIf với so sánh khác biệt, xem trước tác động và hoàn tác.',
+    },
+    {
+      icon: '⌁',
+      title: 'Cấu hình SSH',
+      desc: 'Xem máy chủ, nguồn cấu hình và tham chiếu khóa. Sửa IdentityFile hiện có với so sánh khác biệt và hoàn tác mà không kết nối máy chủ.',
+    },
     {
       icon: '◎',
       title: 'Phiên bản thực sự chạy',

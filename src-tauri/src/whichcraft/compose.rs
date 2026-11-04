@@ -30,3 +30,15 @@ pub fn windows_app() -> App<WinregBackend> {
         installer_lifecycle: Box::new(MiseInstallerLifecycle),
     }
 }
+
+pub fn configuration_app(
+) -> &'static crate::whichcraft::application::configuration::ConfigurationApp {
+    static APP: std::sync::OnceLock<
+        crate::whichcraft::application::configuration::ConfigurationApp,
+    > = std::sync::OnceLock::new();
+    APP.get_or_init(|| {
+        crate::whichcraft::application::configuration::ConfigurationApp::new(Box::new(
+            crate::whichcraft::adapters::configuration::NativeConfigurationIo::windows(),
+        ))
+    })
+}

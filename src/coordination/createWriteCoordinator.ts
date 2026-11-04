@@ -5,6 +5,7 @@ import {
   ENVIRONMENT_PENDING_TOOLS_MESSAGE,
   type CoordinatorReadBinding,
   type EnvironmentWriteKind,
+  type ConfigurationWriteKind,
   type InvalidationScope,
   type PlanApplyBinding,
   type ReadScopeKey,
@@ -43,6 +44,8 @@ export async function runEnvironmentWrite(
 }
 
 export type WriteCoordinatorFacade = {
+  tryBeginConfigurationWrite: (kind: ConfigurationWriteKind) => WriteAdmissionResult;
+  endConfigurationWrite: (admission: WriteAdmission, outcome: WriteOutcome) => void;
   isWriteInProgress: () => boolean;
   setEnvironmentPending: (pending: boolean) => void;
   tryBeginEnvironmentWrite: (kind: EnvironmentWriteKind) => WriteAdmissionResult;
@@ -72,6 +75,7 @@ export type WriteCoordinatorFacade = {
 };
 
 const ALL_SCOPES: InvalidationScope[] = [
+  "configuration",
   "environment-variables",
   "environment-diagnostics",
   "environment-external-diff",
@@ -85,6 +89,7 @@ const ALL_SCOPES: InvalidationScope[] = [
 function scopesForEnvironmentWrite(kind: EnvironmentWriteKind): InvalidationScope[] {
   if (kind === "apply-external-diff") {
     return [
+      "configuration",
       "environment-variables",
       "environment-diagnostics",
       "environment-external-diff",
@@ -95,6 +100,7 @@ function scopesForEnvironmentWrite(kind: EnvironmentWriteKind): InvalidationScop
     ];
   }
   return [
+    "configuration",
     "environment-variables",
     "environment-diagnostics",
     "tools-installations",
@@ -106,6 +112,7 @@ function scopesForEnvironmentWrite(kind: EnvironmentWriteKind): InvalidationScop
 
 function scopesForToolsWrite(_kind: ToolsWriteKind): InvalidationScope[] {
   return [
+    "configuration",
     "tools-installations",
     "tools-profiles",
     "tools-shell-check",
@@ -115,7 +122,11 @@ function scopesForToolsWrite(_kind: ToolsWriteKind): InvalidationScope[] {
   ];
 }
 
-function readbackScopes(owner: WriteAdmission["owner"], kind: EnvironmentWriteKind | ToolsWriteKind): InvalidationScope[] {
+function readbackScopes(
+  owner: WriteAdmission["owner"],
+  kind: EnvironmentWriteKind | ToolsWriteKind | ConfigurationWriteKind,
+): InvalidationScope[] {
+  if (owner === "configuration") return ["configuration"];
   if (owner === "environment") return scopesForEnvironmentWrite(kind as EnvironmentWriteKind);
   return scopesForToolsWrite(kind as ToolsWriteKind);
 }
@@ -154,8 +165,13 @@ export function createWriteCoordinator(): WriteCoordinatorFacade {
     for (const listener of invalidationListeners) listener(unique);
   };
 
-  const endWrite = (admission: WriteAdmission, outcome: WriteOutcome, owner: WriteAdmission["owner"]) => {
-    if (!activeWrite || activeWrite.token !== admission.token || activeWrite.owner !== owner) return;
+  const endWrite = (
+    admission: WriteAdmission,
+    outcome: WriteOutcome,
+    owner: WriteAdmission["owner"],
+  ) => {
+    if (!activeWrite || activeWrite.token !== admission.token || activeWrite.owner !== owner)
+      return;
     activeWrite = null;
     if (outcome === "cancel") return;
     invalidate(readbackScopes(owner, admission.kind));
@@ -192,6 +208,15 @@ export function createWriteCoordinator(): WriteCoordinatorFacade {
   };
 
   return {
+    tryBeginConfigurationWrite(kind: ConfigurationWriteKind): WriteAdmissionResult {
+      if (activeWrite) return { ok: false, reason: WRITE_BUSY_MESSAGE };
+      const admission: WriteAdmission = { token: newToken(), owner: "configuration", kind };
+      activeWrite = admission;
+      return { ok: true, admission };
+    },
+    endConfigurationWrite(admission: WriteAdmission, outcome: WriteOutcome) {
+      endWrite(admission, outcome, "configuration");
+    },
     isWriteInProgress: () => activeWrite !== null,
 
     setEnvironmentPending(pending: boolean) {

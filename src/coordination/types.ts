@@ -1,6 +1,7 @@
 import type { ToolKind } from "../features/tools/types";
 
 export type InvalidationScope =
+  | "configuration"
   | "environment-variables"
   | "environment-diagnostics"
   | "environment-external-diff"
@@ -11,6 +12,7 @@ export type InvalidationScope =
   | "account-context";
 
 export type EnvironmentWriteKind = "apply-staged" | "apply-external-diff";
+export type ConfigurationWriteKind = "apply" | "undo" | "recovery";
 
 export type ToolsWriteKind = "apply-plan" | "undo" | "recovery" | "uninstall";
 
@@ -18,8 +20,8 @@ export type WriteOutcome = "success" | "failure" | "cancel";
 
 export type WriteAdmission = {
   token: string;
-  owner: "environment" | "tools";
-  kind: EnvironmentWriteKind | ToolsWriteKind;
+  owner: "environment" | "tools" | "configuration";
+  kind: EnvironmentWriteKind | ToolsWriteKind | ConfigurationWriteKind;
 };
 
 export type WriteAdmissionResult =
@@ -32,6 +34,7 @@ export type ReadScopeKey =
   | { kind: "tool-inventory"; tool: ToolKind }
   | { kind: "overview-inventory"; tool: ToolKind }
   | { kind: "profiles" }
+  | { kind: "configuration" }
   | { kind: "shell-check"; tool: ToolKind }
   | { kind: "environment" }
   | { kind: "external-diff" }
@@ -60,10 +63,12 @@ export type PlanApplyBinding = {
 export const ENVIRONMENT_PENDING_TOOLS_MESSAGE =
   "Apply or discard pending environment edits before changing tools, profiles, or PATH cleanup.";
 
-export const WRITE_BUSY_MESSAGE = "Another registry write is already in progress.";
+export const WRITE_BUSY_MESSAGE = "Another write is already in progress.";
 
 export function readScopeKey(scope: ReadScopeKey): string {
   switch (scope.kind) {
+    case "configuration":
+      return "configuration";
     case "tool-inventory":
       return `inv:${scope.tool}`;
     case "overview-inventory":

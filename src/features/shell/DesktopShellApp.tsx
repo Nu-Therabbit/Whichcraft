@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ConfigurationProvider } from "../configuration/useConfiguration";
+import {
+  ConfigurationWorkspace,
+  ConfigurationOperationBanner,
+} from "../configuration/ConfigurationWorkspace";
 import { UninstallSection } from "../../components/ToolsPanel/UninstallSection";
 import { IconButton } from "../../components/ui/IconButton";
 import { Modal } from "../../components/ui/Modal";
@@ -31,7 +36,7 @@ import { useShellNavigation } from "./useShellNavigation";
 import { useShellToolsWrite } from "./useShellToolsWrite";
 import { useToolsOverview } from "./useToolsOverview";
 
-type ShellPage = "tools" | "profiles" | "environment" | "settings";
+type ShellPage = import("../../lib/shellNavigation").ShellPage;
 
 type Translate = ReturnType<typeof useI18n>["t"];
 
@@ -84,7 +89,9 @@ const THIS_PC_STATE: Record<InventorySummary["kind"], { dot: string; titleKey: s
 };
 
 function focusCard(tool: ToolKind) {
-  document.querySelector<HTMLElement>(`[data-tool="${tool}"] .shell-card-head`)?.focus({ preventScroll: true });
+  document
+    .querySelector<HTMLElement>(`[data-tool="${tool}"] .shell-card-head`)
+    ?.focus({ preventScroll: true });
 }
 
 function DesktopShellAppInner() {
@@ -99,7 +106,9 @@ function DesktopShellAppInner() {
   const [cardUse, setCardUse] = useState<{ tool: ToolKind; root: string } | null>(null);
   // A card has no sheet to report into, so a failed switch from one is said on the page, until it is dismissed.
   const [showUseError, setShowUseError] = useState(false);
-  const toolsWrite = useShellToolsWrite(overview.detailOpen ? overview.selectedTool : (pendingUse?.tool ?? null));
+  const toolsWrite = useShellToolsWrite(
+    overview.detailOpen ? overview.selectedTool : (pendingUse?.tool ?? null),
+  );
   const [applied, setApplied] = useAppliedVersion(toolsWrite.state);
   const noticeRef = useRef<HTMLDivElement>(null);
   const hadApplied = useRef(false);
@@ -111,7 +120,8 @@ function DesktopShellAppInner() {
 
   useEffect(() => {
     if (previousPageRef.current !== page) {
-      pageHeadingRef.current?.focus({ preventScroll: true });
+      if (!document.activeElement?.closest('[aria-modal="true"]'))
+        pageHeadingRef.current?.focus({ preventScroll: true });
       previousPageRef.current = page;
     }
   }, [page]);
@@ -170,7 +180,8 @@ function DesktopShellAppInner() {
     if (openTool) return;
     if (applied) noticeRef.current?.focus({ preventScroll: true });
     // The notice had focus when it went, and a keyboard stays next to what just changed.
-    else if (hadResult && document.activeElement === document.body) focusCard(toolsWrite.state.tool);
+    else if (hadResult && document.activeElement === document.body)
+      focusCard(toolsWrite.state.tool);
   }, [applied]);
 
   useEffect(() => {
@@ -190,13 +201,17 @@ function DesktopShellAppInner() {
   );
 
   const pageTitle =
-    activePage === "environment"
-      ? t("desktop_shell.page_environment")
-      : activePage === "profiles"
-        ? t("desktop_shell.page_profiles")
-        : activePage === "settings"
-          ? t("desktop_shell.page_settings")
-          : t("desktop_shell.page_tools");
+    activePage === "git-config"
+      ? t("configuration.git_title")
+      : activePage === "ssh"
+        ? t("configuration.ssh_title")
+        : activePage === "environment"
+          ? t("desktop_shell.page_environment")
+          : activePage === "profiles"
+            ? t("desktop_shell.page_profiles")
+            : activePage === "settings"
+              ? t("desktop_shell.page_settings")
+              : t("desktop_shell.page_tools");
 
   return (
     <ThemeContext.Provider value={theme}>
@@ -223,6 +238,7 @@ function DesktopShellAppInner() {
           <main id="shell-workspace" tabIndex={-1} className="shell-sheet" aria-label={pageTitle}>
             <ShellRegistryErrorBanner />
             <ShellAppRecoveryBanner />
+            <ConfigurationOperationBanner />
 
             <div className="shell-stage">
               <div className="shell-page-frame" inert={openTool !== null}>
@@ -249,29 +265,52 @@ function DesktopShellAppInner() {
                         if (tool) overview.selectTool(tool);
                         navigate({ page: "tools", installOpen: tool ? true : !installOpen });
                       }}
-                      onRescan={() => void overview.rescan(true).then(() => shellTools.dispatch({ type: "refresh" }))}
+                      onRescan={() =>
+                        void overview
+                          .rescan(true)
+                          .then(() => shellTools.dispatch({ type: "refresh" }))
+                      }
                       onOpenTerminal={() => shellTools.dispatch({ type: "openTerminal" })}
                       notice={
                         !openTool && (
                           <div className="mb-3 flex flex-col gap-3 empty:hidden">
                             {useError && (
-                              <div role="alert" className="shell-banner text-danger" data-tone="warn">
-                                <span className="line-clamp-3 min-w-0 flex-1 wrap-anywhere" title={useError}>
+                              <div
+                                role="alert"
+                                className="shell-banner text-danger"
+                                data-tone="warn"
+                              >
+                                <span
+                                  className="line-clamp-3 min-w-0 flex-1 wrap-anywhere"
+                                  title={useError}
+                                >
                                   {useError}
                                 </span>
-                                <IconButton aria-label={t("desktop_shell.dismiss_undo_result")} icon="x" onClick={() => setShowUseError(false)} />
+                                <IconButton
+                                  aria-label={t("desktop_shell.dismiss_undo_result")}
+                                  icon="x"
+                                  onClick={() => setShowUseError(false)}
+                                />
                               </div>
                             )}
                             {appliedNotice}
-                            <ShellUndoResult state={toolsWrite.state} dispatch={toolsWrite.dispatch} />
+                            <ShellUndoResult
+                              state={toolsWrite.state}
+                              dispatch={toolsWrite.dispatch}
+                            />
                           </div>
                         )
                       }
                     />
                   )}
-                  {activePage === "environment" && <ShellEnvironmentWorkspace envTab={envTab} onEnvTab={goEnvTab} />}
+                  {activePage === "environment" && (
+                    <ShellEnvironmentWorkspace envTab={envTab} onEnvTab={goEnvTab} />
+                  )}
                   {activePage === "profiles" && <ShellProfilesWorkspace />}
                   {activePage === "settings" && <ShellSettingsView />}
+                  {(activePage === "git-config" || activePage === "ssh") && (
+                    <ConfigurationWorkspace page={activePage} onNavigate={goPage} />
+                  )}
                 </div>
               </div>
 
@@ -284,12 +323,20 @@ function DesktopShellAppInner() {
                 onClose={closeDetail}
                 onInstall={() => navigate({ page: "tools", installOpen: true })}
                 notice={appliedNotice}
+                onConfigureGit={() => {
+                  closeDetail();
+                  goPage("git-config");
+                }}
               />
             </div>
           </main>
 
           <footer aria-live="polite" aria-atomic="true" className="shell-footer">
-            <span role="status" className="inline-flex shrink-0 items-center gap-1.5" title={t(thisPc.titleKey)}>
+            <span
+              role="status"
+              className="inline-flex shrink-0 items-center gap-1.5"
+              title={t(thisPc.titleKey)}
+            >
               <span className={`size-1.5 rounded-full ${thisPc.dot}`} aria-hidden />
               <span>{t("desktop_shell.this_pc")}</span>
               <span className="sr-only">{t(thisPc.titleKey)}</span>
@@ -300,8 +347,17 @@ function DesktopShellAppInner() {
         </div>
 
         {activePage === "tools" && (
-          <Modal open={installOpen} onClose={() => navigate({ installOpen: false })} ariaLabel={t("desktop_shell.install_pick_heading")} size="lg">
-            <ShellInstallView tool={overview.selectedTool} onPickTool={overview.selectTool} onClose={() => navigate({ installOpen: false })} />
+          <Modal
+            open={installOpen}
+            onClose={() => navigate({ installOpen: false })}
+            ariaLabel={t("desktop_shell.install_pick_heading")}
+            size="lg"
+          >
+            <ShellInstallView
+              tool={overview.selectedTool}
+              onPickTool={overview.selectTool}
+              onClose={() => navigate({ installOpen: false })}
+            />
           </Modal>
         )}
 
@@ -324,8 +380,12 @@ function DesktopShellAppInner() {
               busy={uninstall.busy}
               defaultReplacement={uninstall.defaultReplacement}
               switchPlan={uninstall.switchPlan}
-              onChooseReplacement={(root) => toolsWrite.dispatch({ type: "chooseReplacement", root })}
-              onConfirm={(replacementRoot, repoint) => toolsWrite.dispatch({ type: "confirmUninstall", replacementRoot, repoint })}
+              onChooseReplacement={(root) =>
+                toolsWrite.dispatch({ type: "chooseReplacement", root })
+              }
+              onConfirm={(replacementRoot, repoint) =>
+                toolsWrite.dispatch({ type: "confirmUninstall", replacementRoot, repoint })
+              }
               onOpenFolder={(path) => toolsWrite.dispatch({ type: "openFolder", path })}
               onClose={() => toolsWrite.dispatch({ type: "closeUninstall" })}
             />
@@ -341,7 +401,9 @@ export function DesktopShellApp() {
     <EnvironmentProvider>
       <ShellEnvironmentUiProvider>
         <ToolsProvider>
-          <DesktopShellAppInner />
+          <ConfigurationProvider>
+            <DesktopShellAppInner />
+          </ConfigurationProvider>
         </ToolsProvider>
       </ShellEnvironmentUiProvider>
     </EnvironmentProvider>

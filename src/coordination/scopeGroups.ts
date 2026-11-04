@@ -1,9 +1,10 @@
 import type { InvalidationScope } from "./types";
 
-type ScopeGroup = "environment" | "tools" | "shell" | "account";
+type ScopeGroup = "environment" | "tools" | "shell" | "account" | "configuration";
 
 /** Every invalidation scope belongs to one group; a new scope must be classified here. */
 const SCOPE_GROUP: Record<InvalidationScope, ScopeGroup> = {
+  configuration: "configuration",
   "environment-variables": "environment",
   "environment-diagnostics": "environment",
   "environment-external-diff": "environment",
@@ -49,5 +50,5 @@ export function scopesNeedProfileReload(scopes: readonly InvalidationScope[]): b
 
 /** The overview rescans for everything except a new shell-check result. */
 export function scopesNeedShellRescan(scopes: readonly InvalidationScope[]): boolean {
-  return scopes.some((scope) => scope !== "tools-shell-check");
+  return scopes.some((scope) => scope !== "tools-shell-check" && scope !== "configuration");
 }

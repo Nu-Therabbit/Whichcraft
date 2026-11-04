@@ -1,6 +1,7 @@
 import i18n, { type BackendModule } from "i18next";
 import { initReactI18next } from "react-i18next";
 import en from "./locales/en.json";
+import configurationEn from "./locales/configuration.en.json";
 
 const STORAGE_KEY = "whichcraft-language";
 const SUPPORTED_LANGUAGES = ["en", "ja", "zh-CN", "ru", "ko", "vi"] as const;
@@ -64,7 +65,7 @@ export const i18nReady = i18n
   .use(initReactI18next)
   .use(localeBackend)
   .init({
-    resources: { en: { translation: en } },
+    resources: { en: { translation: { ...en, configuration: configurationEn } } },
     partialBundledLanguages: true,
     lng,
     fallbackLng: "en",

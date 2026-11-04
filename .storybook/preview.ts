@@ -24,6 +24,7 @@ const storyPlatform: PlatformApi = {
     window.open(url, "_blank", "noopener");
   },
   pickFolder: async () => null,
+  pickFile: async () => null,
   openFolder: async () => {},
   openTerminal: async () => {},
   getWhichcraftSettings: async () => ({ installStore: "", scanRoots: [], terminal: "windows_terminal" }),

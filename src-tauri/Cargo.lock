@@ -4944,10 +4944,13 @@ dependencies = [
 name = "whichcraft"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "clap",
  "dirs-next",
+ "glob",
  "msi",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

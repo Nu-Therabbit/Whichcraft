@@ -108,6 +108,13 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::configuration::configuration_inspect,
+            commands::configuration::configuration_plan,
+            commands::configuration::configuration_apply,
+            commands::configuration::configuration_undo,
+            commands::configuration::configuration_operation,
+            commands::configuration::configuration_acknowledge,
+            commands::configuration::configuration_forget_repository,
             commands::env::get_env_vars,
             commands::env::get_unsupported_env_values,
             commands::env::get_registry_snapshot,

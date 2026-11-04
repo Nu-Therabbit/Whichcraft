@@ -1,6 +1,9 @@
 pub mod app;
 #[cfg(test)]
 mod app_tests;
+pub mod configuration;
+#[cfg(all(test, windows))]
+mod configuration_tests;
 pub mod elevation;
 pub mod java_inventory;
 #[cfg(test)]

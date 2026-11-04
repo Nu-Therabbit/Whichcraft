@@ -22,9 +22,20 @@ interface Props {
   onClose: () => void;
   onInstall: (tool: ToolKind) => void;
   notice: ReactNode;
+  onConfigureGit?: () => void;
 }
 
-function Stat({ label, version, note, warn }: { label: string; version: string; note: string; warn?: boolean }) {
+function Stat({
+  label,
+  version,
+  note,
+  warn,
+}: {
+  label: string;
+  version: string;
+  note: string;
+  warn?: boolean;
+}) {
   return (
     <div className="shell-panel p-3">
       <h2 className="text-xs text-muted">{label}</h2>
@@ -35,7 +46,17 @@ function Stat({ label, version, note, warn }: { label: string; version: string; 
 }
 
 /** One tool, in a sheet that fills the workspace. The sidebar stays usable, so another tool opens from it directly. */
-export function ShellToolSheet({ tool, slice, state, dispatch, blocked, onClose, onInstall, notice }: Props) {
+export function ShellToolSheet({
+  tool,
+  slice,
+  state,
+  dispatch,
+  blocked,
+  onClose,
+  onInstall,
+  notice,
+  onConfigureGit,
+}: Props) {
   const { t } = useI18n();
   const open = tool !== null;
   const presence = usePresence(open, 160);
@@ -69,7 +90,13 @@ export function ShellToolSheet({ tool, slice, state, dispatch, blocked, onClose,
   const selected = pickSelected(shownSlice.installations);
   const mismatch = selected !== null && effective !== null && selected.root !== effective.root;
   return (
-    <aside className="shell-tool-sheet" aria-label={t("desktop_shell.installation_details")} data-state={presence.state} data-tool={shown} style={toolLogoVars(shown)}>
+    <aside
+      className="shell-tool-sheet"
+      aria-label={t("desktop_shell.installation_details")}
+      data-state={presence.state}
+      data-tool={shown}
+      style={toolLogoVars(shown)}
+    >
       {/* Keyed here, so another tool starts at its own top rather than at the last tool's scroll position. */}
       <div key={shown} className="shell-sheet-scroll">
         <header className="shell-sheet-head">
@@ -81,17 +108,42 @@ export function ShellToolSheet({ tool, slice, state, dispatch, blocked, onClose,
             </h1>
             <p className="truncate text-muted">{t(toolDescriptionKey(shown))}</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => dispatch({ type: "openTerminal" })} disabled={state.plan.applying}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => dispatch({ type: "openTerminal" })}
+            disabled={state.plan.applying}
+          >
             {t("tools.open_terminal")}
           </Button>
+          {shown === "git" && onConfigureGit && (
+            <Button variant="secondary" onClick={onConfigureGit}>
+              {t("configuration.configure_git")}
+            </Button>
+          )}
           <IconButton aria-label={t("desktop_shell.close_details")} icon="x" onClick={onClose} />
         </header>
         <div className="shell-sheet-body flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-3">
-            <Stat label={t("desktop_shell.effective_installation")} version={effective?.version ?? "—"} note={effective?.vendor ?? t("desktop_shell.card_not_on_path")} />
-            <Stat label={t("desktop_shell.selection")} version={selected?.version ?? "—"} warn={mismatch} note={selected?.vendor ?? t("desktop_shell.selection_none")} />
+            <Stat
+              label={t("desktop_shell.effective_installation")}
+              version={effective?.version ?? "—"}
+              note={effective?.vendor ?? t("desktop_shell.card_not_on_path")}
+            />
+            <Stat
+              label={t("desktop_shell.selection")}
+              version={selected?.version ?? "—"}
+              warn={mismatch}
+              note={selected?.vendor ?? t("desktop_shell.selection_none")}
+            />
           </div>
-          <ShellInstallationDetail tool={shown} state={state} dispatch={dispatch} onInstall={() => onInstall(shown)} notice={notice} />
+          <ShellInstallationDetail
+            tool={shown}
+            state={state}
+            dispatch={dispatch}
+            onInstall={() => onInstall(shown)}
+            notice={notice}
+          />
         </div>
       </div>
     </aside>

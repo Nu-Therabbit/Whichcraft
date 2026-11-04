@@ -23,6 +23,8 @@ const NAV_PATHS: Record<ShellPage, string> = {
   profiles: "M3 2h7v3h3v9H6v-3H3zM6 5h4M6 8h4M8 11h3",
   environment: "M5 2L2 5l3 3m6 0l3 3-3 3M9 2L7 14",
   settings: "M2 4h12M2 12h12M5 2v4m6 4v4",
+  "git-config": "M5 2v8a3 3 0 003 3h3M5 5h5a2 2 0 002-2M5 1v2m6 9v2",
+  ssh: "M9 7a3 3 0 10-3-3 3 3 0 003 3zM7 6l-5 5v3h3v-2h2v-2l2-2",
 };
 
 function NavMark({ page }: { page: ShellPage }) {
@@ -82,6 +84,9 @@ export function ShellSidebar({ activePage, openTool, byTool, onPage, onTool }: P
         {pageLink("tools", t("desktop_shell.nav_tools"))}
         {pageLink("profiles", t("desktop_shell.nav_profiles"))}
         {pageLink("environment", t("desktop_shell.nav_environment"))}
+        <span className="shell-nav-section">{t("configuration.navigation")}</span>
+        {pageLink("git-config", t("configuration.git_title"))}
+        {pageLink("ssh", t("configuration.ssh_title"))}
         <div className="shell-nav-rule" />
         <button type="button" aria-expanded={toolsOpen} onClick={() => setToolsOpen(!toolsOpen)} className="shell-nav-section relative">
           <span className="shell-nav-chevron">

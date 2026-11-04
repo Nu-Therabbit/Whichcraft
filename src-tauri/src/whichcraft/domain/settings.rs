@@ -20,6 +20,8 @@ pub struct WhichcraftSettings {
     #[serde(default)]
     pub scan_roots: Vec<PathBuf>,
     #[serde(default)]
+    pub recent_repositories: Vec<String>,
+    #[serde(default)]
     pub terminal: TerminalKind,
 }
 
@@ -39,6 +41,7 @@ impl Default for WhichcraftSettings {
             previous_install_stores: Vec::new(),
             install_store_confirmed: false,
             scan_roots: Vec::new(),
+            recent_repositories: Vec::new(),
             terminal: TerminalKind::WindowsTerminal,
         }
     }

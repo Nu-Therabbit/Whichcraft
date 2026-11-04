@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node scripts/tauri.mjs dev",
     "dev:web": "vite",
+    "prototype:git-ssh": "vite --host 127.0.0.1 --port 4187 --strictPort --open /.scratch/git-ssh-config-prototype/index.html?page=git-config",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "node scripts/tauri.mjs",

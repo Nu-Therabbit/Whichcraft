@@ -1,5 +1,6 @@
 //! Windows adapter implementations and opt-in contract tests.
 
+pub mod configuration;
 pub mod operation_ids;
 
 #[cfg(windows)]

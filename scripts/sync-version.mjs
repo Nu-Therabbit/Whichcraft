@@ -22,7 +22,7 @@ writeFileSync(cargoPath, cargo);
 // Cargo.lock — the whichcraft package's own (self-referential) locked version
 const cargoLockPath = join(root, "src-tauri", "Cargo.lock");
 const cargoLock = readFileSync(cargoLockPath, "utf8").replace(
-  /(\[\[package\]\]\nname = "whichcraft"\nversion = ")[^"]*(")/,
+  /(\[\[package\]\]\r?\nname = "whichcraft"\r?\nversion = ")[^"]*(")/,
   `$1${version}$2`
 );
 writeFileSync(cargoLockPath, cargoLock);

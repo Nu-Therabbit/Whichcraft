@@ -6,9 +6,13 @@ import {
   PLATFORM_API_KEYS,
   TOOLS_API_KEYS,
   TOOLS_PLATFORM_SLICE_KEYS,
+  CONFIGURATION_API_KEYS,
 } from "./apiKeys";
 
-function pickMethods<T extends object, K extends keyof T>(source: T, keys: readonly K[]): Pick<T, K> {
+function pickMethods<T extends object, K extends keyof T>(
+  source: T,
+  keys: readonly K[],
+): Pick<T, K> {
   const out = {} as Pick<T, K>;
   for (const key of keys) {
     const value = source[key];
@@ -22,6 +26,7 @@ export function mergeWhichcraftApi(services: AppServices): WhichcraftApi {
     ...services.environment,
     ...services.tools,
     ...services.platform,
+    ...services.configuration,
   };
 }
 
@@ -30,10 +35,14 @@ export function splitWhichcraftApi(full: WhichcraftApi): AppServices {
     environment: pickMethods(full, ENVIRONMENT_API_KEYS),
     tools: pickMethods(full, TOOLS_API_KEYS),
     platform: pickMethods(full, PLATFORM_API_KEYS),
+    configuration: pickMethods(full, CONFIGURATION_API_KEYS),
   };
 }
 
-export function createToolsRuntime(services: AppServices, coordination: WriteCoordinatorFacade): ToolsRuntime {
+export function createToolsRuntime(
+  services: AppServices,
+  coordination: WriteCoordinatorFacade,
+): ToolsRuntime {
   return {
     tools: services.tools,
     platform: pickMethods(services.platform, TOOLS_PLATFORM_SLICE_KEYS),

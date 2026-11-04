@@ -94,6 +94,7 @@ pub fn merge_settings(
     merged.switch_install_store(incoming.install_store);
     merged.scan_roots = incoming.scan_roots;
     merged.terminal = incoming.terminal;
+    merged.recent_repositories = incoming.recent_repositories.into_iter().take(20).collect();
     merged
 }
 

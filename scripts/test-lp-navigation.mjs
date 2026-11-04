@@ -30,7 +30,7 @@ let origin;
 async function checkFaq(page, width) {
   const faq = page.locator("#faq");
   assert.equal(await faq.locator("h2").count(), 1);
-  assert.equal(await faq.locator("h3").count(), 8);
+  assert.equal(await faq.locator("h3").count(), 9);
   const items = await faq.locator(":scope > div").evaluateAll((elements) =>
     elements.map((element) => ({
       id: element.id,
@@ -40,7 +40,7 @@ async function checkFaq(page, width) {
   );
   assert.deepEqual(
     items.map((item) => item.id),
-    ["tools", "switching", "existing", "mise", "admin", "terminal", "cli", "uninstall"].map(
+    ["tools", "switching", "existing", "mise", "admin", "terminal", "cli", "uninstall", "configuration"].map(
       (id) => `faq-${id}`,
     ),
   );
@@ -118,7 +118,11 @@ before(async () => {
     server.listen(0, "127.0.0.1", done);
   });
   origin = `http://127.0.0.1:${server.address().port}`;
-  browser = await chromium.launch();
+  browser = await chromium.launch(
+    process.env.WHICHCRAFT_BROWSER_CHANNEL
+      ? { channel: process.env.WHICHCRAFT_BROWSER_CHANNEL }
+      : {},
+  );
 });
 
 after(async () => {
@@ -188,8 +192,8 @@ for (const [index, locale] of locales.entries()) {
           };
         });
         assert.equal(content.tag, "SECTION");
-        assert.equal(content.headings, 12);
-        assert.deepEqual(content.cards, [4, 8]);
+        assert.equal(content.headings, 14);
+        assert.deepEqual(content.cards, [4, 10]);
         assert.deepEqual(content.columns, [
           width >= 1024 ? 4 : width >= 640 ? 2 : 1,
           width >= 640 ? 2 : 1,

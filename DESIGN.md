@@ -14,6 +14,7 @@ src/                    React frontend (TypeScript)
     shell/              The desktop shell: sidebar, tool cards, tool sheet, plan review
     tools/              Tool inventory, plans, and effects
     environment/        Environment workspace state
+    configuration/      Shared Git/SSH state, typed intents, inspection, review, and Undo
   hooks/
     useStaged.ts        Staging area: Map<"Scope:name", StagedChange>; effectiveVars merge
     useUndoStack.ts     Generic undo/redo stack (stage-level Ctrl+Z/Y)
@@ -65,7 +66,7 @@ All communication goes through `src/transport/tauriWhichcraftApi.ts`. No real `i
 
 ### Staging area
 
-All edits are **staged locally** via `useStaged` before any registry write. The registry is never touched until the user clicks **Apply N staged changes** in the header.
+Environment edits are **staged locally** via `useStaged` before any registry write. The registry is never touched until the user clicks **Apply N staged changes** in the header.
 
 1. User edits a value in DetailPanel → clicks **Stage** → `stageSet()` called, no IPC
 2. Import → click "Stage N variables" → `stageImport()`, no IPC
@@ -90,7 +91,7 @@ Pre-op and post-op values are both pushed as checkpoints when a structural chang
 
 ### Read-only until confirmed
 
-**GUI writes require explicit confirmation.** Import preview is parsed into a structure staged locally; the user must click "Apply N staged changes" and confirm in the diff modal before any write happens. No GUI mutation escapes the `commands::set_env_var` / `commands::delete_env_var` / `commands::apply_env_changes` handlers — the latter is what "Apply N staged changes" actually calls.
+**GUI writes require explicit confirmation.** Environment import preview is parsed into a structure staged locally; the user must click "Apply N staged changes" and confirm in the diff modal before any registry write happens. Environment mutations go through the `commands::set_env_var` / `commands::delete_env_var` / `commands::apply_env_changes` handlers — the latter is what "Apply N staged changes" actually calls. Git/SSH file changes use the separate configuration plan and Apply commands described below.
 
 The CLI's `get`/`list`/`export` are read-only. `import`/`set`/`delete` are a separate, intentional write path — see [CLI mode](#cli-mode) — gated by an explicit `--apply` flag instead of a confirmation dialog, since there's no GUI to show one.
 
@@ -104,7 +105,15 @@ Links to GitHub or other external URLs must use `tauri_plugin_opener::open_url()
 
 ### Secret detection
 
-Name-based heuristics (`*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, …) plus value-pattern matching across 35+ token formats detect likely secrets. Detection runs client-side and is advisory only — it never blocks operations.
+Name-based heuristics (`*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, …) plus value-pattern matching across 35+ token formats detect likely secrets. Environment detection runs client-side and is advisory. Git/SSH inspection additionally redacts sensitive configuration in the backend before transport; sensitive Git entries are inspection-only. Both use the shared rules in `src/lib/secretRules.json`.
+
+### Git and SSH configuration
+
+The injected configuration service follows **inspect → plan → review → apply → readback → undo**. Native Git determines scopes, active includes, origins, and effective values in the selected repository. SSH inspection is static: it does not run `ssh -G` on user configuration, execute `Match exec`, or test authentication. Dynamic conditions are reported as unresolved.
+
+Plans bind an opaque identifier to the selected executable, environment, source revisions, and previewed repository contexts. Apply accepts that identifier rather than arbitrary file contents. File publication uses a Windows transactional guard; unsupported filesystems refuse the write. Readback uncertainty is distinct from success.
+
+One DPAPI-protected configuration operation journal records only the patches needed for the latest operation, separately from Environment/Tools journals. Undo preserves unrelated later edits and stops at a changed or ambiguous target. Startup recovery inspects pending operations before offering the next action. See [ADR-0007](docs/adr/0007-native-git-authority-and-separate-config-journal.md) and the [user guide](docs/configuration.md).
 
 ---
 
@@ -167,6 +176,7 @@ The JSON payload contains a `version` field. Current version is **1**.
 | Selections | `%LOCALAPPDATA%\Whichcraft\selection.json` |
 | Tool Profiles | `%LOCALAPPDATA%\Whichcraft\profiles.json` |
 | Apply journal, for Undo and recovery | `%LOCALAPPDATA%\Whichcraft\journal\` |
+| Git/SSH operation journal, DPAPI-protected | `%LOCALAPPDATA%\Whichcraft\configuration-operation` |
 | Snapshots | `%LOCALAPPDATA%\Whichcraft\snapshots\` |
 | Elevation requests, removed after use | `%LOCALAPPDATA%\Whichcraft\elevation-*.json` |
 | Default Install Store | `%LOCALAPPDATA%\Whichcraft\installs\` |

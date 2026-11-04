@@ -1,10 +1,10 @@
 /** Desktop shell page and Environment tab routing via URL search params. */
 
-export type ShellPage = "tools" | "environment" | "settings" | "profiles";
+export type ShellPage = "tools" | "environment" | "settings" | "profiles" | "git-config" | "ssh";
 
 export type ShellEnvironmentTab = "variables" | "snapshots" | "import-export" | "check-command";
 
-const PAGE_VALUES: ShellPage[] = ["tools", "environment", "settings", "profiles"];
+const PAGE_VALUES: ShellPage[] = ["tools", "environment", "settings", "profiles", "git-config", "ssh"];
 const ENV_TAB_VALUES: ShellEnvironmentTab[] = [
   "variables",
   "snapshots",

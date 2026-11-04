@@ -1,6 +1,6 @@
 # Whichcraft
 
-A Windows desktop app that finds, installs, switches, and uninstalls versions of Java, Node.js, Python, Go, Flutter, and Git, and decides which installation Windows uses by default.
+A Windows desktop app that manages versions of Java, Node.js, Python, Go, Flutter, and Git, and decides which installation Windows uses by default. It also inspects and edits Git and SSH configuration.
 
 It shows the difference between what you selected and what a new process actually gets, shows the exact environment changes before writing them, and can undo them.
 
@@ -19,6 +19,8 @@ Version 0.1.0 has not been released yet, so there is no installer to download. B
 - **Installs and updates** Temurin, Node.js, Python, Go, and Flutter through a pinned copy of [mise](https://mise.jdx.dev/) it manages itself. Git is switch-only.
 - **Saves tool profiles,** named sets of versions you can apply in one step.
 - **Edits environment variables** with staged changes, snapshots, and a command line for scripts.
+- **Explains Git configuration** for a selected repository, including commit identity, source precedence, and conditional includes. Preview supported edits and their repository impact before Apply, with Undo for the latest configuration change.
+- **Inspects SSH configuration** through host, source-file, and key-reference views. Edit existing IdentityFile entries without connecting to a server. See the [Git and SSH guide](docs/configuration.md) for supported edits and limits.
 
 The interface is available in English, Japanese, Simplified Chinese, Russian, Korean, and Vietnamese.
 
@@ -60,6 +62,7 @@ Uninstalling removes the app, its shortcuts, and its PATH entry. Tools installed
 |---|---|
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development flow, tests, and translations |
 | [DESIGN.md](DESIGN.md) | Architecture, security model, and data formats |
+| [docs/configuration.md](docs/configuration.md) | Git/SSH inspection, supported edits, previews, and Undo |
 | [design-system/whichcraft/MASTER.md](design-system/whichcraft/MASTER.md) | Interface tokens and UX rules |
 | [CONTEXT.md](CONTEXT.md) | Domain vocabulary |
 | [docs/adr/](docs/adr/) | Architecture decisions |

@@ -16,6 +16,17 @@ import type {
 import type { UpdateInfo } from "../platform/types";
 
 export const tauriWhichcraftApi: WhichcraftApi = {
+  pickFile: async () => {
+    const selected = await open({ directory: false, multiple: false });
+    return typeof selected === "string" ? selected : null;
+  },
+  inspectConfiguration: (context) => invoke("configuration_inspect", { context }),
+  planConfiguration: (request) => invoke("configuration_plan", { request }),
+  applyConfiguration: (id) => invoke("configuration_apply", { id }),
+  undoConfiguration: (id) => invoke("configuration_undo", { id }),
+  configurationOperation: () => invoke("configuration_operation"),
+  acknowledgeConfigurationRecovery: (id) => invoke("configuration_acknowledge", { id }),
+  forgetConfigurationRepository: (path) => invoke("configuration_forget_repository", { path }),
   getLaunchOptions: () => invoke("get_launch_options"),
   getEnvVars: () => invoke<EnvVar[]>("get_env_vars"),
   getUnsupportedEnvValues: () => invoke<UnsupportedEnvValue[]>("get_unsupported_env_values"),
@@ -49,7 +60,8 @@ export const tauriWhichcraftApi: WhichcraftApi = {
   getSelectedAccount: () => invoke<LocalAccount | null>("get_selected_account"),
   onApplyProgress: async (callback) =>
     listen<ApplyProgressEvent>("apply-progress", (event) => callback(event.payload)),
-  listToolInstallations: (tool, refreshCatalog) => invoke("whichcraft_list_tools", { tool, refreshCatalog }),
+  listToolInstallations: (tool, refreshCatalog) =>
+    invoke("whichcraft_list_tools", { tool, refreshCatalog }),
   planToolApply: (tool, root) => invoke("whichcraft_plan_tool", { tool, root }),
   applyToolPlan: (plan) => invoke("whichcraft_apply_tool_plan", { plan }),
   applyToolPlanWithUac: (plan) => invoke("whichcraft_apply_tool_plan_with_uac", { plan }),

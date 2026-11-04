@@ -60,3 +60,31 @@ _Avoid_: active, current, Windows Default Tool
 **โปรไฟล์เครื่องมือ — Tool Profile**:
 ชุดการเลือกที่ตั้งชื่อได้ อาจระบุเพียงบางเครื่องมือ และอ้างถึงการติดตั้งด้วยผู้จำหน่ายกับเวอร์ชันเต็ม ไม่ใช่พาธ โปรไฟล์ไม่ใช่ snapshot ของทั้งเครื่อง และไม่มีสถานะ "โปรไฟล์ที่ใช้อยู่"
 _Avoid_: preset, snapshot, active profile
+
+### การตั้งค่า Git และ SSH
+
+**แหล่งการตั้งค่า — Configuration Source**:
+ไฟล์หรือช่องทางหนึ่งที่ Git หรือ SSH อ่านค่ามา เช่น ไฟล์ system, global, local, worktree, ไฟล์ที่ถูก include, ตัวแปร environment หรือ `-c` ในคำสั่ง ไฟล์ที่ถูก include เป็นแหล่งแยกจากไฟล์ที่ include มัน แม้จะอยู่ในระดับเดียวกัน
+_Avoid_: scope (เมื่อหมายถึงไฟล์), config (เฉย ๆ)
+
+**รายการค่า — Occurrence**:
+บรรทัดหนึ่งที่ตั้งค่า key หนึ่งในแหล่งหนึ่ง key เดียวกันมีได้หลายรายการ ทั้งในแหล่งเดียวและหลายแหล่ง การแก้ไขทำกับรายการ ไม่ใช่กับ key
+_Avoid_: value (เมื่อหมายถึงบรรทัดในไฟล์)
+
+**ตัวตนผู้ commit — Commit Identity**:
+`user.name` กับ `user.email` ที่มีผลใน repo หนึ่ง แต่ละช่องอาจมาจากคนละแหล่ง ไม่ใช่บัญชีที่ใช้ login เข้า hosting service และไม่ใช่ SSH key
+_Avoid_: account, identity profile
+
+**การ include ตามเงื่อนไข — Conditional Include**:
+section `includeIf` ที่โหลดไฟล์อื่นเมื่อเงื่อนไขตรง เช่น remote URL หรือโฟลเดอร์ของ repo ใน UI เรียกว่า rule ไฟล์ที่ถูกโหลดมีผล ณ ตำแหน่งที่ประกาศ rule
+_Avoid_: profile
+
+**บริบทของ repo — Repository Context**:
+repo หนึ่งกับ Git executable และ environment ที่ใช้อ่านค่าของมัน ค่าที่แสดงถูกต้องเฉพาะบริบทนั้น terminal หรือ IDE ที่ใช้ Git หรือ environment อื่นอาจได้ผลต่างกัน
+
+**ตัวอย่างผลกระทบ — Impact Preview**:
+ชื่อและอีเมลก่อนและหลังการเปลี่ยน สำหรับแต่ละ repo ในรายการ คำนวณด้วย native Git กับสำเนาของไฟล์ก่อน Apply ผลแต่ละ repo เป็น verified หรือ unresolved และไม่ครอบคลุม repo ที่ไม่อยู่ในรายการ
+
+**การเปลี่ยน config — Configuration Operation**:
+การเขียนครั้งหนึ่งผ่าน Apply ที่เปลี่ยนไฟล์ config ไฟล์เดียว มีบันทึกใน journal ของตัวเอง แยกจาก journal ของ Environment Undo ย้อนเฉพาะการเปลี่ยนล่าสุดครั้งเดียว และไม่แตะการแก้ของโปรแกรมอื่น
+_Avoid_: change (เมื่อหมายถึงการเปลี่ยน Environment)

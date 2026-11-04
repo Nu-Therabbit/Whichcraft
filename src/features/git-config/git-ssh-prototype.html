@@ -1,0 +1,444 @@
+<!doctype html>
+<!-- THROWAWAY LOGIC PROTOTYPE. Open this file directly. No real config I/O. -->
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Whichcraft · Git & SSH configuration prototype</title>
+<style>
+  :root { color-scheme:light; --frame:#fafafa; --canvas:#fff; --panel:#f4f4f5; --rim:#d4d4d8; --soft:#e4e4e7; --fg:#18181b; --muted:#52525b; --accent:#03694c; --primary:#047857; --tint:#ecfdf5; --danger:#b91c1c; --danger-bg:#fef2f2; --warn:#9a3412; --warn-bg:#fff7ed; --mono:"Cascadia Mono",Consolas,monospace; }
+  [data-theme=dark] { color-scheme:dark; --frame:#0c0c0f; --canvas:#131317; --panel:#17171e; --rim:#3f3f46; --soft:#2c2c35; --fg:#f4f4f5; --muted:#a1a1aa; --accent:#34d399; --tint:#102a22; --danger:#fca5a5; --danger-bg:#301a20; --warn:#fdba74; --warn-bg:#2c2119; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--frame); color:var(--fg); font:14px/1.6 "Segoe UI Variable Text","Segoe UI",Tahoma,sans-serif; }
+  button,input,select,textarea { font:inherit; }
+  button,select { cursor:pointer; }
+  button { min-height:36px; border:1px solid var(--rim); border-radius:7px; padding:6px 12px; background:var(--canvas); color:var(--fg); font-weight:550; }
+  button:hover { background:var(--panel); }
+  button.primary { background:var(--primary); border-color:var(--primary); color:white; }
+  button.primary:hover { background:#03684b; }
+  button[aria-pressed=true],button[aria-selected=true] { background:var(--tint); border-color:var(--accent); color:var(--accent); }
+  button:disabled { cursor:default; opacity:.48; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  a { color:var(--accent); }
+  code,.mono { font-family:var(--mono); font-size:12px; overflow-wrap:anywhere; }
+  header { border-bottom:1px solid var(--soft); background:var(--canvas); }
+  .topbar { max-width:1420px; padding:16px 28px; margin:auto; display:flex; align-items:center; gap:12px; }
+  .brand { font-size:16px; font-weight:700; letter-spacing:-.4px; }
+  .prototype { color:var(--warn); background:var(--warn-bg); border-radius:5px; padding:2px 8px; font-size:11px; font-weight:650; letter-spacing:.6px; }
+  .topbar .quiet { margin-left:auto; }
+  .quiet,.muted { color:var(--muted); }
+  .small { font-size:12px; }
+  main { max-width:1420px; margin:auto; padding:26px 28px 40px; }
+  h1 { font-size:27px; line-height:1.3; letter-spacing:-.6px; margin:0 0 8px; }
+  h2 { font-size:15px; line-height:1.5; margin:0; }
+  h3 { font-size:13px; margin:0 0 8px; }
+  p { margin:0; }
+  .intro { max-width:920px; color:var(--muted); margin-bottom:6px; }
+  .sandbox-note { font-size:12px; color:var(--muted); margin-bottom:22px; }
+  .bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .switcher { display:flex; gap:4px; background:var(--panel); padding:4px; border:1px solid var(--soft); border-radius:9px; }
+  .switcher button { min-width:94px; border-color:transparent; background:transparent; }
+  .switcher button[aria-pressed=true] { background:var(--canvas); border-color:var(--rim); color:var(--accent); }
+  label { display:block; font-weight:550; font-size:12px; margin-bottom:6px; }
+  select,input { width:100%; border:1px solid var(--rim); background:var(--canvas); color:var(--fg); min-height:38px; padding:7px 9px; border-radius:7px; }
+  .context-picker { min-width:240px; flex:1; max-width:430px; }
+  .context-picker label { margin:0; }
+  .status-strip { display:flex; gap:10px; flex-wrap:wrap; margin:18px 0 14px; font-size:12px; }
+  .status-strip span { background:var(--canvas); border:1px solid var(--soft); border-radius:6px; padding:5px 10px; }
+  .status-strip strong { font-weight:600; color:var(--accent); }
+  .notice { background:var(--tint); border:1px solid var(--soft); border-left:3px solid var(--accent); border-radius:7px; padding:12px 14px; margin:0 0 18px; min-height:70px; }
+  .notice.warn { background:var(--warn-bg); border-left-color:var(--warn); }
+  .notice.error { background:var(--danger-bg); border-left-color:var(--danger); }
+  .notice strong { display:block; margin-bottom:2px; font-size:13px; }
+  .notice p { font-size:13px; }
+  .workspace { display:grid; grid-template-columns:minmax(300px,.85fr) minmax(420px,1.45fr); gap:18px; align-items:start; }
+  .panel { background:var(--canvas); border:1px solid var(--soft); border-radius:10px; min-width:0; overflow:hidden; }
+  .panel-head { padding:14px 17px; border-bottom:1px solid var(--soft); display:flex; gap:10px; justify-content:space-between; align-items:center; }
+  .panel-content { padding:16px 17px; }
+  .source-row { padding:13px 17px; border-bottom:1px solid var(--soft); }
+  .source-row:last-child { border-bottom:0; }
+  .source-row.current { background:var(--tint); }
+  .source-row .value { font-family:var(--mono); font-size:12px; margin:5px 0; word-break:break-word; }
+  .source-row .origin { font:11px/1.6 var(--mono); color:var(--muted); word-break:break-word; }
+  .source-label { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; }
+  .tag { display:inline-block; border:1px solid var(--rim); border-radius:4px; padding:0 5px; font-size:10px; line-height:1.8; color:var(--muted); }
+  .tag.good { color:var(--accent); border-color:var(--accent); }
+  .source-caption { padding:12px 17px; border-top:1px solid var(--soft); font-size:12px; color:var(--muted); }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+  .form-grid .wide { grid-column:1/-1; }
+  .field-hint { font-size:12px; color:var(--muted); margin-top:5px; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .preview { border-top:1px solid var(--soft); }
+  .preview-summary { padding:12px 17px; font-size:12px; color:var(--muted); }
+  .diff-columns { display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--soft); }
+  .diff-column { min-width:0; }
+  .diff-column+ .diff-column { border-left:1px solid var(--soft); }
+  .diff-label { background:var(--panel); padding:6px 10px; font-size:11px; color:var(--muted); }
+  pre { font:12px/1.8 var(--mono); white-space:pre-wrap; overflow-wrap:anywhere; margin:0; tab-size:4; }
+  .diff-code { padding:10px 0; min-height:125px; }
+  .code-line { display:block; padding:0 10px; min-height:22px; }
+  .line-number { display:inline-block; width:24px; color:var(--muted); user-select:none; font-size:10px; }
+  .code-line.removed { background:var(--danger-bg); }
+  .code-line.added { background:var(--tint); }
+  .code-line mark { background:none; color:inherit; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+  .empty-preview { padding:20px 17px; color:var(--muted); font-size:12px; }
+  .freeplay { margin:18px 0; padding:14px 17px; }
+  .freeplay .bar { justify-content:space-between; }
+  .freeplay .actions { margin-top:8px; }
+  .scenario-panel { margin-top:18px; }
+  .scenario-tabs { display:flex; gap:4px; padding:10px; border-bottom:1px solid var(--soft); overflow:auto; }
+  .scenario-tabs button { flex-shrink:0; border-color:transparent; font-size:12px; }
+  .scenario-description { padding:14px 17px 8px; }
+  .scenario-description p { font-size:12px; color:var(--muted); margin-top:3px; }
+  .steps { display:flex; gap:8px; flex-wrap:wrap; padding:8px 17px 16px; }
+  .steps button { font-size:12px; }
+  .steps button.current-step { border-color:var(--accent); color:var(--accent); background:var(--tint); }
+  .step-number { display:inline-block; padding-right:6px; font-weight:700; }
+  .bottom-grid { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(280px,.8fr); gap:18px; margin-top:18px; align-items:start; }
+  .file-controls { padding:12px 17px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; }
+  .file-controls select { font:12px var(--mono); }
+  .file-content { max-height:310px; overflow:auto; border-top:1px solid var(--soft); padding:12px 0; }
+  .file-meta { padding:8px 17px; border-top:1px solid var(--soft); color:var(--muted); font-size:11px; font-family:var(--mono); }
+  dl { margin:0; }
+  .state-row { display:grid; grid-template-columns:110px minmax(0,1fr); gap:12px; padding:8px 0; border-bottom:1px solid var(--soft); font-size:12px; }
+  .state-row:last-child { border-bottom:0; }
+  dt { color:var(--muted); }
+  dd { margin:0; overflow-wrap:anywhere; }
+  .event-log { margin:12px 0 0; padding:0 0 0 18px; font-size:11px; color:var(--muted); max-height:150px; overflow:auto; }
+  footer { margin-top:22px; padding-top:16px; border-top:1px solid var(--soft); font-size:11px; color:var(--muted); }
+  .skip { position:absolute; top:-100px; left:16px; padding:10px; background:var(--canvas); z-index:2; }
+  .skip:focus { top:10px; }
+  @media(max-width:980px) { .workspace { grid-template-columns:minmax(260px,.8fr) minmax(360px,1.2fr); } main { padding:22px 18px; } .topbar { padding:14px 18px; } }
+  @media(max-width:760px) { .workspace,.bottom-grid { grid-template-columns:1fr; } .topbar .quiet { display:none; } h1 { font-size:23px; } .context-picker { max-width:none; } .form-grid { grid-template-columns:1fr; } .diff-columns { grid-template-columns:1fr; } .diff-column+ .diff-column { border-left:0; border-top:1px solid var(--soft); } }
+</style>
+</head>
+<body>
+<a href="#workspace" class="skip">ข้ามไปยังพื้นที่ทดลอง</a>
+<header><div class="topbar"><span class="brand">Whichcraft</span><span class="prototype">PROTOTYPE</span><span class="quiet small">Git & SSH configuration lab</span><button id="theme-button" type="button">โหมดมืด</button></div></header>
+<main id="workspace" tabindex="-1">
+  <h1>เปลี่ยน config โดยรู้ว่าอะไรจะเปลี่ยน</h1>
+  <p class="intro">ทดลองโมเดลแก้เฉพาะจุด: เก็บรูปแบบไฟล์เดิม ตรวจการแก้ไฟล์แทรก และ Undo เฉพาะสิ่งที่เราเปลี่ยน โดยเก็บงานของโปรแกรมอื่นไว้</p>
+  <p class="sandbox-note">ข้อมูลตัวอย่างทั้งหมดอยู่ในหน่วยความจำ · ไม่อ่านหรือเขียน config ในเครื่อง · รีโหลดเพื่อเริ่มใหม่ · ตัวอ่านรองรับเฉพาะรูปแบบใน fixtures นี้</p>
+  <div id="context-controls"></div>
+  <section id="status-strip" class="status-strip" aria-label="สถานะปัจจุบัน"></section>
+  <div id="result" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div class="workspace">
+    <section class="panel" aria-labelledby="sources-title"><div class="panel-head"><h2 id="sources-title">ค่าที่มีผลในบริบทนี้</h2><span class="tag">จำลอง</span></div><div id="sources"></div></section>
+    <section class="panel" aria-labelledby="editor-title"><div class="panel-head"><h2 id="editor-title">แก้ไขหนึ่งค่า</h2><span id="editor-scope" class="tag"></span></div><div id="editor" class="panel-content"></div><div id="preview" class="preview"></div></section>
+  </div>
+  <section class="panel freeplay" aria-labelledby="freeplay-title"><div class="bar"><div><h2 id="freeplay-title">ลองให้โปรแกรมอื่นแก้ไฟล์</h2><p id="outside-target" class="muted small"></p></div><button type="button" data-action="reset">เริ่มข้อมูลจำลองใหม่</button></div><div class="actions"><button type="button" data-action="outside-unrelated">เพิ่มข้อมูลอื่นในไฟล์เดียวกัน</button><button type="button" data-action="outside-same">แก้ค่าเดียวกันจากภายนอก</button></div></section>
+  <section class="panel scenario-panel" aria-labelledby="walkthrough-title"><div class="panel-head"><h2 id="walkthrough-title">เคสให้ลองกดตาม</h2><span class="muted small">เปลี่ยนเคสจะเริ่มข้อมูลใหม่</span></div><div id="scenario-tabs" class="scenario-tabs" role="tablist" aria-label="สถานการณ์จำลอง"></div><div id="scenario-body" role="tabpanel"></div></section>
+  <div class="bottom-grid">
+    <section class="panel" aria-labelledby="files-title"><div class="panel-head"><h2 id="files-title">ไฟล์จำลองปัจจุบัน</h2><span class="muted small">ดู comments / ค่าซ้ำ / ที่มาของค่า</span></div><div id="file-controls" class="file-controls"></div><div id="file-content" class="file-content"></div><div id="file-meta" class="file-meta"></div></section>
+    <section class="panel" aria-labelledby="state-title"><div class="panel-head"><h2 id="state-title">สถานะหลังการกด</h2></div><div class="panel-content"><dl id="state-details"></dl><ol id="events" class="event-log" reversed aria-label="ประวัติการทดลอง"></ol></div></section>
+  </div>
+  <footer>Throwaway logic prototype · ไฟล์จำลองแก้เป็นข้อความโดยตรง ไม่มี Git/SSH process, network, filesystem permissions หรือ crash recovery · Snapshot compare ใน demo ยังไม่พิสูจน์ atomicity บนดิสก์จริง</footer>
+</main>
+<script id="config-prototype-logic">
+/* Pure state + source-span editing. No DOM, persistence, filesystem or commands. */
+const ConfigPrototype = (() => {
+  const definitions = {
+    system: { name:'Git system', path:'C:/Program Files/Git/etc/gitconfig', scope:'system', kind:'git', text:'[core]\n\tautocrlf = true\n[credential]\n\thelper = manager\n' },
+    global: { name:'Git global', path:'~/.gitconfig', scope:'global', kind:'git', text:'\uFEFF# Personal defaults — keep this comment\r\n[user]\r\n\tname = Mali\r\n\temail = personal@example.test  # personal default\r\n[includeIf "hasconfig:remote.*.url:git@bitbucket.org:*/**"]\r\n\tpath = ~/.gitconfig-work\r\n[credential]\r\n\thelper = cache\r\n[alias]\r\n\tco = checkout\r\n' },
+    work: { name:'Git work include', path:'~/.gitconfig-work', scope:'global · include', kind:'git', text:'# Work identity — managed by me\r\n[user]\r\n\tname = Mali Work\r\n\temail = work@company.example.test  # work only\r\n' },
+    repoWork: { name:'Work repo local', path:'E:/Projects/work-demo/.git/config', scope:'local', kind:'git', text:'[core]\r\n\trepositoryformatversion = 0\r\n[remote "origin"]\r\n\turl = git@bitbucket.org:example/work-demo.git\r\n' },
+    repoPersonal: { name:'Personal repo local', path:'E:/Projects/personal-demo/.git/config', scope:'local', kind:'git', text:'# Repo-specific overrides\r\n[user]\r\n\temail = mali@users.noreply.github.com\r\n[core]\r\n\tsshCommand = ssh -i ~/.ssh/id_personal -o IdentitiesOnly=yes\r\n[remote "origin"]\r\n\turl = git@github.com:example/personal-demo.git\r\n' },
+    ssh: { name:'SSH main config', path:'~/.ssh/config', scope:'user', kind:'ssh', text:'\uFEFF# Shared SSH configuration\r\nInclude config.d/work.conf\r\n\r\nHost github-personal\r\n\tHostName github.com\r\n\tUser git\r\n\tIdentityFile ~/.ssh/id_personal\r\n\r\nHost *\r\n\tServerAliveInterval 30\r\n' },
+    sshWork: { name:'SSH work include', path:'~/.ssh/config.d/work.conf', scope:'user · include', kind:'ssh', text:'# Preserve both identity candidates and this comment\r\nHost bitbucket.org\r\n\tUser git\r\n\tIdentityFile ~/.ssh/id_work  # primary work key\r\n\tIdentityFile ~/.ssh/id_work_backup\r\n\tIdentitiesOnly yes\r\n\tSendEnv LANG LC_*\r\n' },
+  };
+  const repos = {
+    work: { label:'Work demo · Bitbucket', local:'repoWork', remote:'git@bitbucket.org:example/work-demo.git' },
+    personal: { label:'Personal demo · GitHub', local:'repoPersonal', remote:'git@github.com:example/personal-demo.git' },
+  };
+  const copy = value => structuredClone(value);
+  function lines(text) {
+    const result=[]; let start=0;
+    for (const match of text.matchAll(/([^\r\n]*)(\r\n|\r|\n|$)/g)) {
+      if (!match[0]) continue;
+      result.push({body:match[1],eol:match[2],start,index:result.length}); start+=match[0].length;
+    }
+    return result;
+  }
+  function valueSpan(body,start,comments) {
+    let quoted=false,escaped=false,end=body.length;
+    for(let i=start;i<body.length;i++) {
+      const char=body[i];
+      if(escaped) { escaped=false; continue; }
+      if(char==='\\') { escaped=true; continue; }
+      if(char==='"') quoted=!quoted;
+      if(!quoted && comments.includes(char)) { end=i; break; }
+    }
+    while(end>start && /\s/.test(body[end-1])) end--;
+    return {start,end,raw:body.slice(start,end)};
+  }
+  function decode(raw) {
+    return raw.startsWith('"') && raw.endsWith('"') ? raw.slice(1,-1).replace(/\\(["\\])/g,'$1') : raw;
+  }
+  function records(fileId,text) {
+    const file=definitions[fileId], result=[]; let section='',condition='',host='*',block='global';
+    for(const line of lines(text)) {
+      const body=line.body.replace(/^\uFEFF/,''); const bom=line.body.length-body.length;
+      if(!body.trim() || /^\s*[#;]/.test(body)) continue;
+      if(file.kind==='git') {
+        const heading=body.match(/^\s*\[([\w.-]+)(?:\s+"(.*)")?\]\s*(?:[#;].*)?$/);
+        if(heading) { section=heading[1].toLowerCase(); condition=heading[2]||''; continue; }
+        const match=body.match(/^(\s*([\w.-]+)\s*=\s*)/); if(!match) continue;
+        const span=valueSpan(line.body,bom+match[1].length,'#;');
+        result.push({...line,...span,fileId,key:section+'.'+match[2].toLowerCase(),condition,value:decode(span.raw),valueStart:line.start+span.start,valueEnd:line.start+span.end});
+      } else {
+        const match=body.match(/^(\s*([A-Za-z][A-Za-z0-9]*)\s*(?:=\s*|\s+))/); if(!match) continue;
+        const span=valueSpan(line.body,bom+match[1].length,'#'); const key=match[2].toLowerCase();
+        if(key==='host') { host=decode(span.raw); block='host'; }
+        if(key==='match') { host=decode(span.raw); block='match'; }
+        result.push({...line,...span,fileId,key,host,block,value:decode(span.raw),valueStart:line.start+span.start,valueEnd:line.start+span.end});
+      }
+    }
+    return result;
+  }
+  function find(state,target) {
+    return records(target.fileId,state.files[target.fileId]).filter(r=>r.key===target.key)[target.ordinal||0];
+  }
+  function encoded(value,previous) {
+    return previous.startsWith('"') || /[\s#;"]/.test(value) ? '"'+value.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"' : value;
+  }
+  function replacement(text,record,newRaw) { return text.slice(0,record.valueStart)+newRaw+text.slice(record.valueEnd); }
+  function gitChain(state) {
+    const chain=[];
+    function visit(id,included=false) {
+      for(const row of records(id,state.files[id])) {
+        if(row.key==='includeif.path') {
+          if(row.condition==='hasconfig:remote.*.url:git@bitbucket.org:*/**' && repos[state.repo].remote.startsWith('git@bitbucket.org:')) visit('work',true);
+        } else chain.push({...row,included});
+      }
+    }
+    visit('system'); visit('global'); visit(repos[state.repo].local);
+    return chain;
+  }
+  function hostMatches(pattern,target) {
+    let yes=false;
+    for(const part of pattern.split(/\s+/)) {
+      const negative=part.startsWith('!'); const source=negative?part.slice(1):part;
+      const regex=new RegExp('^'+source.replace(/[.+^${}()|[\]\\]/g,'\\$&').replace(/\*/g,'.*').replace(/\?/g,'.')+'$','i');
+      if(regex.test(target)) { if(negative) return false; yes=true; }
+    }
+    return yes;
+  }
+  function sshChain(state) {
+    const chain=[];
+    function visit(id) {
+      for(const row of records(id,state.files[id])) {
+        if(row.key==='include' && row.value==='config.d/work.conf') { visit('sshWork'); continue; }
+        if(row.key==='host' || row.key==='match' || row.key==='include') continue;
+        if(row.block!=='match' && hostMatches(row.host,state.host)) chain.push(row);
+      }
+    }
+    visit('ssh'); return chain;
+  }
+  function effective(state) {
+    if(state.kind==='git') {
+      const chain=gitChain(state), email=chain.filter(r=>r.key===state.target.key), name=chain.filter(r=>r.key==='user.name');
+      return {chain:email,summary:email.at(-1)?.value||'ไม่ได้ตั้งค่า',name:name.at(-1)?.value||'ไม่ได้ตั้งค่า',origin:email.at(-1)?.fileId||null};
+    }
+    const chain=sshChain(state).filter(r=>r.key==='identityfile');
+    return {chain,summary:chain.map(r=>r.value).join(' → ')||'ไม่มี IdentityFile ใน fixture',name:state.host,origin:chain[0]?.fileId||null};
+  }
+  const targetFor = (kind,repo,host='bitbucket.org') => kind==='ssh' ? {fileId:host==='bitbucket.org'?'sshWork':'ssh',key:'identityfile',ordinal:0} : {fileId:repo==='personal'?'repoPersonal':'work',key:'user.email',ordinal:0};
+  function initial(setup={}) {
+    const kind=setup.kind||'git',repo=setup.repo||'work';
+    return {kind,repo,host:'bitbucket.org',files:Object.fromEntries(Object.entries(definitions).map(([id,f])=>[id,f.text])),target:setup.target||targetFor(kind,repo),draft:setup.draft||(kind==='ssh'?'~/.ssh/id_work_new':'updated@company.example.test'),plan:null,journal:null,seq:0,events:[],outside:0,result:{code:'ready',tone:'info',title:'เริ่มจากดูที่มาของค่า แล้วสร้าง preview',detail:kind==='git'?'การเปลี่ยน global อาจไม่มีผล ถ้า repo ตั้ง local ทับไว้ การแก้ใน demo นี้ยังไม่แตะข้อมูลในเครื่อง':'IdentityFile หลายรายการสะสมตามลำดับ เลือกแก้หนึ่งรายการโดยเก็บ include และบรรทัดอื่นไว้'}};
+  }
+  function note(state,code,tone,title,detail,logged=true) {
+    const next={...state,result:{code,tone,title,detail}};
+    if(logged) {next.seq++;next.events=[{seq:next.seq,text:title},...state.events].slice(0,16);}
+    return next;
+  }
+  function preview(state) {
+    const row=find(state,state.target),value=state.draft.trim();
+    if(!row) return note(state,'missing','error','ไม่พบรายการเป้าหมาย','เลือกไฟล์และรายการใหม่ก่อนสร้าง preview');
+    if(!value || /[\r\n\0]/.test(value)) return note(state,'invalid','error','กรอกค่าในบรรทัดเดียว','prototype นี้ทดลองการแก้ค่าที่มีอยู่แล้ว ไม่เพิ่ม directive หรือบรรทัดใหม่ผ่านช่องนี้');
+    const afterRaw=encoded(value,row.raw),beforeText=state.files[row.fileId],afterText=replacement(beforeText,row,afterRaw);
+    if(beforeText===afterText) return note({...state,plan:null},'no-change','warn','ค่านี้เหมือนเดิม','ยังไม่มีการเปลี่ยนแปลงให้ Apply');
+    const next={...state,files:{...state.files,[row.fileId]:afterText}};
+    const plan={target:copy(state.target),beforeText,afterText,beforeRaw:row.raw,afterRaw,line:row.index,beforeLine:row.body,afterLine:row.body.slice(0,row.start)+afterRaw+row.body.slice(row.end),recordScope:{condition:row.condition||'',host:row.host||'',block:row.block||''},recordCount:records(row.fileId,beforeText).filter(r=>r.key===row.key).length,beforeEffective:effective(state).summary,afterEffective:effective(next).summary};
+    return note({...state,plan},'preview','info','Preview พร้อมแล้ว ยังไม่มีไฟล์เปลี่ยน','Apply จะตรวจว่าข้อความทั้งไฟล์ยังตรงกับ snapshot นี้ก่อนแก้เฉพาะค่า');
+  }
+  function reduce(state,action) {
+    if(['kind','repo','host'].includes(action.type)) {
+      const next={...state,[action.type]:action.value,plan:null};
+      next.target=targetFor(next.kind,next.repo,next.host);
+      next.draft=next.kind==='ssh'?'~/.ssh/id_work_new':'updated@company.example.test';
+      return note(next,'context','info','เปลี่ยนบริบทแล้ว โดยเก็บไฟล์จำลองเดิมไว้','สร้าง preview ใหม่สำหรับบริบทนี้ หรือกดเริ่มเคสใหม่เมื่อต้องการใช้ข้อมูลตั้งต้น');
+    }
+    if(action.type==='target') return note({...state,target:action.target,plan:null},'draft','info','เลือกตำแหน่งที่จะแก้แล้ว','ค่าในช่องแก้ไขจะถูกใช้เฉพาะรายการนี้ สร้าง preview เพื่อดูผล',false);
+    if(action.type==='draft') return {...state,draft:action.value,plan:null};
+    if(action.type==='preview') return preview(state);
+    if(action.type==='apply') {
+      const p=state.plan;
+      if(!p) return note(state,'no-preview','warn','สร้าง preview ก่อน Apply','ไม่มีการเปลี่ยนข้อมูลจำลอง');
+      if(state.files[p.target.fileId]!==p.beforeText) return note(state,'stale','error','หยุด Apply: ไฟล์ถูกแก้หลัง preview','ยังไม่เขียนอะไร สร้าง preview ใหม่เพื่ออ่านไฟล์ล่าสุดและตรวจการเปลี่ยนแปลงอีกครั้ง');
+      const next={...state,files:{...state.files,[p.target.fileId]:p.afterText},journal:{...copy(p),status:'applied',id:state.seq+1},plan:null};
+      const unchanged=p.beforeEffective===p.afterEffective;
+      return note(next,'applied',unchanged?'warn':'info','Apply แล้ว: เปลี่ยนเฉพาะค่าที่เลือก',unchanged?(state.kind==='git'?'ไฟล์เปลี่ยน แต่ค่าที่มีผลใน repo ยังเหมือนเดิม ดูลำดับการทับค่าและเงื่อนไข include':'ไฟล์เปลี่ยน แต่ Host ที่เลือกไม่ได้อ้างรายการนี้'):'comments, ค่าซ้ำ, บรรทัดอื่น และ line endings คงเดิมตาม source spans ของ fixture');
+    }
+    if(action.type==='undo') {
+      const j=state.journal;
+      if(!j || j.status!=='applied') return note(state,'no-undo','warn','ยังไม่มี Apply ที่ย้อนกลับได้','Undo ใช้ได้กับการ Apply ล่าสุดที่ยังไม่ได้ย้อน');
+      const text=state.files[j.target.fileId],all=records(j.target.fileId,text).filter(r=>r.key===j.target.key),row=all[j.target.ordinal||0];
+      const scopeOf=r=>({condition:r.condition||'',host:r.host||'',block:r.block||''});
+      const sameScope=r=>JSON.stringify(scopeOf(r))===JSON.stringify(j.recordScope);
+      const unambiguous=text===j.afterText || all.filter(r=>r.body===j.afterLine && sameScope(r)).length===1;
+      if(all.length!==j.recordCount || !row || row.body!==j.afterLine || !sameScope(row) || !unambiguous) return note(state,'undo-conflict','error','หยุด Undo: รายการที่เราแก้ถูกเปลี่ยนแล้ว','เก็บไฟล์ปัจจุบันไว้ ไม่คืน snapshot ทั้งไฟล์ เพื่อไม่ลบการแก้ของโปรแกรมอื่น');
+      const reverted=replacement(text,row,j.beforeRaw);
+      return note({...state,files:{...state.files,[j.target.fileId]:reverted},journal:{...j,status:'undone'},plan:null},'undone','info','Undo แล้ว: ย้อนเฉพาะค่าของเรา','ข้อมูลอื่นที่ถูกเพิ่มหรือแก้ภายหลังยังอยู่ในไฟล์');
+    }
+    if(action.type==='outside-unrelated') {
+      const id=state.plan?.target.fileId || (state.journal?.status==='applied'?state.journal.target.fileId:state.target.fileId);
+      const eol=state.files[id].includes('\r\n')?'\r\n':'\n';
+      const extra=definitions[id].kind==='git'?`# Added by another app ${state.outside+1}${eol}[alias]${eol}\tst${state.outside+1} = status -sb${eol}`:`# Added by another app ${state.outside+1}${eol}Host staging-${state.outside+1}${eol}\tHostName staging.example.test${eol}`;
+      return note({...state,outside:state.outside+1,files:{...state.files,[id]:state.files[id]+eol+extra}},'external','warn','โปรแกรมอื่นเพิ่มข้อมูลคนละรายการแล้ว','preview เดิมไม่ถูกอัปเดต ถ้า Apply ต้องอ่านใหม่ก่อน; หลัง Apply แล้ว Undo จะเก็บข้อมูลที่เพิ่มนี้ไว้');
+    }
+    if(action.type==='outside-same') {
+      const target=state.plan?.target || (state.journal?.status==='applied'?state.journal.target:state.target),row=find(state,target);
+      if(!row) return note(state,'missing','error','ไม่พบรายการให้จำลองแก้ไข','เลือกไฟล์และรายการที่มีอยู่ใหม่');
+      const value=definitions[target.fileId].kind==='ssh'?`~/.ssh/id_external_${state.outside+1}`:`outside-${state.outside+1}@example.test`;
+      return note({...state,outside:state.outside+1,files:{...state.files,[target.fileId]:replacement(state.files[target.fileId],row,encoded(value,row.raw))}},'external-same','warn','โปรแกรมอื่นแก้รายการเดียวกันแล้ว','Apply ที่ใช้ preview เก่าหรือ Undo ของค่าที่ไม่ตรงเดิมต้องหยุด โดยไม่ทับไฟล์ปัจจุบัน');
+    }
+    return state;
+  }
+  function metadata(text) {
+    const crlf=(text.match(/\r\n/g)||[]).length,lf=(text.match(/(?<!\r)\n/g)||[]).length,cr=(text.match(/\r(?!\n)/g)||[]).length;
+    return {crlf,lf,cr,bom:text.startsWith('\uFEFF'),bytes:new TextEncoder().encode(text).length};
+  }
+  return {definitions,repos,initial,reduce,records,find,lines,effective,metadata,targetFor};
+})();
+</script>
+<script id="config-prototype-ui">
+const P=ConfigPrototype;
+const scenarios=[
+  {id:'preserve',label:'01 · เก็บรูปแบบเดิม',setup:{kind:'ssh'},description:'เปลี่ยน IdentityFile ตัวแรกในไฟล์ include ที่มี CRLF, tab, inline comment และ IdentityFile สองรายการ แล้วลอง Undo',watch:'ดูว่า key ตัวที่สองและ comment ของตัวแรกยังอยู่ พร้อมจำนวน CRLF ที่ไม่เปลี่ยน',steps:[['สร้าง preview','preview'],['Apply การเปลี่ยน','apply'],['Undo กลับค่าเดิม','undo']]},
+  {id:'stale',label:'02 · Preview ล้าสมัย',setup:{kind:'git'},description:'มีโปรแกรมอื่นแก้รายการเดียวกันระหว่าง preview กับ Apply เราควรหยุดและให้ดูข้อมูลล่าสุดก่อน',watch:'Apply ครั้งแรกต้องไม่เขียนทับค่า outside จากนั้นสร้าง preview ใหม่แล้วจึง Apply ได้',steps:[['สร้าง preview','preview'],['คนอื่นแก้ค่าเดียวกัน','outside-same'],['ลอง Apply เดิม','apply'],['สร้าง preview ใหม่','preview'],['Apply หลังตรวจใหม่','apply']]},
+  {id:'selective',label:'03 · Undo เก็บงานคนอื่น',setup:{kind:'git'},description:'หลังเรา Apply มีโปรแกรมอื่นเพิ่ม alias ในไฟล์เดียวกัน Undo ต้องย้อนอีเมลของเราอย่างเดียว',watch:'หลัง Undo ยังมี # Added by another app และ alias st1 ในไฟล์',steps:[['สร้าง preview','preview'],['Apply','apply'],['คนอื่นเพิ่ม alias','outside-unrelated'],['Undo เฉพาะอีเมล','undo']]},
+  {id:'conflict',label:'04 · Undo ต้องหยุด',setup:{kind:'ssh'},description:'หลัง Apply มีโปรแกรมอื่นแก้ IdentityFile รายการเดียวกัน เราไม่มีสิทธิ์คืน snapshot เก่าทั้งไฟล์',watch:'Undo ต้องแจ้ง conflict และเก็บ id_external_1 ไว้ โดยยังมีบันทึก Apply ที่ไม่ได้ย้อน',steps:[['สร้าง preview','preview'],['Apply','apply'],['คนอื่นแก้ key เดียวกัน','outside-same'],['ลอง Undo','undo']]},
+  {id:'override',label:'05 · Local ทับ Global',setup:{kind:'git',repo:'personal',target:{fileId:'global',key:'user.email',ordinal:0},draft:'changed-global@example.test'},description:'repo ส่วนตัวมีอีเมล noreply ตั้งใน local อยู่ การแก้ global ควรแสดงว่าไฟล์เปลี่ยนแต่ค่าที่มีผลจริงของ repo ยังไม่เปลี่ยน',watch:'ที่มาของค่าต้องยังเป็น .git/config และอีเมล noreply ทั้งก่อนและหลัง Apply',steps:[['ดู preview กับผลจริง','preview'],['Apply global','apply'],['Undo global','undo']]},
+];
+let state=P.initial(scenarios[0].setup);
+let ui={scenario:0,step:0,file:'sshWork',theme:'light'};
+const $=id=>document.getElementById(id);
+const esc=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const eventLabels={preview:'Preview',apply:'Apply',undo:'Undo','outside-same':'External edit','outside-unrelated':'External append'};
+function phase() {
+  if(state.result.code==='stale') return 'Preview ล้าสมัย';
+  if(state.result.code==='undo-conflict') return 'Undo มี conflict';
+  if(state.plan) return 'รอตรวจและ Apply';
+  if(state.journal?.status==='applied') return 'Apply แล้ว · Undo ได้เมื่อค่าเดิมยังตรง';
+  if(state.journal?.status==='undone') return 'Undo แล้ว';
+  return 'ยังไม่มีการ Apply';
+}
+function dispatch(action) {
+  if(action.type==='reset') {startScenario(ui.scenario);return;}
+  state=P.reduce(state,action);
+  if(action.type==='target') ui.file=state.target.fileId;
+  if(action.type==='kind'||action.type==='repo'||action.type==='host') {ui.file=state.target.fileId;ui.step=0;}
+  render();
+}
+function startScenario(index) {
+  ui.scenario=index;ui.step=0;state=P.initial(scenarios[index].setup);ui.file=state.target.fileId;render();
+}
+function contextHTML() {
+  return `<div class="bar"><div class="switcher" role="group" aria-label="ประเภท config"><button type="button" data-kind="git" aria-pressed="${state.kind==='git'}">Git config</button><button type="button" data-kind="ssh" aria-pressed="${state.kind==='ssh'}">SSH config</button></div><div class="context-picker">${state.kind==='git'?`<label for="repo-picker">Repository จำลอง</label><select id="repo-picker">${Object.entries(P.repos).map(([id,repo])=>`<option value="${id}" ${id===state.repo?'selected':''}>${repo.label}</option>`).join('')}</select>`:`<label for="host-picker">Host alias จำลอง</label><select id="host-picker"><option value="bitbucket.org" ${state.host==='bitbucket.org'?'selected':''}>bitbucket.org · กุญแจงานสองรายการ</option><option value="github-personal" ${state.host==='github-personal'?'selected':''}>github-personal · กุญแจส่วนตัว</option></select>`}</div><span class="muted small">${state.kind==='git'?esc(P.repos[state.repo].remote):'แสดงกุญแจที่ config อ้างถึง · ยังไม่ใช่ผล authentication'}</span></div>`;
+}
+function sourcesHTML() {
+  const result=P.effective(state),chain=result.chain;
+  return `<div class="panel-content"><div class="small muted">${state.kind==='git'?esc(state.target.key):'IdentityFile · เรียงตามที่ fixture อ้างถึง'}</div><p class="mono" style="margin-top:6px">${esc(result.summary)}</p></div>${chain.length?chain.map((row,i)=>{
+    const winning=state.kind==='ssh'||i===chain.length-1;
+    return `<div class="source-row ${winning?'current':''}"><div class="source-label"><span>${esc(P.definitions[row.fileId].scope)}</span><span class="tag ${winning?'good':''}">${state.kind==='ssh'?'อ้างถึงลำดับ '+(i+1):winning?'มีผลจริง':'ถูกทับ'}</span></div><p class="value">${esc(row.value)}</p><p class="origin">${esc(P.definitions[row.fileId].path)}:${row.index+1}</p></div>`;
+  }).join(''):'<div class="source-row muted small">ไม่มีค่านี้ในบริบทตัวอย่างที่เลือก</div>'}<p class="source-caption">${state.kind==='git'?'ไฟล์ include ของงานทำงานเมื่อ remote ตัวอย่างเป็น Bitbucket; local อ่านภายหลัง global สำหรับ scalar ที่เลือก':'IdentityFile หลายรายการสะสมกัน ไม่เลือก “ผู้ชนะ” ตัวเดียว · ไม่ประเมิน Match exec หรือเรียก SSH'}</p>`;
+}
+function targetOptions() {
+  const result=[];
+  for(const [fileId,file] of Object.entries(P.definitions)) {
+    if(file.kind!==state.kind || fileId==='system') continue;
+    if(state.kind==='git' && fileId.startsWith('repo') && fileId!==P.repos[state.repo].local) continue;
+    const ordinals={};
+    for(const row of P.records(fileId,state.files[fileId])) {
+      const ordinal=ordinals[row.key]||0;ordinals[row.key]=ordinal+1;
+      if(state.kind==='git'?!['user.email','user.name','core.sshcommand'].includes(row.key):row.key!=='identityfile') continue;
+      result.push({fileId,key:row.key,ordinal,label:`${file.path} · ${row.key}${state.kind==='ssh'?' ['+(ordinal+1)+']':''}`});
+    }
+  }
+  return result;
+}
+function targetId(target) {return [target.fileId,target.key,target.ordinal||0].join('|');}
+function editorHTML() {
+  const selected=P.find(state,state.target),options=targetOptions();
+  const fresh=state.plan && state.files[state.plan.target.fileId]===state.plan.beforeText;
+  const undoReady=!state.plan && state.journal?.status==='applied' && state.result.code!=='undo-conflict';
+  return `<div class="form-grid"><div class="wide"><label for="target-picker">เขียนที่ไฟล์ / รายการนี้</label><select id="target-picker">${options.map(o=>`<option value="${esc(targetId(o))}" ${targetId(o)===targetId(state.target)?'selected':''}>${esc(o.label)}</option>`).join('')}</select><p class="field-hint">แก้เฉพาะรายการที่มีอยู่ · source file ไม่ถูกแปลงเป็น merged config</p></div><div><label for="current-value">ค่าปัจจุบันในไฟล์</label><input id="current-value" class="mono" value="${esc(selected?.value||'ไม่พบ')}" readonly></div><div><label for="draft-value">ค่าที่ต้องการ</label><input id="draft-value" class="mono" autocomplete="off" spellcheck="false" value="${esc(state.draft)}"></div></div><div class="actions"><button type="button" data-action="preview" ${!fresh&&!undoReady?'class="primary"':''}>สร้าง preview</button><button type="button" data-action="apply" ${fresh?'class="primary"':''}>Apply</button><button type="button" data-action="undo" ${undoReady?'class="primary"':''}>Undo ล่าสุด</button></div><p class="field-hint">Apply และ Undo ที่ยังทำไม่ได้จะอธิบายเหตุผลเมื่อกด ไม่มีการเปลี่ยนไฟล์จริง</p>`;
+}
+function codeHTML(text,changedLine,tone) {
+  return P.lines(text).map((line,i)=>`<span class="code-line ${i===changedLine?tone:''}"><span class="line-number" aria-hidden="true">${i+1}</span>${i===changedLine?'<mark>'+esc(line.body.replace(/^\uFEFF/,''))+'</mark>':esc(line.body.replace(/^\uFEFF/,''))}</span>`).join('');
+}
+function previewHTML() {
+  const plan=state.plan;
+  if(!plan) return `<div class="empty-preview">${state.journal?.status==='applied'?'บันทึก Apply ล่าสุดพร้อม Undo แล้ว สร้าง preview ใหม่เพื่อแก้ต่อ':'ยังไม่มี preview · เลือกตำแหน่งและค่าที่ต้องการ แล้วกดสร้าง preview'}</div>`;
+  const unchanged=plan.beforeEffective===plan.afterEffective;
+  return `<div class="preview-summary"><p class="mono">${esc(P.definitions[plan.target.fileId].path)} · แก้ 1 ค่า</p><p>ผลก่อน: <code>${esc(plan.beforeEffective)}</code></p><p>ผลหลัง: <code>${esc(plan.afterEffective)}</code>${unchanged?' · ยังเหมือนเดิม — ตรวจ override หรือบริบทที่เลือก':''}</p><p>${state.files[plan.target.fileId]===plan.beforeText?'Snapshot ยังตรงกับไฟล์จำลองปัจจุบัน':'ไฟล์จำลองเปลี่ยนจาก snapshot แล้ว · Apply จะหยุด'}</p></div><div class="diff-columns"><div class="diff-column"><div class="diff-label">ก่อน · snapshot ที่ตรวจ</div><pre class="diff-code" aria-label="ข้อความก่อนแก้">${codeHTML(plan.beforeText,plan.line,'removed')}</pre></div><div class="diff-column"><div class="diff-label">หลัง · ข้อความที่จะเขียน</div><pre class="diff-code" aria-label="ข้อความหลังแก้">${codeHTML(plan.afterText,plan.line,'added')}</pre></div></div>`;
+}
+function walkthroughHTML() {
+  const scenario=scenarios[ui.scenario];
+  $('scenario-tabs').innerHTML=scenarios.map((s,i)=>`<button type="button" role="tab" id="tab-${s.id}" aria-controls="scenario-body" aria-selected="${i===ui.scenario}" tabindex="${i===ui.scenario?0:-1}" data-scenario="${i}">${s.label}</button>`).join('');
+  $('scenario-body').setAttribute('aria-labelledby','tab-'+scenario.id);
+  $('scenario-body').innerHTML=`<div class="scenario-description"><h3>${esc(scenario.description)}</h3><p>สังเกต: ${esc(scenario.watch)}</p></div><div class="steps">${scenario.steps.map(([label,type],i)=>`<button type="button" id="walk-step-${i}" data-step="${i}" ${i===ui.step?'class="current-step"':''} ${i>ui.step?'disabled':''}><span class="step-number">${i<ui.step?'✓':i+1}</span>${esc(label)}</button>`).join('')}<button type="button" data-action="reset">เริ่มเคสนี้ใหม่</button></div>${ui.step>=scenario.steps.length?'<p class="small muted" style="padding:0 17px 14px">จบเคสแล้ว ลองกดอิสระต่อหรือเลือกเคสอื่นได้</p>':''}`;
+  if(ui.step>0) $('scenario-body').insertAdjacentHTML('beforeend',`<div class="notice ${state.result.tone==='error'?'error':state.result.tone==='warn'?'warn':''}" style="margin:0 17px 16px"><strong>${esc(state.result.title)}</strong><p>${esc(state.result.detail)}</p></div>`);
+}
+function render() {
+  const focused=document.activeElement,focusId=focused?.id,selection=focused?.tagName==='INPUT'?[focused.selectionStart,focused.selectionEnd]:null;
+  $('context-controls').innerHTML=contextHTML();
+  $('status-strip').innerHTML=`<span>ขั้นตอน: <strong>${esc(phase())}</strong></span><span>เป้าหมาย: <code>${esc(state.target.key)} [${state.target.ordinal+1}]</code></span><span>Apply ที่บันทึก: <strong>${state.journal?'#'+state.journal.id+' · '+(state.journal.status==='applied'?'ยังไม่ย้อน':'ย้อนแล้ว'):'ไม่มี'}</strong></span>`;
+  $('result').innerHTML=`<div class="notice ${state.result.tone==='error'?'error':state.result.tone==='warn'?'warn':''}"><strong>${esc(state.result.title)}</strong><p>${esc(state.result.detail)}</p></div>`;
+  $('sources-title').textContent=state.kind==='git'?'Git: ค่าที่มีผลและแหล่งที่มา':'SSH: กุญแจที่ config อ้างถึง';
+  $('sources').innerHTML=sourcesHTML();$('editor').innerHTML=editorHTML();$('preview').innerHTML=previewHTML();
+  const outsideFile=state.plan?.target.fileId || (state.journal?.status==='applied'?state.journal.target.fileId:state.target.fileId);
+  $('outside-target').textContent='ไฟล์ที่จำลองแก้: '+P.definitions[outsideFile].path+' · preview เดิมไม่ถูกอัปเดต';
+  $('editor-scope').textContent=P.definitions[state.target.fileId].scope;
+  const meta=P.metadata(state.files[ui.file]);
+  $('file-controls').innerHTML=`<label for="file-picker" style="margin:0"><span class="small muted">เลือกดูข้อความทั้งไฟล์</span><select id="file-picker">${Object.entries(P.definitions).map(([id,file])=>`<option value="${id}" ${ui.file===id?'selected':''}>${esc(file.path)}</option>`).join('')}</select></label><span class="tag">${meta.bytes} bytes</span>`;
+  $('file-content').innerHTML='<pre>'+codeHTML(state.files[ui.file],-1,'')+'</pre>';
+  $('file-meta').textContent=`CRLF ${meta.crlf} · LF ${meta.lf} · CR ${meta.cr} · BOM ${meta.bom?'มี':'ไม่มี'} · in-memory fixture`;
+  const details=[['บริบท',state.kind==='git'?P.repos[state.repo].label:state.host],['รายการที่แก้',P.definitions[state.target.fileId].path+' · '+state.target.key],['Draft',state.draft],['Preview',state.plan?(state.files[state.plan.target.fileId]===state.plan.beforeText?'พร้อม / snapshot ตรง':'ล้าสมัย / snapshot ไม่ตรง'):'ไม่มี'],['บันทึก Apply',state.journal?'#'+state.journal.id+' · '+state.journal.status+' · '+P.definitions[state.journal.target.fileId].path:'ไม่มี'],['แก้จากภายนอก',String(state.outside)+' ครั้ง'],['ผลล่าสุด',state.result.title]];
+  $('state-details').innerHTML=details.map(([key,value])=>`<div class="state-row"><dt>${esc(key)}</dt><dd>${esc(value)}</dd></div>`).join('');
+  $('events').innerHTML=state.events.map(e=>`<li value="${e.seq}">${esc(e.text)}</li>`).join('');
+  walkthroughHTML();
+  document.documentElement.dataset.theme=ui.theme;
+  $('theme-button').textContent=ui.theme==='light'?'โหมดมืด':'โหมดสว่าง';
+  if(focusId && $(focusId)) {$(focusId).focus({preventScroll:true});if(selection && selection[0]!==null) $(focusId).setSelectionRange(...selection);}
+}
+document.addEventListener('click',event=>{
+  const button=event.target.closest('button');if(!button)return;
+  if(button.id==='theme-button') {ui.theme=ui.theme==='light'?'dark':'light';render();return;}
+  if(button.dataset.kind) {dispatch({type:'kind',value:button.dataset.kind});return;}
+  if(button.dataset.scenario!==undefined) {startScenario(Number(button.dataset.scenario));$('tab-'+scenarios[ui.scenario].id).focus();return;}
+  if(button.dataset.step!==undefined) {
+    const index=Number(button.dataset.step),type=scenarios[ui.scenario].steps[index][1];
+    state=P.reduce(state,{type});ui.step=Math.max(ui.step,index+1);render();$('walk-step-'+Math.min(ui.step,scenarios[ui.scenario].steps.length-1)).focus({preventScroll:true});return;
+  }
+  if(button.dataset.action) dispatch({type:button.dataset.action});
+});
+document.addEventListener('change',event=>{
+  const field=event.target;
+  if(field.id==='repo-picker')dispatch({type:'repo',value:field.value});
+  if(field.id==='host-picker')dispatch({type:'host',value:field.value});
+  if(field.id==='target-picker') {const [fileId,key,ordinal]=field.value.split('|');dispatch({type:'target',target:{fileId,key,ordinal:Number(ordinal)}});}
+  if(field.id==='file-picker') {ui.file=field.value;render();}
+});
+document.addEventListener('input',event=>{if(event.target.id==='draft-value')dispatch({type:'draft',value:event.target.value});});
+document.addEventListener('keydown',event=>{
+  if(event.target.matches('[role=tab]') && ['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) {
+    event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?scenarios.length-1:(ui.scenario+(event.key==='ArrowRight'?1:-1)+scenarios.length)%scenarios.length;
+    startScenario(next);$('tab-'+scenarios[next].id).focus();
+  }
+});
+render();
+</script>
+</body>
+</html>

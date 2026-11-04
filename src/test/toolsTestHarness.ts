@@ -13,6 +13,7 @@ import { reduce } from "../features/tools/reduce";
 /** An API whose every call fails unless a test provides it, so unexpected calls show up. */
 export function fakeApi(overrides: Partial<WhichcraftApi>): WhichcraftApi {
   const base = {
+    configurationOperation: vi.fn(async () => null),
     getEnvVars: vi.fn(async () => []),
     getUnsupportedEnvValues: vi.fn(async () => []),
     getRegistrySnapshot: vi.fn(async () => ({ user: [], system: [] })),
@@ -28,6 +29,7 @@ export function fakeApi(overrides: Partial<WhichcraftApi>): WhichcraftApi {
     checkForUpdate: vi.fn(async () => null),
     openUrl: vi.fn(async () => {}),
     pickFolder: vi.fn(async () => null),
+    pickFile: vi.fn(async () => null),
     confirm: vi.fn(async (message: string) => window.confirm(message)),
     getRecoveryStatus: vi.fn(async () => null),
     unfinishedUninstalls: vi.fn(async () => []),

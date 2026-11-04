@@ -1,3 +1,4 @@
+pub mod configuration;
 pub mod elevator;
 pub mod installer_catalog;
 pub mod installer_lifecycle;

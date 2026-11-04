@@ -1,5 +1,7 @@
 # Whichcraft — เกณฑ์ทดสอบรับงานรุ่นแรก
 
+> เกณฑ์ชุดนี้บันทึกขอบเขตรุ่นแรก ณ วันที่ 23 ตุลาคม 2026 เกณฑ์ Git/SSH ที่เพิ่มภายหลังอยู่ใน [spec](../.scratch/git-ssh-config/spec.md#testing-decisions) และ [ผลตรวจสอบ](../.scratch/git-ssh-config/implementation.md)
+
 เกณฑ์ในเอกสารนี้มาจากการตัดสินใจใน [requirements.md](requirements.md) (Q1–Q29) และผลงานพิสูจน์ใน [spikes/](../spikes/) คำศัพท์ใช้ตาม [CONTEXT.md](../CONTEXT.md)
 
 สร้างเมื่อ 23 ตุลาคม 2026

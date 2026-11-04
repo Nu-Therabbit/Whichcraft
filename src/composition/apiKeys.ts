@@ -80,6 +80,7 @@ export const PLATFORM_API_KEYS = [
   "checkForUpdate",
   "openUrl",
   "pickFolder",
+  "pickFile",
   "confirm",
   "openFolder",
   "openTerminal",
@@ -102,12 +103,22 @@ type _MissingToolsPlatformSliceKeys = Exclude<
   keyof ToolsPlatformSlice,
   (typeof TOOLS_PLATFORM_SLICE_KEYS)[number]
 >;
-const _assertToolsPlatformSliceKeys: _MissingToolsPlatformSliceKeys extends never
-  ? true
-  : never = true;
+const _assertToolsPlatformSliceKeys: _MissingToolsPlatformSliceKeys extends never ? true : never =
+  true;
 void _assertToolsPlatformSliceKeys;
 
+export const CONFIGURATION_API_KEYS = [
+  "inspectConfiguration",
+  "planConfiguration",
+  "applyConfiguration",
+  "undoConfiguration",
+  "configurationOperation",
+  "acknowledgeConfigurationRecovery",
+  "forgetConfigurationRepository",
+] as const;
+
 export const WHICHCRAFT_API_KEYS = [
+  ...CONFIGURATION_API_KEYS,
   ...ENVIRONMENT_API_KEYS,
   ...TOOLS_API_KEYS,
   ...PLATFORM_API_KEYS,

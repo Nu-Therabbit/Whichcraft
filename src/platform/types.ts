@@ -17,5 +17,6 @@ export interface WhichcraftSettings {
   /** False until the user confirms the install folder before the first install. */
   installStoreConfirmed?: boolean;
   scanRoots: string[];
+  recentRepositories?: string[];
   terminal: TerminalKind;
 }

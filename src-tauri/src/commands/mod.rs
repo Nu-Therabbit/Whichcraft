@@ -1,3 +1,4 @@
+pub mod configuration;
 pub mod env;
 pub mod export;
 pub mod launch;

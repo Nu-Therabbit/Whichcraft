@@ -1,6 +1,9 @@
 //! Whichcraft's domain: types and rules with no I/O. Everything else depends on this module;
 //! it depends on nothing in Whichcraft but itself (ADR-0005).
 
+pub mod configuration;
+pub mod configuration_document;
+pub mod configuration_secrets;
 pub mod env;
 pub mod installation;
 pub mod journal;

@@ -29,6 +29,7 @@
     SetShellVarContext current
     RMDir /r "$LOCALAPPDATA\${PRODUCTNAME}\journal"
     RMDir /r "$LOCALAPPDATA\${PRODUCTNAME}\snapshots"
+    Delete "$LOCALAPPDATA\${PRODUCTNAME}\configuration-operation"
     Delete "$LOCALAPPDATA\${PRODUCTNAME}\selection.json"
     Delete "$LOCALAPPDATA\${PRODUCTNAME}\settings.json"
     Delete "$LOCALAPPDATA\${PRODUCTNAME}\profiles.json"
